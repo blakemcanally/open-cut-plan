@@ -167,7 +167,7 @@
           "quantity": {
             "type": "integer",
             "exclusiveMinimum": 0,
-            "maximum": 9007199254740991
+            "maximum": 10000
           },
           "grain": {
             "type": "string",

@@ -63,7 +63,7 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 | `name` | yes | |
 | `material` | yes | A material id. |
 | `length`, `width` | yes | Finished size. |
-| `quantity` | yes | Whole number, 1 or more. |
+| `quantity` | yes | Whole number, 1 to 10000. |
 | `grain` | yes | Which part dimension must run along the stock grain: `"length"`, `"width"`, or `"none"`. |
 | `group` | no | Assembly or cabinet name, used for colour and labels. |
 | `notes` | no | |

@@ -1,4 +1,4 @@
-import { addPart, formatArea, removePart, updatePart, type Grain, type Project } from "@opencutplan/core";
+import { addPart, formatArea, MAX_PART_QUANTITY, removePart, updatePart, type Grain, type Project } from "@opencutplan/core";
 import { useState, type ClipboardEvent } from "react";
 import { CsvImportDialog } from "../components/CsvImportDialog.tsx";
 import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
@@ -110,6 +110,7 @@ export function PartsTab({ store }: { store: ProjectStore }) {
                         value={part.quantity}
                         integer
                         minimum={1}
+                        maximum={MAX_PART_QUANTITY}
                         onChange={(quantity) => quantity !== undefined && change({ quantity })}
                       />
                     </td>

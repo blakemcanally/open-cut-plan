@@ -39,6 +39,9 @@ describe("parts", () => {
     expect(zero.code).toBe(2);
     const quantity = await cli(["parts", "add", "p.json", "--name", "X", "--length", "1", "--width", "2", "--quantity", "1.5"], io);
     expect(quantity.code).toBe(2);
+    const huge = await cli(["parts", "add", "p.json", "--name", "X", "--length", "1", "--width", "2", "--quantity", "10001", "--json"], io);
+    expect(huge.code).toBe(2);
+    expect(huge.json().error).toMatchObject({ code: "invalid-value", option: "quantity", value: "10001" });
     expect(io.files.get("p.json")).not.toContain('"X"');
   });
 

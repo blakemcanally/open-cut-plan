@@ -104,6 +104,7 @@ describe("importPartsCsv", () => {
       "Good,10,5,1,,",
       "BadLength,abc,5,1,,",
       "BadQty,10,5,1.5,,",
+      "HugeQty,10,5,10001,,",
       "OddGrain,10,5,1,diagonal,thick",
     ].join("\n");
     const result = expectOk(importPartsCsv(csv, { units: "in" }));
@@ -112,9 +113,10 @@ describe("importPartsCsv", () => {
     expect(result.rows[1]).not.toHaveProperty("thickness");
     expect(result.issues).toEqual([
       { severity: "error", row: 3, column: "length", message: 'Row 3: length "abc" is not a valid length.' },
-      { severity: "error", row: 4, column: "quantity", message: 'Row 4: quantity "1.5" is not a whole number of 1 or more.' },
-      { severity: "warning", row: 5, column: "grain", message: 'Row 5: grain "diagonal" is not recognized, so "length" is used.' },
-      { severity: "warning", row: 5, column: "thickness", message: 'Row 5: thickness "thick" is not a valid length, so it is ignored.' },
+      { severity: "error", row: 4, column: "quantity", message: 'Row 4: quantity "1.5" is not a whole number from 1 to 10000.' },
+      { severity: "error", row: 5, column: "quantity", message: 'Row 5: quantity "10001" is not a whole number from 1 to 10000.' },
+      { severity: "warning", row: 6, column: "grain", message: 'Row 6: grain "diagonal" is not recognized, so "length" is used.' },
+      { severity: "warning", row: 6, column: "thickness", message: 'Row 6: thickness "thick" is not a valid length, so it is ignored.' },
     ]);
   });
 

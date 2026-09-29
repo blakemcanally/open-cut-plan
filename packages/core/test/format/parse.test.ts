@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPath, parseProject, serializeProject, type ParseResult } from "../../src/index.ts";
+import { formatPath, MAX_PART_QUANTITY, parseProject, serializeProject, type ParseResult } from "../../src/index.ts";
 import { sampleProject } from "../helpers.ts";
 
 function errors(result: ParseResult) {
@@ -22,6 +22,12 @@ describe("parseProject", () => {
     const [issue] = errors(parseProject("{ not json"));
     expect(issue).toMatchObject({ code: "json", severity: "error" });
     expect(issue!.message).toMatch(/^The file is not valid JSON: /);
+  });
+
+  it("reports a part quantity above the limit", () => {
+    const project = sampleProject();
+    const text = serializeProject({ ...project, parts: project.parts.map((part) => ({ ...part, quantity: MAX_PART_QUANTITY + 1 })) });
+    expect(errors(parseProject(text))[0]).toMatchObject({ severity: "error", path: ["parts", 0, "quantity"] });
   });
 
   it("reports a value that is not an object", () => {

@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const FORMAT_ID = "opencutplan";
 export const FORMAT_VERSION = "1.0";
+/** Analysis and the editor work per copy, so a larger quantity would freeze them. */
+export const MAX_PART_QUANTITY = 10_000;
 
 const id = z.string().min(1);
 const positive = z.number().positive();
@@ -42,7 +44,7 @@ export const PartSchema = z
     material: id,
     length: positive,
     width: positive,
-    quantity: z.number().int().positive(),
+    quantity: z.number().int().positive().max(MAX_PART_QUANTITY),
     grain: GrainSchema,
     group: z.string().optional(),
     notes: z.string().optional(),

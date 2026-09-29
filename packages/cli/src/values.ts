@@ -36,10 +36,18 @@ export function optionalLength(options: OptionValues, name: string, units: Units
   return text === undefined ? undefined : lengthValue(text, units, name, rules);
 }
 
-export function integerValue(text: string, name: string, minimum = Number.NEGATIVE_INFINITY): number {
+export function integerValue(text: string, name: string, minimum = Number.NEGATIVE_INFINITY, maximum = Number.POSITIVE_INFINITY): number {
   const value = /^-?\d+$/.test(text.trim()) ? Number(text) : Number.NaN;
-  if (!Number.isSafeInteger(value) || value < minimum) {
-    throw invalid(name, text, minimum === 1 ? "a whole number of 1 or more" : minimum === 0 ? "a whole number of 0 or more" : "a whole number");
+  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+    const expected =
+      maximum !== Number.POSITIVE_INFINITY
+        ? `a whole number from ${minimum} to ${maximum}`
+        : minimum === 1
+          ? "a whole number of 1 or more"
+          : minimum === 0
+            ? "a whole number of 0 or more"
+            : "a whole number";
+    throw invalid(name, text, expected);
   }
   return value;
 }

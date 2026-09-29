@@ -1,4 +1,4 @@
-import type { Grain } from "../format/schema.ts";
+import { MAX_PART_QUANTITY, type Grain } from "../format/schema.ts";
 import { parsePlainNumber, type NumberOptions } from "../geometry/parse.ts";
 import type { Units } from "../geometry/units.ts";
 import { cell, guessMapping, hasUnmappedColumns, headerDetector, longRowIssue, missingFields, numberOptions, optionalLength, requiredLength, type ColumnMapping } from "./mapping.ts";
@@ -72,7 +72,7 @@ function parseGrain(text: string): Grain | null {
 function parseQuantity(text: string, options: NumberOptions): number | null {
   if (text === "") return 1;
   const value = parsePlainNumber(text, options);
-  return value !== null && Number.isInteger(value) && value >= 1 ? value : null;
+  return value !== null && Number.isInteger(value) && value >= 1 && value <= MAX_PART_QUANTITY ? value : null;
 }
 
 export function importPartsCsv(text: string, options: PartImportOptions): CsvImport<PartRow, PartField> {
@@ -103,7 +103,7 @@ export function importPartsCsv(text: string, options: PartImportOptions): CsvImp
     const width = requireLength("width");
     const quantity = parseQuantity(get("quantity"), numberOptions(table));
     if (quantity === null) {
-      errors.push({ severity: "error", row, column: "quantity", message: `Row ${row}: quantity "${get("quantity")}" is not a whole number of 1 or more.` });
+      errors.push({ severity: "error", row, column: "quantity", message: `Row ${row}: quantity "${get("quantity")}" is not a whole number from 1 to ${MAX_PART_QUANTITY}.` });
     }
     if (errors.length > 0 || quantity === null) {
       issues.push(...errors);

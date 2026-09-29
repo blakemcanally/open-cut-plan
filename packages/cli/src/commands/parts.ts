@@ -1,4 +1,4 @@
-import { removePart, updatePart, type Grain, type Part, type Patch, type Project } from "@opencutplan/core";
+import { MAX_PART_QUANTITY, removePart, updatePart, type Grain, type Part, type Patch, type Project } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines } from "../project.ts";
 import { type CommandSpec, type GroupSpec, type OptionValues } from "../spec.ts";
@@ -13,7 +13,7 @@ const OPTIONS = {
   name: { name: "name", type: "string", value: "<text>", description: "The part name." },
   length: { name: "length", type: "string", value: "<length>", description: "The finished length (the first dimension)." },
   width: { name: "width", type: "string", value: "<length>", description: "The finished width." },
-  quantity: { name: "quantity", type: "string", value: "<n>", description: "The number of copies, 1 or more. Default for add: 1." },
+  quantity: { name: "quantity", type: "string", value: "<n>", description: `The number of copies, 1 to ${MAX_PART_QUANTITY}. Default for add: 1.` },
   material: { name: "material", type: "string", value: "<id|name>", description: "The material id or name. For add, required when the project has more than one material." },
   grain: { name: "grain", type: "string", value: "<length|width|none>", description: "The part dimension that must run along the stock grain, or none. Default for add: length." },
   group: { name: "group", type: "string", value: "<text>", description: "An assembly or cabinet name, for colours and labels." },
@@ -38,7 +38,7 @@ function fields(project: Project, options: OptionValues): Patch<Part> {
   const width = optionalLength(options, "width", units);
   if (width !== undefined) patch.width = width;
   const quantity = str(options, "quantity");
-  if (quantity !== undefined) patch.quantity = integerValue(quantity, "quantity", 1);
+  if (quantity !== undefined) patch.quantity = integerValue(quantity, "quantity", 1, MAX_PART_QUANTITY);
   const material = str(options, "material");
   if (material !== undefined) patch.material = resolveMaterial(project, material).id;
   const grain = optionalChoice(options, "grain", GRAINS);
