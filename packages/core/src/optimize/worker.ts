@@ -1,3 +1,4 @@
+import { errorMessage } from "../errors.ts";
 import type { Project } from "../format/schema.ts";
 import { createSearch, type OptimizeOptions, type OptimizeResult } from "./search.ts";
 
@@ -42,7 +43,7 @@ export function createOptimizerHost(
     try {
       search = createSearch(request.project, request.options ?? {});
     } catch (e) {
-      post({ type: "error", id: request.id, message: (e as Error).message });
+      post({ type: "error", id: request.id, message: errorMessage(e) });
       return;
     }
     const current = { id: request.id, cancelled: false, search };
@@ -61,7 +62,7 @@ export function createOptimizerHost(
         }
       } catch (e) {
         job = null;
-        post({ type: "error", id: current.id, message: (e as Error).message });
+        post({ type: "error", id: current.id, message: errorMessage(e) });
       }
     };
     schedule(tick);

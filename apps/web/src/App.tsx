@@ -1,4 +1,4 @@
-import type { Project } from "@opencutplan/core";
+import { errorMessage, type Project } from "@opencutplan/core";
 import { useEffect, useState } from "react";
 import type { WorkerFactory } from "./optimizer/useOptimizer.ts";
 import { Home, type OpenRequest } from "./screens/Home.tsx";
@@ -45,7 +45,7 @@ export function App({ storage, workerFactory, newId = () => crypto.randomUUID() 
         if (project) setOpened({ id, project, notices: [], stored: true });
         else setLoadError("This project is not saved in this browser.");
       },
-      (e: unknown) => live && setLoadError((e as Error).message),
+      (e: unknown) => live && setLoadError(errorMessage(e)),
     );
     return () => {
       live = false;

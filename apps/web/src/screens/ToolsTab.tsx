@@ -1,4 +1,4 @@
-import { addTool, convertTool, moveTool, removeTool, TOOL_TYPE_NAMES, TOOL_TYPES, updateTool, type Tool, type ToolType } from "@opencutplan/core";
+import { addTool, convertTool, errorMessage, moveTool, removeTool, TOOL_TYPE_NAMES, TOOL_TYPES, updateTool, type Tool, type ToolType } from "@opencutplan/core";
 import { useCallback, useEffect, useState } from "react";
 import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
@@ -50,7 +50,7 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
     () =>
       storage.listProfiles().then(
         (list) => setProfiles(list),
-        (e: unknown) => setStatus(`The saved profiles could not be read: ${(e as Error).message}`),
+        (e: unknown) => setStatus(`The saved profiles could not be read: ${errorMessage(e)}`),
       ),
     [storage],
   );
@@ -69,7 +69,7 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
       setChosen(name);
       await refresh();
     } catch (e) {
-      setStatus(`The profile could not be saved: ${(e as Error).message}`);
+      setStatus(`The profile could not be saved: ${errorMessage(e)}`);
     }
   };
 
@@ -79,7 +79,7 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
       await storage.deleteProfile(profile.name);
       setStatus(`Deleted the profile “${profile.name}”.`);
     } catch (e) {
-      setStatus(`The profile could not be deleted: ${(e as Error).message}`);
+      setStatus(`The profile could not be deleted: ${errorMessage(e)}`);
     }
     await refresh();
   };

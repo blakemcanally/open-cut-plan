@@ -1,3 +1,4 @@
+import { errorMessage } from "../errors.ts";
 import { errorIssue, warningIssue, type Issue, type IssuePath } from "./issues.ts";
 import { checkReferences } from "./references.ts";
 import { FORMAT_ID, ProjectSchema, type Project } from "./schema.ts";
@@ -16,7 +17,7 @@ export function parseProject(input: unknown): ParseResult {
     try {
       doc = JSON.parse(input.replace(/^\uFEFF/, ""));
     } catch (e) {
-      return fail(errorIssue("json", `The file is not valid JSON: ${(e as Error).message}`));
+      return fail(errorIssue("json", `The file is not valid JSON: ${errorMessage(e)}`));
     }
   }
   if (typeof doc !== "object" || doc === null || Array.isArray(doc)) {

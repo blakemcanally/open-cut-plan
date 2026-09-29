@@ -1,4 +1,4 @@
-import { analyzeProject, projectFileName, serializeProject, withCuts, type Project } from "@opencutplan/core";
+import { analyzeProject, errorMessage, projectFileName, serializeProject, withCuts, type Project } from "@opencutplan/core";
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { TextInput } from "../components/fields.tsx";
 import { LayoutTab } from "../layout/LayoutTab.tsx";
@@ -79,7 +79,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
       setHandle(next);
       setFileStatus(next ? `Saved to ${next.name}.` : "The file was downloaded.");
     } catch (e) {
-      setFileStatus(`The file could not be saved: ${(e as Error).message}`);
+      setFileStatus(`The file could not be saved: ${errorMessage(e)}`);
     }
   };
 

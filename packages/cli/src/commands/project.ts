@@ -1,4 +1,4 @@
-import { buildJsonSchema, createProject, newTool, parseProject, serializeProject, validatePlan, type Issue, type PlanIssue, type Units } from "@opencutplan/core";
+import { buildJsonSchema, createProject, errorMessage, newTool, parseProject, serializeProject, validatePlan, type Issue, type PlanIssue, type Units } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, issueText, loadProject, readSource, warningLines } from "../project.ts";
 import { CliError, EXIT, usageError, type CommandSpec } from "../spec.ts";
@@ -41,7 +41,7 @@ export const newCommand: CommandSpec = {
       try {
         await io.writeFile(file, text);
       } catch (error) {
-        throw new CliError(EXIT.failed, "write-failed", `Cannot write ${file}: ${(error as Error).message}`, { path: file });
+        throw new CliError(EXIT.failed, "write-failed", `Cannot write ${file}: ${errorMessage(error)}`, { path: file });
       }
       written = file;
     }

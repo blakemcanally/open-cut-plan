@@ -1,4 +1,4 @@
-import { FORMAT_VERSION } from "@opencutplan/core";
+import { errorMessage, FORMAT_VERSION } from "@opencutplan/core";
 import { parseArgs, type ParseArgsOptionsConfig } from "node:util";
 import { COMMANDS, GROUPS } from "./commands/index.ts";
 import { commandHelp, commandJson, COMMON_OPTIONS, groupHelp, mainHelp, PROGRAM } from "./help.ts";
@@ -104,7 +104,7 @@ function parse(spec: CommandSpec, tokens: string[]) {
   try {
     return parseArgs({ args: tokens, options: parseConfig(spec), allowPositionals: true, strict: true });
   } catch (error) {
-    const message = (error as Error).message.replace(/\s+To specify a positional argument.*$/s, "");
+    const message = errorMessage(error).replace(/\s+To specify a positional argument.*$/s, "");
     throw usageError(`${message} Run '${PROGRAM} help ${spec.name}' for the options.`, "bad-option");
   }
 }
@@ -180,6 +180,6 @@ export async function run(argv: readonly string[], io: Io): Promise<ExitCode> {
     return emit(io, json, spec.name, outcome);
   } catch (error) {
     if (error instanceof CliError) return emitError(io, json, command, error);
-    return emitError(io, json, command, new CliError(EXIT.failed, "internal-error", `Unexpected error: ${(error as Error).stack ?? String(error)}`));
+    return emitError(io, json, command, new CliError(EXIT.failed, "internal-error", `Unexpected error: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`));
   }
 }

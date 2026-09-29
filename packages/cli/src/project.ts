@@ -1,4 +1,4 @@
-import { analyzeProject, formatPath, parseProject, serializeProject, withCuts, type Issue, type PlanIssue, type Project } from "@opencutplan/core";
+import { analyzeProject, errorMessage, formatPath, parseProject, serializeProject, withCuts, type Issue, type PlanIssue, type Project } from "@opencutplan/core";
 import { describeChanges, diffProjects, type Changes } from "./diff.ts";
 import type { Io } from "./io.ts";
 import { CliError, EXIT, type Invocation, type OptionSpec, type Outcome } from "./spec.ts";
@@ -26,9 +26,9 @@ export async function readSource(io: Io, source: string, what = "file"): Promise
   try {
     return await io.readFile(source);
   } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code;
+    const code = error instanceof Error && "code" in error ? error.code : undefined;
     if (code === "ENOENT") throw new CliError(EXIT.input, "file-not-found", `The ${what} ${source} does not exist.`, { path: source });
-    throw new CliError(EXIT.input, "read-failed", `Cannot read the ${what} ${source}: ${(error as Error).message}`, { path: source });
+    throw new CliError(EXIT.input, "read-failed", `Cannot read the ${what} ${source}: ${errorMessage(error)}`, { path: source });
   }
 }
 
@@ -121,7 +121,7 @@ export async function finishMutation(invocation: Invocation, loaded: Loaded, nex
       try {
         await io.writeFile(destination, text);
       } catch (error) {
-        throw new CliError(EXIT.failed, "write-failed", `Cannot write ${destination}: ${(error as Error).message}`, { path: destination });
+        throw new CliError(EXIT.failed, "write-failed", `Cannot write ${destination}: ${errorMessage(error)}`, { path: destination });
       }
       written = destination;
     }
@@ -152,6 +152,6 @@ export async function writeOutput(io: Io, path: string, text: string): Promise<v
   try {
     await io.writeFile(path, text);
   } catch (error) {
-    throw new CliError(EXIT.failed, "write-failed", `Cannot write ${path}: ${(error as Error).message}`, { path });
+    throw new CliError(EXIT.failed, "write-failed", `Cannot write ${path}: ${errorMessage(error)}`, { path });
   }
 }

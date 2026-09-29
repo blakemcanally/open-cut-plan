@@ -1,4 +1,4 @@
-import { createProject, newTool, parseProject, type Project, type Units } from "@opencutplan/core";
+import { createProject, errorMessage, newTool, parseProject, type Project, type Units } from "@opencutplan/core";
 import { useCallback, useEffect, useState } from "react";
 import { EXAMPLES } from "../examples.ts";
 import type { ProjectSummary, Storage } from "../storage/db.ts";
@@ -33,7 +33,7 @@ export function Home({ storage, onOpen, onCreate }: HomeProps) {
     () =>
       storage.listProjects().then(setProjects, (e: unknown) => {
         setProjects([]);
-        setError(`Saved projects could not be read: ${(e as Error).message}`);
+        setError(`Saved projects could not be read: ${errorMessage(e)}`);
       }),
     [storage],
   );
@@ -56,7 +56,7 @@ export function Home({ storage, onOpen, onCreate }: HomeProps) {
       const file = await openProjectFile();
       if (file) openText(file.text, file.handle);
     } catch (e) {
-      setError(`The file could not be read: ${(e as Error).message}`);
+      setError(`The file could not be read: ${errorMessage(e)}`);
     }
   };
 
@@ -65,7 +65,7 @@ export function Home({ storage, onOpen, onCreate }: HomeProps) {
     try {
       await storage.deleteProject(project.id);
     } catch (e) {
-      setError(`The project could not be deleted: ${(e as Error).message}`);
+      setError(`The project could not be deleted: ${errorMessage(e)}`);
     }
     await refresh();
   };

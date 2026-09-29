@@ -1,4 +1,4 @@
-import type { OptimizeRequest, OptimizeResult, OptimizerRequest, OptimizerResponse } from "@opencutplan/core";
+import { errorMessage, type OptimizeRequest, type OptimizeResult, type OptimizerRequest, type OptimizerResponse } from "@opencutplan/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface WorkerLike {
@@ -81,7 +81,7 @@ export function useOptimizer(factory: WorkerFactory): Optimizer {
         ensureWorker().postMessage({ type: "start", id, project: request.input, options });
       } catch (e) {
         setRunning(null);
-        setError((e as Error).message);
+        setError(errorMessage(e));
       }
     },
     [ensureWorker],

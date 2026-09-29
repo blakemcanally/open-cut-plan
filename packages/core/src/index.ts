@@ -35,6 +35,7 @@ export * from "./reports/labelSheets.ts";
 export * from "./reports/colors.ts";
 export * from "./reports/svg.ts";
 export * from "./analysis.ts";
+export * from "./errors.ts";
 export type { UnplacedCopy, UnplacedReason } from "./optimize/problem.ts";
 export * from "./optimize/evaluate.ts";
 export * from "./optimize/search.ts";
