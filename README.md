@@ -46,3 +46,9 @@ npm run e2e        # run the Playwright end-to-end tests (first: npx playwright 
 npm run schema     # regenerate schema/cutplan.schema.json after changing the format
 npm run examples   # regenerate the files in examples/ after changing a builder
 ```
+
+## License
+
+OpenCutPlan is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
+version. See [`LICENSE`](LICENSE).
