@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { checkReferences, type Project } from "../../src/index.ts";
-import { sampleProject } from "../helpers.ts";
+import { checkReferences, parseProject, serializeProject, type Project } from "../../src/index.ts";
+import { designProject, kallaxDesign, sampleProject } from "../helpers.ts";
 
 function sheet(project: Project) {
   return project.plan!.sheets[0]!;
@@ -101,5 +101,28 @@ describe("checkReferences", () => {
       ["error", "duplicate-id", "parts"],
       ["error", "duplicate-id", "tools"],
     ]);
+  });
+});
+
+describe("design references", () => {
+  it("refuses two designs with the same id", () => {
+    const project = designProject([kallaxDesign(), kallaxDesign({ name: "Second" })]);
+    const result = parseProject(serializeProject(project));
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.errors).toEqual([expect.objectContaining({ code: "duplicate-id", path: ["designs", 1, "id"] })]);
+  });
+
+  it("loads a part that names a missing design, with a warning", () => {
+    const project = designProject([]);
+    project.parts = [{ id: "old", name: "Old shelf", material: "ply18", length: 300, width: 200, quantity: 1, grain: "length", design: "gone" }];
+    const result = parseProject(serializeProject(project));
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toEqual([expect.objectContaining({ severity: "warning", code: "design-missing", path: ["parts", 0, "design"] })]);
+  });
+
+  it("accepts a part that names an existing design", () => {
+    const project = designProject([kallaxDesign()]);
+    project.parts = [{ id: "kx-vertical", name: "Vertical panel", material: "ply18", length: 1430, width: 390, quantity: 3, grain: "length", design: "kx" }];
+    expect(parseProject(serializeProject(project)).warnings).toEqual([]);
   });
 });

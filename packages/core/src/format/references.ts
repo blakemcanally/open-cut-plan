@@ -21,6 +21,7 @@ export function checkReferences(project: Project): Issue[] {
   const stock = collectIds(project.stock, ["stock"], issues);
   collectIds(project.parts, ["parts"], issues);
   const tools = collectIds(project.tools, ["tools"], issues);
+  const designs = collectIds(project.designs ?? [], ["designs"], issues);
   const parts = new Map(project.parts.map((part) => [part.id, part]));
 
   project.stock.forEach((item, index) => {
@@ -31,6 +32,17 @@ export function checkReferences(project: Project): Issue[] {
   project.parts.forEach((part, index) => {
     if (!materials.has(part.material)) {
       issues.push(errorIssue("bad-ref", `Part "${part.name}" uses material "${part.material}", which does not exist.`, ["parts", index, "material"]));
+    }
+  });
+  project.parts.forEach((part, index) => {
+    if (part.design !== undefined && !designs.has(part.design)) {
+      issues.push(
+        warningIssue("design-missing", `Part "${part.name}" names design "${part.design}", which does not exist. The part works as a normal part.`, [
+          "parts",
+          index,
+          "design",
+        ]),
+      );
     }
   });
 

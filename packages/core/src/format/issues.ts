@@ -9,7 +9,8 @@ export type IssueCode =
   | "duplicate-id"
   | "bad-ref"
   | "bad-copy"
-  | "duplicate-placement";
+  | "duplicate-placement"
+  | "design-missing";
 
 export type IssuePath = readonly (string | number)[];
 
