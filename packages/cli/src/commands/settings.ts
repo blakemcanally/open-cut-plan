@@ -87,7 +87,7 @@ const KEYS: Key[] = [
     get: (p) => (p.settings.minOffcut === undefined ? "default" : "custom"),
     set: (p, v) => {
       choiceValue(v, "minOffcut", ["default"] as const);
-      return withSettings(p, ({ minOffcut: _old, ...rest }) => rest as Settings);
+      return withSettings(p, ({ minOffcut: _old, ...rest }) => rest);
     },
   },
   {

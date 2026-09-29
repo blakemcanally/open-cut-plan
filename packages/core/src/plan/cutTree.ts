@@ -123,7 +123,8 @@ export function nodeItems(node: CutNode): number[] {
       return [node.item];
     case "waste":
       return [];
-    default:
+    case "split":
+    case "stuck":
       return node.items;
   }
 }

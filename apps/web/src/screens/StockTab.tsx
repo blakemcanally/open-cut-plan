@@ -41,6 +41,11 @@ export function StockTab({ store }: { store: ProjectStore }) {
   const { features, trim: projectTrim } = project.settings;
   const projectEdges = !features.trim || projectTrim === 0 ? "Project: use factory edges" : `Project: trim ${formatLength(projectTrim, units, display)}`;
 
+  const importFile = async () => {
+    const file = await chooseFile(".csv,.tsv,.txt,text/csv");
+    if (file) setImporting(await file.text());
+  };
+
   return (
     <div
       className="stock-tab"
@@ -136,10 +141,7 @@ export function StockTab({ store }: { store: ProjectStore }) {
           </button>
           <button
             type="button"
-            onClick={async () => {
-              const file = await chooseFile(".csv,.tsv,.txt,text/csv");
-              if (file) setImporting(await file.text());
-            }}
+            onClick={() => void importFile()}
           >
             Import CSV…
           </button>

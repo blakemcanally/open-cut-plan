@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SettingsTab } from "../src/screens/SettingsTab.tsx";
 import { StockTab } from "../src/screens/StockTab.tsx";
 import { ToolsTab } from "../src/screens/ToolsTab.tsx";
@@ -79,6 +79,16 @@ describe("ToolsTab", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Use profile" }));
     expect(current().project.tools).toEqual([{ id: "t", name: "Track", type: "track-saw", kerf: 0.1, enabled: true }]);
     expect(screen.getByRole("status").textContent).toContain("Metric");
+  });
+
+  it("shows an error and keeps the profile when the delete fails", async () => {
+    const storage = await openStorage(indexedDB);
+    await storage.saveProfile({ name: "Garage", units: "in", tools: sampleProject().tools });
+    vi.spyOn(storage, "deleteProfile").mockRejectedValue(new Error("The disk is full."));
+    renderWithStore(sampleProject(), (store) => <ToolsTab store={store} storage={storage} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Delete profile" }));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("The profile could not be deleted: The disk is full."));
+    expect(screen.getByRole("option", { name: /^Garage/ })).toBeTruthy();
   });
 });
 

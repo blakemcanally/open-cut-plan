@@ -30,6 +30,11 @@ export function PartsTab({ store }: { store: ProjectStore }) {
     setImporting(text);
   };
 
+  const importFile = async () => {
+    const file = await chooseFile(".csv,.tsv,.txt,text/csv");
+    if (file) setImporting(await file.text());
+  };
+
   const totals = new Map<string, { copies: number; area: number }>();
   for (const part of project.parts) {
     const total = totals.get(part.material) ?? { copies: 0, area: 0 };
@@ -58,10 +63,7 @@ export function PartsTab({ store }: { store: ProjectStore }) {
         </button>
         <button
           type="button"
-          onClick={async () => {
-            const file = await chooseFile(".csv,.tsv,.txt,text/csv");
-            if (file) setImporting(await file.text());
-          }}
+          onClick={() => void importFile()}
         >
           Import CSV…
         </button>
@@ -92,6 +94,7 @@ export function PartsTab({ store }: { store: ProjectStore }) {
                 return (
                   <tr key={part.id}>
                     <td>
+                      {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- only the row that "Add part" just created gets focus */}
                       <TextInput aria-label={`Name of ${part.name}`} value={part.name} required autoFocus={focusId === part.id} onChange={(name) => change({ name })} />
                     </td>
                     <td>

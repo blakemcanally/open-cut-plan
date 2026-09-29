@@ -11,7 +11,7 @@ export interface WorkerLike {
 export type WorkerFactory = () => WorkerLike;
 
 export const createOptimizerWorker: WorkerFactory = () =>
-  new Worker(new URL("./optimizer.worker.ts", import.meta.url), { type: "module" }) as unknown as WorkerLike;
+  new Worker(new URL("./optimizer.worker.ts", import.meta.url), { type: "module" });
 
 export interface RunningState {
   startedAt: number;

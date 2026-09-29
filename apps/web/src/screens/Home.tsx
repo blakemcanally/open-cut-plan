@@ -1,5 +1,5 @@
 import { createProject, newTool, parseProject, type Project, type Units } from "@opencutplan/core";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { EXAMPLES } from "../examples.ts";
 import type { ProjectSummary, Storage } from "../storage/db.ts";
 import { openProjectFile } from "../storage/files.ts";
@@ -29,14 +29,17 @@ export function Home({ storage, onOpen, onCreate }: HomeProps) {
   const [units, setUnits] = useState<Units>("in");
   const [example, setExample] = useState(EXAMPLES[0]!.slug);
 
-  const refresh = () =>
-    storage.listProjects().then(setProjects, (e: unknown) => {
-      setProjects([]);
-      setError(`Saved projects could not be read: ${(e as Error).message}`);
-    });
+  const refresh = useCallback(
+    () =>
+      storage.listProjects().then(setProjects, (e: unknown) => {
+        setProjects([]);
+        setError(`Saved projects could not be read: ${(e as Error).message}`);
+      }),
+    [storage],
+  );
   useEffect(() => {
     void refresh();
-  }, [storage]);
+  }, [refresh]);
 
   const openText = (text: string, handle?: FileSystemFileHandle) => {
     const result = parseProject(text);
@@ -45,6 +48,26 @@ export function Home({ storage, onOpen, onCreate }: HomeProps) {
       return;
     }
     onCreate({ project: result.project, notices: result.warnings.map((issue) => issue.message), ...(handle ? { handle } : {}) });
+  };
+
+  const openFile = async () => {
+    setError(null);
+    try {
+      const file = await openProjectFile();
+      if (file) openText(file.text, file.handle);
+    } catch (e) {
+      setError(`The file could not be read: ${(e as Error).message}`);
+    }
+  };
+
+  const deleteProject = async (project: ProjectSummary) => {
+    if (!window.confirm(`Delete “${project.name}” from this browser? Files you saved are not changed.`)) return;
+    try {
+      await storage.deleteProject(project.id);
+    } catch (e) {
+      setError(`The project could not be deleted: ${(e as Error).message}`);
+    }
+    await refresh();
   };
 
   return (
@@ -84,15 +107,7 @@ export function Home({ storage, onOpen, onCreate }: HomeProps) {
           <h2>Open</h2>
           <button
             type="button"
-            onClick={async () => {
-              setError(null);
-              try {
-                const file = await openProjectFile();
-                if (file) openText(file.text, file.handle);
-              } catch (e) {
-                setError(`The file could not be read: ${(e as Error).message}`);
-              }
-            }}
+            onClick={() => void openFile()}
           >
             Open a .cutplan.json file…
           </button>
@@ -143,11 +158,7 @@ export function Home({ storage, onOpen, onCreate }: HomeProps) {
                     <button
                       type="button"
                       aria-label={`Delete ${project.name}`}
-                      onClick={async () => {
-                        if (!window.confirm(`Delete “${project.name}” from this browser? Files you saved are not changed.`)) return;
-                        await storage.deleteProject(project.id);
-                        await refresh();
-                      }}
+                      onClick={() => void deleteProject(project)}
                     >
                       Delete
                     </button>

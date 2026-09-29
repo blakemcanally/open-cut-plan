@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test -c e2e"
   },
   "dependencies": {
     "@opencutplan/core": "0.1.0",

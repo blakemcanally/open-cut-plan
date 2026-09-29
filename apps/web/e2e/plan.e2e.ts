@@ -25,10 +25,10 @@ async function savedData(page: Page): Promise<string> {
     () =>
       new Promise<string>((resolve, reject) => {
         const open = indexedDB.open("opencutplan");
-        open.onerror = () => reject(open.error);
+        open.onerror = () => reject(open.error ?? new Error("indexedDB.open failed"));
         open.onsuccess = () => {
           const request = open.result.transaction("projects", "readonly").objectStore("projects").getAll();
-          request.onerror = () => reject(request.error);
+          request.onerror = () => reject(request.error ?? new Error("getAll failed"));
           request.onsuccess = () => {
             open.result.close();
             resolve((request.result as { data: string }[]).map((record) => record.data).join("\n"));

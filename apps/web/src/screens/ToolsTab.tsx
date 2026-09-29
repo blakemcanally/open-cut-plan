@@ -1,5 +1,5 @@
 import { addTool, convertTool, moveTool, removeTool, TOOL_TYPE_NAMES, TOOL_TYPES, updateTool, type Tool, type ToolType } from "@opencutplan/core";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
 import type { Storage, ToolProfile } from "../storage/db.ts";
@@ -46,16 +46,43 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
   const [chosen, setChosen] = useState("");
   const [status, setStatus] = useState<string | null>(null);
 
-  const refresh = () =>
-    storage.listProfiles().then(
-      (list) => setProfiles(list),
-      (e: unknown) => setStatus(`The saved profiles could not be read: ${(e as Error).message}`),
-    );
+  const refresh = useCallback(
+    () =>
+      storage.listProfiles().then(
+        (list) => setProfiles(list),
+        (e: unknown) => setStatus(`The saved profiles could not be read: ${(e as Error).message}`),
+      ),
+    [storage],
+  );
   useEffect(() => {
     void refresh();
-  }, [storage]);
+  }, [refresh]);
 
   const profile = profiles.find((p) => p.name === chosen) ?? profiles[0];
+
+  const saveProfile = async () => {
+    const name = profileName.trim();
+    try {
+      await storage.saveProfile({ name, units, tools: project.tools });
+      setStatus(`Saved the profile “${name}”.`);
+      setProfileName("");
+      setChosen(name);
+      await refresh();
+    } catch (e) {
+      setStatus(`The profile could not be saved: ${(e as Error).message}`);
+    }
+  };
+
+  const deleteProfile = async () => {
+    if (!profile) return;
+    try {
+      await storage.deleteProfile(profile.name);
+      setStatus(`Deleted the profile “${profile.name}”.`);
+    } catch (e) {
+      setStatus(`The profile could not be deleted: ${(e as Error).message}`);
+    }
+    await refresh();
+  };
 
   return (
     <div className="tools-tab">
@@ -175,18 +202,7 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
           <button
             type="button"
             disabled={profileName.trim() === "" || project.tools.length === 0}
-            onClick={async () => {
-              const name = profileName.trim();
-              try {
-                await storage.saveProfile({ name, units, tools: project.tools });
-                setStatus(`Saved the profile “${name}”.`);
-                setProfileName("");
-                setChosen(name);
-                await refresh();
-              } catch (e) {
-                setStatus(`The profile could not be saved: ${(e as Error).message}`);
-              }
-            }}
+            onClick={() => void saveProfile()}
           >
             Save tools as profile
           </button>
@@ -217,12 +233,7 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
             <button
               type="button"
               disabled={!profile}
-              onClick={async () => {
-                if (!profile) return;
-                await storage.deleteProfile(profile.name);
-                setStatus(`Deleted the profile “${profile.name}”.`);
-                await refresh();
-              }}
+              onClick={() => void deleteProfile()}
             >
               Delete profile
             </button>

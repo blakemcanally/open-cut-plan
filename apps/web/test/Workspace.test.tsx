@@ -147,7 +147,9 @@ describe("Workspace", () => {
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
     const root = document.body.querySelector(":scope > .print-root");
     expect(root?.getAttribute("data-job")).toBe("sequence");
-    act(() => window.dispatchEvent(new Event("afterprint")));
+    act(() => {
+      window.dispatchEvent(new Event("afterprint"));
+    });
     expect(document.body.querySelector(".print-root")).toBeNull();
     print.mockRestore();
   });

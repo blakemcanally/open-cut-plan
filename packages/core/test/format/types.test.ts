@@ -6,13 +6,13 @@ describe("public types", () => {
   it("reject misspelled field names", () => {
     const project: Project = sampleProject();
     const part: Part = project.parts[0]!;
-    // @ts-expect-error
+    // @ts-expect-error -- `gorup` is not a Part field
     const typo: Part = { ...part, gorup: "x" };
-    // @ts-expect-error
+    // @ts-expect-error -- `lenght` is not a Part field
     const misspelled = part.lenght;
-    // @ts-expect-error
+    // @ts-expect-error -- `stok` is not a Project field
     const stock = project.stok;
-    // @ts-expect-error
+    // @ts-expect-error -- a track saw has no `maxRip`
     const saw: Tool = { id: "t", name: "Track saw", type: "track-saw", kerf: 0.0625, enabled: true, maxRip: 30 };
     expect([typo.name, misspelled, stock, saw.type]).toEqual(["Side", undefined, undefined, "track-saw"]);
   });

@@ -40,7 +40,8 @@ Requires Node.js 24 or later.
 npm install
 npm run dev        # start the web app at http://localhost:5173
 npm run build      # build the web app into apps/web/dist
-npm run check      # typecheck, run all tests, and build the web app
+npm run lint       # lint with oxlint, with type-aware rules (config: .oxlintrc.json)
+npm run check      # lint, typecheck, run all tests, and build the web app
 npm run cli -- …   # run the opencutplan command
 npm run e2e        # run the Playwright end-to-end tests (first: npx playwright install chromium)
 npm run schema     # regenerate schema/cutplan.schema.json after changing the format

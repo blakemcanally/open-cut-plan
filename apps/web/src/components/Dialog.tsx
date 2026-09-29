@@ -33,7 +33,9 @@ export function Dialog({ title, onClose, children }: DialogProps) {
     event.preventDefault();
   };
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- a backdrop click is a mouse shortcut; Escape closes the dialog from the keyboard
     <div className="backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the dialog traps Tab and handles Escape for the controls inside it */}
       <div
         ref={ref}
         className="dialog"

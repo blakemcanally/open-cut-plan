@@ -5,7 +5,6 @@ import {
   LABEL_LAYOUTS,
   labelPages,
   unsavedOffcuts,
-  type LabelLayoutId,
   type Project,
 } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
@@ -120,7 +119,7 @@ const offcuts: CommandSpec = {
   },
 };
 
-const LAYOUT_IDS = LABEL_LAYOUTS.map((layout) => layout.id) as LabelLayoutId[];
+const LAYOUT_IDS = LABEL_LAYOUTS.map((layout) => layout.id);
 
 const labels: CommandSpec = {
   name: "report labels",

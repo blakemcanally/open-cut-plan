@@ -1,5 +1,5 @@
 import { analyzeProject, type Project } from "@opencutplan/core";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, within } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrintView, type PrintJob } from "../src/print/PrintView.tsx";
@@ -73,7 +73,9 @@ describe("PrintView", () => {
     expect(svg.querySelector("pattern")?.id).toBe("print-s1-h");
     expect(page.getByText("Side ×2").parentElement?.textContent).toBe('Side ×2 30" × 12" ↔');
     expect(page.getByText(/The number on a cut line is its step/)).toBeTruthy();
-    act(() => window.dispatchEvent(new Event("afterprint")));
+    act(() => {
+      window.dispatchEvent(new Event("afterprint"));
+    });
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 

@@ -143,6 +143,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
           </button>
         </div>
       )}
+      {/* oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- focus goes to the tabs; the tablist handles their arrow keys */}
       <div role="tablist" aria-label="Project" className="tabs" onKeyDown={onTabKey}>
         {TABS.map((t) => (
           <button

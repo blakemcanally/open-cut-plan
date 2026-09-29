@@ -234,7 +234,7 @@ export function LayoutTab({ store, analysis, prefs, runs }: LayoutTabProps) {
   const targetRef = useRef(target);
   targetRef.current = target;
 
-  const startDrag = (event: ReactPointerEvent<Element>, ref: CopyRef, grab: { x: number; y: number } | null) => {
+  const startDrag = (event: ReactPointerEvent, ref: CopyRef, grab: { x: number; y: number } | null) => {
     if (busy || event.button !== 0) return;
     const rotated = findCopy(project, ref)?.placement.rotated ?? false;
     const size = sizeOf(ref, rotated);
@@ -246,8 +246,9 @@ export function LayoutTab({ store, analysis, prefs, runs }: LayoutTabProps) {
     setDrag({ ref, size, rotated, grab: inside, start: point, client: point, started: false, target: null, free: false });
   };
 
+  const dragActive = drag !== null;
   useEffect(() => {
-    if (!drag) return;
+    if (!dragActive) return;
     const move = (event: PointerEvent) => {
       const current = dragRef.current;
       if (!current) return;
@@ -284,13 +285,14 @@ export function LayoutTab({ store, analysis, prefs, runs }: LayoutTabProps) {
       window.removeEventListener("pointercancel", up);
       window.removeEventListener("scroll", scroll, { capture: true });
     };
-  }, [drag !== null, edit]);
+  }, [dragActive, edit]);
 
   const dragging = drag?.started ? drag.ref : null;
   const progress = runs.running ? Math.min(1, (Date.now() - runs.running.startedAt) / runs.running.timeLimitMs) : 0;
   const canOptimize = !busy && project.parts.length > 0 && enabledStock.length > 0;
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- layout shortcuts for the focused part or sheet bubble up to this element
     <div className="layout" onKeyDown={onKeyDown}>
       <div className="toolbar" role="toolbar" aria-label="Layout">
         <button type="button" className="primary" disabled={!canOptimize} onClick={() => runs.optimize("all")} title="Plan every part again. Pinned sheets stay as they are.">

@@ -123,7 +123,7 @@ const show: CommandSpec = {
           String(p.copy),
           p.name,
           `${len(project, p.x)}, ${len(project, p.y)}`,
-          p.length === null ? "?" : `${len(project, p.length)} × ${len(project, p.width!)}`,
+          p.length === null ? "?" : `${len(project, p.length)} × ${len(project, p.width)}`,
           p.rotated ? "rotated" : "",
         ]);
         lines.push(table(["  part", "copy", "name", "x, y", "size", ""], rows));

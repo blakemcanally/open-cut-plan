@@ -66,7 +66,7 @@ describe("sequencePlan", () => {
       [10, "crosscut", '42 19/32"', 7, null, 11],
       [11, "crosscut", '13 1/4"', 10, null, null],
     ]);
-    expect(steps.map((step) => step.sheetNumber)).toEqual([...steps.map((step) => step.sheetNumber)].sort((a, b) => a - b));
+    expect(steps.map((step) => step.sheetNumber)).toEqual(steps.map((step) => step.sheetNumber).sort((a, b) => a - b));
   });
 
   it("groups cuts with the same setup across sheets in setup order, respecting dependencies", () => {
@@ -76,7 +76,7 @@ describe("sequencePlan", () => {
     const bySetup = sequencePlan(project);
     expect(bySetup).toHaveLength(bySheet.length);
     expect(bySetup.map((step) => step.step)).toEqual(bySetup.map((_, i) => i + 1));
-    for (const step of bySetup) if (step.requires !== null) expect(step.requires).toBeLessThan(step.step);
+    for (const step of bySetup) expect(step.requires ?? 0).toBeLessThan(step.step);
     expect(setupChanges(bySetup)).toBeLessThan(setupChanges(bySheet));
     const cutsOf = (steps: Step[]) => steps.map((step) => `${step.sheetNumber}|${step.axis}|${step.at}`).sort();
     expect(cutsOf(bySetup)).toEqual(cutsOf(bySheet));

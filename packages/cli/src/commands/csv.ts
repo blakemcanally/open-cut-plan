@@ -32,13 +32,13 @@ interface Importer<F extends string> {
 const IMPORTERS: { parts: Importer<string>; stock: Importer<string> } = {
   parts: {
     aliases: PART_ALIASES,
-    read: (text, options) => importPartsCsv(text, options as Parameters<typeof importPartsCsv>[1]),
+    read: (text, options) => importPartsCsv(text, options),
     apply: (project, rows) => addPartRows(project, rows as Parameters<typeof addPartRows>[1]),
     ids: (project) => project.parts.map((part) => part.id),
   },
   stock: {
     aliases: STOCK_ALIASES,
-    read: (text, options) => importStockCsv(text, options as Parameters<typeof importStockCsv>[1]),
+    read: (text, options) => importStockCsv(text, options),
     apply: (project, rows) => addStockRows(project, rows as Parameters<typeof addStockRows>[1]),
     ids: (project) => project.stock.map((stock) => stock.id),
   },

@@ -26,10 +26,9 @@ describe("createOptimizerHost", () => {
     handle({ type: "start", id: 1, project: shelf(), options: { iterations: 4 }, progressMs: 0 });
     drain();
     const last = sent.at(-1)!;
-    expect(last).toMatchObject({ type: "done", id: 1, cancelled: false });
+    expect(last).toMatchObject({ type: "done", id: 1, cancelled: false, result: { iterations: 8 } });
     expect(sent.slice(0, -1).every((m) => m.type === "progress" && m.id === 1)).toBe(true);
     expect(sent.length).toBeGreaterThan(1);
-    if (last.type === "done") expect(last.result.iterations).toBe(8);
   });
 
   it("stops on cancel and sends the best result so far", () => {

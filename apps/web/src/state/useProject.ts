@@ -34,7 +34,7 @@ export interface ProjectStore {
 
 export function useProject(initial: Project): ProjectStore {
   const [history, dispatch] = useReducer(reducer, initial, createHistory);
-  const edit = useCallback((edit: ProjectEdit, key?: string) => dispatch({ type: "edit", edit, key, at: Date.now() }), []);
+  const edit = useCallback((change: ProjectEdit, key?: string) => dispatch({ type: "edit", edit: change, key, at: Date.now() }), []);
   const undoEdit = useCallback(() => dispatch({ type: "undo" }), []);
   const redoEdit = useCallback(() => dispatch({ type: "redo" }), []);
   return useMemo(

@@ -21,7 +21,7 @@ describe("seededRandom", () => {
 
   it("shuffles into a permutation and picks integers below the bound", () => {
     const random = seededRandom(1);
-    expect(shuffled(random, [1, 2, 3, 4, 5]).sort()).toEqual([1, 2, 3, 4, 5]);
+    expect(shuffled(random, [1, 2, 3, 4, 5]).sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5]);
     for (let i = 0; i < 100; i++) expect(randomInt(random, 3)).toBeLessThan(3);
   });
 });

@@ -24,7 +24,7 @@ describe("App", () => {
     await userEvent.selectOptions(screen.getByLabelText("Units"), "mm");
     await userEvent.click(screen.getByRole("button", { name: "Create project" }));
     expect(window.location.hash).toBe("#/project/p1");
-    expect((screen.getByLabelText("Project name") as HTMLInputElement).value).toBe("Shelf");
+    expect(screen.getByLabelText<HTMLInputElement>("Project name").value).toBe("Shelf");
     expect(screen.getByRole("tab", { name: "Parts" }).getAttribute("aria-selected")).toBe("true");
     const created = newProject("Shelf", "mm");
     expect(created.tools.map((t) => [t.type, t.kerf])).toEqual([["table-saw", 3]]);
@@ -51,6 +51,17 @@ describe("App", () => {
     expect(await storage.loadProject("old")).toBeNull();
   });
 
+  it("shows an error and keeps the project when the delete fails", async () => {
+    const storage = await openStorage(indexedDB);
+    await storage.saveProject("old", sampleProject());
+    vi.spyOn(storage, "deleteProject").mockRejectedValue(new Error("The disk is full."));
+    render(<App storage={storage} workerFactory={inProcessWorkers().factory} />);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await userEvent.click(await screen.findByRole("button", { name: "Delete Test" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("The project could not be deleted: The disk is full.");
+    expect(screen.getByRole("button", { name: "Delete Test" })).toBeTruthy();
+  });
+
   it("keeps the saved edits when the person goes Back and opens the project again", async () => {
     const storage = await openStorage(indexedDB);
     await storage.saveProject("old", sampleProject());
@@ -65,7 +76,7 @@ describe("App", () => {
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     });
     await userEvent.click(await screen.findByRole("button", { name: "Renamed" }));
-    expect(((await screen.findByLabelText("Project name")) as HTMLInputElement).value).toBe("Renamed");
+    expect((await screen.findByLabelText<HTMLInputElement>("Project name")).value).toBe("Renamed");
     await new Promise((resolve) => setTimeout(resolve, 700));
     expect((await storage.loadProject("old"))?.project.name).toBe("Renamed");
   });

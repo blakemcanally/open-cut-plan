@@ -27,7 +27,7 @@ describe("the program", () => {
   });
 
   it("sets the exit code from the result", async () => {
-    const failed = await promisify(execFile)(process.execPath, [MAIN, "nope"]).catch((error: { code: number; stderr: string }) => error);
+    const failed = await promisify(execFile)(process.execPath, [MAIN, "nope"]).catch((error: unknown) => error);
     expect(failed).toMatchObject({ code: 2 });
   });
 
