@@ -61,15 +61,32 @@ export function openStorage(factory: IDBFactory = indexedDB, now: () => Date = (
       if (!db.objectStoreNames.contains(PROFILES)) db.createObjectStore(PROFILES, { keyPath: "name" });
     };
     open.onerror = () => reject(open.error ?? new Error("The browser database could not be opened."));
-    open.onsuccess = () => resolve(databaseStorage(open.result, now));
+    let blocked = false;
+    open.onblocked = () => {
+      blocked = true;
+      reject(new Error("another tab has an older version of the app open. Close the other tabs and reload this page"));
+    };
+    open.onsuccess = () => {
+      if (blocked) open.result.close();
+      else resolve(databaseStorage(open.result, now));
+    };
   });
 }
 
 function databaseStorage(db: IDBDatabase, now: () => Date): Storage {
-  const read = (store: string) => db.transaction(store, "readonly").objectStore(store);
+  let closed = false;
+  db.onversionchange = () => {
+    closed = true;
+    db.close();
+  };
+  const begin = (store: string, mode: IDBTransactionMode) => {
+    if (closed) throw new Error("A newer version of the app is open in another tab. Reload this page.");
+    return db.transaction(store, mode);
+  };
+  const read = (store: string) => begin(store, "readonly").objectStore(store);
   const write = (store: string, run: (objects: IDBObjectStore) => void) =>
     new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction(store, "readwrite");
+      const transaction = begin(store, "readwrite");
       run(transaction.objectStore(store));
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error ?? new Error("The browser could not save."));

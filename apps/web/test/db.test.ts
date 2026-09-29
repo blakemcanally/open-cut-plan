@@ -25,6 +25,21 @@ describe("browser storage", () => {
     expect((await storage.listProjects()).map((p) => p.id)).toEqual(["b"]);
   });
 
+  it("lets a newer version of the app upgrade the database, then asks for a reload", async () => {
+    const factory = new IDBFactory();
+    const storage = await openStorage(factory, clock());
+    await storage.saveProject("a", sampleProject());
+    const upgraded = await new Promise<IDBDatabase>((resolve, reject) => {
+      const open = factory.open("opencutplan", 2);
+      open.onsuccess = () => resolve(open.result);
+      open.onerror = () => reject(open.error ?? new Error("open failed"));
+      open.onblocked = () => reject(new Error("blocked"));
+    });
+    upgraded.close();
+    await expect(storage.listProjects()).rejects.toThrow("A newer version of the app is open in another tab. Reload this page.");
+    await expect(storage.saveProject("b", sampleProject())).rejects.toThrow("Reload this page.");
+  });
+
   it("keeps tool profiles by name", async () => {
     const storage = await openStorage(new IDBFactory());
     const tools = sampleProject().tools;
