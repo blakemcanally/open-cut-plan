@@ -1,5 +1,6 @@
 import { withoutPlacements } from "../edit/parts.ts";
 import type { Design, Part, Project } from "../format/schema.ts";
+import { isNewerMinor } from "../format/version.ts";
 import { EPSILON } from "../geometry/rect.ts";
 import { designErrors } from "./errors.ts";
 import { designGeometry, materialsById } from "./geometry.ts";
@@ -11,11 +12,12 @@ export function generatedParts(project: Project, designId: string): Part[] {
 }
 
 /**
- * The parts a design makes, or null for an unknown system or a design with an error. A part within EPSILON of its stored
- * size keeps the stored numbers, so the rounding after a unit change does not count as a change.
+ * The parts a design makes, or null for an unknown system, a design with an error, or a file from a newer minor version
+ * (whose designs can have fields that make more parts). A part within EPSILON of its stored size keeps the stored
+ * numbers, so the rounding after a unit change does not count as a change.
  */
 export function designParts(project: Project, design: Design): Part[] | null {
-  if (!isDesignSystem(design.system) || designErrors(project, design).length > 0) return null;
+  if (isNewerMinor(project.version) || !isDesignSystem(design.system) || designErrors(project, design).length > 0) return null;
   const geometry = designGeometry(design, materialsById(project));
   if (!geometry) return null;
   const stored = new Map(generatedParts(project, design.id).map((part) => [part.id, part]));

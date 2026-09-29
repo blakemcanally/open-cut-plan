@@ -25,7 +25,7 @@ export function designErrors(project: Project, design: Design): PlanIssue[] {
 
   if (geometry.thickness < convertLength(MIN_POCKET_THICKNESS_MM, "mm", project.project.units) - EPSILON) {
     issues.push(
-      planError("pocket-thickness", `Design "${design.name}" uses stock that is too thin for pocket screws. Use stock that is 1/2" (12.7 mm) thick or more.`, ref),
+      planError("pocket-thickness", `Design "${design.name}" uses stock that is too thin for pocket screws. Use stock that is 15/32" (11.9 mm) thick or more.`, ref),
     );
   }
   if ([...geometry.columns, ...geometry.rows].some((opening) => opening <= EPSILON) || geometry.panelDepth <= EPSILON) {

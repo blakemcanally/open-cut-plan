@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyOptimizeResult,
   checkDesigns,
+  designParts,
   designGeometry,
   materialsById,
   optimize,
@@ -84,6 +85,14 @@ describe("regenerateDesigns", () => {
     const open = regenerateDesigns({ ...once, designs: [{ ...eketDesign(), back: undefined }] });
     expect(ids(open)).toEqual(["ek-vertical", "ek-horizontal"]);
     expect(onSheet(open)).toEqual([]);
+  });
+
+  it("leaves the stored parts of a file from a newer minor version alone", () => {
+    const once = regenerateDesigns(designProject());
+    const nested = { ...once.parts[1]!, id: "kx-cell-1-1-horizontal", name: "Nested shelf" };
+    const newer = { ...once, version: "1.2", parts: [...once.parts, nested] };
+    expect(regenerateDesigns(newer)).toBe(newer);
+    expect(designParts(newer, newer.designs![0]!)).toBeNull();
   });
 
   it("leaves the stored parts alone when the design has an error or an unknown system", () => {

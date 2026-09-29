@@ -76,7 +76,8 @@ export function checkDesigns(project: Project): PlanIssue[] {
     if (design.mount === "wall-rail" && design.system !== "eket") {
       issues.push(planWarning("mount-system", `${name} uses the EKET wall rail, which is made for EKET units.`, ref));
     }
-    if (!sameParts(generatedParts(project, design.id), designParts(project, design)!)) {
+    const parts = designParts(project, design);
+    if (parts && !sameParts(generatedParts(project, design.id), parts)) {
       issues.push(planWarning("design-stale", `The parts of design "${design.name}" do not match the design. The next change makes them again.`, ref));
     }
   }

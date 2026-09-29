@@ -41,8 +41,8 @@ export const EKET = {
 
 export const KALLAX_CLEARANCE_MM = 2;
 export const EKET_TOLERANCE_MM = 1;
-export const MIN_POCKET_THICKNESS_MM = 12.7;
-export const MAX_POCKET_CHART_MM = 38;
+export const MIN_POCKET_THICKNESS_MM = 11.90625;
+export const MAX_POCKET_CHART_MM = 38.1;
 /** A rule of thumb for plywood shelves under books, not a load calculation. */
 export const SHELF_SPAN_RATIO = 45;
 export const DEFAULT_DESIGN_QUANTITY = 1;

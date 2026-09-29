@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeProject, checkDesigns, regenerateDesigns, validatePlan, type Design, type Project } from "../../src/index.ts";
+import { analyzeProject, checkDesigns, convertProjectUnits, regenerateDesigns, validatePlan, type Design, type Project } from "../../src/index.ts";
 import { designProject, eketDesign, kallaxDesign } from "../helpers.ts";
 
 const codes = (project: Project) => checkDesigns(project).map((issue) => `${issue.severity}:${issue.code}`);
@@ -28,6 +28,21 @@ describe("checkDesigns", () => {
     const project = designProject([eketDesign()]);
     project.materials = project.materials.map((m) => (m.id === "ply18" ? { ...m, thickness: 40 } : m));
     expect(codes(regenerateDesigns(project))).toEqual(["warning:pocket-chart"]);
+  });
+
+  it("has a screw for stock of exactly 1 1/2 inches", () => {
+    const project = designProject([eketDesign({ system: "custom" })]);
+    project.materials = project.materials.map((m) => (m.id === "ply18" ? { ...m, thickness: 38.1 } : m));
+    expect(codes(regenerateDesigns(project))).not.toContain("warning:pocket-chart");
+    const inches = convertProjectUnits(regenerateDesigns(project), "in");
+    expect(inches.materials.find((m) => m.id === "ply18")!.thickness).toBe(1.5);
+    expect(codes(inches)).not.toContain("warning:pocket-chart");
+  });
+
+  it("gives no stale warning for a file from a newer minor version", () => {
+    const once = current(kallaxDesign());
+    const newer = { ...once, version: "1.2", designs: [kallaxDesign({ width: { openings: [335, 335, 335] } })] };
+    expect(codes(newer)).toEqual([]);
   });
 
   it("warns when a KALLAX cell is too small for the inserts, or the panels are too shallow for the boxes", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { designErrors, type Design, type Project } from "../../src/index.ts";
+import { convertProjectUnits, designErrors, type Design, type Project } from "../../src/index.ts";
 import { designProject, eketDesign, kallaxDesign } from "../helpers.ts";
 
 const codes = (project: Project, design: Design) => designErrors(project, design).map((issue) => issue.code);
@@ -24,10 +24,15 @@ describe("designErrors", () => {
 
   it("reports stock that is too thin for pocket screws, in either unit system", () => {
     const project = designProject();
-    project.materials = [{ id: "ply18", name: "Thin ply", thickness: 12, grained: true }];
+    project.materials = [{ id: "ply18", name: "Thin ply", thickness: 11.8, grained: true }];
     expect(codes(project, kallaxDesign())).toEqual(["pocket-thickness"]);
-    project.materials = [{ id: "ply18", name: "Half inch", thickness: 12.7, grained: true }];
+    project.materials = [{ id: "ply18", name: "Metric 12", thickness: 12, grained: true }];
     expect(codes(project, kallaxDesign())).toEqual([]);
+    const inches = convertProjectUnits(designProject(), "in");
+    inches.materials = [{ id: "ply18", name: 'Plywood 1/2" (15/32 actual)', thickness: 0.46875, grained: true }];
+    expect(codes(inches, inches.designs![0]!)).toEqual([]);
+    inches.materials = [{ id: "ply18", name: "Plywood 7/16", thickness: 0.4375, grained: true }];
+    expect(codes(inches, inches.designs![0]!)).toEqual(["pocket-thickness"]);
   });
 
   it("reports an outside size that leaves no room for the cells", () => {

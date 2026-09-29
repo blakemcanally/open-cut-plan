@@ -43,7 +43,7 @@ Many of them use an AI agent that runs the `opencutplan` command for them.
 - `opencutplan design add` with `--system kallax --cols 2 --rows 4` makes parts that optimize to a valid plan. Every
   cell is at least 332 mm in both directions, and the panel depth is at least 380 mm.
 - `--system eket --cols 2 --rows 1` makes a unit that is 700 × 350 × 350 mm on the outside, for any material thickness
-  from 12.7 mm to 38 mm.
+  from 11.9 mm (15/32") to 38.1 mm (1 1/2").
 - A change to the material thickness resizes the parts of every design that uses the material, and keeps the placements
   of the parts that did not change size.
 - An agent can follow the recipe in `docs/cli.md` from `new` to `report assembly` with no other help.
@@ -219,8 +219,8 @@ The checks join the current issue list. They have `refs` to the design.
 |---|---|---|
 | `design-too-small` | error | an `outside` axis gives an opening of 0 or less |
 | `design-too-large` | error | a generated part needs a quantity over `MAX_PART_QUANTITY` (10,000) |
-| `pocket-thickness` | error | the material is thinner than 12.7 mm (1/2"), so a pocket-hole jig cannot drill it |
-| `pocket-chart` | warning | the material is thicker than 38 mm (1 1/2"), so the screw chart has no length for it |
+| `pocket-thickness` | error | the material is thinner than 11.9 mm (15/32", the actual size of 1/2" plywood), so a pocket-hole jig cannot drill it |
+| `pocket-chart` | warning | the material is thicker than 38.1 mm (1 1/2"), so the screw chart has no length for it |
 | `kallax-opening` | warning | `kallax` system, and a cell is less than 332 mm (the 330 mm insert plus 2 mm) in either direction |
 | `kallax-depth` | warning | `kallax` system, and the panel depth is less than 380 mm |
 | `eket-grid` | warning | `eket` system, and the outside width or height is not a multiple of 350 mm (±1 mm), or `depth` is not 250 or 350 mm |
@@ -266,11 +266,11 @@ a `hardware` section, and it has no prices in v1.
 
   | Thickness | Screw |
   |---|---|
-  | 12.7 mm (1/2") to < 17.5 mm (11/16") | 1" (25 mm) |
+  | 11.9 mm (15/32") to < 17.5 mm (11/16") | 1" (25 mm) |
   | 17.5 mm to < 20.6 mm (13/16") | 1 1/4" (32 mm) |
   | 20.6 mm to ≤ 25.4 mm (1") | 1 1/2" (38 mm) |
   | > 25.4 mm to < 34.9 mm (1 3/8") | 2" (50 mm) |
-  | 34.9 mm to 38 mm (1 1/2") | 2 1/2" (64 mm) |
+  | 34.9 mm to 38.1 mm (1 1/2") | 2 1/2" (64 mm) |
 
   The chart follows common pocket-hole practice. Phase 2 checks it against a jig maker's published chart before it
   ships. The count is the number of holes plus 10 %, rounded up.

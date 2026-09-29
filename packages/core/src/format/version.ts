@@ -12,6 +12,11 @@ export function parseVersion(value: unknown): Version | null {
   return match ? { major: Number(match[1]), minor: Number(match[2]) } : null;
 }
 
+export function isNewerMinor(value: unknown): boolean {
+  const version = parseVersion(value);
+  return version !== null && version.major === SUPPORTED_MAJOR && version.minor > SUPPORTED_MINOR;
+}
+
 export type Migration = (doc: Record<string, unknown>) => Record<string, unknown>;
 
 export const MIGRATIONS: Readonly<Record<number, Migration>> = {};
