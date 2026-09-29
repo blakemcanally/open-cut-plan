@@ -190,6 +190,7 @@ export function SettingsTab({ store, prefs, onPrefs }: SettingsTabProps) {
           <NumberInput
             value={settings.optimizer.timeLimitMs / 1000}
             minimum={0.1}
+            maximum={3600}
             onChange={(seconds) => seconds !== undefined && set((s) => ({ ...s, optimizer: { ...s.optimizer, timeLimitMs: Math.max(1, Math.round(seconds * 1000)) } }))}
           />
         </label>

@@ -35,6 +35,14 @@ describe("browser storage", () => {
     expect(await storage.listProfiles()).toEqual([{ name: "Garage", units: "mm", tools: [] }]);
   });
 
+  it("refuses to save a project that would not load again", async () => {
+    const storage = await openStorage(new IDBFactory());
+    const project = sampleProject();
+    const broken = { ...project, parts: project.parts.map((part) => ({ ...part, length: Number.POSITIVE_INFINITY })) };
+    await expect(storage.saveProject("a", broken)).rejects.toThrow("The project cannot be saved");
+    expect(await storage.listProjects()).toEqual([]);
+  });
+
   it("fails every save when the browser has no storage", async () => {
     const storage = unavailableStorage("no database");
     expect(await storage.listProjects()).toEqual([]);

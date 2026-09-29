@@ -1,4 +1,4 @@
-import { analyzeProject, errorMessage, projectFileName, serializeProject, withCuts, type Project } from "@opencutplan/core";
+import { analyzeProject, errorMessage, projectFileName, serializeProjectChecked, withCuts, type Project } from "@opencutplan/core";
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { TextInput } from "../components/fields.tsx";
 import { LayoutTab } from "../layout/LayoutTab.tsx";
@@ -73,7 +73,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
 
   const save = async (as: boolean) => {
     try {
-      const text = serializeProject(withCuts(project));
+      const text = serializeProjectChecked(withCuts(project));
       const next = await saveProjectFile(text, projectFileName(project.project.name), as ? undefined : handle);
       if (next === null) return;
       setHandle(next);

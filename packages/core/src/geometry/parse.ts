@@ -23,7 +23,16 @@ export interface NumberOptions {
   decimalComma?: boolean;
 }
 
+/** Null for text that is not a length, and for a length too large to be a finite number. */
 export function parseLength(text: string, units: Units, options: NumberOptions = {}): number | null {
+  return finite(lengthOf(text, units, options));
+}
+
+function finite(value: number | null): number | null {
+  return value !== null && Number.isFinite(value) ? value : null;
+}
+
+function lengthOf(text: string, units: Units, options: NumberOptions): number | null {
   let s = text
     .trim()
     .toLowerCase()
@@ -72,8 +81,13 @@ function parseInches(text: string): number | null {
 /**
  * By default a comma followed by exactly three digits is a thousands separator ("2,440"); otherwise it is a decimal comma ("764,5").
  * With `decimalComma`, dots separate thousands ("2.440", "1.234,5") and a comma is always the decimal mark ("2,440" is 2.44).
+ * A number too large to be finite gives null.
  */
 export function parsePlainNumber(text: string, options: NumberOptions = {}): number | null {
+  return finite(plainNumberOf(text, options));
+}
+
+function plainNumberOf(text: string, options: NumberOptions): number | null {
   const s = text.trim();
   if (options.decimalComma && /^[1-9]\d{0,2}(?:\.\d{3})+(?:,\d+)?$/.test(s)) return Number(s.replaceAll(".", "").replace(",", "."));
   if (DECIMAL.test(s)) return Number(s);

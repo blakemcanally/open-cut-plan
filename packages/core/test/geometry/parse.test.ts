@@ -41,6 +41,11 @@ describe("parseLength", () => {
   it.each(["", "   ", "abc", "-5", "1/0", "12 apples", "3/8/2"])("rejects %j", (text) => {
     expect(parseLength(text, "in")).toBeNull();
   });
+
+  it("rejects a number too large to be finite", () => {
+    const huge = "9".repeat(400);
+    for (const text of [huge, `${huge} mm`, `${huge}'`, `${huge}"`, `${huge} 1/2"`]) expect(parseLength(text, "in")).toBeNull();
+  });
 });
 
 describe("parsePlainNumber", () => {
@@ -55,6 +60,11 @@ describe("parsePlainNumber", () => {
     ["", null],
   ])("%j is %s", (text, expected) => {
     expect(parsePlainNumber(text)).toBe(expected);
+  });
+
+  it("rejects a number too large to be finite", () => {
+    expect(parsePlainNumber("9".repeat(400))).toBeNull();
+    expect(parsePlainNumber("9".repeat(400), { decimalComma: true })).toBeNull();
   });
 });
 

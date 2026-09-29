@@ -1,4 +1,4 @@
-import { parseProject, serializeProject, type Project, type Tool, type Units } from "@opencutplan/core";
+import { parseProject, serializeProjectChecked, type Project, type Tool, type Units } from "@opencutplan/core";
 
 const DB_NAME = "opencutplan";
 const DB_VERSION = 1;
@@ -80,16 +80,16 @@ function databaseStorage(db: IDBDatabase, now: () => Date): Storage {
       if (!result.ok) throw new Error(`The saved project "${record.name}" is damaged: ${result.errors[0]?.message ?? "unknown error"}`);
       return result.project;
     },
-    saveProject(id, project) {
+    async saveProject(id, project) {
       const record: ProjectRecord = {
         id,
         name: project.project.name,
         units: project.project.units,
         parts: project.parts.reduce((sum, part) => sum + part.quantity, 0),
         modified: now().toISOString(),
-        data: serializeProject(project),
+        data: serializeProjectChecked(project),
       };
-      return write(PROJECTS, (store) => store.put(record));
+      await write(PROJECTS, (store) => store.put(record));
     },
     deleteProject(id) {
       return write(PROJECTS, (store) => store.delete(id));

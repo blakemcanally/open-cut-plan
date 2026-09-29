@@ -159,7 +159,7 @@ The Settings tab puts the common settings first:
 - **Snapping**: the snapping switch and the grid size. A grid of 0 turns the grid off. The default grid is 1" or
   25 mm.
 - **Plan**: the cut order and the smallest useful offcut.
-- **Optimizer**: the search time and the seed.
+- **Optimizer**: the search time (up to 3600 seconds) and the seed.
 - **Money**: the currency.
 - **View**: **Show cut lines** and **Draw cut lines at kerf width**.
 - **Features**: the other feature switches.

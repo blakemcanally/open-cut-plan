@@ -54,6 +54,20 @@ describe("NumberInput and TextInput", () => {
     expect(onChange).toHaveBeenCalledWith(4);
   });
 
+  it("refuses whole numbers that are not safe integers and values above the maximum", async () => {
+    const onChange = vi.fn();
+    render(<NumberInput aria-label="Qty" value={2} integer minimum={1} maximum={100} onChange={onChange} />);
+    const input = screen.getByLabelText("Qty");
+    for (const text of ["10000000000000000", "9".repeat(400), "101"]) {
+      await userEvent.clear(input);
+      await userEvent.type(input, `${text}{Enter}`);
+    }
+    expect(onChange).not.toHaveBeenCalled();
+    await userEvent.clear(input);
+    await userEvent.type(input, "100{Enter}");
+    expect(onChange).toHaveBeenCalledWith(100);
+  });
+
   it("trims text and refuses a blank required value", async () => {
     const onChange = vi.fn();
     render(<TextInput aria-label="Name" value="Side" required onChange={onChange} />);

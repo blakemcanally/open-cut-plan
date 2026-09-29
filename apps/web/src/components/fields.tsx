@@ -106,9 +106,10 @@ interface NumberInputProps extends BaseProps {
   optional?: boolean;
   integer?: boolean;
   minimum?: number;
+  maximum?: number;
 }
 
-export function NumberInput({ value, onChange, optional, integer, minimum = 0, ...rest }: NumberInputProps) {
+export function NumberInput({ value, onChange, optional, integer, minimum = 0, maximum = Number.MAX_SAFE_INTEGER, ...rest }: NumberInputProps) {
   return (
     <DraftInput
       {...rest}
@@ -122,7 +123,7 @@ export function NumberInput({ value, onChange, optional, integer, minimum = 0, .
           return true;
         }
         const parsed = parsePlainNumber(text);
-        if (parsed === null || parsed < minimum || (integer && !Number.isInteger(parsed))) return false;
+        if (parsed === null || parsed < minimum || parsed > maximum || (integer && !Number.isSafeInteger(parsed))) return false;
         if (parsed !== value) onChange(parsed);
         return true;
       }}
