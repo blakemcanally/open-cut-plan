@@ -111,8 +111,9 @@ so on), `axis` (`"x"` = a line of constant x, `"y"` = a line of constant y), `at
 `placements` wins.
 
 A reader loads a file whose plan has invalid references (a sheet with an unknown stock id, a placement of an unknown
-part or of a copy past the part's `quantity`, a copy placed twice, a duplicate sheet id, or a cut with an unknown tool)
-and reports each problem as a warning. It keeps the plan as it is, so a re-save does not lose data. Duplicate ids in
+part or of a copy past the part's `quantity`, a copy placed twice, or a cut with an unknown tool) and reports each
+problem as a warning. It keeps the plan as it is, so a re-save does not lose data. A sheet whose id an earlier sheet
+uses gets a new id (`s1` becomes `s1-2`) with a warning, because edits find a sheet by its id. Duplicate ids in
 `materials`, `stock`, `parts`, or `tools`, and stock or parts that use an unknown material, make the file invalid.
 
 ## Compatibility

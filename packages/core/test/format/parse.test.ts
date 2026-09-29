@@ -24,6 +24,22 @@ describe("parseProject", () => {
     expect(issue!.message).toMatch(/^The file is not valid JSON: /);
   });
 
+  it("gives a sheet with a duplicate id a new id, so edits change one sheet", () => {
+    const project = sampleProject();
+    const sheets = [...project.plan!.sheets, { id: "s1", stock: "ply-4x8", placements: [] }, { id: "s1-2", stock: "ply-4x8", placements: [] }];
+    const result = parseProject(serializeProject({ ...project, plan: { sheets } }));
+    if (!result.ok) throw new Error("expected the file to load");
+    expect(result.project.plan!.sheets.map((sheet) => sheet.id)).toEqual(["s1", "s1-3", "s1-2"]);
+    expect(result.warnings).toEqual([
+      {
+        severity: "warning",
+        code: "duplicate-id",
+        message: 'The id "s1" is used more than once in plan.sheets, so sheet 2 is now "s1-3".',
+        path: ["plan", "sheets", 1, "id"],
+      },
+    ]);
+  });
+
   it("reports a part quantity above the limit", () => {
     const project = sampleProject();
     const text = serializeProject({ ...project, parts: project.parts.map((part) => ({ ...part, quantity: MAX_PART_QUANTITY + 1 })) });

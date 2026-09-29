@@ -1,4 +1,5 @@
 import { errorMessage } from "../errors.ts";
+import { uniqueId } from "./ids.ts";
 import { errorIssue, warningIssue, type Issue, type IssuePath } from "./issues.ts";
 import { checkReferences } from "./references.ts";
 import { FORMAT_ID, ProjectSchema, type Project } from "./schema.ts";
@@ -58,12 +59,36 @@ export function parseProject(input: unknown): ParseResult {
     );
   }
 
-  const references = checkReferences(parsed.data);
+  const project = renameDuplicateSheets(parsed.data, warnings);
+  const references = checkReferences(project);
   warnings.push(...references.filter((issue) => issue.severity === "warning"));
   const referenceErrors = references.filter((issue) => issue.severity === "error");
   if (referenceErrors.length > 0) return fail(...referenceErrors);
 
-  return { ok: true, project: parsed.data, warnings };
+  return { ok: true, project, warnings };
+}
+
+/** Edits and the layout editor find a sheet by its id, so a later sheet with a taken id gets a new one. */
+function renameDuplicateSheets(project: Project, warnings: Issue[]): Project {
+  const plan = project.plan;
+  if (!plan) return project;
+  const taken = new Set(plan.sheets.map((sheet) => sheet.id));
+  const seen = new Set<string>();
+  let renamed = false;
+  const sheets = plan.sheets.map((sheet, index) => {
+    if (!seen.has(sheet.id)) {
+      seen.add(sheet.id);
+      return sheet;
+    }
+    const id = uniqueId(sheet.id, taken);
+    taken.add(id);
+    seen.add(id);
+    renamed = true;
+    const message = `The id "${sheet.id}" is used more than once in plan.sheets, so sheet ${index + 1} is now "${id}".`;
+    warnings.push(warningIssue("duplicate-id", message, ["plan", "sheets", index, "id"]));
+    return { ...sheet, id };
+  });
+  return renamed ? { ...project, plan: { ...plan, sheets } } : project;
 }
 
 export function formatPath(path: IssuePath): string {
