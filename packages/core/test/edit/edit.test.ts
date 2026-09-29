@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
   addPart,
@@ -26,6 +27,7 @@ import {
   updatePart,
   updateStock,
   validatePlan,
+  type Project,
 } from "../../src/index.ts";
 import { editSampleProject as sampleProject } from "../helpers.ts";
 
@@ -167,5 +169,27 @@ describe("convertProjectUnits", () => {
     const project = { ...sampleProject(), tools: [{ id: "ts", name: "TS", type: "table-saw" as const, kerf: 0.125, enabled: true, maxRip: 30, maxPiece: { length: 48, width: 24 } }] };
     const tool = convertProjectUnits(project, "mm").tools[0]!;
     expect(tool).toMatchObject({ maxRip: 762, maxPiece: { length: 1219.2, width: 609.6 } });
+  });
+
+  it("keeps a part that touches the far trim line on the sheet, there and back", () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 30 }), fc.integer({ min: 100, max: 2380 }), fc.integer({ min: 50, max: 1160 }), (trim, length, width) => {
+        const base = createProject("Flush", "mm");
+        const project: Project = {
+          ...base,
+          settings: { ...base.settings, trim },
+          materials: [{ id: "ply", name: "Plywood", thickness: 18, grained: false }],
+          stock: [{ id: "sheet", material: "ply", length: 2440, width: 1220, quantity: null, kind: "sheet" }],
+          parts: [{ id: "p", name: "Part", material: "ply", length, width, quantity: 1, grain: "none" }],
+          plan: { sheets: [{ id: "s1", stock: "sheet", placements: [{ part: "p", copy: 0, x: 2440 - trim - length, y: 1220 - trim - width, rotated: false }] }] },
+        };
+        const offSheet = (p: Project) => validatePlan(p).filter((issue) => issue.code === "off-sheet");
+        expect(offSheet(project)).toEqual([]);
+        const inches = convertProjectUnits(project, "in");
+        expect(offSheet(inches)).toEqual([]);
+        expect(offSheet(convertProjectUnits(inches, "mm"))).toEqual([]);
+      }),
+      { numRuns: 2000, seed: 1 },
+    );
   });
 });
