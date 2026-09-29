@@ -11,7 +11,20 @@ export type PlanIssueCode =
   | "stock-exceeded"
   | "bad-ref"
   | "bad-copy"
-  | "duplicate-placement";
+  | "duplicate-placement"
+  | "design-too-small"
+  | "design-too-large"
+  | "design-conflict"
+  | "pocket-thickness"
+  | "pocket-chart"
+  | "kallax-opening"
+  | "kallax-depth"
+  | "eket-grid"
+  | "shelf-span"
+  | "mount-system"
+  | "design-stale"
+  | "design-unknown-system"
+  | "design-unknown-mount";
 
 /** `placement.index` is the placement's index in `plan.sheets[].placements`; `cut.step` is a sequence step number. */
 export type PlanRef =
@@ -19,7 +32,8 @@ export type PlanRef =
   | { kind: "placement"; sheet: string; index: number }
   | { kind: "part"; part: string; copy: number }
   | { kind: "stock"; stock: string }
-  | { kind: "cut"; sheet: string; step: number };
+  | { kind: "cut"; sheet: string; step: number }
+  | { kind: "design"; design: string };
 
 export interface PlanIssue {
   severity: IssueSeverity;
