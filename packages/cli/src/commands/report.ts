@@ -1,0 +1,227 @@
+import {
+  analyzeProject,
+  describeStep,
+  formatArea,
+  LABEL_LAYOUTS,
+  labelPages,
+  unsavedOffcuts,
+  type LabelLayoutId,
+  type Project,
+} from "@opencutplan/core";
+import { PROGRAM } from "../help.ts";
+import { FILE_ARG, loadProject, warningLines } from "../project.ts";
+import type { CommandSpec, GroupSpec } from "../spec.ts";
+import { len, money, percent, plural, size, table } from "../text.ts";
+import { integerValue, optionalChoice, str } from "../values.ts";
+import { findSheet } from "./layout.ts";
+
+const SHEET_OPTION = { name: "sheet", type: "string", value: "<ref>", description: "Only this sheet: a sheet id, or its 1-based number in the plan." } as const;
+
+const shopping: CommandSpec = {
+  name: "report shopping",
+  summary: "What to buy, the cost, and the use of each sheet.",
+  description:
+    "The shopping list, as in the app's Reports tab: for each material, the stock the plan uses, the pieces to buy (owned offcuts are not bought), and the cost. The total is null when the cost feature is off or a stock item to buy has no price; missingPrices lists those items.",
+  args: [FILE_ARG],
+  options: [],
+  examples: [{ command: `${PROGRAM} report shopping shelf.cutplan.json`, description: "Show what to buy." }],
+  output:
+    "currency, total (null when unknown), missingPrices, sheetsToBuy, materials [{ material, name, lines [{ stock, label, kind, length, width, used, buy, unitCost, lineCost }], cost, stockArea, partArea, utilization }], sheets [{ sheet, sheetNumber, stock, stockArea, partArea, utilization }].",
+  async run({ args, io }) {
+    const loaded = await loadProject(io, args[0]!);
+    const { project } = loaded;
+    const list = analyzeProject(project).shopping;
+    const sheetsToBuy = list.materials.flatMap((m) => m.lines).reduce((sum, line) => sum + line.buy, 0);
+    const lines: string[] = [];
+    for (const material of list.materials) {
+      lines.push(`${material.name}: ${percent(material.utilization)} used, cost ${money(material.cost, list.currency)}`);
+      lines.push(
+        table(
+          ["  stock", "size", "kind", "used", "buy", "each", "cost"],
+          material.lines.map((line) => [
+            `  ${line.label}`,
+            size(project, line),
+            line.kind,
+            String(line.used),
+            String(line.buy),
+            money(line.unitCost, list.currency),
+            money(line.lineCost, list.currency),
+          ]),
+        ),
+      );
+    }
+    if (list.materials.length === 0) lines.push("Nothing to buy: the plan has no sheets.");
+    lines.push(`Buy ${plural(sheetsToBuy, "piece")}. Total: ${money(list.total, list.currency)}.`);
+    if (list.missingPrices.length > 0) lines.push(`No price: ${list.missingPrices.join(", ")}.`);
+    return { data: { ...list, sheetsToBuy }, text: lines.join("\n"), warnings: warningLines(loaded) };
+  },
+};
+
+const sequence: CommandSpec = {
+  name: "report sequence",
+  summary: "The cut steps in shop order.",
+  description:
+    "The cut sequence, in the order of the orderMode setting, with the tool, the fence or stop setting, and what each cut releases. The text of each step is the same as in the app's Shop mode.",
+  args: [FILE_ARG],
+  options: [SHEET_OPTION],
+  examples: [
+    { command: `${PROGRAM} report sequence shelf.cutplan.json`, description: "Print every step." },
+    { command: `${PROGRAM} report sequence shelf.cutplan.json --sheet 1 --json`, description: "The steps of sheet 1 as JSON." },
+  ],
+  output:
+    "orderMode, steps [{ step, sheet, sheetNumber, kind (rip|crosscut|trim), axis, stage, at, from, to, tool (id or null), toolName, side, setting, requires, releasedNext, remainderNext, piece, released, remainder { x, y, length, width }, title, body }].",
+  async run({ args, options, io }) {
+    const loaded = await loadProject(io, args[0]!);
+    const { project } = loaded;
+    const analysis = analyzeProject(project);
+    const ref = str(options, "sheet");
+    const only = ref === undefined ? null : findSheet(project, ref).sheet.id;
+    const steps = analysis.steps
+      .filter((step) => only === null || step.sheet === only)
+      .map((step) => {
+        const { tool, releasedPlacements: _released, remainderPlacements: _remainder, ...rest } = step;
+        return { ...rest, tool: tool?.id ?? null, toolName: tool?.name ?? null, ...describeStep(analysis.context, step) };
+      });
+    const text = steps.length === 0 ? "No cuts." : steps.map((step) => `${step.title}\n  ${step.body}`).join("\n");
+    return { data: { orderMode: project.settings.orderMode, steps }, text, warnings: warningLines(loaded) };
+  },
+};
+
+const offcuts: CommandSpec = {
+  name: "report offcuts",
+  summary: "The usable offcuts the plan leaves.",
+  description:
+    "The waste pieces that are at least the minimum offcut size (the minOffcut settings). saved is true when the stock already has the offcut (see stock save-offcuts). The list is empty when the offcuts feature is off.",
+  args: [FILE_ARG],
+  options: [],
+  examples: [{ command: `${PROGRAM} report offcuts shelf.cutplan.json --json`, description: "List the offcuts." }],
+  output: "minOffcut { length, width }, offcuts [{ sheet, sheetNumber, stock, material, x, y, length, width, saved }].",
+  async run({ args, io }) {
+    const loaded = await loadProject(io, args[0]!);
+    const { project } = loaded;
+    const analysis = analyzeProject(project);
+    const unsaved = new Set(unsavedOffcuts(project, analysis.offcuts));
+    const list = analysis.offcuts.map((offcut) => ({
+      sheet: offcut.sheet,
+      sheetNumber: offcut.sheetNumber,
+      stock: offcut.stock,
+      material: offcut.material,
+      ...offcut.rect,
+      saved: !unsaved.has(offcut),
+    }));
+    const text =
+      list.length === 0
+        ? "No usable offcuts."
+        : table(
+            ["sheet", "material", "size", "at", "saved"],
+            list.map((o) => [String(o.sheetNumber), analysis.context.materials.get(o.material)?.name ?? o.material, size(project, o), `${len(project, o.x)}, ${len(project, o.y)}`, o.saved ? "yes" : "no"]),
+          );
+    return { data: { minOffcut: analysis.context.minOffcut, offcuts: list }, text, warnings: warningLines(loaded) };
+  },
+};
+
+const LAYOUT_IDS = LABEL_LAYOUTS.map((layout) => layout.id) as LabelLayoutId[];
+
+const labels: CommandSpec = {
+  name: "report labels",
+  summary: "One label per part copy, and the label pages.",
+  description: `The part labels: name, size, material, grain, sheet, and the step that cuts the part free. With --layout, the labels are also split into pages of that label sheet. The list is empty when the labels feature is off (settings set <file> features.labels true). Layouts: ${LABEL_LAYOUTS.map((l) => `${l.id} (${l.name})`).join(", ")}.`,
+  args: [FILE_ARG],
+  options: [
+    { name: "layout", type: "string", value: `<${LAYOUT_IDS.join("|")}>`, description: "Split the labels into pages of this label sheet." },
+    { name: "start", type: "string", value: "<n>", description: "With --layout: the 1-based position of the first label on the first page, to use a part-used sheet. Default: 1." },
+  ],
+  examples: [
+    { command: `${PROGRAM} report labels shelf.cutplan.json`, description: "List the labels." },
+    { command: `${PROGRAM} report labels shelf.cutplan.json --layout avery-5160 --start 7 --json`, description: "Pages of Avery 5160 labels, from the 7th label." },
+  ],
+  output:
+    "enabled (the labels feature), labels [{ part, copy, name, group, length, width, material, grain, sheetNumber, step }]. With --layout: layout (the label sheet), pages [[{ part, copy } or null]] (null is an empty slot).",
+  async run({ args, options, io }) {
+    const loaded = await loadProject(io, args[0]!);
+    const { project } = loaded;
+    const analysis = analyzeProject(project);
+    const layoutId = optionalChoice(options, "layout", LAYOUT_IDS);
+    const startText = str(options, "start");
+    const start = startText === undefined ? 1 : integerValue(startText, "start", 1);
+    const enabled = project.settings.features.labels;
+    const data: Record<string, unknown> = { enabled, labels: analysis.labels };
+    const lines = enabled
+      ? analysis.labels.map((l) => `${l.name}: ${len(project, l.length)} × ${len(project, l.width)}, ${analysis.context.materials.get(l.material)?.name ?? l.material}${l.sheetNumber === null ? ", not placed" : `, sheet ${l.sheetNumber}`}${l.step === null ? "" : `, step ${l.step}`}`)
+      : ["The labels feature is off. Turn it on with: settings set <file> features.labels true"];
+    if (layoutId !== undefined) {
+      const layout = LABEL_LAYOUTS.find((l) => l.id === layoutId)!;
+      const pages = labelPages(analysis.labels, layout, start).map((page) => page.map((label) => (label ? { part: label.part, copy: label.copy } : null)));
+      data.layout = layout;
+      data.pages = pages;
+      lines.push(`${plural(pages.length, "page")} of ${layout.name}.`);
+    }
+    return { data, text: lines.join("\n"), warnings: warningLines(loaded) };
+  },
+};
+
+function cutList(project: Project) {
+  const analysis = analyzeProject(project);
+  const where = new Map<string, number[]>();
+  (project.plan?.sheets ?? []).forEach((sheet, index) => {
+    for (const placement of sheet.placements) {
+      const numbers = where.get(placement.part) ?? [];
+      if (!numbers.includes(index + 1)) numbers.push(index + 1);
+      where.set(placement.part, numbers);
+    }
+  });
+  const placed = new Map<string, number>();
+  for (const sheet of project.plan?.sheets ?? []) for (const p of sheet.placements) placed.set(p.part, (placed.get(p.part) ?? 0) + 1);
+  const parts = project.parts.map((part) => ({
+    id: part.id,
+    name: part.name,
+    material: part.material,
+    length: part.length,
+    width: part.width,
+    thickness: analysis.context.materials.get(part.material)?.thickness ?? null,
+    quantity: part.quantity,
+    grain: part.grain,
+    group: part.group ?? null,
+    placed: Math.min(placed.get(part.id) ?? 0, part.quantity),
+    sheets: where.get(part.id) ?? [],
+  }));
+  const materials = project.materials
+    .map((material) => {
+      const mine = parts.filter((part) => part.material === material.id);
+      return {
+        material: material.id,
+        name: material.name,
+        parts: mine.length,
+        copies: mine.reduce((sum, part) => sum + part.quantity, 0),
+        partArea: mine.reduce((sum, part) => sum + part.length * part.width * part.quantity, 0),
+      };
+    })
+    .filter((material) => material.parts > 0);
+  return { parts, materials };
+}
+
+const cutlist: CommandSpec = {
+  name: "report cutlist",
+  summary: "Every part with its size, count, and sheets.",
+  description: "The cut list: every part with its size, material, quantity, the copies placed, and the sheet numbers they are on; then the part count and area of each material.",
+  args: [FILE_ARG],
+  options: [],
+  examples: [{ command: `${PROGRAM} report cutlist shelf.cutplan.json`, description: "Print the cut list." }],
+  output: "units, parts [{ id, name, material, length, width, thickness, quantity, grain, group, placed, sheets (numbers) }], materials [{ material, name, parts, copies, partArea (square units) }].",
+  async run({ args, io }) {
+    const loaded = await loadProject(io, args[0]!);
+    const { project } = loaded;
+    const { parts, materials } = cutList(project);
+    const units = project.project.units;
+    const text = [
+      table(
+        ["part", "name", "size", "qty", "placed", "material", "sheets"],
+        parts.map((p) => [p.id, p.name, size(project, p), String(p.quantity), String(p.placed), p.material, p.sheets.join(", ")]),
+      ),
+      ...materials.map((m) => `${m.name}: ${plural(m.parts, "part")}, ${plural(m.copies, "copy", "copies")}, ${formatArea(m.partArea, units)}.`),
+    ].join("\n");
+    return { data: { units, parts, materials }, text, warnings: warningLines(loaded) };
+  },
+};
+
+export const reportGroup: GroupSpec = { name: "report", summary: "Reports (read only)", commands: [shopping, sequence, offcuts, labels, cutlist] };

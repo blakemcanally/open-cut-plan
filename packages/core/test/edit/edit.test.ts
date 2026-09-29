@@ -1,0 +1,171 @@
+import { describe, expect, it } from "vitest";
+import {
+  addPart,
+  addSheet,
+  addStock,
+  addTool,
+  analyzeProject,
+  convertProjectUnits,
+  createProject,
+  findCopy,
+  findFreeSpot,
+  materialInUse,
+  moveTool,
+  moveToTray,
+  nudgeCopy,
+  placeCopy,
+  planContext,
+  removeEmptySheets,
+  removeMaterial,
+  removePart,
+  removeSheet,
+  removeStock,
+  rotateCopy,
+  setPinned,
+  unplacedCopies,
+  updatePart,
+  updateStock,
+  validatePlan,
+} from "../../src/index.ts";
+import { editSampleProject as sampleProject } from "../helpers.ts";
+
+describe("part edits", () => {
+  it("adds a part, and a material when the project has none", () => {
+    const { project, id } = addPart(createProject("New", "mm"));
+    expect(project.materials).toEqual([{ id: "plywood", name: "Plywood", thickness: 18, grained: true }]);
+    expect(project.parts).toEqual([{ id, name: "Part 1", material: "plywood", length: 600, width: 300, quantity: 1, grain: "length" }]);
+  });
+
+  it("gives each new part a new id", () => {
+    const first = addPart(sampleProject());
+    const second = addPart(first.project);
+    expect(first.id).not.toBe(second.id);
+  });
+
+  it("removes placements of copies past a lower quantity", () => {
+    const project = updatePart(sampleProject(), "side", { quantity: 1 });
+    expect(project.plan!.sheets[0]!.placements.map((p) => p.copy)).toEqual([0]);
+    expect(validatePlan(project).filter((i) => i.code === "bad-copy")).toEqual([]);
+  });
+
+  it("clears an optional field with undefined", () => {
+    const project = updatePart(sampleProject(), "shelf", { group: undefined });
+    expect(project.parts[1]).not.toHaveProperty("group");
+  });
+
+  it("removes a part with its placements", () => {
+    const project = removePart(sampleProject(), "side");
+    expect(project.parts.map((p) => p.id)).toEqual(["shelf"]);
+    expect(project.plan!.sheets[0]!.placements).toEqual([]);
+  });
+});
+
+describe("stock and material edits", () => {
+  it("keeps a material that parts or stock use", () => {
+    const project = sampleProject();
+    expect(materialInUse(project, "ply")).toBe(true);
+    expect(removeMaterial(project, "ply")).toBe(project);
+  });
+
+  it("adds an unlimited sheet of the first material", () => {
+    const project = addStock(sampleProject());
+    expect(project.stock[1]).toMatchObject({ material: "ply", length: 96, width: 48, quantity: null, kind: "sheet" });
+  });
+
+  it("removes stock and the sheets cut from it", () => {
+    const project = removeStock(sampleProject(), "ply-4x8");
+    expect(project.stock).toEqual([]);
+    expect(project.plan!.sheets).toEqual([]);
+  });
+
+  it("sets a quantity to unlimited and back", () => {
+    const limited = updateStock(sampleProject(), "ply-4x8", { quantity: 3 });
+    expect(limited.stock[0]!.quantity).toBe(3);
+    expect(updateStock(limited, "ply-4x8", { quantity: null }).stock[0]!.quantity).toBeNull();
+  });
+});
+
+describe("tool edits", () => {
+  it("adds tools with the unit's default kerf and reorders them", () => {
+    let project = addTool(sampleProject(), "track-saw");
+    expect(project.tools[1]).toEqual({ id: "track-saw", name: "Track saw", type: "track-saw", kerf: 0.125, enabled: true });
+    project = moveTool(project, "track-saw", -1);
+    expect(project.tools.map((t) => t.id)).toEqual(["track-saw", "ts"]);
+    expect(moveTool(project, "track-saw", -1)).toBe(project);
+  });
+});
+
+describe("layout edits", () => {
+  const side0 = { part: "side", copy: 0 };
+  const shelf = { part: "shelf", copy: 0 };
+
+  it("lists unplaced copies in part order", () => {
+    expect(unplacedCopies(sampleProject())).toEqual([shelf]);
+    expect(unplacedCopies(moveToTray(sampleProject(), side0))).toEqual([side0, shelf]);
+  });
+
+  it("places a tray copy on a sheet and moves it between sheets", () => {
+    const { project: withSheet, id } = addSheet(sampleProject(), "ply-4x8");
+    expect(id).toBe("s2");
+    let project = placeCopy(withSheet, shelf, "s1", 30.5, 0.25, false);
+    expect(findCopy(project, shelf)).toMatchObject({ sheetIndex: 0, placement: { x: 30.5, y: 0.25, rotated: false } });
+    project = placeCopy(project, shelf, "s2", 0.25, 0.25, true);
+    expect(findCopy(project, shelf)).toMatchObject({ sheetIndex: 1, placement: { rotated: true } });
+    expect(project.plan!.sheets[0]!.placements).toHaveLength(2);
+  });
+
+  it("rotates and nudges a placed copy", () => {
+    let project = rotateCopy(sampleProject(), side0);
+    expect(findCopy(project, side0)!.placement.rotated).toBe(true);
+    project = nudgeCopy(project, side0, 1, -0.25);
+    expect(findCopy(project, side0)!.placement).toMatchObject({ x: 1.25, y: 0 });
+  });
+
+  it("leaves the project alone when the copy is not placed", () => {
+    const project = sampleProject();
+    expect(rotateCopy(project, shelf)).toBe(project);
+    expect(moveToTray(project, shelf)).toBe(project);
+  });
+
+  it("removes sheets, empty sheets, and pins", () => {
+    const { project: withSheet } = addSheet(sampleProject(), "ply-4x8");
+    expect(removeEmptySheets(withSheet).plan!.sheets.map((s) => s.id)).toEqual(["s1"]);
+    expect(unplacedCopies(removeSheet(withSheet, "s1"))).toHaveLength(3);
+    const pinned = setPinned(withSheet, "s1", true);
+    expect(pinned.plan!.sheets[0]!.pinned).toBe(true);
+    expect(setPinned(pinned, "s1", false).plan!.sheets[0]).not.toHaveProperty("pinned");
+  });
+
+  it("finds a free spot one kerf from the other parts", () => {
+    const project = sampleProject();
+    const ctx = planContext(project);
+    const sheet = project.plan!.sheets[0]!;
+    const spot = findFreeSpot(ctx, sheet, { length: 20, width: 10 });
+    expect(spot).toEqual({ x: 0.25, y: 24.5 });
+    const placed = placeCopy(project, shelf, "s1", spot!.x, spot!.y, false);
+    expect(analyzeProject(placed).issues.filter((i) => i.severity === "error")).toEqual([]);
+    expect(findFreeSpot(ctx, sheet, { length: 100, width: 10 })).toBeNull();
+  });
+});
+
+describe("convertProjectUnits", () => {
+  it("converts every length and keeps costs", () => {
+    const mm = convertProjectUnits(sampleProject(), "mm");
+    expect(mm.project.units).toBe("mm");
+    expect(mm.parts[0]).toMatchObject({ length: 762, width: 304.8 });
+    expect(mm.stock[0]).toMatchObject({ length: 2438.4, width: 1219.2, cost: 60 });
+    expect(mm.materials[0]!.thickness).toBeCloseTo(19.05);
+    expect(mm.tools[0]!.kerf).toBeCloseTo(3.175);
+    expect(mm.settings.trim).toBeCloseTo(6.35);
+    expect(mm.plan!.sheets[0]!.placements[1]).toMatchObject({ x: 6.35 });
+    const back = convertProjectUnits(mm, "in");
+    expect(back.parts[0]).toMatchObject({ length: 30, width: 12 });
+    expect(back.tools[0]!.kerf).toBe(0.125);
+  });
+
+  it("converts tool limits", () => {
+    const project = { ...sampleProject(), tools: [{ id: "ts", name: "TS", type: "table-saw" as const, kerf: 0.125, enabled: true, maxRip: 30, maxPiece: { length: 48, width: 24 } }] };
+    const tool = convertProjectUnits(project, "mm").tools[0]!;
+    expect(tool).toMatchObject({ maxRip: 762, maxPiece: { length: 1219.2, width: 609.6 } });
+  });
+});

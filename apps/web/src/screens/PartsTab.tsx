@@ -1,0 +1,174 @@
+import { addPart, formatArea, removePart, updatePart, type Grain, type Project } from "@opencutplan/core";
+import { useState, type ClipboardEvent } from "react";
+import { CsvImportDialog } from "../components/CsvImportDialog.tsx";
+import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
+import type { ProjectStore } from "../state/useProject.ts";
+import { chooseFile } from "../storage/files.ts";
+
+const GRAINS: readonly { value: Grain; label: string }[] = [
+  { value: "length", label: "Along length" },
+  { value: "width", label: "Along width" },
+  { value: "none", label: "None" },
+];
+
+/** Text with a tab or a line break came from a spreadsheet, not from typing in one cell. */
+export function isTableText(text: string): boolean {
+  return /[\t\n]/.test(text.trim());
+}
+
+export function PartsTab({ store }: { store: ProjectStore }) {
+  const { project, edit } = store;
+  const [importing, setImporting] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const units = project.project.units;
+  const display = project.settings.display;
+
+  const onPaste = (event: ClipboardEvent) => {
+    const text = event.clipboardData.getData("text/plain");
+    if (!isTableText(text)) return;
+    event.preventDefault();
+    setImporting(text);
+  };
+
+  const totals = new Map<string, { copies: number; area: number }>();
+  for (const part of project.parts) {
+    const total = totals.get(part.material) ?? { copies: 0, area: 0 };
+    total.copies += part.quantity;
+    total.area += part.quantity * part.length * part.width;
+    totals.set(part.material, total);
+  }
+
+  return (
+    <section aria-labelledby="parts-title" onPaste={onPaste}>
+      <div className="toolbar">
+        <h2 id="parts-title">Parts</h2>
+        <button
+          type="button"
+          className="primary"
+          onClick={() => {
+            const result = addPart(project);
+            edit(result.project);
+            setFocusId(result.id);
+          }}
+        >
+          Add part
+        </button>
+        <button type="button" onClick={() => setImporting("")}>
+          Paste rows…
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            const file = await chooseFile(".csv,.tsv,.txt,text/csv");
+            if (file) setImporting(await file.text());
+          }}
+        >
+          Import CSV…
+        </button>
+      </div>
+      {project.parts.length === 0 ? (
+        <p className="muted">No parts yet. Add a part, or paste rows from a spreadsheet (name, length, width, quantity…).</p>
+      ) : (
+        <div className="table-wrap">
+          <table className="grid">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Length</th>
+                <th scope="col">Width</th>
+                <th scope="col">Qty</th>
+                <th scope="col">Material</th>
+                <th scope="col">Grain</th>
+                <th scope="col">Group</th>
+                <th scope="col">Notes</th>
+                <th scope="col">
+                  <span className="visually-hidden">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {project.parts.map((part) => {
+                const change = (patch: Parameters<typeof updatePart>[2]) => edit((p: Project) => updatePart(p, part.id, patch));
+                return (
+                  <tr key={part.id}>
+                    <td>
+                      <TextInput aria-label={`Name of ${part.name}`} value={part.name} required autoFocus={focusId === part.id} onChange={(name) => change({ name })} />
+                    </td>
+                    <td>
+                      <LengthInput aria-label={`Length of ${part.name}`} value={part.length} units={units} display={display} onChange={(length) => length !== undefined && change({ length })} />
+                    </td>
+                    <td>
+                      <LengthInput aria-label={`Width of ${part.name}`} value={part.width} units={units} display={display} onChange={(width) => width !== undefined && change({ width })} />
+                    </td>
+                    <td>
+                      <NumberInput
+                        aria-label={`Quantity of ${part.name}`}
+                        className="narrow"
+                        value={part.quantity}
+                        integer
+                        minimum={1}
+                        onChange={(quantity) => quantity !== undefined && change({ quantity })}
+                      />
+                    </td>
+                    <td>
+                      <select aria-label={`Material of ${part.name}`} value={part.material} onChange={(event) => change({ material: event.target.value })}>
+                        {project.materials.map((material) => (
+                          <option key={material.id} value={material.id}>
+                            {material.name}
+                          </option>
+                        ))}
+                        {!project.materials.some((material) => material.id === part.material) && <option value={part.material}>{part.material} (missing)</option>}
+                      </select>
+                    </td>
+                    <td>
+                      <select aria-label={`Grain of ${part.name}`} value={part.grain} onChange={(event) => change({ grain: event.target.value as Grain })}>
+                        {GRAINS.map((grain) => (
+                          <option key={grain.value} value={grain.value}>
+                            {grain.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <TextInput aria-label={`Group of ${part.name}`} value={part.group ?? ""} onChange={(group) => change({ group: group || undefined })} />
+                    </td>
+                    <td>
+                      <TextInput aria-label={`Notes for ${part.name}`} value={part.notes ?? ""} onChange={(notes) => change({ notes: notes || undefined })} />
+                    </td>
+                    <td>
+                      <button type="button" aria-label={`Delete ${part.name}`} onClick={() => edit((p) => removePart(p, part.id))}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {totals.size > 0 && (
+        <ul className="totals" aria-label="Totals">
+          {[...totals].map(([material, total]) => (
+            <li key={material}>
+              {project.materials.find((m) => m.id === material)?.name ?? material}: {total.copies}{" "}
+              {total.copies === 1 ? "piece" : "pieces"}, {formatArea(total.area, units)}
+            </li>
+          ))}
+        </ul>
+      )}
+      {importing !== null && (
+        <CsvImportDialog
+          kind="parts"
+          text={importing}
+          project={project}
+          onImport={(next) => {
+            edit(next);
+            setImporting(null);
+          }}
+          onClose={() => setImporting(null)}
+        />
+      )}
+    </section>
+  );
+}

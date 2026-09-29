@@ -1,0 +1,18 @@
+{
+  "name": "@opencutplan/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "opencutplan": "./src/main.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@opencutplan/core": "0.1.0"
+  },
+  "devDependencies": {
+    "vitest": "5.0.2"
+  }
+}

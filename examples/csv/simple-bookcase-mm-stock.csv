@@ -1,0 +1,4 @@
+﻿material,length,width,thickness,quantity,cost,kind,name
+MDF 18mm,2440,1220,18,unlimited,42,sheet,
+MDF 18mm,900,400,18,1,0,offcut,Offcut from the desk project
+Hardboard 3mm,2440,1220,3,unlimited,15,sheet,

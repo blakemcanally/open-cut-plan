@@ -1,0 +1,538 @@
+{
+  "format": "opencutplan",
+  "version": "1.0",
+  "project": {
+    "name": "Living room shelf",
+    "units": "in",
+    "notes": "Two 3x2 cubby cabinets and one 4x2 cabinet with a wide top opening, in 5' x 5' baltic birch."
+  },
+  "materials": [
+    {
+      "id": "bb18",
+      "name": "Baltic birch 18mm",
+      "thickness": 0.7086614173228347,
+      "grained": true
+    },
+    {
+      "id": "bb6",
+      "name": "Baltic birch 6mm",
+      "thickness": 0.2362204724409449,
+      "grained": true
+    }
+  ],
+  "stock": [
+    {
+      "id": "bb18-5x5",
+      "material": "bb18",
+      "length": 60,
+      "width": 60,
+      "quantity": null,
+      "kind": "sheet"
+    },
+    {
+      "id": "bb6-5x5",
+      "material": "bb6",
+      "length": 60,
+      "width": 60,
+      "quantity": null,
+      "kind": "sheet"
+    }
+  ],
+  "parts": [
+    {
+      "id": "a-top",
+      "name": "A Top",
+      "material": "bb18",
+      "length": 42.58464566929134,
+      "width": 15.375,
+      "quantity": 1,
+      "grain": "length",
+      "group": "3x2 A"
+    },
+    {
+      "id": "a-bottom",
+      "name": "A Bottom",
+      "material": "bb18",
+      "length": 42.58464566929134,
+      "width": 15.375,
+      "quantity": 1,
+      "grain": "length",
+      "group": "3x2 A"
+    },
+    {
+      "id": "a-side",
+      "name": "A Side",
+      "material": "bb18",
+      "length": 27.208661417322833,
+      "width": 15.375,
+      "quantity": 2,
+      "grain": "length",
+      "group": "3x2 A"
+    },
+    {
+      "id": "a-vdiv",
+      "name": "A Divider",
+      "material": "bb18",
+      "length": 27.208661417322833,
+      "width": 15.375,
+      "quantity": 2,
+      "grain": "length",
+      "group": "3x2 A"
+    },
+    {
+      "id": "a-shelf",
+      "name": "A Shelf",
+      "material": "bb18",
+      "length": 13.25,
+      "width": 15.375,
+      "quantity": 3,
+      "grain": "length",
+      "group": "3x2 A"
+    },
+    {
+      "id": "a-back",
+      "name": "A Back",
+      "material": "bb6",
+      "length": 42.58464566929134,
+      "width": 28.625984251968504,
+      "quantity": 1,
+      "grain": "length",
+      "group": "3x2 A"
+    },
+    {
+      "id": "c-top",
+      "name": "C Top",
+      "material": "bb18",
+      "length": 42.58464566929134,
+      "width": 15.375,
+      "quantity": 1,
+      "grain": "length",
+      "group": "3x2 C"
+    },
+    {
+      "id": "c-bottom",
+      "name": "C Bottom",
+      "material": "bb18",
+      "length": 42.58464566929134,
+      "width": 15.375,
+      "quantity": 1,
+      "grain": "length",
+      "group": "3x2 C"
+    },
+    {
+      "id": "c-side",
+      "name": "C Side",
+      "material": "bb18",
+      "length": 27.208661417322833,
+      "width": 15.375,
+      "quantity": 2,
+      "grain": "length",
+      "group": "3x2 C"
+    },
+    {
+      "id": "c-vdiv",
+      "name": "C Divider",
+      "material": "bb18",
+      "length": 27.208661417322833,
+      "width": 15.375,
+      "quantity": 2,
+      "grain": "length",
+      "group": "3x2 C"
+    },
+    {
+      "id": "c-shelf",
+      "name": "C Shelf",
+      "material": "bb18",
+      "length": 13.25,
+      "width": 15.375,
+      "quantity": 3,
+      "grain": "length",
+      "group": "3x2 C"
+    },
+    {
+      "id": "c-back",
+      "name": "C Back",
+      "material": "bb6",
+      "length": 42.58464566929134,
+      "width": 28.625984251968504,
+      "quantity": 1,
+      "grain": "length",
+      "group": "3x2 C"
+    },
+    {
+      "id": "b-top",
+      "name": "B Top",
+      "material": "bb18",
+      "length": 56.54330708661417,
+      "width": 15.375,
+      "quantity": 1,
+      "grain": "length",
+      "group": "4x2 B"
+    },
+    {
+      "id": "b-bottom",
+      "name": "B Bottom",
+      "material": "bb18",
+      "length": 56.54330708661417,
+      "width": 15.375,
+      "quantity": 1,
+      "grain": "length",
+      "group": "4x2 B"
+    },
+    {
+      "id": "b-side",
+      "name": "B Side",
+      "material": "bb18",
+      "length": 27.208661417322833,
+      "width": 15.375,
+      "quantity": 2,
+      "grain": "length",
+      "group": "4x2 B"
+    },
+    {
+      "id": "b-vdiv",
+      "name": "B Divider",
+      "material": "bb18",
+      "length": 27.208661417322833,
+      "width": 15.375,
+      "quantity": 2,
+      "grain": "length",
+      "group": "4x2 B"
+    },
+    {
+      "id": "b-long-shelf",
+      "name": "B Long shelf",
+      "material": "bb18",
+      "length": 27.208661417322833,
+      "width": 15.375,
+      "quantity": 1,
+      "grain": "length",
+      "group": "4x2 B"
+    },
+    {
+      "id": "b-short-vdiv",
+      "name": "B Short divider",
+      "material": "bb18",
+      "length": 13.25,
+      "width": 15.375,
+      "quantity": 1,
+      "grain": "length",
+      "group": "4x2 B"
+    },
+    {
+      "id": "b-shelf",
+      "name": "B Shelf",
+      "material": "bb18",
+      "length": 13.25,
+      "width": 15.375,
+      "quantity": 2,
+      "grain": "length",
+      "group": "4x2 B"
+    },
+    {
+      "id": "b-back",
+      "name": "B Back",
+      "material": "bb6",
+      "length": 56.54330708661417,
+      "width": 28.625984251968504,
+      "quantity": 1,
+      "grain": "length",
+      "group": "4x2 B"
+    }
+  ],
+  "tools": [
+    {
+      "id": "table-saw",
+      "name": "Table saw",
+      "kerf": 0.125,
+      "enabled": true,
+      "type": "table-saw"
+    }
+  ],
+  "settings": {
+    "features": {
+      "grain": true,
+      "kerf": true,
+      "trim": true,
+      "cutOrder": true,
+      "toolLimits": true,
+      "offcuts": true,
+      "cost": true,
+      "labels": true,
+      "snapping": true
+    },
+    "orderMode": "sheet",
+    "trim": 0.25,
+    "display": {
+      "inch": 32,
+      "mm": 0.5
+    },
+    "optimizer": {
+      "timeLimitMs": 2000
+    },
+    "currency": "USD"
+  },
+  "plan": {
+    "sheets": [
+      {
+        "id": "s1",
+        "stock": "bb18-5x5",
+        "placements": [
+          {
+            "part": "b-top",
+            "copy": 0,
+            "x": 0.25,
+            "y": 0.25,
+            "rotated": false
+          },
+          {
+            "part": "b-bottom",
+            "copy": 0,
+            "x": 0.25,
+            "y": 15.75,
+            "rotated": false
+          },
+          {
+            "part": "a-top",
+            "copy": 0,
+            "x": 0.25,
+            "y": 31.25,
+            "rotated": false
+          },
+          {
+            "part": "a-shelf",
+            "copy": 0,
+            "x": 42.95964566929134,
+            "y": 31.25,
+            "rotated": false
+          }
+        ]
+      },
+      {
+        "id": "s2",
+        "stock": "bb18-5x5",
+        "placements": [
+          {
+            "part": "a-bottom",
+            "copy": 0,
+            "x": 0.25,
+            "y": 0.25,
+            "rotated": false
+          },
+          {
+            "part": "a-shelf",
+            "copy": 1,
+            "x": 42.95964566929134,
+            "y": 0.25,
+            "rotated": false
+          },
+          {
+            "part": "c-top",
+            "copy": 0,
+            "x": 0.25,
+            "y": 15.75,
+            "rotated": false
+          },
+          {
+            "part": "c-shelf",
+            "copy": 0,
+            "x": 42.95964566929134,
+            "y": 15.75,
+            "rotated": false
+          },
+          {
+            "part": "c-bottom",
+            "copy": 0,
+            "x": 0.25,
+            "y": 31.25,
+            "rotated": false
+          },
+          {
+            "part": "c-shelf",
+            "copy": 1,
+            "x": 42.95964566929134,
+            "y": 31.25,
+            "rotated": false
+          }
+        ]
+      },
+      {
+        "id": "s3",
+        "stock": "bb18-5x5",
+        "placements": [
+          {
+            "part": "a-side",
+            "copy": 0,
+            "x": 0.25,
+            "y": 0.25,
+            "rotated": false
+          },
+          {
+            "part": "a-side",
+            "copy": 1,
+            "x": 27.583661417322833,
+            "y": 0.25,
+            "rotated": false
+          },
+          {
+            "part": "a-vdiv",
+            "copy": 0,
+            "x": 0.25,
+            "y": 15.75,
+            "rotated": false
+          },
+          {
+            "part": "a-vdiv",
+            "copy": 1,
+            "x": 27.583661417322833,
+            "y": 15.75,
+            "rotated": false
+          },
+          {
+            "part": "c-side",
+            "copy": 0,
+            "x": 0.25,
+            "y": 31.25,
+            "rotated": false
+          },
+          {
+            "part": "c-side",
+            "copy": 1,
+            "x": 27.583661417322833,
+            "y": 31.25,
+            "rotated": false
+          }
+        ]
+      },
+      {
+        "id": "s4",
+        "stock": "bb18-5x5",
+        "placements": [
+          {
+            "part": "c-vdiv",
+            "copy": 0,
+            "x": 0.25,
+            "y": 0.25,
+            "rotated": false
+          },
+          {
+            "part": "c-vdiv",
+            "copy": 1,
+            "x": 27.583661417322833,
+            "y": 0.25,
+            "rotated": false
+          },
+          {
+            "part": "b-side",
+            "copy": 0,
+            "x": 0.25,
+            "y": 15.75,
+            "rotated": false
+          },
+          {
+            "part": "b-side",
+            "copy": 1,
+            "x": 27.583661417322833,
+            "y": 15.75,
+            "rotated": false
+          },
+          {
+            "part": "b-vdiv",
+            "copy": 0,
+            "x": 0.25,
+            "y": 31.25,
+            "rotated": false
+          },
+          {
+            "part": "b-vdiv",
+            "copy": 1,
+            "x": 27.583661417322833,
+            "y": 31.25,
+            "rotated": false
+          }
+        ]
+      },
+      {
+        "id": "s5",
+        "stock": "bb18-5x5",
+        "placements": [
+          {
+            "part": "b-long-shelf",
+            "copy": 0,
+            "x": 0.25,
+            "y": 0.25,
+            "rotated": false
+          },
+          {
+            "part": "b-shelf",
+            "copy": 0,
+            "x": 27.583661417322833,
+            "y": 0.25,
+            "rotated": false
+          },
+          {
+            "part": "b-shelf",
+            "copy": 1,
+            "x": 40.95866141732283,
+            "y": 0.25,
+            "rotated": false
+          },
+          {
+            "part": "a-shelf",
+            "copy": 2,
+            "x": 0.25,
+            "y": 15.75,
+            "rotated": false
+          },
+          {
+            "part": "c-shelf",
+            "copy": 2,
+            "x": 13.625,
+            "y": 15.75,
+            "rotated": false
+          },
+          {
+            "part": "b-short-vdiv",
+            "copy": 0,
+            "x": 27,
+            "y": 15.75,
+            "rotated": false
+          }
+        ]
+      },
+      {
+        "id": "s6",
+        "stock": "bb6-5x5",
+        "placements": [
+          {
+            "part": "b-back",
+            "copy": 0,
+            "x": 0.25,
+            "y": 0.25,
+            "rotated": false
+          },
+          {
+            "part": "a-back",
+            "copy": 0,
+            "x": 0.25,
+            "y": 29.000984251968504,
+            "rotated": false
+          }
+        ]
+      },
+      {
+        "id": "s7",
+        "stock": "bb6-5x5",
+        "placements": [
+          {
+            "part": "c-back",
+            "copy": 0,
+            "x": 0.25,
+            "y": 0.25,
+            "rotated": false
+          }
+        ]
+      }
+    ]
+  }
+}
