@@ -9,7 +9,12 @@ const PROJECT_ROUTE = /^#\/project\/(.+)$/;
 
 function routeId(): string | null {
   const match = PROJECT_ROUTE.exec(window.location.hash);
-  return match ? decodeURIComponent(match[1]!) : null;
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]!);
+  } catch {
+    return match[1]!;
+  }
 }
 
 interface Opened extends OpenRequest {

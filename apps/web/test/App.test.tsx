@@ -100,4 +100,10 @@ describe("App", () => {
     await renderApp();
     expect((await screen.findByRole("alert")).textContent).toContain("not saved in this browser");
   });
+
+  it("shows the same error for a project id that is not valid percent-encoding", async () => {
+    window.location.hash = "#/project/%E0";
+    await renderApp();
+    expect((await screen.findByRole("alert")).textContent).toContain("not saved in this browser");
+  });
 });
