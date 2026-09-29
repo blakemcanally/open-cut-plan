@@ -47,3 +47,5 @@ export * from "./edit/stock.ts";
 export * from "./edit/tools.ts";
 export * from "./edit/units.ts";
 export * from "./edit/layout.ts";
+export * from "./design/systems.ts";
+export * from "./design/geometry.ts";
