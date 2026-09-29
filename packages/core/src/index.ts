@@ -49,3 +49,4 @@ export * from "./edit/units.ts";
 export * from "./edit/layout.ts";
 export * from "./design/systems.ts";
 export * from "./design/geometry.ts";
+export * from "./design/parts.ts";
