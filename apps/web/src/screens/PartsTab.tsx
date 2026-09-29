@@ -1,4 +1,4 @@
-import { addPart, formatArea, MAX_PART_QUANTITY, removePart, updatePart, type Grain, type Project } from "@opencutplan/core";
+import { addPart, errorMessage, formatArea, MAX_PART_QUANTITY, removePart, updatePart, type Grain, type Project } from "@opencutplan/core";
 import { useState, type ClipboardEvent } from "react";
 import { CsvImportDialog } from "../components/CsvImportDialog.tsx";
 import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
@@ -19,6 +19,7 @@ export function isTableText(text: string): boolean {
 export function PartsTab({ store }: { store: ProjectStore }) {
   const { project, edit } = store;
   const [importing, setImporting] = useState<string | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const units = project.project.units;
   const display = project.settings.display;
@@ -31,8 +32,13 @@ export function PartsTab({ store }: { store: ProjectStore }) {
   };
 
   const importFile = async () => {
-    const file = await chooseFile(".csv,.tsv,.txt,text/csv");
-    if (file) setImporting(await file.text());
+    setReadError(null);
+    try {
+      const file = await chooseFile(".csv,.tsv,.txt,text/csv");
+      if (file) setImporting(await file.text());
+    } catch (e) {
+      setReadError(`The file could not be read: ${errorMessage(e)}`);
+    }
   };
 
   const totals = new Map<string, { copies: number; area: number }>();
@@ -68,6 +74,11 @@ export function PartsTab({ store }: { store: ProjectStore }) {
           Import CSV…
         </button>
       </div>
+      {readError && (
+        <p role="alert" className="error">
+          ✖ {readError}
+        </p>
+      )}
       {project.parts.length === 0 ? (
         <p className="muted">No parts yet. Add a part, or paste rows from a spreadsheet (name, length, width, quantity…).</p>
       ) : (

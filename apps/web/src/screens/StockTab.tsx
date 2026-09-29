@@ -1,5 +1,6 @@
 import {
   addMaterial,
+  errorMessage,
   addStock,
   DEFAULT_TRIM,
   formatLength,
@@ -35,6 +36,7 @@ function trimForChoice(choice: EdgeChoice, stock: Stock, projectTrim: number, un
 export function StockTab({ store }: { store: ProjectStore }) {
   const { project, edit } = store;
   const [importing, setImporting] = useState<string | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
   const units = project.project.units;
   const display = project.settings.display;
   const currency = project.settings.currency;
@@ -42,8 +44,13 @@ export function StockTab({ store }: { store: ProjectStore }) {
   const projectEdges = !features.trim || projectTrim === 0 ? "Project: use factory edges" : `Project: trim ${formatLength(projectTrim, units, display)}`;
 
   const importFile = async () => {
-    const file = await chooseFile(".csv,.tsv,.txt,text/csv");
-    if (file) setImporting(await file.text());
+    setReadError(null);
+    try {
+      const file = await chooseFile(".csv,.tsv,.txt,text/csv");
+      if (file) setImporting(await file.text());
+    } catch (e) {
+      setReadError(`The file could not be read: ${errorMessage(e)}`);
+    }
   };
 
   return (
@@ -146,6 +153,11 @@ export function StockTab({ store }: { store: ProjectStore }) {
             Import CSV…
           </button>
         </div>
+        {readError && (
+          <p role="alert" className="error">
+            ✖ {readError}
+          </p>
+        )}
         {project.stock.length === 0 ? (
           <p className="muted">No stock yet. Add the sheets you can buy and the offcuts you own.</p>
         ) : (

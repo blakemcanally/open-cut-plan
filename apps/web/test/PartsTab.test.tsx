@@ -1,9 +1,13 @@
 import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { isTableText, PartsTab } from "../src/screens/PartsTab.tsx";
 import { sampleProject } from "./helpers.ts";
 import { renderWithStore } from "./render.tsx";
+
+vi.mock("../src/storage/files.ts", () => ({
+  chooseFile: () => Promise.resolve({ text: () => Promise.reject(new Error("the file was moved")) }),
+}));
 
 describe("PartsTab", () => {
   it("commits an edited length and lowers the quantity, which takes the extra copy off the sheet", async () => {
@@ -33,6 +37,13 @@ describe("PartsTab", () => {
     await userEvent.click(screen.getByRole("button", { name: "Delete Side" }));
     expect(current().project.parts.map((p) => p.id)).toEqual(["shelf"]);
     expect(current().project.plan!.sheets[0]!.placements).toEqual([]);
+  });
+
+  it("shows an error when the chosen CSV file cannot be read", async () => {
+    renderWithStore(sampleProject(), (store) => <PartsTab store={store} />);
+    await userEvent.click(screen.getByRole("button", { name: "Import CSV…" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("✖ The file could not be read: the file was moved");
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("opens the import dialog when rows from a spreadsheet are pasted", async () => {

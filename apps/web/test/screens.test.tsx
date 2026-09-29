@@ -10,6 +10,10 @@ import { openStorage } from "../src/storage/db.ts";
 import { sampleProject } from "./helpers.ts";
 import { renderWithStore } from "./render.tsx";
 
+vi.mock("../src/storage/files.ts", () => ({
+  chooseFile: () => Promise.resolve({ text: () => Promise.reject(new Error("the file was moved")) }),
+}));
+
 describe("StockTab", () => {
   it("keeps a material that parts use, and deleting stock removes its sheets", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <StockTab store={store} />);
@@ -44,6 +48,13 @@ describe("StockTab", () => {
     const edges = screen.getByRole("combobox", { name: "Edges of stock ply-4x8" });
     expect(edges).toHaveProperty("disabled", true);
     expect(edges).toHaveProperty("title", "Choose Trim each edge on the Settings tab to use this.");
+  });
+
+  it("shows an error when the chosen CSV file cannot be read", async () => {
+    renderWithStore(sampleProject(), (store) => <StockTab store={store} />);
+    await userEvent.click(screen.getByRole("button", { name: "Import CSV…" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("✖ The file could not be read: the file was moved");
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("adds stock, and an unused material can be deleted", async () => {
