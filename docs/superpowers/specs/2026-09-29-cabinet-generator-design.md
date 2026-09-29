@@ -337,7 +337,7 @@ exit codes, and the length parser.
 ```bash
 F=hall.cutplan.json
 opencutplan new $F --name "Hall storage" --units mm --json
-opencutplan tools add $F --type track-saw --max-cut 1400 --position 1 --json
+opencutplan tools add $F --type track-saw --max-cut 2800 --position 1 --json
 opencutplan materials add $F --name "Birch ply 18" --thickness 18 --json
 opencutplan stock add $F --length 2440 --width 1220 --cost 80 --json
 opencutplan design add $F --system kallax --cols 2 --rows 4 --json

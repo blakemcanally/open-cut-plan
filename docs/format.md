@@ -1,4 +1,4 @@
-# The OpenCutPlan file format (`.cutplan.json`), version 1.0
+# The OpenCutPlan file format (`.cutplan.json`), version 1.1
 
 An OpenCutPlan file describes a sheet-goods cutting project: the parts to cut, the stock to cut them from, the tools
 available, settings, and optionally a layout of parts on sheets with an ordered list of cuts.
@@ -21,11 +21,12 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | Always `"opencutplan"`. |
-| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.0"`. |
+| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.1"`. |
 | `project` | yes | `name` (text), `units` (`"in"` or `"mm"`), optional `notes`, `created`, `modified` (should be ISO 8601 date-times; readers accept any string). |
 | `materials` | yes | Materials; see below. |
 | `stock` | yes | Stock pieces available for cutting. |
 | `parts` | yes | Parts to cut. |
+| `designs` | no | Box units that generate parts (added in 1.1); see below. |
 | `tools` | yes | Saws the user owns (may be empty). |
 | `settings` | no | Defaults apply to every missing setting. |
 | `plan` | no | A layout of parts on stock. |
@@ -67,9 +68,54 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 | `grain` | yes | Which part dimension must run along the stock grain: `"length"`, `"width"`, or `"none"`. |
 | `group` | no | Assembly or cabinet name, used for colour and labels. |
 | `notes` | no | |
+| `design` | no | The id of the design that made this part (added in 1.1). Readers that do not know designs treat the part as a normal part. |
 
 A part may be rotated on its stock when its `grain` is `"none"`, when its material is not `grained`, or when
 `settings.features.grain` is `false`.
+
+## Designs (added in 1.1)
+
+A design describes a box unit with a grid of cells. An app that knows designs makes the unit's parts from it and stores
+them in `parts`, each with `design` set to the design id. A reader that does not know designs can plan and cut the
+stored parts as normal parts.
+
+| Field | Required | Meaning |
+|---|---|---|
+| `id` | yes | Unique among designs. The generated part ids start with it. |
+| `name` | yes | The `group` of the generated parts. |
+| `system` | yes | `"kallax"`, `"eket"`, or `"custom"`. Other values can come in later minor versions; a reader keeps the stored parts of a system it does not know. |
+| `material` | yes | A material id: the material of the box. |
+| `quantity` | no | The number of identical units, 1 to 100. Default 1. |
+| `width` | yes | The columns, left to right: an axis. |
+| `height` | yes | The rows, top to bottom: an axis. |
+| `depth` | yes | The outside depth, including the back. |
+| `back` | no | `{ "material": <id> }`: a back on the rear edges. No field means no back. |
+| `mount` | no | `"floor"`, `"legs"`, `"feet"`, or `"wall-rail"`. Default `"floor"`. Other values can come in later minor versions. |
+
+An **axis** is one of:
+
+- `{ "openings": [335, 335] }`: the size of each cell, 1 to 50 values.
+- `{ "outside": 700, "cells": 2 }`: the outside size, divided into 1 to 50 equal cells.
+
+**Generated parts.** With *t* the material thickness, *n* columns, *m* rows, and *q* the quantity:
+
+| Part id | Name | Length × width | Quantity |
+|---|---|---|---|
+| `<id>-vertical` | Vertical panel | outside height × panel depth | (*n* + 1) × *q* |
+| `<id>-horizontal`, or `<id>-horizontal-<k>` | Shelf, or Shelf *k* | column opening × panel depth | (*m* + 1) × the columns with that opening × *q* |
+| `<id>-back` | Back | outside height × outside width | *q* |
+
+- An `outside` axis has openings of (outside − (cells + 1) × *t*) / cells. An `openings` axis has an outside size of
+  the sum of the openings + (cells + 1) × *t*.
+- The panel depth is `depth` minus the back thickness.
+- The vertical panels run the full height. Each shelf fits between two vertical panels. All joints are butt joints
+  with pocket screws.
+- Columns with the same opening share one shelf part. With more than one opening size, *k* counts the sizes in column
+  order from 1.
+- Every generated part has `grain: "length"` and `group` set to the design name.
+
+When a design and its stored parts do not agree, the design wins: an app makes the parts again and moves the copies
+of changed parts off their sheets.
 
 ## Tools
 
@@ -125,6 +171,7 @@ uses gets a new id (`s1` becomes `s1-2`) with a warning, because edits find a sh
 - Readers must load a file whose `plan` has invalid references, and report the problems as warnings.
 - The value sets of `type`, `grain`, `kind`, `units`, `orderMode`, `axis`, and `display.inch`/`display.mm` are fixed
   within a major version. Adding a value requires a new major version, so a reader can refuse a value it does not know.
+- `designs[].system` and `designs[].mount` are not fixed: a minor version can add values.
 
 ## CSV part and stock lists
 

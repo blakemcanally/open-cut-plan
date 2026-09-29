@@ -1,0 +1,132 @@
+{
+  "format": "opencutplan",
+  "version": "1.1",
+  "project": {
+    "name": "EKET-style wall cabinets (inches)",
+    "units": "in"
+  },
+  "materials": [
+    {
+      "id": "ply-23-32",
+      "name": "Plywood 3/4\" (23/32 actual)",
+      "thickness": 0.71875,
+      "grained": true
+    },
+    {
+      "id": "ply-7-32",
+      "name": "Plywood 1/4\" (7/32 actual)",
+      "thickness": 0.21875,
+      "grained": true
+    }
+  ],
+  "stock": [
+    {
+      "id": "ply-23-32-4x8",
+      "material": "ply-23-32",
+      "length": 96,
+      "width": 48,
+      "quantity": null,
+      "cost": 65,
+      "kind": "sheet"
+    },
+    {
+      "id": "ply-7-32-4x8",
+      "material": "ply-7-32",
+      "length": 96,
+      "width": 48,
+      "quantity": null,
+      "cost": 35,
+      "kind": "sheet"
+    }
+  ],
+  "parts": [
+    {
+      "id": "eket-vertical",
+      "name": "Vertical panel",
+      "material": "ply-23-32",
+      "length": 13.779527559,
+      "width": 13.560777559,
+      "quantity": 6,
+      "grain": "length",
+      "group": "Wall EKET",
+      "design": "eket"
+    },
+    {
+      "id": "eket-horizontal",
+      "name": "Shelf",
+      "material": "ply-23-32",
+      "length": 12.701402559,
+      "width": 13.560777559,
+      "quantity": 8,
+      "grain": "length",
+      "group": "Wall EKET",
+      "design": "eket"
+    },
+    {
+      "id": "eket-back",
+      "name": "Back",
+      "material": "ply-7-32",
+      "length": 13.779527559,
+      "width": 27.559055118,
+      "quantity": 2,
+      "grain": "length",
+      "group": "Wall EKET",
+      "design": "eket"
+    }
+  ],
+  "designs": [
+    {
+      "id": "eket",
+      "name": "Wall EKET",
+      "system": "eket",
+      "material": "ply-23-32",
+      "quantity": 2,
+      "width": {
+        "outside": 27.559055118,
+        "cells": 2
+      },
+      "height": {
+        "outside": 13.779527559,
+        "cells": 1
+      },
+      "depth": 13.779527559,
+      "back": {
+        "material": "ply-7-32"
+      },
+      "mount": "wall-rail"
+    }
+  ],
+  "tools": [
+    {
+      "id": "track-saw",
+      "name": "Track saw (110\" of rail)",
+      "kerf": 0.09375,
+      "enabled": true,
+      "type": "track-saw",
+      "maxCut": 110
+    }
+  ],
+  "settings": {
+    "features": {
+      "grain": true,
+      "kerf": true,
+      "trim": true,
+      "cutOrder": true,
+      "toolLimits": true,
+      "offcuts": true,
+      "cost": true,
+      "labels": true,
+      "snapping": true
+    },
+    "orderMode": "sheet",
+    "trim": 0,
+    "display": {
+      "inch": 32,
+      "mm": 0.5
+    },
+    "optimizer": {
+      "timeLimitMs": 2000
+    },
+    "currency": "USD"
+  }
+}

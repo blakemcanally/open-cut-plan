@@ -1,7 +1,22 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../../examples/builders/index.ts";
-import { exportPartsCsv, exportStockCsv, formatLength, parseProject, serializeProject, type Project } from "../src/index.ts";
+import {
+  applyOptimizeResult,
+  checkDesigns,
+  convertLength,
+  designGeometry,
+  exportPartsCsv,
+  exportStockCsv,
+  formatLength,
+  materialsById,
+  optimize,
+  parseProject,
+  regenerateDesigns,
+  serializeProject,
+  validatePlan,
+  type Project,
+} from "../src/index.ts";
 
 const dir = new URL("../../../examples/", import.meta.url);
 
@@ -25,6 +40,12 @@ describe.each(Object.keys(EXAMPLES))("example %s", (slug) => {
     expect(readFileSync(new URL(`${slug}.cutplan.json`, dir), "utf8")).toBe(serializeProject(project));
     expect(readFileSync(new URL(`csv/${slug}-parts.csv`, dir), "utf8")).toBe(exportPartsCsv(project));
     expect(readFileSync(new URL(`csv/${slug}-stock.csv`, dir), "utf8")).toBe(exportStockCsv(project));
+  });
+
+  it("has current design parts and no design issues", () => {
+    const project = build(slug);
+    expect(regenerateDesigns(project)).toBe(project);
+    expect(checkDesigns(project)).toEqual([]);
   });
 });
 
@@ -70,5 +91,49 @@ describe("living-room-shelf", () => {
       expect(placement.x + part.length).toBeLessThanOrEqual(60);
       expect(placement.y + part.width).toBeLessThanOrEqual(60);
     }
+  });
+});
+
+describe("kallax-2x4-mm", () => {
+  const project = build("kallax-2x4-mm");
+
+  it("makes 3 vertical panels and 10 shelves with 335 mm cells", () => {
+    expect(project.parts.map((p) => [p.id, p.length, p.width, p.quantity])).toEqual([
+      ["kallax-vertical", 1430, 390, 3],
+      ["kallax-horizontal", 335, 390, 10],
+    ]);
+  });
+
+  it("optimizes on the track saw with every copy placed and no errors", () => {
+    const result = optimize(project, { iterations: 10 });
+    expect(result.unplaced).toEqual([]);
+    expect(validatePlan(applyOptimizeResult(project, result)).filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+});
+
+describe("eket-wall-in", () => {
+  const project = build("eket-wall-in");
+
+  it("is 700 × 350 × 350 mm outside in an inch project with 23/32 plywood", () => {
+    const geometry = designGeometry(project.designs![0]!, materialsById(project))!;
+    expect(geometry.thickness).toBe(0.71875);
+    expect(convertLength(geometry.outsideWidth, "in", "mm")).toBeCloseTo(700, 6);
+    expect(convertLength(geometry.outsideHeight, "in", "mm")).toBeCloseTo(350, 6);
+    expect(convertLength(geometry.depth, "in", "mm")).toBeCloseTo(350, 6);
+    expect(geometry.columns[0]).toBe(geometry.columns[1]);
+  });
+
+  it("makes the parts of 2 units, with a back", () => {
+    expect(project.parts.map((p) => [p.id, p.quantity])).toEqual([
+      ["eket-vertical", 6],
+      ["eket-horizontal", 8],
+      ["eket-back", 2],
+    ]);
+  });
+
+  it("optimizes with every copy placed and no errors", () => {
+    const result = optimize(project, { iterations: 10 });
+    expect(result.unplaced).toEqual([]);
+    expect(validatePlan(applyOptimizeResult(project, result)).filter((issue) => issue.severity === "error")).toEqual([]);
   });
 });

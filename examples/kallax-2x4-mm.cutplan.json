@@ -1,0 +1,107 @@
+{
+  "format": "opencutplan",
+  "version": "1.1",
+  "project": {
+    "name": "KALLAX-style 2x4 (metric)",
+    "units": "mm"
+  },
+  "materials": [
+    {
+      "id": "ply18",
+      "name": "Birch plywood 18mm",
+      "thickness": 18,
+      "grained": true
+    }
+  ],
+  "stock": [
+    {
+      "id": "ply18-2440x1220",
+      "material": "ply18",
+      "length": 2440,
+      "width": 1220,
+      "quantity": null,
+      "cost": 80,
+      "kind": "sheet"
+    }
+  ],
+  "parts": [
+    {
+      "id": "kallax-vertical",
+      "name": "Vertical panel",
+      "material": "ply18",
+      "length": 1430,
+      "width": 390,
+      "quantity": 3,
+      "grain": "length",
+      "group": "Hall KALLAX",
+      "design": "kallax"
+    },
+    {
+      "id": "kallax-horizontal",
+      "name": "Shelf",
+      "material": "ply18",
+      "length": 335,
+      "width": 390,
+      "quantity": 10,
+      "grain": "length",
+      "group": "Hall KALLAX",
+      "design": "kallax"
+    }
+  ],
+  "designs": [
+    {
+      "id": "kallax",
+      "name": "Hall KALLAX",
+      "system": "kallax",
+      "material": "ply18",
+      "width": {
+        "openings": [
+          335,
+          335
+        ]
+      },
+      "height": {
+        "openings": [
+          335,
+          335,
+          335,
+          335
+        ]
+      },
+      "depth": 390
+    }
+  ],
+  "tools": [
+    {
+      "id": "track-saw",
+      "name": "Track saw (2.8 m rail)",
+      "kerf": 2.2,
+      "enabled": true,
+      "type": "track-saw",
+      "maxCut": 2800
+    }
+  ],
+  "settings": {
+    "features": {
+      "grain": true,
+      "kerf": true,
+      "trim": true,
+      "cutOrder": true,
+      "toolLimits": true,
+      "offcuts": true,
+      "cost": true,
+      "labels": true,
+      "snapping": true
+    },
+    "orderMode": "sheet",
+    "trim": 0,
+    "display": {
+      "inch": 32,
+      "mm": 1
+    },
+    "optimizer": {
+      "timeLimitMs": 2000
+    },
+    "currency": "USD"
+  }
+}
