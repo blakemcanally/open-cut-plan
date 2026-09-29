@@ -1,9 +1,9 @@
-import type { ProjectInput } from "../../packages/core/src/index.ts";
+import { FORMAT_VERSION, type ProjectInput } from "../../packages/core/src/index.ts";
 
 export function simpleBookcaseMm(): ProjectInput {
   return {
     format: "opencutplan",
-    version: "1.0",
+    version: FORMAT_VERSION,
     project: { name: "Simple bookcase (metric)", units: "mm" },
     materials: [
       { id: "mdf18", name: "MDF 18mm", thickness: 18, grained: false },

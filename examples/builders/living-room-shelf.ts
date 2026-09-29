@@ -1,4 +1,4 @@
-import type { ProjectInput } from "../../packages/core/src/index.ts";
+import { FORMAT_VERSION, type ProjectInput } from "../../packages/core/src/index.ts";
 
 type PartInput = ProjectInput["parts"][number];
 type PlacementInput = NonNullable<ProjectInput["plan"]>["sheets"][number]["placements"][number];
@@ -86,7 +86,7 @@ function layout(strips: Strip[]): PlacementInput[] {
 export function livingRoomShelf(): ProjectInput {
   return {
     format: "opencutplan",
-    version: "1.0",
+    version: FORMAT_VERSION,
     project: {
       name: "Living room shelf",
       units: "in",

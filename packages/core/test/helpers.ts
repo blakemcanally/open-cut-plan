@@ -1,4 +1,4 @@
-import { createProject, type CsvImport, type Project } from "../src/index.ts";
+import { createProject, type CsvImport, type Design, type Project } from "../src/index.ts";
 
 export function sampleProject(): Project {
   const base = createProject("Test", "in");
@@ -55,4 +55,54 @@ export function editSampleProject(): Project {
 export function expectOk<R, F extends string>(result: CsvImport<R, F>) {
   if (result.status !== "ok") throw new Error(`expected status ok, got needs-mapping (missing: ${result.missing.join(", ")})`);
   return result;
+}
+
+/** KALLAX 2×4 in 18 mm plywood, no back: 3 vertical panels 1430 × 390 and 10 shelves 335 × 390. */
+export function kallaxDesign(patch: Partial<Design> = {}): Design {
+  return {
+    id: "kx",
+    name: "Hall KALLAX",
+    system: "kallax",
+    material: "ply18",
+    width: { openings: [335, 335] },
+    height: { openings: [335, 335, 335, 335] },
+    depth: 390,
+    ...patch,
+  };
+}
+
+/** EKET 2×1, 700 × 350 × 350 outside, 6 mm back, 2 units on the wall rail. */
+export function eketDesign(patch: Partial<Design> = {}): Design {
+  return {
+    id: "ek",
+    name: "Wall EKET",
+    system: "eket",
+    material: "ply18",
+    quantity: 2,
+    width: { outside: 700, cells: 2 },
+    height: { outside: 350, cells: 1 },
+    depth: 350,
+    back: { material: "ply6" },
+    mount: "wall-rail",
+    ...patch,
+  };
+}
+
+/** A mm project with 18 mm and 6 mm plywood, unlimited 2440 × 1220 sheets, a 2.8 m track saw, and no parts. */
+export function designProject(designs: Design[] = [kallaxDesign()]): Project {
+  const base = createProject("Designs", "mm");
+  return {
+    ...base,
+    materials: [
+      { id: "ply18", name: "Birch ply 18", thickness: 18, grained: true },
+      { id: "ply6", name: "Birch ply 6", thickness: 6, grained: true },
+    ],
+    stock: [
+      { id: "ply18-sheet", material: "ply18", length: 2440, width: 1220, quantity: null, cost: 80, kind: "sheet" },
+      { id: "ply6-sheet", material: "ply6", length: 2440, width: 1220, quantity: null, cost: 40, kind: "sheet" },
+    ],
+    parts: [],
+    tools: [{ id: "track", name: "Track saw", type: "track-saw", kerf: 2.2, enabled: true, maxCut: 2800 }],
+    designs,
+  };
 }

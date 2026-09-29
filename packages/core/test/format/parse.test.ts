@@ -125,6 +125,13 @@ describe("parseProject", () => {
     expect(result.ok && result.project.settings.features.cutOrder).toBe(true);
   });
 
+  it("loads a 1.0 file as version 1.1 with no warnings", () => {
+    const doc = { ...JSON.parse(serializeProject(sampleProject())), version: "1.0" };
+    const result = parseProject(doc);
+    expect(result.ok && result.project.version).toBe("1.1");
+    expect(result.warnings).toEqual([]);
+  });
+
   it("loads a newer minor version with a warning and keeps every unknown field on re-save", () => {
     const project = sampleProject();
     const doc = JSON.parse(serializeProject(project));
@@ -143,7 +150,7 @@ describe("parseProject", () => {
       {
         severity: "warning",
         code: "newer-minor",
-        message: "This file uses format version 1.4, which is newer than this app (1.0). Unknown fields are kept but ignored.",
+        message: "This file uses format version 1.4, which is newer than this app (1.1). Unknown fields are kept but ignored.",
         path: ["version"],
       },
     ]);

@@ -2,9 +2,11 @@ import { z } from "zod";
 import { INCH_PRECISIONS, MM_PRECISIONS } from "../geometry/format.ts";
 
 export const FORMAT_ID = "opencutplan";
-export const FORMAT_VERSION = "1.0";
+export const FORMAT_VERSION = "1.1";
 /** Analysis and the editor work per copy, so a larger quantity would freeze them. */
 export const MAX_PART_QUANTITY = 10_000;
+export const MAX_DESIGN_CELLS = 50;
+export const MAX_DESIGN_QUANTITY = 100;
 
 const id = z.string().min(1);
 const positive = z.number().positive();
@@ -51,6 +53,29 @@ export const PartSchema = z
     grain: GrainSchema,
     group: z.string().optional(),
     notes: z.string().optional(),
+    design: id.optional(),
+  })
+  .loose();
+
+const cells = z.number().int().min(1).max(MAX_DESIGN_CELLS);
+
+export const DesignAxisSchema = z.union([
+  z.object({ openings: z.array(positive).min(1).max(MAX_DESIGN_CELLS) }).loose(),
+  z.object({ outside: positive, cells }).loose(),
+]);
+
+export const DesignSchema = z
+  .object({
+    id,
+    name: z.string().min(1),
+    system: z.string().min(1),
+    material: id,
+    quantity: z.number().int().min(1).max(MAX_DESIGN_QUANTITY).optional(),
+    width: DesignAxisSchema,
+    height: DesignAxisSchema,
+    depth: positive,
+    back: z.object({ material: id }).loose().optional(),
+    mount: z.string().min(1).optional(),
   })
   .loose();
 
@@ -178,6 +203,7 @@ export const ProjectSchema = z
     materials: z.array(MaterialSchema),
     stock: z.array(StockSchema),
     parts: z.array(PartSchema),
+    designs: z.array(DesignSchema).optional(),
     tools: z.array(ToolSchema),
     settings: SettingsSchema.prefault({}),
     plan: PlanSchema.optional(),
@@ -205,6 +231,8 @@ export type Material = StripIndex<z.output<typeof MaterialSchema>>;
 export type Stock = StripIndex<z.output<typeof StockSchema>>;
 export type StockKind = Stock["kind"];
 export type Part = StripIndex<z.output<typeof PartSchema>>;
+export type DesignAxis = StripIndex<z.output<typeof DesignAxisSchema>>;
+export type Design = StripIndex<z.output<typeof DesignSchema>>;
 export type Tool = StripIndex<z.output<typeof ToolSchema>>;
 export type ToolType = Tool["type"];
 export type Features = StripIndex<z.output<typeof FeaturesSchema>>;

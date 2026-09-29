@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createProject, DEFAULT_TRIM, FEATURE_KEYS, ProjectSchema } from "../../src/index.ts";
-import { sampleProject } from "../helpers.ts";
+import { createProject, DEFAULT_TRIM, FEATURE_KEYS, parseProject, ProjectSchema, serializeProject, type Design } from "../../src/index.ts";
+import { designProject, eketDesign, kallaxDesign, sampleProject } from "../helpers.ts";
 
 describe("createProject", () => {
   it("fills every default", () => {
     const project = createProject("Shelf", "in");
     expect(project.format).toBe("opencutplan");
-    expect(project.version).toBe("1.0");
+    expect(project.version).toBe("1.1");
     expect(project.project).toEqual({ name: "Shelf", units: "in" });
     expect(project.settings).toEqual({
       features: Object.fromEntries(FEATURE_KEYS.map((key) => [key, true])),
@@ -69,5 +69,31 @@ describe("ProjectSchema", () => {
     const project = sampleProject();
     const result = ProjectSchema.safeParse({ ...project, settings: { ...project.settings, display: { inch: 10, mm: 1 } } });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("designs", () => {
+  it("loads a design and a generated part, and round-trips them", () => {
+    const project = designProject([kallaxDesign(), eketDesign()]);
+    project.parts = [
+      { id: "kx-vertical", name: "Vertical panel", material: "ply18", length: 1430, width: 390, quantity: 3, grain: "length", group: "Hall KALLAX", design: "kx" },
+    ];
+    const result = parseProject(serializeProject(project));
+    expect(result.ok && result.warnings).toEqual([]);
+    expect(result.ok && result.project).toEqual(project);
+  });
+
+  it.each([
+    ["an empty openings list", { width: { openings: [] } }],
+    ["a zero opening", { width: { openings: [335, 0] } }],
+    ["51 cells", { width: { outside: 5000, cells: 51 } }],
+    ["0 cells", { width: { outside: 700, cells: 0 } }],
+    ["a quantity of 101", { quantity: 101 }],
+    ["a quantity of 0", { quantity: 0 }],
+    ["an axis with neither form", { height: { size: 700 } }],
+    ["a zero depth", { depth: 0 }],
+  ])("refuses %s", (_name, patch) => {
+    const project = designProject([{ ...kallaxDesign(), ...patch } as Design]);
+    expect(parseProject(JSON.parse(serializeProject(project))).ok).toBe(false);
   });
 });
