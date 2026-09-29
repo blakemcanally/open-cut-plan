@@ -12,7 +12,11 @@ import {
   type ColumnMapping,
   type CsvImport,
   type CsvRowIssue,
+  type PartField,
+  type PartRow,
   type Project,
+  type StockField,
+  type StockRow,
   type Table,
   type Units,
 } from "@opencutplan/core";
@@ -22,24 +26,24 @@ import { list, optionalBoolean, str } from "../values.ts";
 
 export type CsvKind = "parts" | "stock";
 
-interface Importer<F extends string> {
+interface Importer<F extends string, R> {
   aliases: Readonly<Record<F, readonly string[]>>;
-  read(text: string, options: { units: Units; mapping?: ColumnMapping<F>; defaultMaterial?: string; hasHeader?: boolean }): CsvImport<unknown, F>;
-  apply(project: Project, rows: readonly unknown[]): ApplyResult;
+  read(text: string, options: { units: Units; mapping?: ColumnMapping<F>; defaultMaterial?: string; hasHeader?: boolean }): CsvImport<R, F>;
+  apply(project: Project, rows: readonly R[]): ApplyResult;
   ids(project: Project): string[];
 }
 
-const IMPORTERS: { parts: Importer<string>; stock: Importer<string> } = {
+const IMPORTERS: { parts: Importer<PartField, PartRow>; stock: Importer<StockField, StockRow> } = {
   parts: {
     aliases: PART_ALIASES,
-    read: (text, options) => importPartsCsv(text, options),
-    apply: (project, rows) => addPartRows(project, rows as Parameters<typeof addPartRows>[1]),
+    read: importPartsCsv,
+    apply: addPartRows,
     ids: (project) => project.parts.map((part) => part.id),
   },
   stock: {
     aliases: STOCK_ALIASES,
-    read: (text, options) => importStockCsv(text, options),
-    apply: (project, rows) => addStockRows(project, rows as Parameters<typeof addStockRows>[1]),
+    read: importStockCsv,
+    apply: addStockRows,
     ids: (project) => project.stock.map((stock) => stock.id),
   },
 };
@@ -78,41 +82,45 @@ function resolveColumn(table: Table, column: string, field: string): number {
   });
 }
 
-function applyMaps(table: Table, guessed: ColumnMapping<string>, maps: readonly string[], fields: readonly string[]): ColumnMapping<string> {
-  const mapping: ColumnMapping<string> = { ...guessed };
+function applyMaps<F extends string>(table: Table, guessed: ColumnMapping<F>, maps: readonly string[], fields: readonly F[]): ColumnMapping<F> {
+  const mapping: ColumnMapping<F> = { ...guessed };
   for (const map of maps) {
     const at = map.indexOf("=");
-    const field = at < 0 ? map : map.slice(0, at);
-    if (at < 0 || !fields.includes(field)) {
+    const name = at < 0 ? map : map.slice(0, at);
+    const field = fields.find((candidate) => candidate === name);
+    if (at < 0 || field === undefined) {
       throw usageError(`--map "${map}" must be <field>=<column>, with a field of ${fields.join(", ")}.`, "invalid-value", { option: "map", value: map });
     }
     const index = resolveColumn(table, map.slice(at + 1), field);
-    for (const [other, used] of Object.entries(mapping)) if (used === index) delete mapping[other];
+    for (const other of fields) if (mapping[other] === index) delete mapping[other];
     mapping[field] = index;
   }
   return mapping;
 }
 
-function namedMapping(table: Table, mapping: ColumnMapping<string>): Record<string, string> {
+function namedMapping<F extends string>(table: Table, mapping: ColumnMapping<F>): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const [field, index] of Object.entries(mapping)) if (index !== undefined) out[field] = table.headers[index] ?? `Column ${index + 1}`;
+  for (const [field, index] of Object.entries<number | undefined>(mapping)) if (index !== undefined) out[field] = table.headers[index] ?? `Column ${index + 1}`;
   return out;
 }
 
-export async function importCsv(invocation: Invocation, kind: CsvKind): Promise<Outcome> {
+export function importCsv(invocation: Invocation, kind: CsvKind): Promise<Outcome> {
+  return kind === "parts" ? importWith(invocation, kind, IMPORTERS.parts) : importWith(invocation, kind, IMPORTERS.stock);
+}
+
+async function importWith<F extends string, R>(invocation: Invocation, kind: CsvKind, importer: Importer<F, R>): Promise<Outcome> {
   const { args, options, io } = invocation;
   const [file, csvPath] = [args[0]!, args[1]!];
   if (file === "-" && csvPath === "-") throw usageError("Only one of <file> and <csv> can be - (standard input).", "usage");
   const loaded = await loadProject(io, file);
   const { project } = loaded;
   const text = await readSource(io, csvPath, "CSV file");
-  const importer = IMPORTERS[kind];
   const header = optionalBoolean(options, "header");
   const material = str(options, "material");
   const base = { units: project.project.units, ...(header !== undefined ? { hasHeader: header } : {}), ...(material !== undefined ? { defaultMaterial: material } : {}) };
   const first = importer.read(text, base);
   const maps = list(options, "map");
-  const result = maps.length === 0 ? first : importer.read(text, { ...base, mapping: applyMaps(first.table, first.mapping, maps, Object.keys(importer.aliases)) });
+  const result = maps.length === 0 ? first : importer.read(text, { ...base, mapping: applyMaps(first.table, first.mapping, maps, Object.keys(importer.aliases) as F[]) });
 
   if (result.status === "needs-mapping") {
     const message = `The CSV has no column for ${result.missing.join(" and ")}. Map the columns with --map, for example --map ${result.missing[0]}=2.`;
