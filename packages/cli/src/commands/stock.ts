@@ -2,13 +2,13 @@ import {
   analyzeProject,
   removeStock,
   saveOffcutsToStock,
+  StockKindSchema,
   stockLabel,
   unsavedOffcuts,
   updateStock,
   type Patch,
   type Project,
   type Stock,
-  type StockKind,
 } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines } from "../project.ts";
@@ -19,7 +19,7 @@ import { assertNoConflict, findAll, findById, ID_OPTION, materialFor, newId, res
 import { CSV_ARGS, EXPORT_OUT, exportCsv, importCsv, importOptions } from "./csv.ts";
 import { planContextOf } from "./context.ts";
 
-const KINDS: readonly StockKind[] = ["sheet", "offcut"];
+const KINDS = StockKindSchema.options;
 
 const OPTIONS = {
   material: { name: "material", type: "string", value: "<id|name>", description: "The material id or name. For add, required when the project has more than one material." },

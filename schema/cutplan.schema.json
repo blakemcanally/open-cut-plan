@@ -458,44 +458,21 @@
           "properties": {
             "inch": {
               "default": 32,
-              "anyOf": [
-                {
-                  "type": "number",
-                  "const": 8
-                },
-                {
-                  "type": "number",
-                  "const": 16
-                },
-                {
-                  "type": "number",
-                  "const": 32
-                },
-                {
-                  "type": "number",
-                  "const": 64
-                },
-                {
-                  "type": "string",
-                  "const": "decimal"
-                }
+              "enum": [
+                8,
+                16,
+                32,
+                64,
+                "decimal"
               ]
             },
             "mm": {
               "default": 0.5,
-              "anyOf": [
-                {
-                  "type": "number",
-                  "const": 1
-                },
-                {
-                  "type": "number",
-                  "const": 0.5
-                },
-                {
-                  "type": "number",
-                  "const": 0.1
-                }
+              "type": "number",
+              "enum": [
+                1,
+                0.5,
+                0.1
               ]
             }
           },

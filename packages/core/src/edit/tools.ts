@@ -3,14 +3,14 @@ import type { Project, Tool, ToolType } from "../format/schema.ts";
 import type { Units } from "../geometry/units.ts";
 import { idsOf } from "./patch.ts";
 
-export const TOOL_TYPES: readonly ToolType[] = ["table-saw", "track-saw", "circular-saw", "panel-saw"];
-
 export const TOOL_TYPE_NAMES: Readonly<Record<ToolType, string>> = {
   "table-saw": "Table saw",
   "track-saw": "Track saw",
   "circular-saw": "Circular saw",
   "panel-saw": "Panel saw",
 };
+
+export const TOOL_TYPES = Object.keys(TOOL_TYPE_NAMES) as ToolType[];
 
 export const DEFAULT_KERF: Readonly<Record<Units, number>> = { in: 0.125, mm: 3 };
 

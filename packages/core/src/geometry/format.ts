@@ -1,7 +1,10 @@
 import type { Units } from "./units.ts";
 
-export type InchPrecision = 8 | 16 | 32 | 64 | "decimal";
-export type MmPrecision = 1 | 0.5 | 0.1;
+export const INCH_PRECISIONS = [8, 16, 32, 64, "decimal"] as const;
+export const MM_PRECISIONS = [1, 0.5, 0.1] as const;
+
+export type InchPrecision = (typeof INCH_PRECISIONS)[number];
+export type MmPrecision = (typeof MM_PRECISIONS)[number];
 
 export interface DisplayPrecision {
   inch: InchPrecision;

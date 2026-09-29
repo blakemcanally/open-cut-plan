@@ -121,6 +121,19 @@ describe("SettingsTab", () => {
     expect(current().project.settings.features.grain).toBe(false);
   });
 
+  it("stores the display rounding as the schema values", async () => {
+    const { current } = renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
+    const rounding = screen.getByRole("combobox", { name: "Show lengths to" });
+    expect(within(rounding).getAllByRole("option").map((option) => option.textContent)).toEqual(['1/8"', '1/16"', '1/32"', '1/64"', "Decimal inches"]);
+    await userEvent.selectOptions(rounding, '1/64"');
+    expect(current().project.settings.display.inch).toBe(64);
+    await userEvent.selectOptions(rounding, "Decimal inches");
+    expect(current().project.settings.display.inch).toBe("decimal");
+    await userEvent.selectOptions(screen.getByLabelText("Units"), "mm");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Show lengths to" }), "0.1 mm");
+    expect(current().project.settings.display.mm).toBe(0.1);
+  });
+
   it("switches between the factory edges and a trim", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
     const edges = within(screen.getByRole("group", { name: "Factory edges" }));

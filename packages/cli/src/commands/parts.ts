@@ -1,4 +1,4 @@
-import { MAX_PART_QUANTITY, removePart, updatePart, type Grain, type Part, type Patch, type Project } from "@opencutplan/core";
+import { GrainSchema, MAX_PART_QUANTITY, removePart, updatePart, type Part, type Patch, type Project } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines } from "../project.ts";
 import { type CommandSpec, type GroupSpec, type OptionValues } from "../spec.ts";
@@ -7,7 +7,7 @@ import { integerValue, optionalChoice, optionalLength, str } from "../values.ts"
 import { assertNoConflict, findAll, findById, ID_OPTION, materialFor, newId, nonEmpty, resolveMaterial, unsetFields, unsetOption } from "./common.ts";
 import { CSV_ARGS, EXPORT_OUT, exportCsv, importCsv, importOptions } from "./csv.ts";
 
-const GRAINS: readonly Grain[] = ["length", "width", "none"];
+const GRAINS = GrainSchema.options;
 
 const OPTIONS = {
   name: { name: "name", type: "string", value: "<text>", description: "The part name." },

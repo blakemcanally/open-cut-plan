@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { INCH_PRECISIONS, MM_PRECISIONS } from "../geometry/format.ts";
 
 export const FORMAT_ID = "opencutplan";
 export const FORMAT_VERSION = "1.0";
@@ -11,6 +12,8 @@ const nonNegative = z.number().nonnegative();
 
 export const UnitsSchema = z.enum(["in", "mm"]);
 export const GrainSchema = z.enum(["length", "width", "none"]);
+export const StockKindSchema = z.enum(["sheet", "offcut"]);
+export const OrderModeSchema = z.enum(["sheet", "setup"]);
 
 export const MaterialSchema = z
   .object({
@@ -30,7 +33,7 @@ export const StockSchema = z
     width: positive,
     quantity: z.number().int().positive().nullable(),
     cost: nonNegative.optional(),
-    kind: z.enum(["sheet", "offcut"]),
+    kind: StockKindSchema,
     trim: nonNegative.optional(),
     enabled: z.boolean().optional(),
     name: z.string().optional(),
@@ -96,15 +99,15 @@ export const FeaturesSchema = z
 
 export const DisplaySchema = z
   .object({
-    inch: z.union([z.literal(8), z.literal(16), z.literal(32), z.literal(64), z.literal("decimal")]).default(32),
-    mm: z.union([z.literal(1), z.literal(0.5), z.literal(0.1)]).default(0.5),
+    inch: z.literal(INCH_PRECISIONS).default(32),
+    mm: z.literal(MM_PRECISIONS).default(0.5),
   })
   .loose();
 
 export const SettingsSchema = z
   .object({
     features: FeaturesSchema.prefault({}),
-    orderMode: z.enum(["sheet", "setup"]).default("sheet"),
+    orderMode: OrderModeSchema.default("sheet"),
     trim: nonNegative.default(0),
     minOffcut: z.object({ length: positive, width: positive }).loose().optional(),
     display: DisplaySchema.prefault({}),

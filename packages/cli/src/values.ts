@@ -69,8 +69,9 @@ export function optionalBoolean(options: OptionValues, name: string): boolean | 
   return text === undefined ? undefined : booleanValue(text, name);
 }
 
-export function choiceValue<T extends string>(text: string, name: string, choices: readonly T[]): T {
-  if ((choices as readonly string[]).includes(text)) return text as T;
+export function choiceValue<T extends string | number>(text: string, name: string, choices: readonly T[]): T {
+  const choice = choices.find((candidate) => String(candidate) === text);
+  if (choice !== undefined) return choice;
   throw invalid(name, text, `one of ${choices.join(", ")}`);
 }
 

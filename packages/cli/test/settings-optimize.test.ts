@@ -56,6 +56,14 @@ describe("settings", () => {
     expect(result.json().validation.errors).toBe(0);
   });
 
+  it("stores the display rounding as the schema values", async () => {
+    const io = withExamples();
+    const result = await cli(["settings", "set", SHELF, "display.inch", "64", "--json"], io);
+    expect(result.file(SHELF).settings.display.inch).toBe(64);
+    await cli(["settings", "set", SHELF, "display.inch", "decimal", "display.mm", "0.1"], io);
+    expect((await cli(["settings", "get", SHELF, "--json"], io)).json().settings).toMatchObject({ "display.inch": "decimal", "display.mm": 0.1 });
+  });
+
   it("rejects bad values and odd pairs", async () => {
     const io = withExamples();
     expect((await cli(["settings", "set", SHELF, "display.inch", "12"], io)).code).toBe(2);

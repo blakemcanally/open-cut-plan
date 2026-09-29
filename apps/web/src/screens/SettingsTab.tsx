@@ -3,9 +3,10 @@ import {
   DEFAULT_MIN_OFFCUT,
   DEFAULT_TRIM,
   FEATURE_KEYS,
+  INCH_PRECISIONS,
+  MM_PRECISIONS,
   type Features,
   type InchPrecision,
-  type MmPrecision,
   type Project,
   type Settings,
   type Units,
@@ -26,14 +27,9 @@ export const FEATURE_TEXT: Readonly<Record<keyof Features, { label: string; deta
   snapping: { label: "Snapping", detail: "Snap dragged parts to edges, neighbours, and the grid. Hold Alt (⌥) to drag without it." },
 };
 
-const INCH_STEPS: readonly { value: InchPrecision; label: string }[] = [
-  { value: 8, label: '1/8"' },
-  { value: 16, label: '1/16"' },
-  { value: 32, label: '1/32"' },
-  { value: 64, label: '1/64"' },
-  { value: "decimal", label: "Decimal inches" },
-];
-const MM_STEPS: readonly MmPrecision[] = [1, 0.5, 0.1];
+function inchLabel(precision: InchPrecision): string {
+  return precision === "decimal" ? "Decimal inches" : `1/${precision}"`;
+}
 const LISTED_FEATURES = FEATURE_KEYS.filter((key) => key !== "trim" && key !== "snapping");
 
 interface SettingsTabProps {
@@ -82,13 +78,13 @@ export function SettingsTab({ store, prefs, onPrefs }: SettingsTabProps) {
             <select
               value={String(display.inch)}
               onChange={(event) => {
-                const value = event.target.value === "decimal" ? "decimal" : (Number(event.target.value) as InchPrecision);
-                set((s) => ({ ...s, display: { ...s.display, inch: value } }));
+                const inch = INCH_PRECISIONS.find((step) => String(step) === event.target.value);
+                if (inch !== undefined) set((s) => ({ ...s, display: { ...s.display, inch } }));
               }}
             >
-              {INCH_STEPS.map((step) => (
-                <option key={step.value} value={String(step.value)}>
-                  {step.label}
+              {INCH_PRECISIONS.map((step) => (
+                <option key={step} value={String(step)}>
+                  {inchLabel(step)}
                 </option>
               ))}
             </select>
@@ -96,8 +92,14 @@ export function SettingsTab({ store, prefs, onPrefs }: SettingsTabProps) {
         ) : (
           <label className="stack">
             Show lengths to
-            <select value={String(display.mm)} onChange={(event) => set((s) => ({ ...s, display: { ...s.display, mm: Number(event.target.value) as MmPrecision } }))}>
-              {MM_STEPS.map((step) => (
+            <select
+              value={String(display.mm)}
+              onChange={(event) => {
+                const mm = MM_PRECISIONS.find((step) => String(step) === event.target.value);
+                if (mm !== undefined) set((s) => ({ ...s, display: { ...s.display, mm } }));
+              }}
+            >
+              {MM_PRECISIONS.map((step) => (
                 <option key={step} value={String(step)}>
                   {step} mm
                 </option>

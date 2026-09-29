@@ -1,4 +1,4 @@
-import { buildJsonSchema, createProject, errorMessage, newTool, parseProject, serializeProject, validatePlan, type Issue, type PlanIssue, type Units } from "@opencutplan/core";
+import { buildJsonSchema, createProject, errorMessage, newTool, parseProject, serializeProject, UnitsSchema, validatePlan, type Issue, type PlanIssue } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, issueText, loadProject, readSource, warningLines } from "../project.ts";
 import { CliError, EXIT, usageError, type CommandSpec } from "../spec.ts";
@@ -6,7 +6,7 @@ import { planStats } from "../stats.ts";
 import { money, percent, plural } from "../text.ts";
 import { choiceValue, flag, str } from "../values.ts";
 
-const UNITS: readonly Units[] = ["in", "mm"];
+const UNITS = UnitsSchema.options;
 
 export const newCommand: CommandSpec = {
   name: "new",

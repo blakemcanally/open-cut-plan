@@ -1,4 +1,14 @@
-import { convertProjectUnits, DEFAULT_MIN_OFFCUT, FEATURE_KEYS, type Project, type Settings } from "@opencutplan/core";
+import {
+  convertProjectUnits,
+  DEFAULT_MIN_OFFCUT,
+  FEATURE_KEYS,
+  INCH_PRECISIONS,
+  MM_PRECISIONS,
+  OrderModeSchema,
+  UnitsSchema,
+  type Project,
+  type Settings,
+} from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines } from "../project.ts";
 import { usageError, type CommandSpec, type GroupSpec } from "../spec.ts";
@@ -47,7 +57,7 @@ const KEYS: Key[] = [
     values: "in|mm",
     description: "The project units. A change converts every length in the project and removes the stored cut list, as the app does.",
     get: (p) => p.project.units,
-    set: (p, v) => convertProjectUnits(p, choiceValue(v, "units", ["in", "mm"] as const)),
+    set: (p, v) => convertProjectUnits(p, choiceValue(v, "units", UnitsSchema.options)),
   },
   {
     key: "trim",
@@ -64,7 +74,7 @@ const KEYS: Key[] = [
     values: "sheet|setup",
     description: "The cut order: sheet finishes each sheet before the next; setup groups cuts that share a tool, cut kind, and setting.",
     get: (p) => p.settings.orderMode,
-    set: (p, v) => withSettings(p, (s) => ({ ...s, orderMode: choiceValue(v, "orderMode", ["sheet", "setup"] as const) })),
+    set: (p, v) => withSettings(p, (s) => ({ ...s, orderMode: choiceValue(v, "orderMode", OrderModeSchema.options) })),
   },
   {
     key: "minOffcut.length",
@@ -92,22 +102,21 @@ const KEYS: Key[] = [
   },
   {
     key: "display.inch",
-    values: "8|16|32|64|decimal",
+    values: INCH_PRECISIONS.join("|"),
     description: "The rounding of inch lengths in text: to 1/8, 1/16, 1/32, or 1/64, or decimal.",
     get: (p) => p.settings.display.inch,
     set: (p, v) => {
-      const choice = choiceValue(v, "display.inch", ["8", "16", "32", "64", "decimal"] as const);
-      const inch = choice === "decimal" ? "decimal" : (Number(choice) as 8 | 16 | 32 | 64);
+      const inch = choiceValue(v, "display.inch", INCH_PRECISIONS);
       return withSettings(p, (s) => ({ ...s, display: { ...s.display, inch } }));
     },
   },
   {
     key: "display.mm",
-    values: "1|0.5|0.1",
+    values: MM_PRECISIONS.join("|"),
     description: "The rounding of millimetre lengths in text.",
     get: (p) => p.settings.display.mm,
     set: (p, v) => {
-      const mm = Number(choiceValue(v, "display.mm", ["1", "0.5", "0.1"] as const)) as 1 | 0.5 | 0.1;
+      const mm = choiceValue(v, "display.mm", MM_PRECISIONS);
       return withSettings(p, (s) => ({ ...s, display: { ...s.display, mm } }));
     },
   },
