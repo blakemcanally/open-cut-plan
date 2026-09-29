@@ -2,6 +2,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
   applyOptimizeResult,
+  checkDesigns,
   designGeometry,
   materialsById,
   optimize,
@@ -130,6 +131,15 @@ function randomProject(input: RandomInput): Project {
 }
 
 describe("regenerateDesigns on random grids", () => {
+  it("leaves no design stale and no design error", () => {
+    fc.assert(
+      fc.property(randomDesign, (input) => {
+        const issues = checkDesigns(regenerateDesigns(randomProject(input)));
+        expect(issues.filter((issue) => issue.code === "design-stale" || issue.severity === "error")).toEqual([]);
+      }),
+    );
+  });
+
   it("gives the same result when it runs twice, and the panels add up to the outside size", () => {
     fc.assert(
       fc.property(randomDesign, (input) => {
