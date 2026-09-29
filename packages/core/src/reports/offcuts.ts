@@ -30,9 +30,13 @@ export function listOffcuts(ctx: PlanContext, sheets: readonly SheetAnalysis[]):
   return offcuts;
 }
 
+function roundingSteps(project: Project): number {
+  return project.project.units === "in" ? 64 : 10;
+}
+
 /** Offcut edges are all cut edges, so the new stock has no trim. Sizes round down to 1/64" or 0.1 mm. */
 export function saveOffcutsToStock(project: Project, offcuts: readonly Offcut[]): Project {
-  const steps = project.project.units === "in" ? 64 : 10;
+  const steps = roundingSteps(project);
   const floor = (value: number) => Math.floor((value + EPSILON) * steps) / steps;
   const taken = new Set(project.stock.map((stock) => stock.id));
   const added = offcuts.map((offcut): Stock => {
@@ -53,21 +57,28 @@ export function saveOffcutsToStock(project: Project, offcuts: readonly Offcut[])
   return { ...project, stock: [...project.stock, ...added] };
 }
 
-function offcutKey(stock: Stock): string {
-  return [stock.name ?? "", stock.material, stock.length, stock.width].join("|");
-}
-
-/** The offcuts that "Save offcuts to stock" has not added yet: stock of kind offcut with the same name, material, and size counts as saved, once each. */
+/**
+ * The offcuts that "Save offcuts to stock" has not added yet. Stock of kind offcut counts as saved, once each, when it has
+ * the same material, a name from the same sheet number, and the same size to within one rounding step: a unit change
+ * rounds the saved size again, and a rename changes the project name in the stock name.
+ */
 export function unsavedOffcuts(project: Project, offcuts: readonly Offcut[]): Offcut[] {
-  const saved = new Map<string, number>();
-  for (const stock of project.stock) {
-    if (stock.kind === "offcut") saved.set(offcutKey(stock), (saved.get(offcutKey(stock)) ?? 0) + 1);
-  }
+  const tolerance = 1 / roundingSteps(project) + EPSILON;
+  const saved = project.stock.filter((stock) => stock.kind === "offcut");
+  const near = (a: number, b: number) => Math.abs(a - b) <= tolerance;
   return offcuts.filter((offcut) => {
-    const stock = saveOffcutsToStock(project, [offcut]).stock.at(-1)!;
-    const count = saved.get(offcutKey(stock)) ?? 0;
-    if (count === 0) return true;
-    saved.set(offcutKey(stock), count - 1);
+    const candidate = saveOffcutsToStock(project, [offcut]).stock.at(-1)!;
+    const sheet = `, sheet ${offcut.sheetNumber}`;
+    const index = saved.findIndex(
+      (stock) =>
+        stock.material === candidate.material &&
+        stock.name?.startsWith("Offcut from ") === true &&
+        stock.name.endsWith(sheet) &&
+        near(stock.length, candidate.length) &&
+        near(stock.width, candidate.width),
+    );
+    if (index === -1) return true;
+    saved.splice(index, 1);
     return false;
   });
 }

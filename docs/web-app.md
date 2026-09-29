@@ -127,7 +127,8 @@ list follows.
   feature is off. A second table gives the use of each sheet.
 - **Offcuts** (when the `offcuts` feature is on) lists the waste pieces that are at least the smallest useful offcut.
   **Save offcuts to stock** adds them to the Stock tab as owned offcuts. It adds each offcut once: an offcut that is
-  already in stock with the same name, material, and size is not added again.
+  already in stock from the same sheet number, with the same material and size (to within 1/64" or 0.1 mm), is not
+  added again. This also holds after a unit change or a project rename.
 - **Labels** (when the `labels` feature is on): pick the label sheet and the first free label on it, then **Print
   labels**. Each label has the part name, size, material, group, grain arrow (↔ along the length, ↕ along the width),
   and the sheet and step that cut it, or "Not placed".

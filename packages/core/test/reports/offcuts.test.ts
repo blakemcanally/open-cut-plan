@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeSheets, createProject, listOffcuts, planContext, saveOffcutsToStock, validatePlan, type Offcut, type Project } from "../../src/index.ts";
+import { analyzeSheets, convertProjectUnits, createProject, listOffcuts, planContext, saveOffcutsToStock, unsavedOffcuts, validatePlan, type Offcut, type Project } from "../../src/index.ts";
 import { sampleProject } from "../helpers.ts";
 
 function offcuts(project: Project) {
@@ -53,5 +53,27 @@ describe("saveOffcutsToStock", () => {
     ]);
     const inches = saveOffcutsToStock(createProject("In", "in"), [offcut(12.3456, 23.999999999999996)]);
     expect(inches.stock.map((stock) => [stock.length, stock.width])).toEqual([[12.34375, 24]]);
+  });
+});
+
+describe("unsavedOffcuts", () => {
+  it("still finds saved offcuts after a unit change and a project rename", () => {
+    const saved = saveOffcutsToStock(sampleProject(), offcuts(sampleProject()));
+    expect(unsavedOffcuts(saved, offcuts(saved))).toEqual([]);
+    const mm = convertProjectUnits(saved, "mm");
+    expect(unsavedOffcuts(mm, offcuts(mm))).toEqual([]);
+    const renamed = { ...mm, project: { ...mm.project, name: "Renamed" } };
+    expect(unsavedOffcuts(renamed, offcuts(renamed))).toEqual([]);
+    expect(unsavedOffcuts(convertProjectUnits(renamed, "in"), offcuts(convertProjectUnits(renamed, "in")))).toEqual([]);
+  });
+
+  it("does not count an offcut from another sheet or of another size", () => {
+    const project = sampleProject();
+    const [first] = offcuts(project);
+    const stock = saveOffcutsToStock(project, [first!]).stock.at(-1)!;
+    const otherSheet = { ...project, stock: [...project.stock, { ...stock, name: "Offcut from Test, sheet 2" }] };
+    expect(unsavedOffcuts(otherSheet, offcuts(otherSheet))).toHaveLength(3);
+    const bigger = { ...project, stock: [...project.stock, { ...stock, length: stock.length + 1 / 32 }] };
+    expect(unsavedOffcuts(bigger, offcuts(bigger))).toHaveLength(3);
   });
 });
