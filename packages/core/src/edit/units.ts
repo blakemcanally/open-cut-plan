@@ -1,4 +1,4 @@
-import type { Project, Tool } from "../format/schema.ts";
+import type { Design, DesignAxis, Project, Tool } from "../format/schema.ts";
 import { convertLength, type Units } from "../geometry/units.ts";
 
 const TOOL_LENGTHS = ["maxRip", "maxCrosscut", "maxCut"] as const;
@@ -24,6 +24,14 @@ export function convertTool(tool: Tool, from: Units, to: Units): Tool {
   return next as Tool;
 }
 
+function convertAxis(axis: DesignAxis, c: (value: number) => number): DesignAxis {
+  return "openings" in axis ? { ...axis, openings: axis.openings.map(c) } : { ...axis, outside: c(axis.outside) };
+}
+
+function convertDesign(design: Design, c: (value: number) => number): Design {
+  return { ...design, width: convertAxis(design.width, c), height: convertAxis(design.height, c), depth: c(design.depth) };
+}
+
 /** Converts every length to `units`. Stored cut lists are dropped; the app computes them again. */
 export function convertProjectUnits(project: Project, units: Units): Project {
   const from = project.project.units;
@@ -45,6 +53,7 @@ export function convertProjectUnits(project: Project, units: Units): Project {
     tools: project.tools.map((tool) => convertTool(tool, from, units)),
     settings,
   };
+  if (project.designs) next.designs = project.designs.map((design) => convertDesign(design, c));
   if (project.plan) {
     const sheets = project.plan.sheets.map((sheet) => {
       const { cuts: _cuts, ...rest } = sheet;
