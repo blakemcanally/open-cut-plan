@@ -1,6 +1,6 @@
 import { IDBFactory } from "fake-indexeddb";
 import { describe, expect, it } from "vitest";
-import { openStorage, unavailableStorage } from "../src/storage/db.ts";
+import { openStorage, unavailableStorage, type ToolProfile } from "../src/storage/db.ts";
 import { sampleProject } from "./helpers.ts";
 
 const clock = () => {
@@ -33,6 +33,20 @@ describe("browser storage", () => {
     expect((await storage.listProfiles()).map((p) => p.name)).toEqual(["Garage", "Shop"]);
     await storage.deleteProfile("Shop");
     expect(await storage.listProfiles()).toEqual([{ name: "Garage", units: "mm", tools: [] }]);
+  });
+
+  it("leaves out tool profiles that do not have the current shape", async () => {
+    const storage = await openStorage(new IDBFactory());
+    const tools = sampleProject().tools;
+    await storage.saveProfile({ name: "Shop", units: "in", tools });
+    for (const profile of [
+      { name: "Laser", units: "in", tools: [{ id: "l", name: "Laser", type: "laser", kerf: 0.01, enabled: true }] },
+      { name: "Feet", units: "ft", tools },
+      { name: "Empty", units: "mm" },
+    ]) {
+      await storage.saveProfile(profile as unknown as ToolProfile);
+    }
+    expect(await storage.listProfiles()).toEqual([{ name: "Shop", units: "in", tools }]);
   });
 
   it("refuses to save a project that would not load again", async () => {

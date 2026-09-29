@@ -1,4 +1,4 @@
-import { parseProject, serializeProjectChecked, type Project, type Tool, type Units } from "@opencutplan/core";
+import { parseProject, serializeProjectChecked, ToolSchema, UnitsSchema, type Project, type Tool, type Units } from "@opencutplan/core";
 
 const DB_NAME = "opencutplan";
 const DB_VERSION = 1;
@@ -29,10 +29,20 @@ export interface Storage {
   loadProject(id: string): Promise<Project | null>;
   saveProject(id: string, project: Project): Promise<void>;
   deleteProject(id: string): Promise<void>;
-  /** Sorted by name. */
+  /** Sorted by name. Leaves out profiles that do not match the current tool schema. */
   listProfiles(): Promise<ToolProfile[]>;
   saveProfile(profile: ToolProfile): Promise<void>;
   deleteProfile(name: string): Promise<void>;
+}
+
+/** A profile saved by another version of the app can have another shape; such a profile gives an empty list. */
+function profileOf(record: unknown): ToolProfile[] {
+  if (typeof record !== "object" || record === null) return [];
+  const { name, units, tools } = record as Record<string, unknown>;
+  const parsedUnits = UnitsSchema.safeParse(units);
+  const parsedTools = ToolSchema.array().safeParse(tools);
+  if (typeof name !== "string" || !parsedUnits.success || !parsedTools.success) return [];
+  return [{ name, units: parsedUnits.data, tools: parsedTools.data }];
 }
 
 function request<T>(req: IDBRequest<T>): Promise<T> {
@@ -95,8 +105,8 @@ function databaseStorage(db: IDBDatabase, now: () => Date): Storage {
       return write(PROJECTS, (store) => store.delete(id));
     },
     async listProfiles() {
-      const profiles = await request(read(PROFILES).getAll() as IDBRequest<ToolProfile[]>);
-      return profiles.sort((a, b) => a.name.localeCompare(b.name));
+      const records = await request(read(PROFILES).getAll() as IDBRequest<unknown[]>);
+      return records.flatMap(profileOf).sort((a, b) => a.name.localeCompare(b.name));
     },
     saveProfile(profile) {
       return write(PROFILES, (store) => store.put(profile));
