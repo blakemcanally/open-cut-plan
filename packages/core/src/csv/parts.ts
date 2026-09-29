@@ -82,7 +82,7 @@ export function importPartsCsv(text: string, options: PartImportOptions): CsvImp
   if (missing.length > 0) return { status: "needs-mapping", missing, mapping, table };
 
   const rows: PartRow[] = [];
-  const issues: CsvRowIssue[] = [];
+  const issues: CsvRowIssue[] = [...table.issues];
   if (mapping.quantity === undefined && hasUnmappedColumns(table, mapping)) {
     issues.push({ severity: "warning", row: 1, column: "quantity", message: "No quantity column was found, so each part has quantity 1." });
   }

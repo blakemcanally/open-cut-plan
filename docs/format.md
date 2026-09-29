@@ -165,7 +165,8 @@ comma-delimited with RFC 4180 quoting and CRLF line ends.
 - **Stock kind.** `sheet`, `new`, `panel`, and `board` mean `"sheet"`. `offcut`, `off-cut`, `remnant`, `scrap`, and
   `leftover` mean `"offcut"`. An empty cell means `"sheet"`.
 - **Problems.** A row with an unreadable length or quantity is skipped with an error. A row with more cells than the
-  header is kept with a warning, because an unquoted comma is the usual cause.
+  header is kept with a warning, because an unquoted comma is the usual cause. A quote that is not closed, for
+  example an inch mark at the start of a cell, gives a warning, and quotes from that row on are read as plain text.
 - **Materials.** An imported row uses the existing material with the same name (or id). When the row gives a thickness
   that differs from that material, a new material is created, named with the thickness, for example `Plywood (6 mm)`.
 

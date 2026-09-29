@@ -77,7 +77,7 @@ export function importStockCsv(text: string, options: StockImportOptions): CsvIm
   if (missing.length > 0) return { status: "needs-mapping", missing, mapping, table };
 
   const rows: StockRow[] = [];
-  const issues: CsvRowIssue[] = [];
+  const issues: CsvRowIssue[] = [...table.issues];
   table.rows.forEach((raw, index) => {
     const row = table.rowNumbers[index]!;
     const long = longRowIssue(table, raw, row);

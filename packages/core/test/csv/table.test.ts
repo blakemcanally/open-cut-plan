@@ -13,6 +13,7 @@ describe("readTable", () => {
       delimiter: ";",
       hasHeader: true,
       rowNumbers: [2, 3],
+      issues: [],
     });
   });
 
@@ -39,6 +40,7 @@ describe("readTable", () => {
       delimiter: ",",
       hasHeader: false,
       rowNumbers: [1, 2],
+      issues: [],
     });
   });
 
@@ -64,7 +66,29 @@ describe("readTable", () => {
   });
 
   it("returns an empty table for empty text", () => {
-    expect(readTable("")).toEqual({ headers: [], rows: [], delimiter: ",", hasHeader: true, rowNumbers: [] });
+    expect(readTable("")).toEqual({ headers: [], rows: [], delimiter: ",", hasHeader: true, rowNumbers: [], issues: [] });
+  });
+
+  it("keeps every row after a quote that is not closed, and warns", () => {
+    const table = readTable('"Side,30\nTop,20\nBack,10', { hasHeader: false });
+    expect(table.rows).toEqual([
+      ['"Side', "30"],
+      ["Top", "20"],
+      ["Back", "10"],
+    ]);
+    expect(table.issues).toEqual([{ severity: "warning", row: 1, message: 'Row 1: a quote (") is not closed, so quotes from this row on are read as plain text.' }]);
+  });
+
+  it("keeps quoted cells before the row with the open quote", () => {
+    const table = readTable('name,len\nA,1\n"x\ny",2\nB,"3\nC,4');
+    expect(table.rows).toEqual([
+      ["A", "1"],
+      ["x\ny", "2"],
+      ["B", '"3'],
+      ["C", "4"],
+    ]);
+    expect(table.rowNumbers).toEqual([2, 3, 4, 5]);
+    expect(table.issues.map((issue) => issue.row)).toEqual([4]);
   });
 });
 

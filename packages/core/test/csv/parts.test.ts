@@ -120,6 +120,16 @@ describe("importPartsCsv", () => {
     ]);
   });
 
+  it("reports a quote that is not closed and keeps the rows after it", () => {
+    const result = expectOk(importPartsCsv('name,length,width\nSide,30,12\n"Top,20,10\nBack,10,5\n', { units: "in" }));
+    expect(result.rows.map((row) => [row.name, row.length])).toEqual([
+      ["Side", 30],
+      ['"Top', 20],
+      ["Back", 10],
+    ]);
+    expect(result.issues).toEqual([{ severity: "warning", row: 3, message: 'Row 3: a quote (") is not closed, so quotes from this row on are read as plain text.' }]);
+  });
+
   it("fills defaults for empty cells", () => {
     const result = expectOk(importPartsCsv("length,width\n10,5\n", { units: "in", defaultMaterial: "Pine ply" }));
     expect(result.rows).toEqual([{ name: "Part 1", length: 10, width: 5, quantity: 1, material: "Pine ply", grain: "length" }]);
