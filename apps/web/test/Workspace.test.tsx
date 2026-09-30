@@ -127,6 +127,13 @@ describe("Workspace", () => {
     expect(screen.queryByText("The file was downloaded.")).toBeNull();
   });
 
+  it("opens the Settings tab from the goal on the Layout tab", async () => {
+    await renderWorkspace();
+    await userEvent.click(screen.getByRole("button", { name: "Change" }));
+    expect(screen.getByRole("tab", { name: "Settings" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("combobox", { name: "Goal" })).toBeTruthy();
+  });
+
   it("stops drawing grain on the layout when the grain feature is turned off", async () => {
     await renderWorkspace();
     part("Side 2").focus();

@@ -1,4 +1,4 @@
-import { analyzeProject, type Project } from "@opencutplan/core";
+import { analyzeProject, createProject, type Project } from "@opencutplan/core";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
@@ -11,14 +11,14 @@ import { DEFAULT_PREFS } from "../src/state/prefs.ts";
 import { useProject, type ProjectStore } from "../src/state/useProject.ts";
 import { inProcessWorkers, sampleProject } from "./helpers.ts";
 
-function renderLayout(initial: Project = sampleProject(), factory: WorkerFactory = inProcessWorkers().factory) {
+function renderLayout(initial: Project = sampleProject(), factory: WorkerFactory = inProcessWorkers().factory, onShowSettings = () => {}) {
   let latest: ProjectStore | null = null;
   function Harness() {
     const store = useProject(initial);
     latest = store;
     const analysis = useMemo(() => analyzeProject(store.project), [store.project]);
     const runs = useOptimizeRuns(store, factory);
-    return <LayoutTab store={store} analysis={analysis} prefs={DEFAULT_PREFS} runs={runs} />;
+    return <LayoutTab store={store} analysis={analysis} prefs={DEFAULT_PREFS} runs={runs} onShowSettings={onShowSettings} />;
   }
   render(<Harness />);
   return () => latest!;
@@ -184,6 +184,38 @@ describe("LayoutTab", () => {
     expect(current().project.project.name).toBe("Changed");
     expect(current().project.plan!.sheets.flatMap((s) => s.placements)).toHaveLength(2);
     expect(screen.getByRole("status").textContent).toContain("The project changed while the optimizer ran");
+  }, 15000);
+
+  it("names the goal, with a link to the settings", async () => {
+    const shown: string[] = [];
+    renderLayout(sampleProject(), inProcessWorkers().factory, () => shown.push("settings"));
+    expect(screen.getByText(/^Goal: lowest cost\./)).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Change" }));
+    expect(shown).toEqual(["settings"]);
+  });
+
+  it("shows the extra cost that each material uses after a run", async () => {
+    const base = createProject("Goal", "mm");
+    const project: Project = {
+      ...base,
+      settings: { ...base.settings, optimizer: { ...base.settings.optimizer, goal: "offcuts", timeLimitMs: 300 } },
+      materials: [{ id: "m", name: "Plywood", thickness: 18, grained: false }],
+      stock: [
+        { id: "a", material: "m", length: 1000, width: 1000, quantity: null, cost: 100, kind: "sheet" },
+        { id: "b", material: "m", length: 2000, width: 1000, quantity: null, cost: 105, kind: "sheet" },
+      ],
+      parts: [{ id: "p", name: "Panel", material: "m", length: 900, width: 900, quantity: 1, grain: "none" }],
+      tools: [{ id: "t", name: "Saw", type: "table-saw", kerf: 3, enabled: true }],
+    };
+    const current = renderLayout(project);
+    expect(screen.getByText(/^Goal: best offcuts, up to 10 % extra cost\./)).toBeTruthy();
+    expect(screen.queryByText(/more cost than the cheapest plan found/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    expect(await screen.findByText("Plywood: 5 % more cost than the cheapest plan found.", {}, { timeout: 10000 })).toBeTruthy();
+    act(() => current().edit((p) => ({ ...p, settings: { ...p.settings, optimizer: { ...p.settings.optimizer, goal: "cost" } } })));
+    expect(screen.getByText(/^Goal: lowest cost\./)).toBeTruthy();
+    expect(screen.queryByText(/more cost than the cheapest plan found/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Keep searching" }).hasAttribute("disabled")).toBe(true);
   }, 15000);
 
   it("offers Keep searching only while the layout is the one the search produced", async () => {

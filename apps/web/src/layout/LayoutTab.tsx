@@ -3,6 +3,8 @@ import {
   clearsKerf,
   contains,
   copyLabel,
+  describeGoal,
+  extraCostPercent,
   findCopy,
   findFreeSpot,
   groupColors,
@@ -11,6 +13,7 @@ import {
   nudgeCopy,
   orientedSize,
   placeCopy,
+  projectGoal,
   removeEmptySheets,
   removeSheet,
   rotateCopy,
@@ -62,6 +65,7 @@ interface LayoutTabProps {
   analysis: ProjectAnalysis;
   prefs: ViewPrefs;
   runs: OptimizeRuns;
+  onShowSettings(): void;
 }
 
 /** The nudge step: one display step, or 1 in / 25 mm with Shift. */
@@ -75,7 +79,7 @@ function isEditable(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName));
 }
 
-export function LayoutTab({ store, analysis, prefs, runs }: LayoutTabProps) {
+export function LayoutTab({ store, analysis, prefs, runs, onShowSettings }: LayoutTabProps) {
   const { project, edit } = store;
   const ctx = analysis.context;
   const busy = runs.running !== null;
@@ -290,6 +294,10 @@ export function LayoutTab({ store, analysis, prefs, runs }: LayoutTabProps) {
   const dragging = drag?.started ? drag.ref : null;
   const progress = runs.running ? Math.min(1, (Date.now() - runs.running.startedAt) / runs.running.timeLimitMs) : 0;
   const canOptimize = !busy && project.parts.length > 0 && enabledStock.length > 0;
+  const goal = describeGoal(projectGoal(project), project.settings.optimizer.extraCostPercent);
+  const extraCosts = (runs.current?.result.materials ?? [])
+    .map((m) => ({ name: project.materials.find((material) => material.id === m.material)?.name ?? m.material, percent: extraCostPercent(m.score.cost, m.cheapestCost) }))
+    .filter((m) => m.percent > 0);
 
   return (
     // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- layout shortcuts for the focused part or sheet bubble up to this element
@@ -345,6 +353,15 @@ export function LayoutTab({ store, analysis, prefs, runs }: LayoutTabProps) {
           </button>
         </span>
       </div>
+      <p className="muted">
+        Goal: {goal}.{" "}
+        <button type="button" className="link" onClick={onShowSettings}>
+          Change
+        </button>
+        {extraCosts.map((m) => (
+          <span key={m.name}> {`${m.name}: ${m.percent} % more cost than the cheapest plan found.`}</span>
+        ))}
+      </p>
       {(runs.error || runs.notice) && (
         <p role="status" className={runs.error ? "banner error" : "banner"}>
           {runs.error ? `✖ The optimizer failed: ${runs.error}` : runs.notice}

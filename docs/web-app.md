@@ -103,6 +103,9 @@ turns red and has a ⚠ mark; the **Problems** list names each problem, and **Sh
 - **Keep searching** continues the last search from its best plan. It is offered while the project is still the one
   the last search produced.
 - **Stop** ends a search and uses the best plan so far.
+- A line under the buttons names the optimizer goal, for example "Goal: best offcuts, up to 10 % extra cost.", and
+  **Change** opens the Settings tab. After a search, the line names each material whose plan costs more than the
+  cheapest plan found, for example "Plywood: 4 % more cost than the cheapest plan found."
 - The optimizer runs in a Web Worker, so the page stays responsive. A progress bar shows the part of the time limit
   that is used. When the project changes during a search, the result is not used.
 - **Pin** on a sheet keeps it through **Optimize**. **Remove** puts its parts in the tray.
@@ -194,7 +197,10 @@ The Settings tab puts the common settings first:
 - **Snapping**: the snapping switch and the grid size. A grid of 0 turns the grid off. The default grid is 1" or
   25 mm.
 - **Plan**: the cut order and the smallest useful offcut.
-- **Optimizer**: the search time (up to 3600 seconds) and the seed.
+- **Optimizer**: the **Goal** ("Lowest cost", "Best offcuts", or "Fewest cuts"), **Extra cost allowed (%)** (0 to
+  100; off for "Lowest cost"), the search time (up to 3600 seconds), and the seed. A goal from a newer version of the
+  app shows as "<value> (unknown)", and the optimizer uses the lowest cost. When the Offcuts feature is off, a note
+  says that "Best offcuts" gives the same plan as "Lowest cost". See [`optimizer.md`](optimizer.md#objective).
 - **Money**: the currency.
 - **View**: **Show cut lines** and **Draw cut lines at kerf width**.
 - **Features**: the other feature switches.

@@ -4,7 +4,10 @@ import {
   DEFAULT_TRIM,
   FEATURE_KEYS,
   INCH_PRECISIONS,
+  isOptimizerGoal,
+  MAX_EXTRA_COST_PERCENT,
   MM_PRECISIONS,
+  type OptimizerGoal,
   type Features,
   type InchPrecision,
   type Project,
@@ -27,6 +30,8 @@ export const FEATURE_TEXT: Readonly<Record<keyof Features, { label: string; deta
   snapping: { label: "Snapping", detail: "Snap dragged parts to edges, neighbours, and the grid. Hold Alt (⌥) to drag without it." },
 };
 
+export const GOAL_LABELS: Readonly<Record<OptimizerGoal, string>> = { cost: "Lowest cost", offcuts: "Best offcuts", cuts: "Fewest cuts" };
+
 function inchLabel(precision: InchPrecision): string {
   return precision === "decimal" ? "Decimal inches" : `1/${precision}"`;
 }
@@ -45,6 +50,7 @@ export function SettingsTab({ store, prefs, onPrefs }: SettingsTabProps) {
   const display = settings.display;
   const set = (change: (settings: Settings) => Settings, key?: string) => edit((p: Project) => ({ ...p, settings: change(p.settings) }), key);
   const minOffcut = settings.minOffcut ?? DEFAULT_MIN_OFFCUT[units];
+  const goal = settings.optimizer.goal;
   const factoryEdges = !settings.features.trim || settings.trim === 0;
   const feature = (key: keyof Features) => (
     <label key={key} className="switch">
@@ -187,6 +193,27 @@ export function SettingsTab({ store, prefs, onPrefs }: SettingsTabProps) {
 
       <fieldset>
         <legend>Optimizer</legend>
+        <label className="stack">
+          Goal
+          <select value={goal} onChange={(event) => set((s) => ({ ...s, optimizer: { ...s.optimizer, goal: event.target.value } }))}>
+            {Object.entries(GOAL_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+            {!isOptimizerGoal(goal) && <option value={goal}>{goal} (unknown)</option>}
+          </select>
+          {goal === "offcuts" && !settings.features.offcuts && <small>The Offcuts feature is off, so this goal gives the same plan as the lowest cost.</small>}
+        </label>
+        <label className="stack">
+          Extra cost allowed (%)
+          <NumberInput
+            value={settings.optimizer.extraCostPercent}
+            maximum={MAX_EXTRA_COST_PERCENT}
+            disabled={goal === "cost" || !isOptimizerGoal(goal)}
+            onChange={(extraCostPercent) => extraCostPercent !== undefined && set((s) => ({ ...s, optimizer: { ...s.optimizer, extraCostPercent } }))}
+          />
+        </label>
         <label className="stack">
           Search time (seconds)
           <NumberInput

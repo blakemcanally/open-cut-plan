@@ -165,6 +165,43 @@ describe("SettingsTab", () => {
     expect(screen.queryByRole("checkbox", { name: /^Edge trim/ })).toBeNull();
   });
 
+  it("sets the optimizer goal, and allows extra cost only for a goal other than the lowest cost", async () => {
+    const { current } = renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
+    const goal = screen.getByRole("combobox", { name: "Goal" });
+    expect(within(goal).getAllByRole("option").map((option) => option.textContent)).toEqual(["Lowest cost", "Best offcuts", "Fewest cuts"]);
+    expect(goal).toHaveProperty("value", "cost");
+    const extra = screen.getByLabelText("Extra cost allowed (%)");
+    expect(extra).toHaveProperty("disabled", true);
+    expect(extra).toHaveProperty("value", "10");
+    await userEvent.selectOptions(goal, "Fewest cuts");
+    expect(current().project.settings.optimizer.goal).toBe("cuts");
+    expect(extra).toHaveProperty("disabled", false);
+    await userEvent.clear(extra);
+    await userEvent.type(extra, "101{Enter}");
+    expect(current().project.settings.optimizer.extraCostPercent).toBe(10);
+    await userEvent.clear(extra);
+    await userEvent.type(extra, "25{Enter}");
+    expect(current().project.settings.optimizer.extraCostPercent).toBe(25);
+  });
+
+  it("says when the goal of best offcuts cannot work, and keeps a goal that the app does not know", async () => {
+    const project = sampleProject();
+    const { current } = renderWithStore(
+      { ...project, settings: { ...project.settings, optimizer: { ...project.settings.optimizer, goal: "time" } } },
+      (store) => <WithPrefs store={store} />,
+    );
+    const goal = screen.getByRole("combobox", { name: "Goal" });
+    expect(goal).toHaveProperty("value", "time");
+    expect(within(goal).getByRole("option", { name: "time (unknown)" })).toBeTruthy();
+    expect(screen.getByLabelText("Extra cost allowed (%)")).toHaveProperty("disabled", true);
+    await userEvent.selectOptions(goal, "Best offcuts");
+    expect(screen.queryByText(/The Offcuts feature is off/)).toBeNull();
+    await userEvent.click(screen.getByRole("checkbox", { name: /^Offcuts/ }));
+    expect(current().project.settings.features.offcuts).toBe(false);
+    expect(screen.getByText("The Offcuts feature is off, so this goal gives the same plan as the lowest cost.")).toBeTruthy();
+    expect(within(goal).queryByRole("option", { name: "time (unknown)" })).toBeNull();
+  });
+
   it("keeps the snap switch and the grid together, and the grid in this browser", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
     const snapping = within(screen.getByRole("group", { name: "Snapping" }));
