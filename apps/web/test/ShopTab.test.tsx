@@ -1,4 +1,4 @@
-import { analyzeProject, type Project } from "@opencutplan/core";
+import { analyzeProject, defaultTools, type Project } from "@opencutplan/core";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
@@ -43,8 +43,8 @@ describe("ShopTab", () => {
   it("makes a step current from the list and from Previous and Next", async () => {
     renderShop();
     const list = screen.getByRole("region", { name: "Cut sequence" });
-    expect(within(list).getByRole("heading", { name: "Sheet 1", level: 4 })).toBeTruthy();
-    await userEvent.click(within(list).getByRole("button", { name: /^Step 3 · / }));
+    expect(within(list).getByRole("heading", { name: "Sheet 1 · Table saw", level: 4 })).toBeTruthy();
+    await userEvent.click(within(list).getByRole("button", { name: /^3\. Trim 1\/4" off the left edge$/ }));
     expect(heading()).toMatch(/^Step 3 · /);
     expect(within(currentItem() as HTMLElement).getByRole("checkbox").getAttribute("aria-label")).toBe("Step 3 done");
     await userEvent.click(screen.getByRole("button", { name: "← Previous" }));
@@ -110,7 +110,7 @@ describe("ShopTab", () => {
     expect(heading()).toMatch(/^Step 2 · /);
     await userEvent.click(screen.getByRole("button", { name: "← Previous" }));
     expect(heading()).toMatch(/^Step 1 · /);
-    await userEvent.click(within(list).getByRole("button", { name: /^Step 3 · / }));
+    await userEvent.click(within(list).getByRole("button", { name: /^3\. / }));
     expect(heading()).toMatch(/^Step 3 · /);
     await userEvent.click(screen.getByRole("button", { name: "Keep my ticks" }));
     expect(screen.getByRole("checkbox", { name: "Step 1 done" })).toHaveProperty("disabled", false);
@@ -165,7 +165,7 @@ describe("ShopTab", () => {
       expect(list.scrollTop).toBe(60);
       await userEvent.click(screen.getByRole("button", { name: "← Previous" }));
       expect(list.scrollTop).toBe(60);
-      await userEvent.click(within(list).getByRole("button", { name: /^Step 1 · / }));
+      await userEvent.click(within(list).getByRole("button", { name: /^1\. / }));
       expect(list.scrollTop).toBe(30);
       expect(scrollIntoView).not.toHaveBeenCalled();
       expect(scrollTo).not.toHaveBeenCalled();
@@ -208,6 +208,75 @@ describe("ShopTab", () => {
     renderShop({ ...designProject(), plan: { sheets: [] } });
     expect(screen.getByText("There are no cut steps. Optimize on the Layout tab, or place parts on a sheet.")).toBeTruthy();
     expect(screen.getByRole("region", { name: "Assembly" })).toBeTruthy();
+  });
+
+  it("shows the method, the piece to pick up, the numbered actions, and a label for each result", async () => {
+    renderShop();
+    await userEvent.click(within(screen.getByRole("region", { name: "Cut sequence" })).getByRole("button", { name: /^5\. / }));
+    const step = within(document.querySelector<HTMLElement>(".shop-current")!);
+    expect(heading()).toBe('Step 5 · Cut 12" off the panel');
+    expect(document.querySelector(".shop-method")?.textContent).toBe("Table saw · rip: a cut along the length of the sheet");
+    expect(document.querySelector(".shop-pickup")?.textContent).toBe('Pick up the panel 95 1/2" × 47 1/2" from step 4.');
+    expect([...document.querySelectorAll(".shop-actions li")].map((li) => li.textContent)).toEqual([
+      'Set the fence 12" from the blade.',
+      'Put a 95 1/2" edge of the panel against the fence.',
+      "Make the cut.",
+    ]);
+    expect([...document.querySelectorAll(".shop-results .result-label")].map((label) => label.textContent)).toEqual(["Next", "Next"]);
+    expect(document.querySelector(".shop-results li")?.textContent).toContain("between the fence and the blade");
+    await userEvent.click(step.getByRole("button", { name: "Go to step 7" }));
+    expect(heading()).toBe('Step 7 · Cut 30" off the panel');
+    expect([...document.querySelectorAll(".shop-results .result-label")].map((label) => label.textContent)).toEqual(["Part", "Offcut"]);
+  });
+
+  it("outlines the piece of the current step on the diagram", () => {
+    renderShop();
+    const diagram = screen.getByRole("img", { name: /^Sheet 1: .*step 1 marked$/ });
+    expect(diagram.querySelector('[data-piece="true"]')?.getAttribute("width")).toBe("96");
+  });
+
+  it("names the tool on each list item when a sheet uses two tools", () => {
+    const project = sampleProject();
+    project.tools = [
+      { id: "ts", name: "Table saw", type: "table-saw", kerf: 0.125, enabled: true, maxRip: 10 },
+      { id: "track", name: "Track saw", type: "track-saw", kerf: 0.125, enabled: true },
+    ];
+    renderShop(project);
+    const list = screen.getByRole("region", { name: "Cut sequence" });
+    expect(within(list).getByRole("heading", { name: "Sheet 1", level: 4 })).toBeTruthy();
+    const names = within(list).getAllByRole("button").map((button) => button.textContent);
+    expect(names.some((name) => name.endsWith(" · Track saw"))).toBe(true);
+    expect(names.some((name) => name.endsWith(" · Table saw"))).toBe(true);
+  });
+
+  it("changes the tool of the current step, keeps the ticks, and marks the recommended tool and the limits", async () => {
+    const project = sampleProject();
+    project.tools = defaultTools("in");
+    const { current } = renderShop(setStepDone(project, analyzeProject(project).steps, 1, true));
+    const select = screen.getByLabelText<HTMLSelectElement>("Tool");
+    expect(heading()).toMatch(/^Step 2 · /);
+    expect([...select.options].map((option) => option.textContent)).toEqual(["Table saw (over its largest piece)", "Track saw (recommended)"]);
+    expect(select.value).toBe("track-saw");
+    await userEvent.selectOptions(select, "table-saw");
+    expect(document.querySelector(".shop-method")?.textContent).toMatch(/^Table saw · trim: /);
+    expect(document.querySelector(".shop-actions li")?.textContent).toBe('This cut is over a limit of the Table saw: largest piece 96" × 24".');
+    expect(screen.getByRole("checkbox", { name: "Step 1 done" })).toHaveProperty("checked", true);
+    expect(readProgress(current().project)?.done).toEqual([1]);
+    expect(current().project.plan!.sheets[0]!.toolChoices).toMatchObject([{ axis: "y", tool: "table-saw" }]);
+    await userEvent.selectOptions(screen.getByLabelText("Tool"), "track-saw");
+    expect(current().project.plan!.sheets[0]).not.toHaveProperty("toolChoices");
+    act(() => current().undo());
+    expect(current().project.plan!.sheets[0]!.toolChoices).toHaveLength(1);
+  });
+
+  it("shows No tool in the Tool list when no tool can make the cut", () => {
+    const project = sampleProject();
+    project.tools[0] = { id: "ts", name: "Table saw", type: "table-saw", kerf: 0.125, enabled: true, maxPiece: { length: 10, width: 10 } };
+    renderShop(project);
+    const select = screen.getByLabelText<HTMLSelectElement>("Tool");
+    expect(select.value).toBe("");
+    expect([...select.options].map((option) => option.textContent)).toEqual(["No tool", "Table saw (over its largest piece)"]);
+    expect(document.querySelector(".shop-actions li")?.textContent).toBe("No enabled tool can make this cut. Check the Tools tab.");
   });
 
   it("says when there are no steps", () => {

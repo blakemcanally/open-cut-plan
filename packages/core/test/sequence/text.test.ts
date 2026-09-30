@@ -105,6 +105,7 @@ describe("describeStep", () => {
       "Cut with the blade below the marks.",
     ]);
     expect(cut.results[0]!.where).toBe("the top piece");
+    expect(texts(project)[0]!.actions).toEqual(["No enabled tool can make this cut. Check the Tools tab.", 'Cut 1/4" off the top edge.']);
   });
 
   it("shortens a long part list", () => {

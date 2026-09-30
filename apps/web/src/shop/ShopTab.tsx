@@ -1,9 +1,9 @@
-import { describeStep, groupColors, sheetSvg, stockLabel, type ProjectAnalysis, type Step } from "@opencutplan/core";
+import { describeStep, groupColors, LIMIT_WORDS, resultLabel, sheetSvg, stockLabel, toolLimit, type ProjectAnalysis, type Step, type Tool } from "@opencutplan/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PrintJob } from "../print/PrintView.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
 import { AssemblyChecklist } from "./AssemblyChecklist.tsx";
-import { keepProgress, setStepDone, shopState, writeProgress } from "./progress.ts";
+import { chooseTool, keepProgress, setStepDone, shopState, writeProgress } from "./progress.ts";
 
 interface ShopTabProps {
   store: ProjectStore;
@@ -20,6 +20,12 @@ function sheetRuns(steps: readonly Step[]): Step[][] {
     else runs.push([step]);
   }
   return runs;
+}
+
+function toolOption(step: Step, tool: Tool, limits: boolean): string {
+  if (tool.id === step.recommended?.id) return `${tool.name} (recommended)`;
+  const limit = toolLimit(tool, { ...step, length: step.to - step.from }, limits);
+  return limit ? `${tool.name} (over its ${LIMIT_WORDS[limit]})` : tool.name;
 }
 
 export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
@@ -106,7 +112,45 @@ export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
       <div className="shop-body">
         <section className="shop-current" aria-labelledby="shop-current-title">
           <h2 id="shop-current-title">{text.title}</h2>
-          <p className="shop-text">{text.body}</p>
+          {ctx.tools.length > 0 && (
+            <label className="shop-tool">
+              Tool
+              <select value={step.tool?.id ?? ""} onChange={(event) => edit((p) => chooseTool(p, steps, step, event.target.value))}>
+                {step.tool === null && <option value="">No tool</option>}
+                {ctx.tools.map((tool) => (
+                  <option key={tool.id} value={tool.id}>
+                    {toolOption(step, tool, ctx.features.toolLimits)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <p className="shop-method muted">{text.method}</p>
+          <p className="shop-pickup">Pick up {text.pickUp}.</p>
+          <ol className="shop-actions">
+            {text.actions.map((action, index) => (
+              <li key={index}>{action}</li>
+            ))}
+          </ol>
+          <h3 className="shop-result-title">Result</h3>
+          <ul className="shop-results">
+            {text.results.map((result, index) => (
+              <li key={index}>
+                <span className={`result-label ${result.kind}`}>{resultLabel(result)}</span>
+                <span className="result-text">
+                  <strong>{result.parts.length > 0 ? result.parts.join(", ") : result.size}</strong>
+                  {result.parts.length > 0 && <small> {result.size}</small>}
+                  {result.where && <small className="muted"> ({result.where})</small>}
+                  {result.kind === "offcut" && <small> Set it aside.</small>}
+                </span>
+                {result.next !== null && (
+                  <button type="button" className="link" onClick={() => setChosen(result.next)}>
+                    Go to step {result.next}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
           <div className="buttons">
             <button type="button" onClick={() => setChosen(current - 1)} disabled={current <= 1}>
               ← Previous
@@ -123,7 +167,7 @@ export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
               <div
                 role="img"
                 aria-label={`Sheet ${step.sheetNumber}: ${stockLabel(ctx, sheet.stock)}, step ${current} marked`}
-                dangerouslySetInnerHTML={{ __html: sheetSvg(ctx, sheet, steps, { colors, highlight: current, done: state.done, idPrefix: "shop" }) }}
+                dangerouslySetInnerHTML={{ __html: sheetSvg(ctx, sheet, steps, { colors, highlight: current, focus: true, done: state.done, idPrefix: "shop" }) }}
               />
               <figcaption className="muted">
                 Sheet {step.sheetNumber} of {analysis.sheets.length}: {stockLabel(ctx, sheet.stock)}
@@ -133,24 +177,29 @@ export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
         </section>
         <section className="shop-steps" aria-labelledby="shop-steps-title" ref={list}>
           <h3 id="shop-steps-title">Cut sequence</h3>
-          {runs.map((run) => (
-            <div key={run[0]!.step}>
-              <h4>Sheet {run[0]!.sheetNumber}</h4>
-              <ol start={run[0]!.step}>
-                {run.map((s) => {
-                  const done = state.done.has(s.step);
-                  return (
-                    <li key={s.step} className={done ? "done" : undefined} aria-current={s.step === current ? "step" : undefined}>
-                      <input type="checkbox" checked={done} onChange={(event) => tick(s.step, event.target.checked)} disabled={state.stale} aria-label={`Step ${s.step} done`} />
-                      <button type="button" className="link" onClick={() => setChosen(s.step)}>
-                        {describeStep(ctx, s).title}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-          ))}
+          {runs.map((run) => {
+            const tools = new Set(run.map((s) => s.tool?.name ?? "No tool"));
+            const oneTool = tools.size === 1 ? [...tools][0]! : null;
+            return (
+              <div key={run[0]!.step}>
+                <h4>{oneTool ? `Sheet ${run[0]!.sheetNumber} · ${oneTool}` : `Sheet ${run[0]!.sheetNumber}`}</h4>
+                <ol start={run[0]!.step}>
+                  {run.map((s) => {
+                    const done = state.done.has(s.step);
+                    return (
+                      <li key={s.step} className={done ? "done" : undefined} aria-current={s.step === current ? "step" : undefined}>
+                        <input type="checkbox" checked={done} onChange={(event) => tick(s.step, event.target.checked)} disabled={state.stale} aria-label={`Step ${s.step} done`} />
+                        <button type="button" className="link" onClick={() => setChosen(s.step)}>
+                          {s.step}. {describeStep(ctx, s).headline}
+                          {oneTool ? "" : ` · ${s.tool?.name ?? "No tool"}`}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            );
+          })}
         </section>
       </div>
       <AssemblyChecklist store={store} />

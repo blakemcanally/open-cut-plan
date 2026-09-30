@@ -1,4 +1,4 @@
-import { assemblySteps, type AssemblyStep, type Project, type Step } from "@opencutplan/core";
+import { assemblySteps, sequencePlan, setToolChoice, type AssemblyStep, type Project, type Step } from "@opencutplan/core";
 
 export const APP_EXTENSION = "opencutplan.app";
 
@@ -134,4 +134,16 @@ export function setAssemblyStepDone(project: Project, groups: readonly AssemblyG
 /** Keeps the ticked step numbers for the new assembly steps. */
 export function keepAssemblyProgress(project: Project, groups: readonly AssemblyGroup[]): Project {
   return keepTicks(project, "assemblyProgress", assemblyKey(groups), assemblyCount(groups));
+}
+
+const cutKey = (s: Step) => [s.sheet, s.kind, s.axis, round(s.at), round(s.from), round(s.to)].join(",");
+
+/** Sets the tool of a cut and moves the ticks to the new step numbers of their cuts. Old ticks that are out of date stay as they are. */
+export function chooseTool(project: Project, steps: readonly Step[], step: Step, tool: string): Project {
+  const state = shopState(project, steps);
+  const next = setToolChoice(project, step, tool);
+  if (state.stale || state.done.size === 0) return next;
+  const ticked = new Set(steps.filter((s) => state.done.has(s.step)).map(cutKey));
+  const after = sequencePlan(next);
+  return writeProgress(next, { sequence: sequenceKey(after), done: after.filter((s) => ticked.has(cutKey(s))).map((s) => s.step) });
 }

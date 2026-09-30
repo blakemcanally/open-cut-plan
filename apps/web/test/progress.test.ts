@@ -1,4 +1,4 @@
-import { analyzeProject, parseProject, serializeProject, type Project } from "@opencutplan/core";
+import { analyzeProject, parseProject, sequencePlan, serializeProject, type Project } from "@opencutplan/core";
 import { describe, expect, it } from "vitest";
 import {
   APP_EXTENSION,
@@ -6,6 +6,7 @@ import {
   assemblyGroups,
   assemblyKey,
   assemblyState,
+  chooseTool,
   keepAssemblyProgress,
   keepProgress,
   readProgress,
@@ -15,6 +16,7 @@ import {
   shopState,
   writeProgress,
 } from "../src/shop/progress.ts";
+import { EXAMPLES } from "../src/examples.ts";
 import { designProject, sampleProject } from "./helpers.ts";
 
 const stepsOf = (project: Project) => analyzeProject(project).steps;
@@ -110,5 +112,38 @@ describe("assembly progress", () => {
     expect(assemblyState(kept, changed)).toMatchObject({ stale: false, done: new Set([2]) });
     expect(readProgress(kept)?.done).toEqual([1]);
     expect(writeProgress(kept, null, "assemblyProgress").extensions).toEqual({ [APP_EXTENSION]: { progress: readProgress(ticked) } });
+  });
+});
+
+describe("chooseTool", () => {
+  it("keeps each tick on its cut when a change of tool moves the steps", () => {
+    const parsed = parseProject(EXAMPLES[0]!.text);
+    if (!parsed.ok) throw new Error("example did not load");
+    const project: Project = { ...parsed.project, settings: { ...parsed.project.settings, orderMode: "setup" } };
+    project.tools = [...project.tools, { id: "track", name: "Track saw", type: "track-saw", kerf: project.tools[0]!.kerf, enabled: true }];
+    const before = sequencePlan(project);
+    const cutKey = (s: (typeof before)[number]) => [s.sheet, s.kind, s.axis, s.at, s.from, s.to].join(",");
+    let ticked = project;
+    for (const step of before.filter((s) => s.step % 2 === 1)) ticked = setStepDone(ticked, before, step.step, true);
+    const moving = before.find((step) => {
+      const after = sequencePlan(chooseTool(ticked, before, step, "track"));
+      return after.some((s, i) => cutKey(s) !== cutKey(before[i]!));
+    });
+    expect(moving).toBeDefined();
+    const next = chooseTool(ticked, before, moving!, "track");
+    const after = sequencePlan(next);
+    const tickedCuts = new Set(before.filter((s) => s.step % 2 === 1).map(cutKey));
+    expect(readProgress(next)!.done).toEqual(after.filter((s) => tickedCuts.has(cutKey(s))).map((s) => s.step));
+    expect(shopState(next, after).stale).toBe(false);
+  });
+
+  it("leaves old ticks as they are when they are already out of date", () => {
+    const project = sampleProject();
+    project.tools.push({ id: "track", name: "Track saw", type: "track-saw", kerf: 0.125, enabled: true });
+    const steps = stepsOf(project);
+    const ticked = writeProgress(project, { sequence: "0-old", done: [1] });
+    const next = chooseTool(ticked, steps, steps[4]!, "track");
+    expect(readProgress(next)).toEqual({ sequence: "0-old", done: [1] });
+    expect(next.plan!.sheets[0]!.toolChoices).toHaveLength(1);
   });
 });

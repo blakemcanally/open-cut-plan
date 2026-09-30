@@ -106,10 +106,13 @@ export function describeStep(ctx: PlanContext, step: Step): StepText {
   const released = (where: string | null) => result(step.released, step.releasedPlacements, step.releasedNext, where);
   const remainder = (where: string | null) => result(step.remainder, step.remainderPlacements, step.remainderNext, where);
   const finish = (headline: string, stepActions: string[], results: StepResult[]): StepText => {
-    const actions =
-      step.tool && step.overLimit
-        ? [`This cut is over a limit of the ${step.tool.name}: ${LIMIT_WORDS[step.overLimit]} ${limitValue(ctx, step.tool, step.overLimit)}.`, ...stepActions]
-        : stepActions;
+    const warning =
+      step.tool === null
+        ? "No enabled tool can make this cut. Check the Tools tab."
+        : step.overLimit
+          ? `This cut is over a limit of the ${step.tool.name}: ${LIMIT_WORDS[step.overLimit]} ${limitValue(ctx, step.tool, step.overLimit)}.`
+          : null;
+    const actions = warning ? [warning, ...stepActions] : stepActions;
     return {
       title: `Step ${step.step} · ${headline}`,
       headline,
@@ -143,7 +146,6 @@ export function describeStep(ctx: PlanContext, step: Step): StepText {
   } else {
     const guide = type === "track-saw" ? "Put the edge of the track on the marks." : "Clamp a straightedge so that the blade cuts next to the marks.";
     actions = [`Mark ${setting} from the ${edge} edge, at the two ends of the cut.`, guide, `Cut with the blade ${AWAY[edge]} the marks.`];
-    if (step.tool === null) actions.unshift("No enabled tool can make this cut. Check the Tools tab.");
     where = `the ${edge} piece`;
   }
   const results = step.side === "released" ? [released(where), remainder(null)] : [remainder(where), released(null)];
