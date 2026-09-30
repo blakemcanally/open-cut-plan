@@ -191,7 +191,7 @@ describe("Workspace", () => {
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
     const root = document.body.querySelector(":scope > .print-root")!;
     expect(root.getAttribute("data-job")).toBe("assembly");
-    expect(root.querySelectorAll(".print-steps li")).toHaveLength(7);
+    expect(root.querySelectorAll(".print-steps li")).toHaveLength(9);
     print.mockRestore();
   });
 });

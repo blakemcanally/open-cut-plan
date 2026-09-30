@@ -91,9 +91,9 @@ describe("an agent flow in a real directory", () => {
     expect(optimized.code).toBe(0);
     expect(optimized.json().after).toMatchObject({ placedCopies: 11, unplacedCopies: 0, errors: 0 });
     const assembly = await real(["report", "assembly", file, "--json"]);
-    expect(assembly.json().designs[0].steps.length).toBe(7);
+    expect(assembly.json().designs[0].steps.length).toBe(9);
     const shopping = await real(["report", "shopping", file, "--json"]);
-    expect(shopping.json().hardware[0]).toMatchObject({ item: "pocket-screws", quantity: 66, design: "kallax-2x4" });
+    expect(shopping.json().hardware[0]).toMatchObject({ item: "pocket-screws", quantity: 60, design: "kallax-2x4" });
     const drawing = await real(["design", "drawing", file, "kallax-2x4", "--out", join(dir, "hall.svg"), "--json"]);
     expect(drawing.code).toBe(0);
     expect(await readFile(join(dir, "hall.svg"), "utf8")).toMatch(/^<svg /);

@@ -28,31 +28,66 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
   const quantity = design.quantity ?? DEFAULT_DESIGN_QUANTITY;
   const mount = design.mount ?? DEFAULT_DESIGN_MOUNT;
   const { thickness, columns, rows } = geometry;
-  const lines = rows.length + 1;
-  const pieces = columns.length * lines;
+  const dividers = columns.length - 1;
+  const perColumn = rows.length - 1;
+  const shelves = columns.length * perColumn;
   const screw = pocketScrew(mm(thickness));
   const screws = screw ? `${screw.screw} coarse-thread pocket screws` : "pocket screws (the chart has no length for this stock)";
+  const uprights = dividers === 0 ? "the sides" : "the sides and the dividers";
   const steps: AssemblyStep[] = [];
 
   const setting = screw ? ` Set the jig and the drill collar to the ${formatLength(screw.setting, "in", { inch: 8, mm: 1 })} mark.` : "";
+  const drilled =
+    dividers === 0
+      ? "the 2 sides, on the inside face of each side"
+      : `the 2 sides and the ${dividers} ${dividers === 1 ? "divider" : "dividers"}, on the inside face of each side and on one face of ${dividers === 1 ? "the divider" : "each divider"}`;
+  const drilledShelves = shelves === 0 ? "" : `, and in each end of ${shelves === 1 ? "the shelf" : `the ${shelves} shelves`}, on the underside`;
   steps.push({
     title: "Drill the pocket holes",
-    body: `${quantity > 1 ? `Build ${quantity} of these. The numbers in these steps are for one unit. ` : ""}Drill ${pocketHolesPerEnd(mm(geometry.panelDepth))} pocket holes in each end of ${pieces === 1 ? "the shelf" : `all ${pieces} shelves`}, on the underside, for ${show(thickness)} stock.${setting}`,
+    body: `${quantity > 1 ? `Build ${quantity} of these. The numbers in these steps are for one unit. ` : ""}Drill ${pocketHolesPerEnd(mm(geometry.panelDepth))} pocket holes in each end of ${drilled}${drilledShelves}, for ${show(thickness)} stock.${setting}`,
   });
 
-  const marks = [0];
-  for (let row = rows.length - 1; row >= 0; row--) marks.push(roundLength(marks.at(-1)! + thickness + rows[row]!));
-  steps.push({ title: "Mark the shelf positions", body: `Mark the underside of each shelf on the vertical panels at ${joinList(marks.map(show))} from the bottom end.` });
+  if (perColumn > 0) {
+    const marks = [rows.at(-1)!];
+    for (let row = rows.length - 2; row > 0; row--) marks.push(roundLength(marks.at(-1)! + thickness + rows[row]!));
+    steps.push({ title: "Mark the shelf positions", body: `Mark the underside of each shelf on ${uprights} at ${joinList(marks.map(show))} from the bottom end.` });
+  }
 
-  const spacers = [...new Set(rows)].map((opening) => `2 spacers to ${show(opening)}`);
-  steps.push({ title: "Cut spacers", body: `Cut ${joinList(spacers)} from an offcut. They hold each shelf on its mark while you drive the screws.` });
+  if (dividers > 0) {
+    const marks: number[] = [];
+    let x = 0;
+    for (let column = 0; column < dividers; column++) {
+      x = roundLength(x + thickness + columns[column]!);
+      marks.push(x);
+    }
+    steps.push({ title: "Mark the divider positions", body: `Mark the left face of each divider on the top and the bottom at ${joinList(marks.map(show))} from the left end.` });
+  }
 
-  columns.forEach((opening, index) => {
-    const start = index === 0 ? "Lay the first vertical panel on its side, with the marks up." : `Use the right panel of column ${index} as the left panel.`;
-    steps.push({
-      title: `Assemble column ${index + 1} of ${columns.length}`,
-      body: `${start} Put the ${lines} shelves of this column (${show(opening)} long) on their marks, with the pocket holes down, and screw them to the panel with ${screws}. Then put the next vertical panel on the other ends of the shelves, and screw it on.`,
+  if (perColumn > 0) {
+    const spacers = [...new Set(rows.slice(1))].map((opening) => `2 spacers to ${show(opening)}`);
+    steps.push({ title: "Cut spacers", body: `Cut ${joinList(spacers)} from an offcut. They hold each shelf on its mark while you drive the screws.` });
+
+    columns.forEach((opening, index) => {
+      const start = index === 0 ? "Lay the left side on its outside face, with the marks up." : `Use the divider on the right of column ${index} as the left panel.`;
+      const put =
+        perColumn === 1
+          ? `Put the shelf of this column (${show(opening)} long) on its mark, with the pocket holes down, and screw it to the panel with ${screws}.`
+          : `Put the ${perColumn} shelves of this column (${show(opening)} long) on their marks, with the pocket holes down, and screw them to the panel with ${screws}.`;
+      const next = index === dividers ? "the right side" : "the next divider";
+      steps.push({
+        title: `Assemble column ${index + 1} of ${columns.length}`,
+        body: `${start} ${put} Then put ${next} on the other ends of the ${perColumn === 1 ? "shelf" : "shelves"}, and screw it on.`,
+      });
     });
+  }
+
+  const onMark = dividers === 0 ? "" : ", with each divider on its mark";
+  steps.push({
+    title: "Fit the bottom and the top",
+    body:
+      perColumn > 0
+        ? `Lay the frame on its back. Put the bottom on the lower ends of ${uprights}${onMark}, and screw it on through the pocket holes in their ends. Then fit the top the same way.`
+        : `Stand ${uprights} on the bottom${onMark}, and screw them to it through the pocket holes in their ends. Then fit the top the same way.`,
   });
 
   const diagonal = roundLength(Math.hypot(geometry.outsideWidth, geometry.outsideHeight));

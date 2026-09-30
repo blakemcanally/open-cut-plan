@@ -145,7 +145,7 @@ describe("ReportsTab", () => {
     renderReports({ ...designProject(), designs: [{ ...designProject().designs![0]!, mount: "wall-rail" }] });
     const hardware = within(screen.getByRole("region", { name: "Hardware" }));
     expect(hardware.getAllByRole("row").slice(1).map((row) => within(row).getAllByRole("cell").map((cell) => cell.textContent))).toEqual([
-      ["Pocket screws, coarse thread, 1 1/4\" (32 mm)", "", "40", "Hall"],
+      ["Pocket screws, coarse thread, 1 1/4\" (32 mm)", "", "33", "Hall"],
       ["EKET suspension rail, 70 cm", "80340048", "1", "Hall"],
       ["Wall screws and plugs for your wall type", "", "As needed", "Hall"],
       ["Wood glue (PVA)", "", "As needed", "Every design"],

@@ -88,10 +88,10 @@ describe("assembly progress", () => {
     const broken = { ...project.designs![0]!, id: "broken", name: "Broken", material: "ply6" };
     const groups = assemblyGroups({ ...project, designs: [...project.designs!, broken, second] });
     expect(groups.map((group) => [group.design, group.start, group.steps.length])).toEqual([
-      ["hall", 1, 7],
-      ["two", 8, 7],
+      ["hall", 1, 9],
+      ["two", 10, 9],
     ]);
-    expect(assemblyCount(groups)).toBe(14);
+    expect(assemblyCount(groups)).toBe(18);
   });
 
   it("stores its ticks apart from the cut ticks, and a change to the steps makes them stale", () => {

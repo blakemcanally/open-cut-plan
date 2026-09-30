@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { hardwareList, pocketHolesPerEnd, pocketScrew, railsFor, regenerateDesigns, type HardwareLine } from "../../src/index.ts";
+import { backScrewCount, designGeometry, hardwareList, materialsById, pocketHoleEnds, pocketHolesPerEnd, pocketScrew, railsFor, regenerateDesigns, type Design, type HardwareLine } from "../../src/index.ts";
 import { designProject, eketDesign, kallaxDesign } from "../helpers.ts";
 
 const counts = (lines: HardwareLine[]) => lines.map((line) => [line.item, line.quantity, line.design]);
+const geometryOf = (design: Design) => designGeometry(design, materialsById(designProject()))!;
 
 describe("pocketScrew", () => {
   it("follows the Kreg chart at the nearest 1/8 inch setting", () => {
@@ -52,7 +53,7 @@ describe("hardwareList", () => {
   it("lists the pocket screws, the anti-tip fitting, and the glue for a KALLAX on the floor", () => {
     const lines = hardwareList(regenerateDesigns(designProject([kallaxDesign()])));
     expect(counts(lines)).toEqual([
-      ["pocket-screws", 66, "kx"],
+      ["pocket-screws", 60, "kx"],
       ["anti-tip", 1, "kx"],
       ["wall-fixings", null, "kx"],
       ["glue", null, null],
@@ -63,7 +64,7 @@ describe("hardwareList", () => {
   it("lists the back screws and the rails for two EKET units on the wall", () => {
     const lines = hardwareList(regenerateDesigns(designProject([eketDesign()])));
     expect(counts(lines)).toEqual([
-      ["pocket-screws", 53, "ek"],
+      ["pocket-screws", 40, "ek"],
       ["back-screws", 42, "ek"],
       ["eket-rail-70", 2, "ek"],
       ["wall-fixings", null, "ek"],
@@ -76,7 +77,7 @@ describe("hardwareList", () => {
   it("offers the three leg finishes, and anchors a unit on legs", () => {
     const lines = hardwareList(regenerateDesigns(designProject([eketDesign({ mount: "legs" })])));
     expect(counts(lines)).toEqual([
-      ["pocket-screws", 53, "ek"],
+      ["pocket-screws", 40, "ek"],
       ["back-screws", 42, "ek"],
       ["eket-legs", 2, "ek"],
       ["anti-tip", 2, "ek"],
@@ -84,6 +85,19 @@ describe("hardwareList", () => {
       ["glue", null, null],
     ]);
     expect(lines[2]!.choices!.map((choice) => choice.article)).toEqual(["70574660", "80474151", "70428904"]);
+  });
+
+  it("counts the ends of the sides, the dividers, and the shelves of the box", () => {
+    const pocket = (design: Design) => hardwareList(regenerateDesigns(designProject([design])))[0]!.quantity;
+    expect(pocket(kallaxDesign({ height: { openings: [335, 335, 335] } }))).toBe(47);
+    expect(pocket(kallaxDesign({ width: { openings: [335] }, height: { openings: [335] } }))).toBe(14);
+    expect(pocketHoleEnds(geometryOf(kallaxDesign({ height: { openings: [335, 335, 335] } })))).toBe(14);
+    expect(pocketHoleEnds(geometryOf(kallaxDesign({ width: { openings: [335] }, height: { openings: [335] } })))).toBe(4);
+  });
+
+  it("puts the back screws along the perimeter, the dividers between the top and the bottom, and the shelves", () => {
+    expect(backScrewCount(geometryOf(kallaxDesign({ back: { material: "ply6" } })), "mm")).toBe(62);
+    expect(backScrewCount(geometryOf(kallaxDesign({ back: { material: "ply6" }, width: { openings: [335] }, height: { openings: [335] } })), "mm")).toBe(16);
   });
 
   it("leaves out a design with an error and gives no glue line without designs", () => {

@@ -54,9 +54,16 @@ function edgeScrews(lengthMm: number): number {
 /** The screws for one back: along the perimeter and each interior panel edge, 25 mm from the ends and at most 150 mm apart. */
 export function backScrewCount(geometry: DesignGeometry, units: Units): number {
   const edges = [geometry.outsideHeight, geometry.outsideHeight, geometry.outsideWidth, geometry.outsideWidth];
-  for (let column = 1; column < geometry.columns.length; column++) edges.push(geometry.outsideHeight);
+  const upright = geometry.outsideHeight - 2 * geometry.thickness;
+  for (let column = 1; column < geometry.columns.length; column++) edges.push(upright);
   for (let line = 1; line < geometry.rows.length; line++) edges.push(...geometry.columns);
   return edges.reduce((sum, edge) => sum + edgeScrews(convertLength(edge, units, "mm")), 0);
+}
+
+/** The panel ends with pocket holes in one unit: both ends of each side, divider, and shelf. */
+export function pocketHoleEnds(geometry: DesignGeometry): number {
+  const columns = geometry.columns.length;
+  return 2 * (columns + 1) + 2 * columns * (geometry.rows.length - 1);
 }
 
 export interface Rails {
@@ -106,8 +113,7 @@ export function hardwareList(project: Project): HardwareLine[] {
     const quantity = design.quantity ?? DEFAULT_DESIGN_QUANTITY;
     const add = (line: Omit<HardwareLine, "design">) => lines.push({ ...line, design: design.id });
 
-    const pieces = geometry.columns.length * (geometry.rows.length + 1);
-    const holes = pieces * 2 * pocketHolesPerEnd(mm(geometry.panelDepth)) * quantity;
+    const holes = pocketHoleEnds(geometry) * pocketHolesPerEnd(mm(geometry.panelDepth)) * quantity;
     const screw = pocketScrew(mm(geometry.thickness));
     add({
       item: "pocket-screws",

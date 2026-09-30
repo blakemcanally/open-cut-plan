@@ -179,12 +179,12 @@ describe("ShopTab", () => {
     const { current } = renderShop(designProject());
     const assembly = within(screen.getByRole("region", { name: "Assembly" }));
     expect(assembly.getByRole("heading", { name: "Hall", level: 4 })).toBeTruthy();
-    expect(assembly.getAllByRole("listitem")).toHaveLength(7);
-    expect(assembly.getAllByRole("listitem")[0]!.textContent).toMatch(/^Drill the pocket holesDrill 3 pocket holes in each end of all 6 shelves/);
+    expect(assembly.getAllByRole("listitem")).toHaveLength(9);
+    expect(assembly.getAllByRole("listitem")[0]!.textContent).toMatch(/^Drill the pocket holesDrill 3 pocket holes in each end of the 2 sides and the 1 divider/);
     await userEvent.click(assembly.getByRole("checkbox", { name: "Assembly step 2 done" }));
     expect(readProgress(current().project, "assemblyProgress")?.done).toEqual([2]);
     expect(readProgress(current().project)).toBeNull();
-    expect(assembly.getByText("1 of 7 assembly steps done.")).toBeTruthy();
+    expect(assembly.getByText("1 of 9 assembly steps done.")).toBeTruthy();
     act(() => current().undo());
     expect(readProgress(current().project, "assemblyProgress")).toBeNull();
   });
