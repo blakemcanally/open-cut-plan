@@ -1,4 +1,4 @@
-import type { Design } from "../format/schema.ts";
+import type { Design, DesignAxis } from "../format/schema.ts";
 import { convertLength, type Units } from "../geometry/units.ts";
 import { roundLength } from "./geometry.ts";
 
@@ -48,8 +48,24 @@ export const SHELF_SPAN_RATIO = 45;
 export const DEFAULT_DESIGN_QUANTITY = 1;
 export const DEFAULT_DESIGN_MOUNT: DesignMount = "floor";
 
+export type PresetSystem = "kallax" | "eket";
+
+export function isPresetSystem(system: string): system is PresetSystem {
+  return system === "kallax" || system === "eket";
+}
+
+export function presetAxis(system: PresetSystem, cells: number, units: Units): DesignAxis {
+  const mm = (value: number) => roundLength(convertLength(value, "mm", units));
+  if (system === "kallax") return { openings: Array.from({ length: cells }, () => mm(KALLAX.opening.mm)) };
+  return { outside: mm(EKET.module.mm * cells), cells };
+}
+
+export function presetDepth(system: PresetSystem, units: Units): number {
+  return roundLength(convertLength(system === "kallax" ? KALLAX.depth.mm : EKET.depth.mm, "mm", units));
+}
+
 export interface PresetOptions {
-  system: "kallax" | "eket";
+  system: PresetSystem;
   id: string;
   name: string;
   material: string;
@@ -59,26 +75,5 @@ export interface PresetOptions {
 }
 
 export function presetDesign({ system, id, name, material, cols, rows, units }: PresetOptions): Design {
-  const mm = (value: number) => roundLength(convertLength(value, "mm", units));
-  if (system === "kallax") {
-    const opening = mm(KALLAX.opening.mm);
-    return {
-      id,
-      name,
-      system,
-      material,
-      width: { openings: Array.from({ length: cols }, () => opening) },
-      height: { openings: Array.from({ length: rows }, () => opening) },
-      depth: mm(KALLAX.depth.mm),
-    };
-  }
-  return {
-    id,
-    name,
-    system,
-    material,
-    width: { outside: mm(EKET.module.mm * cols), cells: cols },
-    height: { outside: mm(EKET.module.mm * rows), cells: rows },
-    depth: mm(EKET.depth.mm),
-  };
+  return { id, name, system, material, width: presetAxis(system, cols, units), height: presetAxis(system, rows, units), depth: presetDepth(system, units) };
 }

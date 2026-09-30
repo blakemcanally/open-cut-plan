@@ -53,3 +53,4 @@ export * from "./design/parts.ts";
 export * from "./design/errors.ts";
 export * from "./design/generate.ts";
 export * from "./design/checks.ts";
+export * from "./design/edit.ts";

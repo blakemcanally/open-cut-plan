@@ -23,7 +23,11 @@ export function updateMaterial(project: Project, id: string, patch: Patch<Materi
 }
 
 export function materialInUse(project: Project, id: string): boolean {
-  return project.parts.some((part) => part.material === id) || project.stock.some((stock) => stock.material === id);
+  return (
+    project.parts.some((part) => part.material === id) ||
+    project.stock.some((stock) => stock.material === id) ||
+    (project.designs ?? []).some((design) => design.material === id || design.back?.material === id)
+  );
 }
 
 /** Only an unused material can go; the project is returned unchanged otherwise. */

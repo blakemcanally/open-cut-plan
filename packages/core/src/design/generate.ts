@@ -58,6 +58,6 @@ function regenerateDesign(project: Project, design: Design): Project {
     const was = before.get(placement.part);
     if (!was) return false;
     const now = after.get(placement.part);
-    return !now || now.length !== was.length || now.width !== was.width || placement.copy >= now.quantity;
+    return !now || now.length !== was.length || now.width !== was.width || now.material !== was.material || placement.copy >= now.quantity;
   });
 }
