@@ -90,7 +90,9 @@ be deleted. Deleting stock also removes its sheets from the plan.
 ### Tools
 
 The tools in the order the cut analysis tries them. Each tool has a name, a kerf, the limits for its type, and an
-**Enabled** switch. **Up** and **Down** change the order.
+**Enabled** switch. **Up** and **Down** change the order. A new project starts with a table saw and a track saw,
+with limits that send the breakdown of full sheets to the track saw. **Add tool** gives a new table saw or track saw
+the same limits.
 
 **Tool profiles** keep a set of tools in the browser for use in other projects. A profile stores its units; using a
 millimetre profile in an inch project converts the kerf and limits.
@@ -134,8 +136,15 @@ A layout with problems is never blocked: the user can keep editing, and the Prob
 The cut sequence as a checklist for use at the saw. It works on a phone: the step and its sheet come first, and the
 list follows.
 
-- The current step shows its text (the piece, the fence or stop setting, and what each side of the cut holds) and its
-  sheet. On the drawing, the current cut is thick and filled, and the cuts that are done are grey.
+- The current step shows its title, a **Tool** list, the tool and the kind of cut, the piece to pick up, numbered
+  actions, and a result for each side of the cut: **Part**, **Next** (with **Go to step N**), **Offcut**, or
+  **Waste**. On the drawing, the piece to pick up has an outline and the rest of the sheet is pale; the current cut
+  is thick and filled, and the cuts that are done are grey.
+- **Tool** changes the tool of the current cut. The recommended tool has "(recommended)"; a tool that is over one of
+  its limits for the cut says which limit, and the first action warns about it. The file keeps the choice. The ticks
+  stay on their cuts.
+- The list shows each step as its number and what it does. When all the steps of a sheet use one tool, the sheet
+  heading names the tool; otherwise each step names its tool.
 - **Mark done** ticks the current step and goes to the next step that is not done. **← Previous** and **Next →** move
   without a tick. The list groups the steps by sheet; a click on a step makes it current, and its box ticks it.
 - The ticks are saved in the project (`extensions["opencutplan.app"].progress`), so they stay after a reload and go

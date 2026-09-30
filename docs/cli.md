@@ -88,7 +88,7 @@ The examples use `shelf.cutplan.json`. Every command accepts `--json` and `--hel
 
 | Command | What it does | Example |
 | ------- | ------------ | ------- |
-| `new <file>` | Creates a project with one table saw. `--force` replaces a file. | `opencutplan new desk.cutplan.json --name "Desk" --units in` |
+| `new <file>` | Creates a project with a table saw and a track saw. `--force` replaces a file. | `opencutplan new desk.cutplan.json --name "Desk" --units in` |
 | `show <file>` | Shows the counts, the placed copies, the issues, and the totals. | `opencutplan show shelf.cutplan.json` |
 | `validate <file>` | Checks the file format and the plan. Exit 1 when there is an error. `--strict` also fails on warnings. | `opencutplan validate shelf.cutplan.json --json` |
 | `schema` | Prints the JSON Schema of the project file. | `opencutplan schema > cutplan.schema.json` |
@@ -221,6 +221,7 @@ The layout commands change the plan by hand. x and y are from the top-left corne
 | `layout add-sheet <file>` | Adds an empty sheet of a stock item. | `opencutplan layout add-sheet shelf.cutplan.json --stock bb18-5x5` |
 | `layout remove-sheet <file> <sheet>...` | Removes sheets. Their copies go to the tray. | `opencutplan layout remove-sheet shelf.cutplan.json 7` |
 | `layout remove-empty <file>` | Removes the sheets that have no parts. | `opencutplan layout remove-empty shelf.cutplan.json` |
+| `layout tool <file> <step>` | Chooses the tool for one cut. `--recommended` goes back to the recommended tool. | `opencutplan layout tool shelf.cutplan.json 5 --tool track-saw` |
 
 A move to an exact spot is done even when the copy overlaps another part. The result then has plan errors in
 `validation`. Use `--strict` to refuse such a change.
@@ -272,7 +273,7 @@ opencutplan parts add $F --name Top --length 60 --width 30 --json
 opencutplan parts add $F --name "Leg panel" --length "28 1/2" --width 24 --quantity 2 --json
 opencutplan optimize $F --iterations 200 --seed 1 --strict --json   # exit 1 when a copy does not fit
 opencutplan report shopping $F --json                               # .total, .sheetsToBuy
-opencutplan report sequence $F --json                               # .steps[].title and .body
+opencutplan report sequence $F --json                               # .steps[].title, .actions, .results, .tool, and .chosen
 opencutplan export svg $F --out svg --json                          # .files[].path
 opencutplan validate $F --strict --json                             # .valid
 ```

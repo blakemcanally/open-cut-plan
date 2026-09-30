@@ -1,4 +1,4 @@
-# The OpenCutPlan file format (`.cutplan.json`), version 1.2
+# The OpenCutPlan file format (`.cutplan.json`), version 1.3
 
 An OpenCutPlan file describes a sheet-goods cutting project: the parts to cut, the stock to cut them from, the tools
 available, settings, and optionally a layout of parts on sheets with an ordered list of cuts.
@@ -21,7 +21,7 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | Always `"opencutplan"`. |
-| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.2"`. |
+| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.3"`. |
 | `project` | yes | `name` (text), `units` (`"in"` or `"mm"`), optional `notes`, `created`, `modified` (should be ISO 8601 date-times; readers accept any string). |
 | `materials` | yes | Materials; see below. |
 | `stock` | yes | Stock pieces available for cutting. |
@@ -148,7 +148,7 @@ no limit.
 ## Plan
 
 `plan.sheets` lists the stock pieces used. Each sheet has `id`, `stock` (a stock id), optional `pinned` (keep this
-sheet when re-optimizing), `placements`, and optional `cuts`.
+sheet when re-optimizing), `placements`, optional `cuts`, and optional `toolChoices` (added in 1.3).
 
 **Placement.** `part` (a part id), `copy` (0-based, less than the part's `quantity`), `x`, `y`, and `rotated` (`true`
 when the part length runs along the stock width). Each copy of a part is placed at most once.
@@ -157,11 +157,16 @@ when the part length runs along the stock width). Each copy of a part is placed 
 so on), `axis` (`"x"` = a line of constant x, `"y"` = a line of constant y), `at` (the line's position), `from` and
 `to` (its extent along the other axis), optional `tool` (a tool id), and optional `trim` (`true` for edge-trim cuts).
 
+**Tool choice (added in 1.3).** `axis`, `at`, `from`, and `to` (the same values as the cut they belong to) and `tool`
+(a tool id). The cut of the sheet with the same axis, position, and extent uses that tool, when the tool is enabled.
+A writer keeps only the choices that match a cut. A choice with an unknown tool is a warning, like a cut with an
+unknown tool.
+
 `cuts` is derived data. Readers may ignore it and compute their own. When `cuts` and `placements` disagree,
 `placements` wins.
 
 A reader loads a file whose plan has invalid references (a sheet with an unknown stock id, a placement of an unknown
-part or of a copy past the part's `quantity`, a copy placed twice, or a cut with an unknown tool) and reports each
+part or of a copy past the part's `quantity`, a copy placed twice, a cut with an unknown tool, or a tool choice with an unknown tool) and reports each
 problem as a warning. It keeps the plan as it is, so a re-save does not lose data. A sheet whose id an earlier sheet
 uses gets a new id (`s1` becomes `s1-2`) with a warning, because edits find a sheet by its id. Duplicate ids in
 `materials`, `stock`, `parts`, or `tools`, and stock or parts that use an unknown material, make the file invalid.

@@ -63,6 +63,15 @@ enabled tool.
 
 Trim cuts use the rip or crosscut rule for their direction.
 
+A new project has a table saw (largest piece 96" × 24", widest rip 24", longest crosscut 24"; 2440 × 610, 610, and
+610 mm) and then a track saw (longest cut 110", 2800 mm, for a 118" or 3000 mm rail). So the track saw breaks down
+full sheets, and the table saw cuts the pieces that fit it.
+
+A sheet can store a chosen tool for a cut (`toolChoices`). The step then uses that tool, even when the cut is over one
+of its limits; `overLimit` names the limit, and the step text warns first. `recommended` is the tool that the rules
+above pick, and `chosen` is true when a stored choice sets the tool. A choice of a tool that is turned off has no
+effect.
+
 For a rip or a crosscut, the setting is measured on a side with positive size. When the cut removes a sliver narrower
 than the kerf, the cut-off side has zero size, so the remainder goes against the fence, stop, or mark. Trim text does
 not show the setting, so a trim keeps the cut-off side.
@@ -80,13 +89,23 @@ step that cuts each side).
   the next setup.
 - With `cutOrder` off there are no steps.
 
-`describeStep(context, step)` gives the shop text, for example:
+`describeStep(context, step)` gives the shop text in parts: a `title` and a `headline` that say what the cut does, a
+`method` (the tool and the kind of cut, with its meaning), the piece to pick up (`pickUp`), numbered `actions`, and
+one `results` item for each side of the cut. For example:
 
-> **Step 5. Table saw, rip.** Piece: sheet 1, panel 59 1/2" × 59 1/2". Fence at 15 3/8". Fence side: B Top, next at
-> step 8. Other side: B Bottom, A Top, A Shelf 1, next at step 6.
+> **Step 5 · Cut 15 3/8" off the panel** — Table saw · rip: a cut along the length of the sheet
+>
+> Pick up the panel 59 1/2" × 59 1/2" from step 4.
+> 1. Set the fence 15 3/8" from the blade. 2. Put a 59 1/2" edge of the panel against the fence. 3. Make the cut.
+>
+> Next (between the fence and the blade): 59 1/2" × 15 3/8" with B Top, for step 8. Next: 59 1/2" × 44" with
+> B Bottom, A Top, A Shelf 1, for step 6.
 
-Trims say how much they remove ("Trim 1/4" off the edge."). Table saw crosscuts and panel saws say "Set the stop at";
-track and circular saws say "Mark … from the edge". A step with no tool also says "Mark … from the edge".
+A result is a `part` (finished), `next` (a later step cuts it), `offcut` (set it aside), or `waste`. The measured side
+comes first and says where it is at the saw. Trims name the edge ("Trim 1/4" off the top edge"). A table saw rip sets
+the fence; a table saw crosscut and a panel saw set the stop; a track saw, a circular saw, and a step with no tool
+mark the cut. A step with no tool starts with a warning. `resultSentence(result)` gives one result as a sentence;
+`body` joins the pick-up line, the actions, and the result sentences.
 
 ## Offcuts
 

@@ -74,6 +74,9 @@ test("plans a project from CSV, keeps shop progress, and prints and exports it",
 
   await page.getByRole("tab", { name: "Shop" }).click();
   await expect(page.getByRole("heading", { level: 2 })).toHaveText(/^Step 1 · /);
+  await expect(page.locator(".shop-pickup")).toHaveText(/^Pick up the full sheet 96" × 48" \(sheet 1\)\.$/);
+  await expect(page.locator(".shop-actions li").first()).toHaveText(/\.$/);
+  await expect(page.locator(".shop-diagram [data-piece]")).toHaveCount(1);
   await page.getByRole("button", { name: "Mark done" }).click();
   await expect(page.getByText(/^1 of \d+ steps done\.$/)).toBeVisible();
   await expect(page.getByRole("heading", { level: 2 })).toHaveText(/^Step 2 · /);
@@ -81,6 +84,12 @@ test("plans a project from CSV, keeps shop progress, and prints and exports it",
   await page.reload();
   await page.getByRole("tab", { name: "Shop" }).click();
   await expect(page.getByRole("checkbox", { name: "Step 1 done" })).toBeChecked();
+  const tool = page.getByRole("combobox", { name: "Tool", exact: true });
+  const other = (await tool.inputValue()) === "track-saw" ? "table-saw" : "track-saw";
+  await tool.selectOption(other);
+  await expect(page.locator(".shop-method")).toHaveText(new RegExp(`^${other === "track-saw" ? "Track" : "Table"} saw · `));
+  await expect(page.getByRole("checkbox", { name: "Step 1 done" })).toBeChecked();
+  await expect.poll(() => savedData(page)).toContain('"toolChoices"');
 
   await page.setViewportSize({ width: 390, height: 844 });
   const scrollY = await page.evaluate(() => window.scrollY);
@@ -106,6 +115,7 @@ test("plans a project from CSV, keeps shop progress, and prints and exports it",
     "portrait",
     "portrait",
     "landscape",
+    "portrait",
     "portrait",
   ]);
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
