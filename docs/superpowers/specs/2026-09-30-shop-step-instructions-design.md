@@ -303,7 +303,7 @@ Each plan sheet gets an optional field:
 ### 8.4 The CLI
 
 - `opencutplan layout tool <file> <step> --tool <id>` stores a choice for the cut of that step (in the current order).
-  `--recommended` removes it. The command fails with `unknown-tool` for a tool id that does not exist, and with
+  `--recommended` removes it. The command fails with `not-found` for a tool id that does not exist, and with
   `not-found` for a step number that does not exist. Like the other `layout` commands, it has `--dry-run` and `--json`.
 - `report sequence --json` adds `recommendedTool` (an id or null), `chosen`, and `overLimit` to each step.
 
