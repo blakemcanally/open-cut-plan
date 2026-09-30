@@ -136,7 +136,7 @@ export function keepAssemblyProgress(project: Project, groups: readonly Assembly
   return keepTicks(project, "assemblyProgress", assemblyKey(groups), assemblyCount(groups));
 }
 
-const cutKey = (s: Step) => [s.sheet, s.kind, s.axis, round(s.at), round(s.from), round(s.to)].join(",");
+export const cutKey = (s: Step): string => [s.sheet, s.kind, s.axis, round(s.at), round(s.from), round(s.to)].join(",");
 
 /** Sets the tool of a cut and moves the ticks to the new step numbers of their cuts. Old ticks that are out of date stay as they are. */
 export function chooseTool(project: Project, steps: readonly Step[], step: Step, tool: string): Project {

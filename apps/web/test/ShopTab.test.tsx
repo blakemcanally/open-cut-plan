@@ -1,8 +1,9 @@
-import { analyzeProject, defaultTools, type Project } from "@opencutplan/core";
+import { analyzeProject, defaultTools, parseProject, sequencePlan, setToolChoice, type Project, type Step } from "@opencutplan/core";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { EXAMPLES } from "../src/examples.ts";
 import type { PrintJob } from "../src/print/PrintView.tsx";
 import { assemblyGroups, readProgress, setAssemblyStepDone, setStepDone } from "../src/shop/progress.ts";
 import { ShopTab } from "../src/shop/ShopTab.tsx";
@@ -267,6 +268,22 @@ describe("ShopTab", () => {
     expect(current().project.plan!.sheets[0]).not.toHaveProperty("toolChoices");
     act(() => current().undo());
     expect(current().project.plan!.sheets[0]!.toolChoices).toHaveLength(1);
+  });
+
+  it("stays on the same cut when a change of tool moves it in the setup order", async () => {
+    const parsed = parseProject(EXAMPLES[0]!.text);
+    if (!parsed.ok) throw new Error("example did not load");
+    const project: Project = { ...parsed.project, tools: defaultTools("in"), settings: { ...parsed.project.settings, orderMode: "setup" } };
+    const key = (s: Step) => [s.sheet, s.axis, s.at, s.from, s.to].join(",");
+    const other = (s: Step) => (s.tool?.id === "track-saw" ? "table-saw" : "track-saw");
+    const newNumber = (s: Step) => sequencePlan(setToolChoice(project, s, other(s))).find((a) => key(a) === key(s))!.step;
+    const moving = sequencePlan(project).find((s) => newNumber(s) !== s.step)!;
+    renderShop(project);
+    await userEvent.click(within(screen.getByRole("region", { name: "Cut sequence" })).getByRole("button", { name: new RegExp(`^${moving.step}\\. `) }));
+    await userEvent.selectOptions(screen.getByLabelText("Tool"), other(moving));
+    expect(heading()).toMatch(new RegExp(`^Step ${newNumber(moving)} · `));
+    expect(within(currentItem() as HTMLElement).getByRole("checkbox").getAttribute("aria-label")).toBe(`Step ${newNumber(moving)} done`);
+    expect(screen.getByLabelText<HTMLSelectElement>("Tool").value).toBe(other(moving));
   });
 
   it("shows No tool in the Tool list when no tool can make the cut", () => {

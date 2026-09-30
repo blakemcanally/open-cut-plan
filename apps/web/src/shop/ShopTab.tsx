@@ -1,9 +1,9 @@
-import { describeStep, groupColors, LIMIT_WORDS, resultLabel, sheetSvg, stockLabel, toolLimit, type ProjectAnalysis, type Step, type Tool } from "@opencutplan/core";
+import { describeStep, groupColors, LIMIT_WORDS, resultLabel, sequencePlan, sheetSvg, stockLabel, toolLimit, type ProjectAnalysis, type Step, type Tool } from "@opencutplan/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PrintJob } from "../print/PrintView.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
 import { AssemblyChecklist } from "./AssemblyChecklist.tsx";
-import { chooseTool, keepProgress, setStepDone, shopState, writeProgress } from "./progress.ts";
+import { chooseTool, cutKey, keepProgress, setStepDone, shopState, writeProgress } from "./progress.ts";
 
 interface ShopTabProps {
   store: ProjectStore;
@@ -74,6 +74,11 @@ export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
     edit((p) => setStepDone(p, steps, number, done));
     setChosen(done && number === current ? (nextUndone(number) ?? number) : current);
   };
+  const changeTool = (tool: string) => {
+    const next = chooseTool(project, steps, step, tool);
+    edit(next);
+    setChosen(sequencePlan(next).find((s) => cutKey(s) === cutKey(step))?.step ?? current);
+  };
   const startOver = () => {
     edit((p) => writeProgress(p, null));
     setChosen(null);
@@ -115,7 +120,7 @@ export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
           {ctx.tools.length > 0 && (
             <label className="shop-tool">
               Tool
-              <select value={step.tool?.id ?? ""} onChange={(event) => edit((p) => chooseTool(p, steps, step, event.target.value))}>
+              <select value={step.tool?.id ?? ""} onChange={(event) => changeTool(event.target.value)}>
                 {step.tool === null && <option value="">No tool</option>}
                 {ctx.tools.map((tool) => (
                   <option key={tool.id} value={tool.id}>
