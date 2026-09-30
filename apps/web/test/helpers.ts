@@ -1,4 +1,4 @@
-import { createOptimizerHost, createProject, type OptimizerResponse, type Project } from "@opencutplan/core";
+import { createOptimizerHost, createProject, presetDesign, regenerateDesigns, type OptimizerResponse, type Project } from "@opencutplan/core";
 import type { WorkerFactory, WorkerLike } from "../src/optimizer/useOptimizer.ts";
 
 /** An inch project: plywood (grained), an unlimited 96 × 48 sheet, two 30 × 12 sides and a 20 × 10 shelf, a table saw, and one sheet that holds both sides. */
@@ -27,6 +27,36 @@ export function sampleProject(): Project {
       ],
     },
   };
+}
+
+/**
+ * A millimetre project: 18 mm and 6 mm plywood, an unlimited 2440 × 1220 sheet of the 18 mm, a table saw, and the design
+ * "hall", a KALLAX 2x2 in the 18 mm with its parts. One sheet holds a vertical panel and a shelf.
+ */
+export function designProject(): Project {
+  const base = createProject("Hall", "mm");
+  return regenerateDesigns({
+    ...base,
+    materials: [
+      { id: "ply18", name: "Plywood 18", thickness: 18, grained: true },
+      { id: "ply6", name: "Plywood 6", thickness: 6, grained: true },
+    ],
+    stock: [{ id: "ply18-sheet", material: "ply18", length: 2440, width: 1220, quantity: null, cost: 50, kind: "sheet" }],
+    tools: [{ id: "ts", name: "Table saw", type: "table-saw", kerf: 3, enabled: true }],
+    designs: [presetDesign({ system: "kallax", id: "hall", name: "Hall", material: "ply18", cols: 2, rows: 2, units: "mm" })],
+    plan: {
+      sheets: [
+        {
+          id: "s1",
+          stock: "ply18-sheet",
+          placements: [
+            { part: "hall-vertical", copy: 0, x: 0, y: 0, rotated: false },
+            { part: "hall-horizontal", copy: 0, x: 0, y: 400, rotated: false },
+          ],
+        },
+      ],
+    },
+  });
 }
 
 /** Runs the real optimizer host in this thread, so tests see the same messages a Web Worker sends. */
