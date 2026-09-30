@@ -4,10 +4,10 @@ import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { PrintJob } from "../src/print/PrintView.tsx";
-import { readProgress, setStepDone } from "../src/shop/progress.ts";
+import { assemblyGroups, readProgress, setAssemblyStepDone, setStepDone } from "../src/shop/progress.ts";
 import { ShopTab } from "../src/shop/ShopTab.tsx";
 import { useProject, type ProjectStore } from "../src/state/useProject.ts";
-import { sampleProject } from "./helpers.ts";
+import { designProject, sampleProject } from "./helpers.ts";
 
 function renderShop(initial: Project = sampleProject(), onPrint: (job: PrintJob) => void = () => undefined) {
   let latest: ProjectStore | null = null;
@@ -173,6 +173,41 @@ describe("ShopTab", () => {
       delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
       vi.restoreAllMocks();
     }
+  });
+
+  it("lists the assembly steps after the cut steps, and stores their ticks apart", async () => {
+    const { current } = renderShop(designProject());
+    const assembly = within(screen.getByRole("region", { name: "Assembly" }));
+    expect(assembly.getByRole("heading", { name: "Hall", level: 4 })).toBeTruthy();
+    expect(assembly.getAllByRole("listitem")).toHaveLength(7);
+    expect(assembly.getAllByRole("listitem")[0]!.textContent).toMatch(/^Drill the pocket holesDrill 3 pocket holes in each end of all 6 shelves/);
+    await userEvent.click(assembly.getByRole("checkbox", { name: "Assembly step 2 done" }));
+    expect(readProgress(current().project, "assemblyProgress")?.done).toEqual([2]);
+    expect(readProgress(current().project)).toBeNull();
+    expect(assembly.getByText("1 of 7 assembly steps done.")).toBeTruthy();
+    act(() => current().undo());
+    expect(readProgress(current().project, "assemblyProgress")).toBeNull();
+  });
+
+  it("offers to start over or keep the assembly ticks when a design changes", async () => {
+    const project = designProject();
+    const ticked = setAssemblyStepDone(project, assemblyGroups(project), 1, true);
+    const { current } = renderShop({ ...ticked, designs: [{ ...ticked.designs![0]!, height: { openings: [335, 400] } }] });
+    const assembly = within(screen.getByRole("region", { name: "Assembly" }));
+    expect(assembly.getByText(/The assembly steps changed after you ticked some of them/)).toBeTruthy();
+    expect(assembly.getByRole("checkbox", { name: "Assembly step 1 done" })).toHaveProperty("disabled", true);
+    await userEvent.click(assembly.getByRole("button", { name: "Keep my ticks" }));
+    expect(assembly.getByRole("checkbox", { name: "Assembly step 1 done" })).toHaveProperty("checked", true);
+    vi.spyOn(window, "confirm").mockReturnValueOnce(true);
+    await userEvent.click(assembly.getByRole("button", { name: "Reset assembly" }));
+    expect(readProgress(current().project, "assemblyProgress")).toBeNull();
+    vi.restoreAllMocks();
+  });
+
+  it("shows the assembly steps when there are no cut steps", () => {
+    renderShop({ ...designProject(), plan: { sheets: [] } });
+    expect(screen.getByText("There are no cut steps. Optimize on the Layout tab, or place parts on a sheet.")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Assembly" })).toBeTruthy();
   });
 
   it("says when there are no steps", () => {

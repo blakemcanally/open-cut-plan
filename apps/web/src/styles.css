@@ -149,6 +149,12 @@ table.grid td input.narrow { min-width: 60px; width: 80px; }
 .design-preview svg { display: block; width: 100%; height: auto; max-height: 60vh; }
 select[aria-invalid="true"] { border-color: var(--bad); outline: 2px solid var(--bad); }
 table.grid tr.generated td { color: var(--muted); }
+.assembly { margin-top: 24px; max-width: 70ch; }
+.assembly-steps { list-style: none; padding: 0; margin: 0; }
+.assembly-steps li { display: flex; gap: 8px; align-items: flex-start; padding: 4px 6px; }
+.assembly-steps li p { margin: 2px 0 0; }
+.assembly-steps li.done { color: var(--muted); }
+.assembly-steps input[type="checkbox"] { width: 20px; height: 20px; flex: none; margin-top: 2px; }
 
 .reports section + section { margin-top: 24px; }
 .reports h2 { margin-bottom: 6px; }

@@ -2,6 +2,7 @@ import { describeStep, groupColors, sheetSvg, stockLabel, type ProjectAnalysis, 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PrintJob } from "../print/PrintView.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
+import { AssemblyChecklist } from "./AssemblyChecklist.tsx";
 import { keepProgress, setStepDone, shopState, writeProgress } from "./progress.ts";
 
 interface ShopTabProps {
@@ -47,11 +48,14 @@ export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
 
   if (steps.length === 0) {
     return (
-      <p className="muted">
-        {ctx.features.cutOrder
-          ? "There are no cut steps. Optimize on the Layout tab, or place parts on a sheet."
-          : "The cut order is off. Turn on Cut order in Settings to see the cut steps."}
-      </p>
+      <div className="shop">
+        <p className="muted">
+          {ctx.features.cutOrder
+            ? "There are no cut steps. Optimize on the Layout tab, or place parts on a sheet."
+            : "The cut order is off. Turn on Cut order in Settings to see the cut steps."}
+        </p>
+        <AssemblyChecklist store={store} />
+      </div>
     );
   }
 
@@ -149,6 +153,7 @@ export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
           ))}
         </section>
       </div>
+      <AssemblyChecklist store={store} />
     </div>
   );
 }
