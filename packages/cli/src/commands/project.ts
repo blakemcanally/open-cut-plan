@@ -1,4 +1,4 @@
-import { buildJsonSchema, createProject, errorMessage, newTool, parseProject, serializeProject, UnitsSchema, validatePlan, type Issue, type PlanIssue } from "@opencutplan/core";
+import { buildJsonSchema, createProject, defaultTools, errorMessage, parseProject, serializeProject, UnitsSchema, validatePlan, type Issue, type PlanIssue } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, issueText, loadProject, readSource, warningLines } from "../project.ts";
 import { CliError, EXIT, usageError, type CommandSpec } from "../spec.ts";
@@ -30,7 +30,7 @@ export const newCommand: CommandSpec = {
     const name = str(options, "name")!;
     if (name.trim() === "") throw usageError("--name must not be empty.", "invalid-value", { option: "name" });
     const units = choiceValue(str(options, "units")!, "units", UNITS);
-    const project = { ...createProject(name, units), tools: [newTool("table-saw", units, new Set())] };
+    const project = { ...createProject(name, units), tools: defaultTools(units) };
     const text = serializeProject(project);
     const dryRun = flag(options, "dry-run");
     if (file !== "-" && !flag(options, "force") && (await io.pathKind(file)) !== null) {

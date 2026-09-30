@@ -1,18 +1,18 @@
-import { buildJsonSchema, FORMAT_VERSION } from "@opencutplan/core";
+import { buildJsonSchema, defaultTools, FORMAT_VERSION } from "@opencutplan/core";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CLI_VERSION } from "../src/run.ts";
 import { cli, example, memoryIo, SHELF, withExamples } from "./helpers.ts";
 
 describe("new", () => {
-  it("creates a project with one table saw and the factory edges", async () => {
+  it("creates a project with a table saw, a track saw, and the factory edges", async () => {
     const result = await cli(["new", "a.cutplan.json", "--name", "Shelf", "--units", "in", "--json"]);
     expect(result.code).toBe(0);
     expect(result.json()).toMatchObject({ ok: true, command: "new", file: "a.cutplan.json", written: "a.cutplan.json", dryRun: false });
     const project = result.file("a.cutplan.json");
     expect(project.project).toEqual({ name: "Shelf", units: "in" });
     expect(project.settings.trim).toBe(0);
-    expect(project.tools).toEqual([{ id: "table-saw", name: "Table saw", type: "table-saw", kerf: 0.125, enabled: true }]);
+    expect(project.tools).toEqual(defaultTools("in"));
     expect(project.materials).toEqual([]);
   });
 

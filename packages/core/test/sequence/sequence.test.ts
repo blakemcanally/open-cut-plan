@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../../../examples/builders/index.ts";
-import { describeStep, EPSILON, formatLength, parseProject, planContext, sequencePlan, withCuts, type Project, type Step } from "../../src/index.ts";
+import { defaultTools, describeStep, EPSILON, formatLength, parseProject, planContext, sequencePlan, withCuts, type Project, type Step } from "../../src/index.ts";
 import { sampleProject } from "../helpers.ts";
 
 function shelf(): Project {
@@ -28,6 +28,12 @@ describe("sequencePlan", () => {
       [7, "crosscut", '30"', 5, null, null],
       [8, "crosscut", '30"', 6, null, null],
     ]);
+  });
+
+  it("sends the full-sheet cuts to the track saw and the strip crosscuts to the table saw with the default tools", () => {
+    const project = sampleProject();
+    project.tools = defaultTools("in");
+    expect(sequencePlan(project).map((step) => step.tool?.id)).toEqual(["track-saw", "track-saw", "track-saw", "track-saw", "track-saw", "track-saw", "table-saw", "table-saw"]);
   });
 
   it("describes the geometry of each cut", () => {

@@ -14,9 +14,20 @@ export const TOOL_TYPES = Object.keys(TOOL_TYPE_NAMES) as ToolType[];
 
 export const DEFAULT_KERF: Readonly<Record<Units, number>> = { in: 0.125, mm: 3 };
 
+const DEFAULT_LIMITS: Readonly<Record<Units, Partial<Record<ToolType, object>>>> = {
+  in: { "table-saw": { maxPiece: { length: 96, width: 24 }, maxRip: 24, maxCrosscut: 24 }, "track-saw": { maxCut: 110 } },
+  mm: { "table-saw": { maxPiece: { length: 2440, width: 610 }, maxRip: 610, maxCrosscut: 610 }, "track-saw": { maxCut: 2800 } },
+};
+
 export function newTool(type: ToolType, units: Units, taken: ReadonlySet<string>): Tool {
   const name = TOOL_TYPE_NAMES[type];
-  return { id: uniqueId(slugify(name), taken), name, type, kerf: DEFAULT_KERF[units], enabled: true };
+  return { id: uniqueId(slugify(name), taken), name, type, kerf: DEFAULT_KERF[units], enabled: true, ...DEFAULT_LIMITS[units][type] };
+}
+
+/** The tools of a new project: the table saw takes the cuts within its limits, the track saw breaks down the full sheets. */
+export function defaultTools(units: Units): Tool[] {
+  const table = newTool("table-saw", units, new Set());
+  return [table, newTool("track-saw", units, new Set([table.id]))];
 }
 
 export function addTool(project: Project, type: ToolType): Project {

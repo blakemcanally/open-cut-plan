@@ -1,4 +1,4 @@
-import { createProject, errorMessage, newTool, parseProject, type Project, type Units } from "@opencutplan/core";
+import { createProject, defaultTools, errorMessage, parseProject, type Project, type Units } from "@opencutplan/core";
 import { useCallback, useEffect, useState } from "react";
 import { EXAMPLES } from "../examples.ts";
 import type { ProjectSummary, Storage } from "../storage/db.ts";
@@ -16,10 +16,9 @@ interface HomeProps {
   onCreate(request: OpenRequest): void;
 }
 
-/** A new project starts with one table saw so the plan can be cut at once. */
+/** A new project starts with a table saw and a track saw so the plan can be cut at once. */
 export function newProject(name: string, units: Units): Project {
-  const project = createProject(name, units);
-  return { ...project, tools: [newTool("table-saw", units, new Set())] };
+  return { ...createProject(name, units), tools: defaultTools(units) };
 }
 
 export function Home({ storage, onOpen, onCreate }: HomeProps) {

@@ -18,7 +18,7 @@ async function renderApp() {
 }
 
 describe("App", () => {
-  it("creates a millimetre project with one table saw and opens it on the Parts tab", async () => {
+  it("creates a millimetre project with a table saw and a track saw and opens it on the Parts tab", async () => {
     await renderApp();
     await userEvent.type(screen.getByLabelText("Name"), "Shelf");
     await userEvent.selectOptions(screen.getByLabelText("Units"), "mm");
@@ -27,7 +27,7 @@ describe("App", () => {
     expect(screen.getByLabelText<HTMLInputElement>("Project name").value).toBe("Shelf");
     expect(screen.getByRole("tab", { name: "Parts" }).getAttribute("aria-selected")).toBe("true");
     const created = newProject("Shelf", "mm");
-    expect(created.tools.map((t) => [t.type, t.kerf])).toEqual([["table-saw", 3]]);
+    expect(created.tools.map((t) => [t.type, t.kerf])).toEqual([["table-saw", 3], ["track-saw", 3]]);
   });
 
   it("opens an example and returns to the list, which shows the saved project", async () => {

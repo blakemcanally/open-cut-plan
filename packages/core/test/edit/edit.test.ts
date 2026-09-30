@@ -8,6 +8,8 @@ import {
   analyzeProject,
   convertProjectUnits,
   createProject,
+  defaultTools,
+  newTool,
   findCopy,
   findFreeSpot,
   materialInUse,
@@ -88,9 +90,21 @@ describe("stock and material edits", () => {
 });
 
 describe("tool edits", () => {
+  it("gives a new project a table saw and a track saw with the default limits", () => {
+    expect(defaultTools("in")).toEqual([
+      { id: "table-saw", name: "Table saw", type: "table-saw", kerf: 0.125, enabled: true, maxPiece: { length: 96, width: 24 }, maxRip: 24, maxCrosscut: 24 },
+      { id: "track-saw", name: "Track saw", type: "track-saw", kerf: 0.125, enabled: true, maxCut: 110 },
+    ]);
+    expect(defaultTools("mm")).toEqual([
+      { id: "table-saw", name: "Table saw", type: "table-saw", kerf: 3, enabled: true, maxPiece: { length: 2440, width: 610 }, maxRip: 610, maxCrosscut: 610 },
+      { id: "track-saw", name: "Track saw", type: "track-saw", kerf: 3, enabled: true, maxCut: 2800 },
+    ]);
+    expect(newTool("circular-saw", "in", new Set())).toEqual({ id: "circular-saw", name: "Circular saw", type: "circular-saw", kerf: 0.125, enabled: true });
+  });
+
   it("adds tools with the unit's default kerf and reorders them", () => {
     let project = addTool(sampleProject(), "track-saw");
-    expect(project.tools[1]).toEqual({ id: "track-saw", name: "Track saw", type: "track-saw", kerf: 0.125, enabled: true });
+    expect(project.tools[1]).toEqual({ id: "track-saw", name: "Track saw", type: "track-saw", kerf: 0.125, enabled: true, maxCut: 110 });
     project = moveTool(project, "track-saw", -1);
     expect(project.tools.map((t) => t.id)).toEqual(["track-saw", "ts"]);
     expect(moveTool(project, "track-saw", -1)).toBe(project);
