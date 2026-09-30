@@ -1,5 +1,6 @@
 import { checkDesigns } from "./design/checks.ts";
 import type { Project } from "./format/schema.ts";
+import { checkGoal } from "./optimize/goal.ts";
 import { planContext, type PlanContext } from "./plan/context.ts";
 import type { PlanIssue } from "./plan/issues.ts";
 import { checkLayout } from "./plan/layout.ts";
@@ -29,7 +30,7 @@ export function analyzeProject(project: Project): ProjectAnalysis {
   const layout = checkLayout(context);
   return {
     context,
-    issues: [...layout, ...checkCuts(context, layout, sheets, steps), ...checkDesigns(project)],
+    issues: [...layout, ...checkCuts(context, layout, sheets, steps), ...checkDesigns(project), ...checkGoal(project)],
     sheets,
     steps,
     offcuts: listOffcuts(context, sheets),

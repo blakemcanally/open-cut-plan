@@ -3,7 +3,7 @@ import { compareScores, evaluate, type Score } from "../../src/optimize/evaluate
 import { buildProblem } from "../../src/optimize/problem.ts";
 import { sampleProject } from "../helpers.ts";
 
-const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 50, cuts: 10, sheets: 2, ...over });
+const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 50, offcuts: [50], cuts: 10, sheets: 2, ...over });
 
 describe("compareScores", () => {
   it("compares unplaced, then cost, then largest offcut (bigger wins), then cuts, then sheets", () => {
@@ -31,6 +31,18 @@ describe("evaluate", () => {
     expect(result.sheets.map((s) => s.id)).toEqual(["t1"]);
     expect(result.score).toMatchObject({ unplaced: 0, cost: 60, cuts: 8, sheets: 1 });
     expect(result.score.largestOffcut).toBeGreaterThan(0);
+  });
+
+  it("lists every offcut area, largest first, and no offcuts when the offcuts feature is off", () => {
+    const { problem, material, packing: p } = packing(sampleProject());
+    const { offcuts, largestOffcut } = evaluate(problem, material, p, "t").score;
+    expect(offcuts.length).toBeGreaterThan(1);
+    expect(offcuts).toEqual([...offcuts].sort((a, b) => b - a));
+    expect(offcuts[0]).toBe(largestOffcut);
+    const off = sampleProject();
+    off.settings.features.offcuts = false;
+    const other = packing(off);
+    expect(evaluate(other.problem, other.material, other.packing, "t").score).toMatchObject({ offcuts: [], largestOffcut: 0 });
   });
 
   it("scores by stock area when a sheet stock has no price or the cost feature is off", () => {

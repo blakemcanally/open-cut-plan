@@ -18,6 +18,8 @@ export interface Score {
   cost: number;
   /** Area of the largest offcut. Bigger is better. */
   largestOffcut: number;
+  /** Areas of all offcuts, largest first. */
+  offcuts: number[];
   /** Cut steps, including trims. Fewer is better. */
   cuts: number;
   sheets: number;
@@ -31,8 +33,13 @@ export interface Evaluated {
 
 const RELATIVE = 1e-9;
 
+/** True when two measures are equal to within the relative tolerance of the comparisons. */
+export function sameNumber(a: number, b: number): boolean {
+  return Math.abs(a - b) <= RELATIVE * Math.max(1, Math.abs(a), Math.abs(b));
+}
+
 function differ(a: number, b: number): boolean {
-  return Math.abs(a - b) > RELATIVE * Math.max(1, Math.abs(a), Math.abs(b));
+  return !sameNumber(a, b);
 }
 
 /** Negative when `a` is better than `b`, positive when worse, 0 when equal. */
@@ -85,7 +92,9 @@ export function evaluate(problem: Problem, material: MaterialProblem, packing: P
     if (a.stock.kind === "offcut") continue;
     cost += priced ? (a.stock.cost ?? 0) : area(a.stock);
   }
-  const largestOffcut = Math.max(0, ...listOffcuts(ctx, keptAnalyses).map((o) => area(o.rect)));
+  const offcuts = listOffcuts(ctx, keptAnalyses)
+    .map((o) => area(o.rect))
+    .sort((a, b) => b - a);
   const order = new Map(problem.ctx.project.parts.map((p, i) => [p.id, i]));
   unplaced.sort((a, b) => (order.get(a.part) ?? 0) - (order.get(b.part) ?? 0) || a.copy - b.copy);
   return {
@@ -94,7 +103,8 @@ export function evaluate(problem: Problem, material: MaterialProblem, packing: P
     score: {
       unplaced: unplaced.length,
       cost,
-      largestOffcut,
+      largestOffcut: offcuts[0] ?? 0,
+      offcuts,
       cuts: steps.filter((s) => keptIds.has(s.sheet)).length,
       sheets: kept.length,
     },

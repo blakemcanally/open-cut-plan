@@ -38,6 +38,7 @@ export * from "./analysis.ts";
 export * from "./errors.ts";
 export type { UnplacedCopy, UnplacedReason } from "./optimize/problem.ts";
 export * from "./optimize/evaluate.ts";
+export * from "./optimize/goal.ts";
 export * from "./optimize/search.ts";
 export * from "./optimize/worker.ts";
 export * from "./optimize/runs.ts";
