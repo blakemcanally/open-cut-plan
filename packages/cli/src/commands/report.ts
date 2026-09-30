@@ -1,10 +1,13 @@
 import {
   analyzeProject,
+  assemblySteps,
   describeStep,
   formatArea,
+  hardwareList,
   LABEL_LAYOUTS,
   labelPages,
   unsavedOffcuts,
+  type HardwareLine,
   type Project,
 } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
@@ -12,24 +15,34 @@ import { FILE_ARG, loadProject, warningLines } from "../project.ts";
 import type { CommandSpec, GroupSpec } from "../spec.ts";
 import { len, money, percent, plural, size, table } from "../text.ts";
 import { integerValue, optionalChoice, str } from "../values.ts";
+import { findById } from "./common.ts";
+import { invalidDesign } from "./design.ts";
 import { findSheet } from "./layout.ts";
 
 const SHEET_OPTION = { name: "sheet", type: "string", value: "<ref>", description: "Only this sheet: a sheet id, or its 1-based number in the plan." } as const;
+
+function hardwareText(line: HardwareLine): string {
+  const count = line.quantity === null ? "as needed" : line.unit === "pack" ? `${line.quantity} ×` : String(line.quantity);
+  const article = line.article === undefined ? "" : ` (IKEA ${line.article})`;
+  const choices = line.choices === undefined ? "" : `: ${line.choices.map((choice) => `${choice.name} ${choice.article}`).join(", ")}`;
+  return `  ${count} ${line.name}${article}${choices}${line.design === null ? "" : ` [${line.design}]`}`;
+}
 
 const shopping: CommandSpec = {
   name: "report shopping",
   summary: "What to buy, the cost, and the use of each sheet.",
   description:
-    "The shopping list, as in the app's Reports tab: for each material, the stock the plan uses, the pieces to buy (owned offcuts are not bought), and the cost. The total is null when the cost feature is off or a stock item to buy has no price; missingPrices lists those items.",
+    "The shopping list, as in the app's Reports tab: for each material, the stock the plan uses, the pieces to buy (owned offcuts are not bought), and the cost. The total is null when the cost feature is off or a stock item to buy has no price; missingPrices lists those items. hardware lists the screws, glue, and IKEA items that the designs need; it has no prices.",
   args: [FILE_ARG],
   options: [],
   examples: [{ command: `${PROGRAM} report shopping shelf.cutplan.json`, description: "Show what to buy." }],
   output:
-    "currency, total (null when unknown), missingPrices, sheetsToBuy, materials [{ material, name, lines [{ stock, label, kind, length, width, used, buy, unitCost, lineCost }], cost, stockArea, partArea, utilization }], sheets [{ sheet, sheetNumber, stock, stockArea, partArea, utilization }].",
+    "currency, total (null when unknown), missingPrices, sheetsToBuy, materials [{ material, name, lines [{ stock, label, kind, length, width, used, buy, unitCost, lineCost }], cost, stockArea, partArea, utilization }], sheets [{ sheet, sheetNumber, stock, stockArea, partArea, utilization }], hardware [{ item, name, article?, choices? [{ name, article, source }], quantity (null when you choose it), unit (each|pack), design (id, or null for all designs), source? }].",
   async run({ args, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const list = analyzeProject(project).shopping;
+    const hardware = hardwareList(project);
     const sheetsToBuy = list.materials.flatMap((m) => m.lines).reduce((sum, line) => sum + line.buy, 0);
     const lines: string[] = [];
     for (const material of list.materials) {
@@ -52,7 +65,8 @@ const shopping: CommandSpec = {
     if (list.materials.length === 0) lines.push("Nothing to buy: the plan has no sheets.");
     lines.push(`Buy ${plural(sheetsToBuy, "piece")}. Total: ${money(list.total, list.currency)}.`);
     if (list.missingPrices.length > 0) lines.push(`No price: ${list.missingPrices.join(", ")}.`);
-    return { data: { ...list, sheetsToBuy }, text: lines.join("\n"), warnings: warningLines(loaded) };
+    if (hardware.length > 0) lines.push("Hardware:", ...hardware.map(hardwareText));
+    return { data: { ...list, sheetsToBuy, hardware }, text: lines.join("\n"), warnings: warningLines(loaded) };
   },
 };
 
@@ -223,4 +237,36 @@ const cutlist: CommandSpec = {
   },
 };
 
-export const reportGroup: GroupSpec = { name: "report", summary: "Reports (read only)", commands: [shopping, sequence, offcuts, labels, cutlist] };
+const assembly: CommandSpec = {
+  name: "report assembly",
+  summary: "The steps to build each design.",
+  description:
+    "The assembly steps of each design, in order: drill the pocket holes, mark the shelf positions, cut spacers, assemble each column, check that it is square, fit the back, and mount or anchor the unit. The steps are for one unit; the first step says how many to build. A design that makes no parts has no steps; skipped lists it. With --design, a design that makes no parts is exit 1, design-invalid.",
+  args: [FILE_ARG],
+  options: [{ name: "design", type: "string", value: "<id>", description: "Only this design." }],
+  examples: [
+    { command: `${PROGRAM} report assembly hall.cutplan.json`, description: "Print the steps of every design." },
+    { command: `${PROGRAM} report assembly hall.cutplan.json --design kallax-2x4 --json`, description: "The steps of one design as JSON." },
+  ],
+  output: "designs [{ design, name, quantity, steps [{ title, body }] }], skipped (the ids of designs that make no parts).",
+  async run({ args, options, io }) {
+    const loaded = await loadProject(io, args[0]!);
+    const { project } = loaded;
+    const only = str(options, "design");
+    const chosen = only === undefined ? (project.designs ?? []) : [findById(project.designs ?? [], only, "design")];
+    const designs = [];
+    const skipped: string[] = [];
+    for (const design of chosen) {
+      const steps = assemblySteps(project, design.id);
+      if (steps === null && only !== undefined) throw invalidDesign(project, design);
+      if (steps === null) skipped.push(design.id);
+      else designs.push({ design: design.id, name: design.name, quantity: design.quantity ?? 1, steps });
+    }
+    const lines = designs.flatMap((design) => [`${design.name} (${design.design})`, ...design.steps.map((step, i) => `  ${i + 1}. ${step.title}\n     ${step.body}`)]);
+    if (skipped.length > 0) lines.push(`No steps for ${skipped.join(", ")}: the design makes no parts. Run 'opencutplan validate' for the reason.`);
+    if (chosen.length === 0) lines.push("The project has no designs.");
+    return { data: { designs, skipped }, text: lines.join("\n"), warnings: warningLines(loaded) };
+  },
+};
+
+export const reportGroup: GroupSpec = { name: "report", summary: "Reports (read only)", commands: [shopping, sequence, offcuts, labels, cutlist, assembly] };
