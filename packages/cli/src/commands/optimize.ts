@@ -1,10 +1,23 @@
-import { applyRun, copyLabel, optimize, optimizeRequest, regenerateDesigns, type OptimizeOptions, type OptimizeResult } from "@opencutplan/core";
+import {
+  applyRun,
+  copyLabel,
+  describeGoal,
+  extraCostPercent,
+  MAX_EXTRA_COST_PERCENT,
+  OPTIMIZER_GOALS,
+  optimize,
+  optimizeRequest,
+  projectGoal,
+  regenerateDesigns,
+  type OptimizeOptions,
+  type OptimizeResult,
+} from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS } from "../project.ts";
 import { usageError, type CommandSpec } from "../spec.ts";
 import { planStats, type PlanStats } from "../stats.ts";
 import { money, plural } from "../text.ts";
-import { flag, integerValue, numberValue, str } from "../values.ts";
+import { flag, integerValue, numberValue, optionalChoice, str } from "../values.ts";
 
 function statsLine(stats: PlanStats): string {
   return `${plural(stats.sheets, "sheet")}, ${stats.placedCopies} of ${stats.copies} copies placed, buy ${plural(stats.sheetsToBuy, "sheet")}, cost ${money(stats.cost, stats.currency)}`;
@@ -18,11 +31,18 @@ export const optimizeCommand: CommandSpec = {
   name: "optimize",
   summary: "Plan the parts on the stock, store the plan, and report what changed.",
   description:
-    "Run the optimizer and store its plan in the project. By default pinned sheets stay as they are and every other copy is planned again (the app's Optimize). --rest-only keeps every sheet and plans only the copies in the tray (Optimize the rest). --continue starts the search from the current plan, so the result is never worse than it (by the optimizer's objective). A run with --iterations gives the same result for the same seed on every computer; a timed run can stop at a different candidate. The currency of cost is the project currency.",
+    "Run the optimizer and store its plan in the project. By default pinned sheets stay as they are and every other copy is planned again (the app's Optimize). --rest-only keeps every sheet and plans only the copies in the tray (Optimize the rest). --continue starts the search from the current plan, so the result is never worse than it (by the optimizer's objective). --goal and --extra-cost change the goal for this run only; the stored settings stay. A run with --iterations gives the same result for the same seed on every computer; a timed run can stop at a different candidate. The currency of cost is the project currency.",
   args: [FILE_ARG],
   options: [
     { name: "time", type: "string", value: "<seconds>", description: "The search time. Default: the optimizer.timeLimitMs setting (2 s). Ignored with --iterations." },
     { name: "seed", type: "string", value: "<n>", description: "The random seed. Default: the optimizer.seed setting, else 1." },
+    { name: "goal", type: "string", value: OPTIMIZER_GOALS.join("|"), description: "The goal for this run: the lowest cost, the best offcuts, or the fewest cut steps. Default: the optimizer.goal setting." },
+    {
+      name: "extra-cost",
+      type: "string",
+      value: "<percent>",
+      description: "The most extra cost that the goal offcuts or cuts can use in this run, in percent of the cheapest plan found (0 to 100). Default: the optimizer.extraCostPercent setting.",
+    },
     { name: "iterations", type: "string", value: "<n>", description: "Try exactly n candidates per material and ignore the time. The result then depends only on the project and the seed." },
     { name: "keep-pinned", type: "boolean", description: "Keep the pinned sheets and plan everything else again. This is the default." },
     { name: "rest-only", type: "boolean", description: "Keep every sheet as it is and plan only the unplaced copies." },
@@ -35,7 +55,7 @@ export const optimizeCommand: CommandSpec = {
     { command: `${PROGRAM} optimize shelf.cutplan.json --time 10 --continue --json`, description: "Search 10 more seconds from the current plan." },
   ],
   output:
-    'mode ("all" or "rest"), continued, seed, timeLimitMs (null with --iterations), iterations (candidates tried), deterministic, before and after { sheets, placedCopies, unplacedCopies, sheetsToBuy, cost, errors }, unplaced [{ part, copy, name, reason }] (reason: too-large, no-stock, no-tool, not-guillotine), materials [{ material, score }], changes, validation, written, dryRun. With --strict, unplaced copies also give exit 1.',
+    'mode ("all" or "rest"), continued, goal, extraCostPercent (the limit of the run), seed, timeLimitMs (null with --iterations), iterations (candidates tried), deterministic, before and after { sheets, placedCopies, unplacedCopies, sheetsToBuy, cost, errors }, unplaced [{ part, copy, name, reason }] (reason: too-large, no-stock, no-tool, not-guillotine), materials [{ material, score, cheapestCost, extraCostPercent (the extra cost that the plan uses) }], changes, validation, written, dryRun. With --strict, unplaced copies also give exit 1.',
   async run(invocation) {
     const { args, options, io } = invocation;
     if (flag(options, "rest-only") && flag(options, "keep-pinned")) throw usageError("Give --keep-pinned or --rest-only, not both.", "conflict");
@@ -55,6 +75,12 @@ export const optimizeCommand: CommandSpec = {
     if (seedText !== undefined) opts.seed = integerValue(seedText, "seed");
     const iterationsText = str(options, "iterations");
     if (iterationsText !== undefined) opts.iterations = integerValue(iterationsText, "iterations", 1);
+    const goalOption = optionalChoice(options, "goal", OPTIMIZER_GOALS);
+    if (goalOption !== undefined) opts.goal = goalOption;
+    const extraText = str(options, "extra-cost");
+    if (extraText !== undefined) opts.extraCostPercent = numberValue(extraText, "extra-cost", 0, MAX_EXTRA_COST_PERCENT);
+    const goal = opts.goal ?? projectGoal(project);
+    const extra = opts.extraCostPercent ?? settings.extraCostPercent;
     const continued = flag(options, "continue");
     if (continued) {
       const start: OptimizeResult = { sheets: request.input.plan?.sheets ?? [], unplaced: [], materials: [], iterations: 0 };
@@ -67,9 +93,15 @@ export const optimizeCommand: CommandSpec = {
     const parts = new Map(project.parts.map((part) => [part.id, part]));
     const unplaced = result.unplaced.map((u) => ({ ...u, name: copyLabel(parts.get(u.part)!, u.copy) }));
     const deterministic = opts.iterations !== undefined;
+    const materials = result.materials.map((m) => ({ ...m, extraCostPercent: extraCostPercent(m.score.cost, m.cheapestCost) }));
+    const names = new Map(project.materials.map((material) => [material.id, material.name]));
     const details = [
       `Before: ${statsLine(before)}.`,
       `After: ${statsLine(after)}.`,
+      `Goal: ${describeGoal(goal, extra)}.`,
+      ...materials
+        .filter((m) => m.extraCostPercent > 0)
+        .map((m) => `  ${names.get(m.material) ?? m.material}: ${plural(m.score.sheets, "sheet")}, ${m.extraCostPercent} % more cost than the cheapest plan found.`),
       ...unplaced.map((u) => `  not placed: ${u.name} (${u.part} copy ${u.copy}): ${u.reason}`),
       `Tried ${result.iterations} candidates${deterministic ? "" : " (a timed run; use --iterations for the same result every time)"}.`,
     ];
@@ -79,6 +111,8 @@ export const optimizeCommand: CommandSpec = {
       data: {
         mode,
         continued,
+        goal,
+        extraCostPercent: extra,
         seed: opts.seed ?? settings.seed ?? 1,
         timeLimitMs: deterministic ? null : (opts.timeLimitMs ?? settings.timeLimitMs),
         iterations: result.iterations,
@@ -86,7 +120,7 @@ export const optimizeCommand: CommandSpec = {
         before: brief(before),
         after: brief(after),
         unplaced,
-        materials: result.materials,
+        materials,
       },
       ...(after.unplacedCopies > 0 ? { strictFailure: `${plural(after.unplacedCopies, "copy", "copies")} could not be placed.` } : {}),
     });

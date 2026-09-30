@@ -176,7 +176,8 @@ apply in order, so a length after `units` is in the new units. `opencutplan help
 
 The keys are `name`, `notes`, `units`, `trim` (a length, or `factory`), `orderMode`, `minOffcut.length`,
 `minOffcut.width`, `minOffcut` (`default`), `display.inch`, `display.mm`, `optimizer.timeLimitMs`, `optimizer.seed`
-(a number, or `none`), `currency`, and `features.<name>` for each feature switch. A change of `units` converts all
+(a number, or `none`), `optimizer.goal` (`cost`, `offcuts`, or `cuts`), `optimizer.extraCostPercent` (0 to 100),
+`currency`, and `features.<name>` for each feature switch. A change of `units` converts all
 lengths in the project. `--factory-edges` is the same as `trim factory`.
 
 ### Optimize
@@ -185,13 +186,24 @@ lengths in the project. `--factory-edges` is the same as `trim factory`.
 
 - The default mode keeps the pinned sheets and plans all other copies again.
 - `--rest-only` keeps all sheets and plans only the copies in the tray.
-- `--continue` starts from the current plan, so the result is not worse than the current plan.
+- `--continue` starts from the current plan. For the goal `cost`, the result is not worse than the current plan. For
+  the goals `offcuts` and `cuts`, the search first tries its fixed candidates again to find the cheapest cost, so the
+  result can cost less and have a worse goal measure than the current plan.
 - `--time <seconds>` sets the search time. `--seed <n>` sets the random seed.
+- `--goal <goal>` and `--extra-cost <percent>` set the goal and the extra cost for this run only. The stored settings
+  do not change. See [`optimizer.md`](optimizer.md#objective).
 - `--iterations <n>` tries a fixed number of candidates and ignores the time. Use it when you need the same result
   each time. A timed run can stop at a different candidate on a different computer, even with the same seed.
 
+The text output names the goal. For each material whose plan costs more than the cheapest plan found, it adds a line:
+`Plywood: 3 sheets, 4 % more cost than the cheapest plan found.` The `--json` output has `goal` and
+`extraCostPercent` (the limit of the run), and `materials`: `{ material, score, cheapestCost, extraCostPercent }` for
+each material, where `extraCostPercent` is the extra cost that the plan uses, rounded to one decimal (0 when
+`cheapestCost` is 0).
+
 ```bash
 opencutplan optimize shelf.cutplan.json --iterations 200 --seed 1 --strict
+opencutplan optimize shelf.cutplan.json --goal offcuts --extra-cost 15
 ```
 
 ### Layout

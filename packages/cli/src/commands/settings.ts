@@ -3,7 +3,9 @@ import {
   DEFAULT_MIN_OFFCUT,
   FEATURE_KEYS,
   INCH_PRECISIONS,
+  MAX_EXTRA_COST_PERCENT,
   MM_PRECISIONS,
+  OPTIMIZER_GOALS,
   OrderModeSchema,
   UnitsSchema,
   type Project,
@@ -13,7 +15,7 @@ import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines } from "../project.ts";
 import { usageError, type CommandSpec, type GroupSpec } from "../spec.ts";
 import { len, table } from "../text.ts";
-import { booleanValue, choiceValue, flag, integerValue, lengthValue } from "../values.ts";
+import { booleanValue, choiceValue, flag, integerValue, lengthValue, numberValue } from "../values.ts";
 
 interface Key {
   key: string;
@@ -137,6 +139,21 @@ const KEYS: Key[] = [
         const { seed: _old, ...optimizer } = s.optimizer;
         return { ...s, optimizer: v === "none" ? optimizer : { ...optimizer, seed: integerValue(v, "optimizer.seed") } };
       }),
+  },
+  {
+    key: "optimizer.goal",
+    values: OPTIMIZER_GOALS.join("|"),
+    description: "What the optimizer looks for after it fits every part: the lowest cost, the best offcuts (the largest offcut first), or the fewest cut steps. Default: cost.",
+    get: (p) => p.settings.optimizer.goal,
+    set: (p, v) => withSettings(p, (s) => ({ ...s, optimizer: { ...s.optimizer, goal: choiceValue(v, "optimizer.goal", OPTIMIZER_GOALS) } })),
+  },
+  {
+    key: "optimizer.extraCostPercent",
+    values: "<percent>",
+    description: "The most extra cost that the goal offcuts or cuts can use, in percent of the cheapest plan found (0 to 100). Default: 10.",
+    get: (p) => p.settings.optimizer.extraCostPercent,
+    set: (p, v) =>
+      withSettings(p, (s) => ({ ...s, optimizer: { ...s.optimizer, extraCostPercent: numberValue(v, "optimizer.extraCostPercent", 0, MAX_EXTRA_COST_PERCENT) } })),
   },
   {
     key: "currency",

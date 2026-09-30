@@ -52,9 +52,11 @@ export function integerValue(text: string, name: string, minimum = Number.NEGATI
   return value;
 }
 
-export function numberValue(text: string, name: string, minimum = 0): number {
+export function numberValue(text: string, name: string, minimum = 0, maximum = Number.POSITIVE_INFINITY): number {
   const value = /^\d+(?:\.\d+)?$|^\.\d+$/.test(text.trim()) ? Number(text) : Number.NaN;
-  if (!Number.isFinite(value) || value < minimum) throw invalid(name, text, `a number of ${minimum} or more`);
+  if (!Number.isFinite(value) || value < minimum || value > maximum) {
+    throw invalid(name, text, maximum === Number.POSITIVE_INFINITY ? `a number of ${minimum} or more` : `a number from ${minimum} to ${maximum}`);
+  }
   return value;
 }
 

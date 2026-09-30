@@ -18,6 +18,8 @@ describe("settings", () => {
       "display.inch": 32,
       "optimizer.timeLimitMs": 2000,
       "optimizer.seed": null,
+      "optimizer.goal": "cost",
+      "optimizer.extraCostPercent": 10,
       currency: "USD",
       "features.grain": true,
     });
@@ -70,6 +72,19 @@ describe("settings", () => {
     expect((await cli(["settings", "set", SHELF, "trim"], io)).code).toBe(2);
     expect((await cli(["settings", "set", SHELF, "features.grain", "yes"], io)).code).toBe(2);
     expect(io.writes).toEqual([]);
+  });
+
+  it("sets the optimizer goal and the extra cost, and rejects bad values", async () => {
+    const io = withExamples();
+    const result = await cli(["settings", "set", SHELF, "optimizer.goal", "offcuts", "optimizer.extraCostPercent", "25", "--json"], io);
+    expect(result.file(SHELF).settings.optimizer).toMatchObject({ goal: "offcuts", extraCostPercent: 25 });
+    const before = io.files.get(SHELF);
+    for (const pair of [["optimizer.goal", "time"], ["optimizer.extraCostPercent", "101"], ["optimizer.extraCostPercent", "ten"]]) {
+      const bad = await cli(["settings", "set", SHELF, ...pair, "--json"], io);
+      expect(bad.code).toBe(2);
+      expect(bad.json().error.code).toBe("invalid-value");
+    }
+    expect(io.files.get(SHELF)).toBe(before);
   });
 });
 
@@ -128,9 +143,37 @@ describe("optimize", () => {
     expect(io.files.get(BOOKCASE)).toBe(before);
   });
 
+  it("uses --goal and --extra-cost for one run, and reports the extra cost", async () => {
+    const io = withExamples();
+    const result = await cli(["optimize", SHELF, "--iterations", "40", "--seed", "3", "--goal", "offcuts", "--extra-cost", "50", "--json"], io);
+    expect(result.code).toBe(0);
+    const data = result.json();
+    expect(data).toMatchObject({ goal: "offcuts", extraCostPercent: 50 });
+    expect(data.materials.length).toBeGreaterThan(0);
+    for (const m of data.materials) {
+      expect(m.cheapestCost).toBeLessThanOrEqual(m.score.cost);
+      expect(m.score.cost).toBeLessThanOrEqual(m.cheapestCost * 1.5 + 1e-6);
+      expect(m.extraCostPercent).toBe(Math.round(((m.score.cost - m.cheapestCost) / m.cheapestCost) * 1000) / 10);
+    }
+    expect(data.materials.some((m: { extraCostPercent: number }) => m.extraCostPercent > 0)).toBe(true);
+    expect(result.file(SHELF).settings.optimizer).toMatchObject({ goal: "cost", extraCostPercent: 10 });
+
+    const text = await cli(["optimize", SHELF, "--iterations", "40", "--seed", "3", "--goal", "offcuts", "--extra-cost", "50", "--out", "/dev/null"], withExamples());
+    expect(text.stdout).toContain("Goal: best offcuts, up to 50 % extra cost.");
+    expect(text.stdout).toMatch(/^ {2}.+: \d+ sheets?, [\d.]+ % more cost than the cheapest plan found\.$/m);
+    const plain = await cli(["optimize", SHELF, "--iterations", "5", "--out", "/dev/null"], withExamples());
+    expect(plain.stdout).toContain("Goal: lowest cost.");
+    expect(plain.stdout).not.toContain("% more cost");
+  });
+
   it("rejects conflicting modes and bad numbers", async () => {
     expect((await cli(["optimize", SHELF, "--rest-only", "--keep-pinned"], withExamples())).code).toBe(2);
     expect((await cli(["optimize", SHELF, "--time", "0"], withExamples())).code).toBe(2);
     expect((await cli(["optimize", SHELF, "--iterations", "many"], withExamples())).code).toBe(2);
+    for (const flags of [["--goal", "time"], ["--extra-cost", "101"], ["--extra-cost=-5"]]) {
+      const bad = await cli(["optimize", SHELF, ...flags, "--json"], withExamples());
+      expect(bad.code).toBe(2);
+      expect(bad.json().error.code).toBe("invalid-value");
+    }
   });
 });
