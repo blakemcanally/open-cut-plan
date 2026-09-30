@@ -80,7 +80,9 @@ export function SheetView(props: SheetViewProps) {
     <section className="sheet" aria-label={`Sheet ${number}: ${stockLabel(ctx, stock)}`}>
       <header className="sheet-head">
         <span className="name">Sheet {number}</span>
-        <span className="meta">{stockLabel(ctx, stock)}</span>
+        <span className="meta" title={stockLabel(ctx, stock)}>
+          {stockLabel(ctx, stock)}
+        </span>
         <button type="button" aria-pressed={sheet.pinned === true} onClick={props.onTogglePin} disabled={busy} title="A pinned sheet keeps its layout when you optimize.">
           {sheet.pinned ? "📌 Pinned" : "Pin"}
         </button>

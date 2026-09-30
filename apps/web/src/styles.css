@@ -103,7 +103,8 @@ table.grid td input.narrow { min-width: 60px; width: 80px; }
 .sheet { background: #fff; border-radius: 8px; padding: 8px 10px 10px; box-shadow: 0 1px 3px #0002; }
 .sheet-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 .sheet-head .name { font-weight: 700; }
-.sheet-head .meta { color: var(--muted); font-size: 12px; flex: 1; }
+.sheet:not(.missing) { width: min-content; }
+.sheet-head .meta { color: var(--muted); font-size: 12px; flex: 1; width: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sheet-head button { padding: 2px 8px; font-size: 12px; }
 .sheet-head button[aria-pressed="true"] { background: #fff2c2; border-color: #d9b94a; }
 .sheet-area { display: block; user-select: none; }

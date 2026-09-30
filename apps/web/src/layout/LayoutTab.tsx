@@ -32,6 +32,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerE
 import type { OptimizeRuns } from "../optimizer/useOptimizeRuns.ts";
 import type { ViewPrefs } from "../state/prefs.ts";
 import type { ProjectStore } from "../state/useProject.ts";
+import { fitScale, WINDOW_ALLOWANCE } from "./fit.ts";
 import { Inspector } from "./Inspector.tsx";
 import { IssueList } from "./IssueList.tsx";
 import { copyKey, SheetView, type DropPreview } from "./SheetView.tsx";
@@ -87,6 +88,7 @@ export function LayoutTab({ store, analysis, prefs, runs, onShowSettings }: Layo
   const [message, setMessage] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [width, setWidth] = useState(800);
+  const [windowHeight, setWindowHeight] = useState(() => window.innerHeight);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [stockChoice, setStockChoice] = useState("");
   const focusAfter = useRef<CopyRef | null>(null);
@@ -100,8 +102,9 @@ export function LayoutTab({ store, analysis, prefs, runs, onShowSettings }: Layo
   const enabledStock = project.stock.filter((stock) => stock.enabled !== false);
   const chosenStock = enabledStock.find((stock) => stock.id === stockChoice) ?? enabledStock[0];
 
-  const longest = Math.max(1, ...sheets.map((sheet) => ctx.stock.get(sheet.stock)?.length ?? 0), ...(sheets.length === 0 ? enabledStock.map((s) => s.length) : []));
-  const scale = Math.max(0.02, ((width - 48) / longest) * zoom);
+  const sizes = sheets.length > 0 ? sheets.flatMap((sheet) => ctx.stock.get(sheet.stock) ?? []) : enabledStock;
+  const largest = { length: Math.max(1, ...sizes.map((s) => s.length)), width: Math.max(1, ...sizes.map((s) => s.width)) };
+  const scale = Math.max(0.02, fitScale(largest, sheets.length, { width, height: windowHeight - WINDOW_ALLOWANCE }) * zoom);
 
   useEffect(() => {
     const element = sheetsRef.current;
@@ -109,6 +112,12 @@ export function LayoutTab({ store, analysis, prefs, runs, onShowSettings }: Layo
     const observer = new ResizeObserver(([entry]) => entry && entry.contentRect.width > 0 && setWidth(entry.contentRect.width));
     observer.observe(element);
     return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const resize = () => setWindowHeight(window.innerHeight);
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
   }, []);
 
   useEffect(() => {

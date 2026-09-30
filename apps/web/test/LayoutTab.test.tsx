@@ -3,6 +3,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
 import { describe, expect, it } from "vitest";
+import { SHEET_CHROME, WINDOW_ALLOWANCE } from "../src/layout/fit.ts";
 import { LayoutTab } from "../src/layout/LayoutTab.tsx";
 import { SheetView } from "../src/layout/SheetView.tsx";
 import { useOptimizeRuns } from "../src/optimizer/useOptimizeRuns.ts";
@@ -82,6 +83,24 @@ describe("SheetView", () => {
 });
 
 describe("LayoutTab", () => {
+  it("fits the sheets in the window height at 100 % and follows a resize of the window", () => {
+    const saved = window.innerHeight;
+    const setHeight = (value: number) => Object.defineProperty(window, "innerHeight", { value, configurable: true });
+    try {
+      setHeight(500);
+      renderLayout();
+      const sheet = () => screen.getByRole("group", { name: /^Sheet 1 layout/ });
+      expect(Number(sheet().getAttribute("height"))).toBeCloseTo(500 - WINDOW_ALLOWANCE - SHEET_CHROME.y);
+      setHeight(2000);
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+      expect(Number(sheet().getAttribute("width"))).toBeCloseTo(800 - SHEET_CHROME.x);
+    } finally {
+      setHeight(saved);
+    }
+  });
+
   it("turns a focused part with R and sends it to the tray with Delete", async () => {
     const current = renderLayout();
     part("Side 2").focus();

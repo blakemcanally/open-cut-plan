@@ -113,7 +113,9 @@ turns red and has a ⚠ mark; the **Problems** list names each problem, and **Sh
   that is used. When the project changes during a search, the result is not used.
 - **Pin** on a sheet keeps it through **Optimize**. **Remove** puts its parts in the tray.
 - **Add sheet** adds a sheet of the chosen stock. **Remove empty sheets** removes sheets with no parts.
-- **−**, **+**, and **Fit** change the zoom.
+- **−**, **+**, and **Fit** change the zoom. At 100 % (**Fit**), all the sheets fit in the width of the column and
+  the height of the window, in rows. When they cannot all fit, each sheet is at least 200 px long, the rows fill the
+  width, and the page scrolls. The zoom percentage is relative to this fit.
 
 Parts move by dragging between sheets and the tray. A drag snaps to sheet edges, the trim line, and one kerf from other
 parts. The dragged part moves to the snapped position, and a dashed guide line shows each line that it snapped to. Away
