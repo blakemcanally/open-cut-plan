@@ -125,11 +125,30 @@ describe("parseProject", () => {
     expect(result.ok && result.project.settings.features.cutOrder).toBe(true);
   });
 
-  it("loads a 1.0 file as version 1.1 with no warnings", () => {
-    const doc = { ...JSON.parse(serializeProject(sampleProject())), version: "1.0" };
+  it.each(["1.0", "1.1"])("loads a %s file as version 1.2 with the default goal and no warnings", (version) => {
+    const doc = JSON.parse(serializeProject(sampleProject()));
+    doc.version = version;
+    delete doc.settings.optimizer.goal;
+    delete doc.settings.optimizer.extraCostPercent;
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.1");
+    expect(result.ok && result.project.version).toBe("1.2");
+    expect(result.ok && result.project.settings.optimizer).toMatchObject({ goal: "cost", extraCostPercent: 10 });
     expect(result.warnings).toEqual([]);
+  });
+
+  it("keeps an optimizer goal that it does not know, and writes it back", () => {
+    const doc = JSON.parse(serializeProject(sampleProject()));
+    doc.settings.optimizer.goal = "time";
+    const result = parseProject(doc);
+    expect(result.ok && result.warnings).toEqual([]);
+    if (!result.ok) return;
+    expect(JSON.parse(serializeProject(result.project)).settings.optimizer.goal).toBe("time");
+  });
+
+  it.each([-1, 101, "10"])("refuses the extra cost percent %j", (value) => {
+    const doc = JSON.parse(serializeProject(sampleProject()));
+    doc.settings.optimizer.extraCostPercent = value;
+    expect(parseProject(doc).ok).toBe(false);
   });
 
   it("loads a newer minor version with a warning and keeps every unknown field on re-save", () => {
@@ -150,7 +169,7 @@ describe("parseProject", () => {
       {
         severity: "warning",
         code: "newer-minor",
-        message: "This file uses format version 1.4, which is newer than this app (1.1). Unknown fields are kept but ignored.",
+        message: "This file uses format version 1.4, which is newer than this app (1.2). Unknown fields are kept but ignored.",
         path: ["version"],
       },
     ]);

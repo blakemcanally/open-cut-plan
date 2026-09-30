@@ -1,6 +1,6 @@
 {
   "format": "opencutplan",
-  "version": "1.1",
+  "version": "1.2",
   "project": {
     "name": "EKET-style wall cabinets (inches)",
     "units": "in"
@@ -125,7 +125,9 @@
       "mm": 0.5
     },
     "optimizer": {
-      "timeLimitMs": 2000
+      "timeLimitMs": 2000,
+      "goal": "cost",
+      "extraCostPercent": 10
     },
     "currency": "USD"
   }

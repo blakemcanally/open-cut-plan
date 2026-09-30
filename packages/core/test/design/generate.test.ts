@@ -90,7 +90,7 @@ describe("regenerateDesigns", () => {
   it("leaves the stored parts of a file from a newer minor version alone", () => {
     const once = regenerateDesigns(designProject());
     const nested = { ...once.parts[1]!, id: "kx-cell-1-1-horizontal", name: "Nested shelf" };
-    const newer = { ...once, version: "1.2", parts: [...once.parts, nested] };
+    const newer = { ...once, version: "1.3", parts: [...once.parts, nested] };
     expect(regenerateDesigns(newer)).toBe(newer);
     expect(designParts(newer, newer.designs![0]!)).toBeNull();
   });

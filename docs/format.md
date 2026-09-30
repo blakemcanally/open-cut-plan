@@ -1,4 +1,4 @@
-# The OpenCutPlan file format (`.cutplan.json`), version 1.1
+# The OpenCutPlan file format (`.cutplan.json`), version 1.2
 
 An OpenCutPlan file describes a sheet-goods cutting project: the parts to cut, the stock to cut them from, the tools
 available, settings, and optionally a layout of parts on sheets with an ordered list of cuts.
@@ -21,7 +21,7 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | Always `"opencutplan"`. |
-| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.1"`. |
+| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.2"`. |
 | `project` | yes | `name` (text), `units` (`"in"` or `"mm"`), optional `notes`, `created`, `modified` (should be ISO 8601 date-times; readers accept any string). |
 | `materials` | yes | Materials; see below. |
 | `stock` | yes | Stock pieces available for cutting. |
@@ -138,7 +138,7 @@ no limit.
 | `trim` | `0` | Edge trim on every edge of the stock. |
 | `minOffcut` | none | {`length`, `width`}: waste at least this size, in either orientation, is kept as an offcut. Readers use 12 × 6 in or 300 × 150 mm when it is absent. |
 | `display` | `{ "inch": 32, "mm": 0.5 }` | Rounding for display: `inch` is `8`, `16`, `32`, `64`, or `"decimal"`; `mm` is `1`, `0.5`, or `0.1`. |
-| `optimizer` | `{ "timeLimitMs": 2000 }` | Search time and an optional integer `seed`. |
+| `optimizer` | `{ "timeLimitMs": 2000, "goal": "cost", "extraCostPercent": 10 }` | Search time, an optional integer `seed`, and the goal (added in 1.2). `goal` is `"cost"`, `"offcuts"`, or `"cuts"`; a reader that does not know the value warns (`unknown-goal`), uses `"cost"`, and writes the value back. `extraCostPercent` is a number from 0 to 100: the most extra cost that the goals `offcuts` and `cuts` can use, in percent of the cheapest plan found. See [`optimizer.md`](optimizer.md#objective). |
 | `currency` | `"USD"` | ISO 4217 code for `cost`. |
 
 ## Plan
@@ -171,7 +171,7 @@ uses gets a new id (`s1` becomes `s1-2`) with a warning, because edits find a sh
 - Readers must load a file whose `plan` has invalid references, and report the problems as warnings.
 - The value sets of `type`, `grain`, `kind`, `units`, `orderMode`, `axis`, and `display.inch`/`display.mm` are fixed
   within a major version. Adding a value requires a new major version, so a reader can refuse a value it does not know.
-- `designs[].system` and `designs[].mount` are not fixed: a minor version can add values.
+- `designs[].system`, `designs[].mount`, and `settings.optimizer.goal` are not fixed: a minor version can add values.
 
 ## CSV part and stock lists
 

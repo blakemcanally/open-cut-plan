@@ -1,6 +1,6 @@
 {
   "format": "opencutplan",
-  "version": "1.1",
+  "version": "1.2",
   "project": {
     "name": "Simple bookcase (metric)",
     "units": "mm"
@@ -132,7 +132,9 @@
       "mm": 1
     },
     "optimizer": {
-      "timeLimitMs": 2000
+      "timeLimitMs": 2000,
+      "goal": "cost",
+      "extraCostPercent": 10
     },
     "currency": "EUR"
   }

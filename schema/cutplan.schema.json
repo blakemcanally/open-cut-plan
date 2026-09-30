@@ -638,6 +638,16 @@
               "type": "integer",
               "minimum": -9007199254740991,
               "maximum": 9007199254740991
+            },
+            "goal": {
+              "default": "cost",
+              "type": "string"
+            },
+            "extraCostPercent": {
+              "default": 10,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
             }
           },
           "additionalProperties": {}

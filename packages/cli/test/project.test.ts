@@ -60,7 +60,7 @@ describe("show", () => {
     const result = await cli(["show", "shelf.cutplan.json", "--json"], withExamples());
     expect(result.code).toBe(0);
     const data = result.json();
-    expect(data).toMatchObject({ ok: true, command: "show", name: "Living room shelf", units: "in", version: "1.1" });
+    expect(data).toMatchObject({ ok: true, command: "show", name: "Living room shelf", units: "in", version: "1.2" });
     expect(data.counts).toMatchObject({ materials: 2, stock: 2, parts: 20, tools: 1, enabledTools: 1, sheets: 7, pinnedSheets: 0 });
     expect(data.copies.total).toBe(data.counts.copies);
     expect(data.copies.placed + data.copies.unplaced).toBe(data.copies.total);
@@ -91,7 +91,7 @@ describe("show", () => {
   });
 
   it("sends file warnings to stderr and into the envelope", async () => {
-    const newer = example(SHELF).replace('"version": "1.1"', '"version": "1.4"');
+    const newer = example(SHELF).replace('"version": "1.2"', '"version": "1.4"');
     const result = await cli(["show", "x.json", "--json"], memoryIo({ "x.json": newer }));
     expect(result.code).toBe(0);
     expect(result.json().warnings).toEqual([expect.stringContaining("newer than this app")]);
