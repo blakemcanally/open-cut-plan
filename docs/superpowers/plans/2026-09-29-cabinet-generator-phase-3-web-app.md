@@ -2135,6 +2135,7 @@ index 10c0091..29d3b79 100644
 +          </div>
          </section>
        )}
+ 
 ```
 
 Apply this change to `apps/web/src/print/PrintView.tsx` (`git apply` accepts it as is):
