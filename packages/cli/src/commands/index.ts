@@ -1,4 +1,5 @@
 import type { CommandSpec, GroupSpec } from "../spec.ts";
+import { designGroup } from "./design.ts";
 import { exportGroup } from "./export.ts";
 import { layoutGroup } from "./layout.ts";
 import { materialsGroup } from "./materials.ts";
@@ -12,4 +13,4 @@ import { newCommand, schemaCommand, showCommand, validateCommand } from "./proje
 
 export const COMMANDS: CommandSpec[] = [newCommand, showCommand, validateCommand, optimizeCommand, schemaCommand];
 
-export const GROUPS: GroupSpec[] = [partsGroup, stockGroup, materialsGroup, toolsGroup, settingsGroup, layoutGroup, reportGroup, exportGroup];
+export const GROUPS: GroupSpec[] = [partsGroup, stockGroup, materialsGroup, toolsGroup, designGroup, settingsGroup, layoutGroup, reportGroup, exportGroup];
