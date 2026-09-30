@@ -11,6 +11,7 @@ import {
   removeSheet,
   rotateCopy,
   setPinned,
+  setToolChoice,
   stockLabel,
   unplacedCopies,
   usableRect,
@@ -23,7 +24,7 @@ import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines } from "../project.ts";
 import { CliError, EXIT, usageError, type CommandSpec, type GroupSpec, type OptionSpec, type OptionValues } from "../spec.ts";
 import { len, percent, plural, table } from "../text.ts";
-import { integerValue, optionalBoolean, optionalLength, str } from "../values.ts";
+import { flag, integerValue, optionalBoolean, optionalLength, str } from "../values.ts";
 import { findById } from "./common.ts";
 import { planContextOf } from "./context.ts";
 
@@ -315,8 +316,44 @@ const removeEmpty: CommandSpec = {
   },
 };
 
+const toolCommand: CommandSpec = {
+  name: "layout tool",
+  summary: "Choose the tool for one cut.",
+  description:
+    "Choose the tool for the cut of one step, in the current shop order (see report sequence). The file stores the choice with the sheet; the choice applies while the cut exists. --recommended removes the choice, so the cut analysis picks the tool again. A tool over one of its limits is allowed; report sequence names the limit.",
+  args: [FILE_ARG, { name: "step", description: "The step number, as in report sequence." }],
+  options: [
+    { name: "tool", type: "string", value: "<id>", description: "The tool id." },
+    { name: "recommended", type: "boolean", description: "Remove the choice and use the recommended tool." },
+    ...OUTPUT_OPTIONS,
+  ],
+  examples: [
+    { command: `${PROGRAM} layout tool shelf.cutplan.json 5 --tool track-saw`, description: "Cut step 5 with the track saw." },
+    { command: `${PROGRAM} layout tool shelf.cutplan.json 5 --recommended`, description: "Go back to the recommended tool for step 5." },
+  ],
+  output: "step, sheet, tool (the tool id of the step after the change, or null), recommendedTool, changes, validation, written, dryRun.",
+  async run(invocation) {
+    const { args, options, io } = invocation;
+    const loaded = await loadProject(io, args[0]!);
+    const toolId = str(options, "tool");
+    const recommended = flag(options, "recommended");
+    if ((toolId === undefined) === !recommended) throw usageError("Give --tool <id> or --recommended.", "missing-option", { option: "tool" });
+    const steps = analyzeProject(loaded.project).steps;
+    const number = integerValue(args[1]!, "step", 1);
+    const step = steps.find((s) => s.step === number);
+    if (!step) throw usageError(`No step ${number}. The plan has ${steps.length} steps.`, "not-found", { step: number });
+    if (toolId !== undefined) findById(loaded.project.tools, toolId, "tool");
+    const next = setToolChoice(loaded.project, step, toolId ?? null);
+    const after = analyzeProject(next).steps.find((s) => s.sheet === step.sheet && s.axis === step.axis && s.at === step.at && s.from === step.from && s.to === step.to);
+    return finishMutation(invocation, loaded, next, {
+      summary: `Step ${number} uses ${after?.tool?.name ?? "no tool"}${after?.chosen ? "" : " (recommended)"}.`,
+      data: { step: number, sheet: step.sheet, tool: after?.tool?.id ?? null, recommendedTool: step.recommended?.id ?? null },
+    });
+  },
+};
+
 export const layoutGroup: GroupSpec = {
   name: "layout",
   summary: "The plan: sheets and part placements",
-  commands: [show, pinCommand(true), pinCommand(false), move, tray, rotate, addSheetCommand, removeSheetCommand, removeEmpty],
+  commands: [show, pinCommand(true), pinCommand(false), move, tray, rotate, addSheetCommand, removeSheetCommand, removeEmpty, toolCommand],
 };

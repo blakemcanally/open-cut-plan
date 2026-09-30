@@ -23,6 +23,25 @@ describe("report", () => {
     expect(all.orderMode).toBe("sheet");
     expect(all.steps[0]).toMatchObject({ step: 1, sheet: "s1", sheetNumber: 1, kind: "trim", tool: "table-saw", toolName: "Table saw", title: 'Step 1 · Trim 1/4" off the top edge' });
     expect(all.steps[0]).not.toHaveProperty("releasedPlacements");
+    expect(all.steps[0]).toMatchObject({
+      headline: 'Trim 1/4" off the top edge',
+      method: "Table saw · trim: a cut that removes the rough factory edge",
+      pickUp: 'the full sheet 60" × 60" (sheet 1)',
+      actions: ['Cut 1/4" off the top edge.'],
+      recommendedTool: "table-saw",
+      chosen: false,
+      overLimit: null,
+    });
+    expect(all.steps[0]).not.toHaveProperty("recommended");
+    expect(all.steps[0].results[1]).toMatchObject({ kind: "next", next: 2 });
+    const text = (await cli(["report", "sequence", SHELF, "--sheet", "s1"], withExamples())).stdout;
+    expect(text.split("\n").slice(0, 5)).toEqual([
+      'Step 1 · Trim 1/4" off the top edge',
+      "  Table saw · trim: a cut that removes the rough factory edge",
+      '  Pick up the full sheet 60" × 60" (sheet 1).',
+      '  1. Cut 1/4" off the top edge.',
+      expect.stringMatching(/^ {2}Waste: /),
+    ]);
     const one = (await cli(["report", "sequence", SHELF, "--sheet", "s2", "--json"], withExamples())).json();
     expect(one.steps.length).toBeGreaterThan(0);
     expect(one.steps.every((s: { sheet: string }) => s.sheet === "s2")).toBe(true);

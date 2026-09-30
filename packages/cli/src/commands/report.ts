@@ -2,6 +2,7 @@ import {
   analyzeProject,
   assemblySteps,
   describeStep,
+  resultSentence,
   formatArea,
   hardwareList,
   LABEL_LAYOUTS,
@@ -82,7 +83,7 @@ const sequence: CommandSpec = {
     { command: `${PROGRAM} report sequence shelf.cutplan.json --sheet 1 --json`, description: "The steps of sheet 1 as JSON." },
   ],
   output:
-    "orderMode, steps [{ step, sheet, sheetNumber, kind (rip|crosscut|trim), axis, stage, at, from, to, tool (id or null), toolName, side, setting, requires, releasedNext, remainderNext, piece, released, remainder { x, y, length, width }, title, body }].",
+    "orderMode, steps [{ step, sheet, sheetNumber, kind (rip|crosscut|trim), axis, stage, at, from, to, tool (id or null), toolName, recommendedTool (id or null), chosen, overLimit (maxPiece|maxRip|maxCrosscut|maxCut|maxStages or null), side, setting, requires, releasedNext, remainderNext, piece, released, remainder { x, y, length, width }, title, headline, method, pickUp, actions [string], results [{ kind (part|next|offcut|waste), where, size, parts [string], next }], body }].",
   async run({ args, options, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
@@ -92,10 +93,18 @@ const sequence: CommandSpec = {
     const steps = analysis.steps
       .filter((step) => only === null || step.sheet === only)
       .map((step) => {
-        const { tool, releasedPlacements: _released, remainderPlacements: _remainder, ...rest } = step;
-        return { ...rest, tool: tool?.id ?? null, toolName: tool?.name ?? null, ...describeStep(analysis.context, step) };
+        const { tool, recommended, releasedPlacements: _released, remainderPlacements: _remainder, ...rest } = step;
+        return { ...rest, tool: tool?.id ?? null, toolName: tool?.name ?? null, recommendedTool: recommended?.id ?? null, ...describeStep(analysis.context, step) };
       });
-    const text = steps.length === 0 ? "No cuts." : steps.map((step) => `${step.title}\n  ${step.body}`).join("\n");
+    const lines = (step: (typeof steps)[number]) =>
+      [
+        step.title,
+        `  ${step.method}`,
+        `  Pick up ${step.pickUp}.`,
+        ...step.actions.map((action, index) => `  ${index + 1}. ${action}`),
+        ...step.results.map((result) => `  ${resultSentence(result)}`),
+      ].join("\n");
+    const text = steps.length === 0 ? "No cuts." : steps.map(lines).join("\n");
     return { data: { orderMode: project.settings.orderMode, steps }, text, warnings: warningLines(loaded) };
   },
 };

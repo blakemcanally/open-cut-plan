@@ -85,4 +85,21 @@ describe("layout", () => {
     expect(empty.file(SHELF).plan!.sheets).toHaveLength(6);
     expect((await cli(["layout", "add-sheet", SHELF, "--stock", "nope"], io)).code).toBe(2);
   });
+
+  it("sets the tool of one cut and goes back to the recommended tool", async () => {
+    const io = withExamples();
+    await cli(["tools", "add", SHELF, "--type", "track-saw"], io);
+    const set = await cli(["layout", "tool", SHELF, "5", "--tool", "track-saw", "--json"], io);
+    expect(set.code).toBe(0);
+    expect(set.json()).toMatchObject({ step: 5, sheet: "s1", tool: "track-saw", recommendedTool: "table-saw" });
+    expect(set.file(SHELF).plan!.sheets[0]!.toolChoices).toMatchObject([{ tool: "track-saw" }]);
+    const step = (await cli(["report", "sequence", SHELF, "--json"], io)).json().steps[4];
+    expect(step).toMatchObject({ tool: "track-saw", chosen: true, recommendedTool: "table-saw" });
+    const back = await cli(["layout", "tool", SHELF, "5", "--recommended", "--json"], io);
+    expect(back.json()).toMatchObject({ tool: "table-saw" });
+    expect(back.file(SHELF).plan!.sheets[0]).not.toHaveProperty("toolChoices");
+    expect((await cli(["layout", "tool", SHELF, "5", "--tool", "nope", "--json"], io)).json().error.code).toBe("not-found");
+    expect((await cli(["layout", "tool", SHELF, "999", "--tool", "track-saw", "--json"], io)).json().error.code).toBe("not-found");
+    expect((await cli(["layout", "tool", SHELF, "5", "--json"], io)).code).toBe(2);
+  });
 });
