@@ -29,11 +29,11 @@ describe("ShopTab", () => {
   it("ticks the current step, moves to the next one, and stores the tick in the project", async () => {
     const { current } = renderShop();
     const total = stepCount();
-    expect(heading()).toMatch(/^Step 1\. Table saw, /);
+    expect(heading()).toMatch(/^Step 1 · Trim 1\/4" off the top edge$/);
     expect(screen.getByText(`0 of ${total} steps done.`)).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Mark done" }));
     expect(readProgress(current().project)?.done).toEqual([1]);
-    expect(heading()).toMatch(/^Step 2\. /);
+    expect(heading()).toMatch(/^Step 2 · /);
     expect(screen.getByText(`1 of ${total} steps done.`)).toBeTruthy();
     expect(screen.getByRole("checkbox", { name: "Step 1 done" })).toHaveProperty("checked", true);
     act(() => current().undo());
@@ -44,22 +44,22 @@ describe("ShopTab", () => {
     renderShop();
     const list = screen.getByRole("region", { name: "Cut sequence" });
     expect(within(list).getByRole("heading", { name: "Sheet 1", level: 4 })).toBeTruthy();
-    await userEvent.click(within(list).getByRole("button", { name: /^Step 3\. / }));
-    expect(heading()).toMatch(/^Step 3\. /);
+    await userEvent.click(within(list).getByRole("button", { name: /^Step 3 · / }));
+    expect(heading()).toMatch(/^Step 3 · /);
     expect(within(currentItem() as HTMLElement).getByRole("checkbox").getAttribute("aria-label")).toBe("Step 3 done");
     await userEvent.click(screen.getByRole("button", { name: "← Previous" }));
-    expect(heading()).toMatch(/^Step 2\. /);
+    expect(heading()).toMatch(/^Step 2 · /);
     await userEvent.click(screen.getByRole("button", { name: "Next →" }));
-    expect(heading()).toMatch(/^Step 3\. /);
+    expect(heading()).toMatch(/^Step 3 · /);
   });
 
   it("starts at the first step that is not done, and a tick in the list does not move the current step", async () => {
     const project = sampleProject();
     const { current } = renderShop(setStepDone(setStepDone(project, analyzeProject(project).steps, 1, true), analyzeProject(project).steps, 2, true));
-    expect(heading()).toMatch(/^Step 3\. /);
+    expect(heading()).toMatch(/^Step 3 · /);
     await userEvent.click(screen.getByRole("checkbox", { name: "Step 1 done" }));
     expect(readProgress(current().project)?.done).toEqual([2]);
-    expect(heading()).toMatch(/^Step 3\. /);
+    expect(heading()).toMatch(/^Step 3 · /);
   });
 
   it("draws the current step strongly and the done steps in grey", async () => {
@@ -107,11 +107,11 @@ describe("ShopTab", () => {
     expect(screen.getByRole("checkbox", { name: "Step 1 done" })).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Mark done" })).toHaveProperty("disabled", true);
     await userEvent.click(screen.getByRole("button", { name: "Next →" }));
-    expect(heading()).toMatch(/^Step 2\. /);
+    expect(heading()).toMatch(/^Step 2 · /);
     await userEvent.click(screen.getByRole("button", { name: "← Previous" }));
-    expect(heading()).toMatch(/^Step 1\. /);
-    await userEvent.click(within(list).getByRole("button", { name: /^Step 3\. / }));
-    expect(heading()).toMatch(/^Step 3\. /);
+    expect(heading()).toMatch(/^Step 1 · /);
+    await userEvent.click(within(list).getByRole("button", { name: /^Step 3 · / }));
+    expect(heading()).toMatch(/^Step 3 · /);
     await userEvent.click(screen.getByRole("button", { name: "Keep my ticks" }));
     expect(screen.getByRole("checkbox", { name: "Step 1 done" })).toHaveProperty("disabled", false);
     expect(screen.getByRole("button", { name: "Mark done" })).toHaveProperty("disabled", false);
@@ -123,18 +123,18 @@ describe("ShopTab", () => {
     vi.spyOn(window, "confirm").mockReturnValueOnce(true);
     await userEvent.click(screen.getByRole("button", { name: "Mark done" }));
     await userEvent.click(screen.getByRole("button", { name: "Next →" }));
-    expect(heading()).toMatch(/^Step 3\. /);
+    expect(heading()).toMatch(/^Step 3 · /);
     await userEvent.click(screen.getByRole("button", { name: "Reset progress" }));
-    expect(heading()).toMatch(/^Step 1\. /);
+    expect(heading()).toMatch(/^Step 1 · /);
     first.unmount();
 
     const ticked = setStepDone(project, analyzeProject(project).steps, 1, true);
     ticked.plan!.sheets[0]!.placements[1]!.y = 20;
     renderShop(ticked);
     await userEvent.click(screen.getByRole("button", { name: "Next →" }));
-    expect(heading()).toMatch(/^Step 2\. /);
+    expect(heading()).toMatch(/^Step 2 · /);
     await userEvent.click(screen.getByRole("button", { name: "Start over" }));
-    expect(heading()).toMatch(/^Step 1\. /);
+    expect(heading()).toMatch(/^Step 1 · /);
   });
 
   it("prints the cut sequence", async () => {
@@ -165,7 +165,7 @@ describe("ShopTab", () => {
       expect(list.scrollTop).toBe(60);
       await userEvent.click(screen.getByRole("button", { name: "← Previous" }));
       expect(list.scrollTop).toBe(60);
-      await userEvent.click(within(list).getByRole("button", { name: /^Step 1\. / }));
+      await userEvent.click(within(list).getByRole("button", { name: /^Step 1 · / }));
       expect(list.scrollTop).toBe(30);
       expect(scrollIntoView).not.toHaveBeenCalled();
       expect(scrollTo).not.toHaveBeenCalled();

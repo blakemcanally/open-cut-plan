@@ -111,12 +111,12 @@ describe("sequencePlan", () => {
       const cuts = sequencePlan(project).filter((step) => step.kind !== "trim");
       for (const step of cuts) {
         expect(step.setting).toBeGreaterThan(EPSILON);
-        expect(describeStep(ctx, step).body).not.toContain('at 0"');
+        expect(describeStep(ctx, step).actions.join(" ")).not.toMatch(/ 0" from /);
       }
     }
     const sliver = sequencePlan(gap).find((step) => step.at === 12.375)!;
     expect([sliver.side, sliver.setting]).toEqual(["remainder", 35.3125]);
-    expect(describeStep(planContext(gap), sliver).body).toContain('Fence at 35 5/16".');
+    expect(describeStep(planContext(gap), sliver).actions[0]).toBe('Set the fence 35 5/16" from the blade.');
     const stop = sequencePlan(edge).find((step) => step.at === 0.21875)!;
     expect([stop.side, stop.setting]).toEqual(["remainder", 95.46875]);
   });

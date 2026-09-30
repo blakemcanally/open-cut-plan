@@ -26,7 +26,7 @@ describe("Workspace", () => {
     screen.getByRole("tab", { name: "Layout" }).focus();
     await userEvent.keyboard("{ArrowRight}");
     expect(screen.getByRole("tab", { name: "Shop" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByRole("heading", { level: 2 }).textContent).toMatch(/^Step 1\. /);
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toMatch(/^Step 1 · /);
     await userEvent.keyboard("{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}");
     expect(screen.getByRole("tab", { name: "Parts" }).getAttribute("aria-selected")).toBe("true");
     expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Parts" }));

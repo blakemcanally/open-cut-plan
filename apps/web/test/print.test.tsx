@@ -130,7 +130,7 @@ describe("PrintView", () => {
     expect(within(root).getByRole("heading", { name: "Test: cut sequence" })).toBeTruthy();
     const items = root.querySelectorAll(".print-steps li");
     expect(items).toHaveLength(steps.length);
-    expect(items[0]!.textContent).toMatch(/^☐Step 1\. Table saw, /);
+    expect(items[0]!.textContent).toMatch(/^☐Step 1 · Trim 1\/4" off the top edge/);
     expect(within(root).getByText("Scale 1:16")).toBeTruthy();
   });
 

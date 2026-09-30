@@ -73,10 +73,10 @@ test("plans a project from CSV, keeps shop progress, and prints and exports it",
   await optimize(page);
 
   await page.getByRole("tab", { name: "Shop" }).click();
-  await expect(page.getByRole("heading", { level: 2 })).toHaveText(/^Step 1\. /);
+  await expect(page.getByRole("heading", { level: 2 })).toHaveText(/^Step 1 · /);
   await page.getByRole("button", { name: "Mark done" }).click();
   await expect(page.getByText(/^1 of \d+ steps done\.$/)).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2 })).toHaveText(/^Step 2\. /);
+  await expect(page.getByRole("heading", { level: 2 })).toHaveText(/^Step 2 · /);
   await expect.poll(() => savedData(page)).toContain('"progress"');
   await page.reload();
   await page.getByRole("tab", { name: "Shop" }).click();

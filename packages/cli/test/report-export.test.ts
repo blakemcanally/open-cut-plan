@@ -21,7 +21,7 @@ describe("report", () => {
   it("gives the cut steps with their text, for all sheets or one", async () => {
     const all = (await cli(["report", "sequence", SHELF, "--json"], withExamples())).json();
     expect(all.orderMode).toBe("sheet");
-    expect(all.steps[0]).toMatchObject({ step: 1, sheet: "s1", sheetNumber: 1, kind: "trim", tool: "table-saw", toolName: "Table saw", title: "Step 1. Table saw, trim." });
+    expect(all.steps[0]).toMatchObject({ step: 1, sheet: "s1", sheetNumber: 1, kind: "trim", tool: "table-saw", toolName: "Table saw", title: 'Step 1 · Trim 1/4" off the top edge' });
     expect(all.steps[0]).not.toHaveProperty("releasedPlacements");
     const one = (await cli(["report", "sequence", SHELF, "--sheet", "s2", "--json"], withExamples())).json();
     expect(one.steps.length).toBeGreaterThan(0);
