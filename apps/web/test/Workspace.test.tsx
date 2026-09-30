@@ -175,4 +175,16 @@ describe("Workspace", () => {
     expect(screen.getByRole("tab", { name: "Design" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("button", { name: /^Desk /, pressed: true })).toBeTruthy();
   });
+
+  it("prints the assembly steps from the Reports tab", async () => {
+    const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    await renderWorkspace(designProject());
+    await userEvent.click(screen.getByRole("tab", { name: "Reports" }));
+    await userEvent.click(screen.getByRole("button", { name: "Print assembly steps" }));
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    const root = document.body.querySelector(":scope > .print-root")!;
+    expect(root.getAttribute("data-job")).toBe("assembly");
+    expect(root.querySelectorAll(".print-steps li")).toHaveLength(7);
+    print.mockRestore();
+  });
 });

@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrintView, type PrintJob } from "../src/print/PrintView.tsx";
 import { printScale, sheetPrintLayout } from "../src/print/scale.ts";
 import { formatMoney } from "../src/reports/money.ts";
-import { sampleProject } from "./helpers.ts";
+import { assemblyGroups } from "../src/shop/progress.ts";
+import { designProject, sampleProject } from "./helpers.ts";
 
 let print: ReturnType<typeof vi.spyOn>;
 
@@ -114,6 +115,23 @@ describe("PrintView", () => {
     expect(within(root).getByRole("heading", { name: "Test: shopping list" })).toBeTruthy();
     expect(within(root).getByRole("heading", { name: "Plywood", level: 2 })).toBeTruthy();
     expect(within(root).getByText(/^Total: .*60\.00/)).toBeTruthy();
+  });
+
+  it("prints the hardware on the shopping list, even with no sheets", () => {
+    const { root } = renderPrint({ kind: "shopping" }, { ...designProject(), plan: { sheets: [] } });
+    expect(within(root).queryByRole("heading", { name: "Plywood 18", level: 2 })).toBeNull();
+    const hardware = within(root).getByRole("heading", { name: "Hardware" }).closest("section")!;
+    expect(within(hardware).getAllByRole("row")).toHaveLength(5);
+  });
+
+  it("prints one page of assembly steps for each design", () => {
+    const project = designProject();
+    const { root } = renderPrint({ kind: "assembly" }, project);
+    const pages = [...root.querySelectorAll<HTMLElement>(".print-page")];
+    expect(pages).toHaveLength(1);
+    expect(within(pages[0]!).getByRole("heading", { name: "Hall: Hall", level: 1 })).toBeTruthy();
+    expect(pages[0]!.querySelector(".print-elevation svg")).toBeTruthy();
+    expect([...pages[0]!.querySelectorAll(".print-steps li")].map((step) => step.textContent)).toEqual(assemblyGroups(project)[0]!.steps.map((step) => `☐${step.title} ${step.body}`));
   });
 
   it("places labels on the label sheet from the start position", () => {

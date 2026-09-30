@@ -1,9 +1,11 @@
 import {
+  designElevationSvg,
   exportPartsCsv,
   exportStockCsv,
   fileBase,
   formatSize,
   groupColors,
+  hardwareList,
   LABEL_LAYOUTS,
   labelLayout,
   labelPages,
@@ -18,7 +20,9 @@ import {
 import { useMemo, useState } from "react";
 import type { PrintJob } from "../print/PrintView.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
+import { assemblyGroups } from "../shop/progress.ts";
 import { downloadText } from "../storage/files.ts";
+import { HardwareTable } from "./HardwareTable.tsx";
 import { ShoppingTables } from "./ShoppingTables.tsx";
 
 interface ReportsTabProps {
@@ -41,6 +45,15 @@ export function ReportsTab({ store, analysis, onPrint }: ReportsTabProps) {
   const perPage = labelsPerPage(layout);
   const firstLabel = Math.min(start, perPage);
   const pageCount = labelPages(analysis.labels, layout, firstLabel).length;
+  const hardware = useMemo(() => hardwareList(project), [project]);
+  const assembly = useMemo(() => assemblyGroups(project), [project]);
+  const drawings = useMemo(
+    () => (project.designs ?? []).flatMap((design) => {
+      const svg = designElevationSvg(project, design.id);
+      return svg ? [{ design, svg }] : [];
+    }),
+    [project],
+  );
 
   const saveOffcuts = () => {
     edit((p) => saveOffcutsToStock(p, unsavedOffcuts(p, analysis.offcuts)));
@@ -59,9 +72,14 @@ export function ReportsTab({ store, analysis, onPrint }: ReportsTabProps) {
           <button type="button" onClick={() => onPrint({ kind: "sequence" })} disabled={analysis.steps.length === 0}>
             Print cut sequence
           </button>
-          <button type="button" onClick={() => onPrint({ kind: "shopping" })} disabled={!planned}>
+          <button type="button" onClick={() => onPrint({ kind: "shopping" })} disabled={!planned && hardware.length === 0}>
             Print shopping list
           </button>
+          {assembly.length > 0 && (
+            <button type="button" onClick={() => onPrint({ kind: "assembly" })}>
+              Print assembly steps
+            </button>
+          )}
           <button type="button" onClick={() => downloadText(exportPartsCsv(project), `${base}-parts.csv`, "text/csv")}>
             Export parts CSV
           </button>
@@ -84,10 +102,30 @@ export function ReportsTab({ store, analysis, onPrint }: ReportsTabProps) {
         )}
       </section>
 
-      {planned && (
+      {(planned || hardware.length > 0) && (
         <section aria-labelledby="reports-shopping">
           <h2 id="reports-shopping">Shopping list</h2>
-          <ShoppingTables analysis={analysis} level={3} />
+          {planned && <ShoppingTables analysis={analysis} level={3} />}
+          {hardware.length > 0 && <HardwareTable project={project} lines={hardware} level={3} />}
+        </section>
+      )}
+
+      {drawings.length > 0 && (
+        <section aria-labelledby="reports-drawings">
+          <h2 id="reports-drawings">Front views</h2>
+          <div className="drawings">
+            {drawings.map(({ design, svg }) => (
+              <figure key={design.id}>
+                <div className="design-preview" role="img" aria-label={`Front view of ${design.name}`} dangerouslySetInnerHTML={{ __html: svg }} />
+                <figcaption>
+                  {design.name}{" "}
+                  <button type="button" onClick={() => downloadText(svg, `${base}-${design.id}.svg`, "image/svg+xml")}>
+                    {design.name} as SVG
+                  </button>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
         </section>
       )}
 

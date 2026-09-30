@@ -1,9 +1,11 @@
 import {
   copyLabel,
   describeStep,
+  designElevationSvg,
   formatSize,
   grainOk,
   groupColors,
+  hardwareList,
   labelLayout,
   labelPages,
   sheetSvg,
@@ -19,10 +21,12 @@ import {
 } from "@opencutplan/core";
 import { useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
+import { HardwareTable } from "../reports/HardwareTable.tsx";
 import { ShoppingTables } from "../reports/ShoppingTables.tsx";
+import { assemblyGroups } from "../shop/progress.ts";
 import { printScale, sheetPrintLayout } from "./scale.ts";
 
-export type PrintJob = { kind: "sheets" } | { kind: "sequence" } | { kind: "shopping" } | { kind: "labels"; layout: LabelLayoutId; start: number };
+export type PrintJob = { kind: "sheets" } | { kind: "sequence" } | { kind: "shopping" } | { kind: "assembly" } | { kind: "labels"; layout: LabelLayoutId; start: number };
 
 interface PrintViewProps {
   job: PrintJob;
@@ -60,15 +64,51 @@ export function PrintView({ job, analysis, onDone }: PrintViewProps) {
       <style>{pageRule(job)}</style>
       {job.kind === "sheets" && <SheetPages analysis={analysis} />}
       {job.kind === "sequence" && <SequencePages analysis={analysis} />}
-      {job.kind === "shopping" && (
-        <section className="print-page">
-          <h1>{analysis.context.project.project.name}: shopping list</h1>
-          <ShoppingTables analysis={analysis} level={2} />
-        </section>
-      )}
+      {job.kind === "shopping" && <ShoppingPage analysis={analysis} />}
+      {job.kind === "assembly" && <AssemblyPages analysis={analysis} />}
       {job.kind === "labels" && <LabelPages analysis={analysis} layout={job.layout} start={job.start} />}
     </div>,
     document.body,
+  );
+}
+
+function ShoppingPage({ analysis }: { analysis: ProjectAnalysis }) {
+  const project = analysis.context.project;
+  const hardware = hardwareList(project);
+  return (
+    <section className="print-page">
+      <h1>{project.project.name}: shopping list</h1>
+      {analysis.sheets.length > 0 && <ShoppingTables analysis={analysis} level={2} />}
+      {hardware.length > 0 && <HardwareTable project={project} lines={hardware} level={2} />}
+    </section>
+  );
+}
+
+function AssemblyPages({ analysis }: { analysis: ProjectAnalysis }) {
+  const project = analysis.context.project;
+  return (
+    <>
+      {assemblyGroups(project).map((group) => (
+        <section key={group.design} className="print-page print-assembly">
+          <h1>
+            {project.project.name}: {group.name}
+          </h1>
+          <div className="print-elevation" dangerouslySetInnerHTML={{ __html: designElevationSvg(project, group.design)! }} />
+          <ol className="print-steps">
+            {group.steps.map((step, index) => (
+              <li key={index}>
+                <span className="print-box" aria-hidden="true">
+                  ☐
+                </span>
+                <div>
+                  <strong>{step.title}</strong> {step.body}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))}
+    </>
   );
 }
 

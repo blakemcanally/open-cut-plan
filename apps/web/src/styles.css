@@ -155,6 +155,8 @@ table.grid tr.generated td { color: var(--muted); }
 .assembly-steps li p { margin: 2px 0 0; }
 .assembly-steps li.done { color: var(--muted); }
 .assembly-steps input[type="checkbox"] { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.drawings { display: flex; flex-wrap: wrap; gap: 16px; }
+.drawings figure { margin: 0; width: min(360px, 100%); }
 
 .reports section + section { margin-top: 24px; }
 .reports h2 { margin-bottom: 6px; }
@@ -183,6 +185,7 @@ table.grid tr.generated td { color: var(--muted); }
   .print-steps { list-style: none; padding: 0; margin: 6pt 0 0; }
   .print-steps li { display: flex; gap: 6pt; margin: 0 0 5pt; break-inside: avoid; }
   .print-box { font-size: 13pt; line-height: 1; }
+  .print-elevation svg { display: block; width: auto; height: 80mm; max-width: 100%; margin: 0 0 8pt; }
   .print-root table.grid th, .print-root table.grid td { border-bottom: 0.5pt solid #999; }
   .label-page { position: relative; overflow: hidden; }
   .label { position: absolute; box-sizing: border-box; padding: 0.06in 0.1in; overflow: hidden; display: flex; flex-direction: column; justify-content: center; font-size: 8pt; line-height: 1.2; }

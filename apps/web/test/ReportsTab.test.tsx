@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PrintJob } from "../src/print/PrintView.tsx";
 import { ReportsTab } from "../src/reports/ReportsTab.tsx";
 import { useProject, type ProjectStore } from "../src/state/useProject.ts";
-import { sampleProject } from "./helpers.ts";
+import { designProject, sampleProject } from "./helpers.ts";
 
 function renderReports(initial: Project = sampleProject(), onPrint: (job: PrintJob) => void = () => undefined) {
   let latest: ProjectStore | null = null;
@@ -139,6 +139,31 @@ describe("ReportsTab", () => {
     ]);
     expect(await files[0]!.blob.text()).toMatch(/^name,length,width,quantity,material,grain,group,notes\r?\nSide,30,12,2,Plywood,length,,/);
     expect(await files[2]!.blob.text()).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="-1\.6 -1\.6 99\.2 51\.2" width="99\.2in"/);
+  });
+
+  it("lists the hardware of the designs in the shopping list", () => {
+    renderReports({ ...designProject(), designs: [{ ...designProject().designs![0]!, mount: "wall-rail" }] });
+    const hardware = within(screen.getByRole("region", { name: "Hardware" }));
+    expect(hardware.getAllByRole("row").slice(1).map((row) => within(row).getAllByRole("cell").map((cell) => cell.textContent))).toEqual([
+      ["Pocket screws, coarse thread, 1 1/4\" (32 mm)", "", "40", "Hall"],
+      ["EKET suspension rail, 70 cm", "80340048", "1", "Hall"],
+      ["Wall screws and plugs for your wall type", "", "As needed", "Hall"],
+      ["Wood glue (PVA)", "", "As needed", "Every design"],
+    ]);
+    expect(hardware.getByRole("link", { name: "80340048" }).getAttribute("href")).toMatch(/^https:\/\/www\.ikea\.com\/gb\//);
+  });
+
+  it("prints the assembly steps and downloads the front view of each design", async () => {
+    const onPrint = vi.fn();
+    const files = captureDownloads();
+    renderReports(designProject(), onPrint);
+    await userEvent.click(screen.getByRole("button", { name: "Print assembly steps" }));
+    expect(onPrint).toHaveBeenCalledWith({ kind: "assembly" });
+    const drawings = within(section("Front views"));
+    expect(drawings.getByRole("img", { name: "Front view of Hall" }).querySelector("svg")).toBeTruthy();
+    await userEvent.click(drawings.getByRole("button", { name: "Hall as SVG" }));
+    expect(files.map((file) => [file.name, file.blob.type])).toEqual([["Hall-hall.svg", "image/svg+xml"]]);
+    expect(await files[0]!.blob.text()).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
   });
 
   it("says there is no plan and keeps the CSV exports", () => {
