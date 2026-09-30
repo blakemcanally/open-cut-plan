@@ -14,6 +14,10 @@ This spec replaces that text with a structured step: a title that says what the 
 of the kind of cut, the piece to pick up, numbered actions, and a labelled result for each side. The diagram outlines
 the piece to pick up. The Shop tab, the printed cut sequence, and `report sequence` in the CLI all use the new form.
 
+The spec also changes the tools. A new project starts with a table saw and a track saw, with limits that send the
+breakdown of full sheets to the track saw (section 7). The carpenter can pick the tool for each cut on the Shop tab; the
+file stores the choice (section 8).
+
 The user named four problems. Each one has a fix in this spec:
 
 | Problem | Fix |
@@ -30,9 +34,14 @@ The user named four problems. Each one has a fix in this spec:
 3. Two trim steps on the same sheet have different titles when they trim different edges.
 4. The step list on the Shop tab shows different titles for different cuts.
 5. The diagram shows the piece of the current step and its cut line at the same time.
+6. In a new project, the track saw makes the cuts on a full 4×8 or 5×5 sheet, and the table saw makes the cuts on the
+   pieces that fit its limits.
+7. The carpenter can change the tool of any cut on the Shop tab. The step text, the diagram, and the list follow the
+   change at once, and the ticks stay on their cuts.
 
-Not goals: a drawing of the piece as it goes on the saw (Approach C, a later change); a change to the cut order, the
-tool choice, or the settings; a change to the file format.
+Not goals: a drawing of the piece as it goes on the saw (Approach C, a later change); a change to how the cut analysis
+picks the recommended tool (the first enabled tool, in order, that can make the cut); a change to the tools of
+existing projects or of the examples.
 
 ## 3. Words used in this spec
 
@@ -123,6 +132,11 @@ direction from the marks away from the measured side.
 | Track saw | 1. `Mark <setting> from the <measured edge> edge, at the two ends of the cut.` 2. `Put the edge of the track on the marks.` 3. `Cut with the blade <away from the marks> the marks.` |
 | Circular saw | 1. The track saw action 1. 2. `Clamp a straightedge so that the blade cuts next to the marks.` 3. The track saw action 3. |
 | No tool | First `No enabled tool can make this cut. Check the Tools tab.`, then the circular saw actions. |
+| A chosen tool over one of its limits (section 8.1) | First `This cut is over a limit of the <tool name>: <limit word> <value>.`, then the actions of that tool. |
+
+The limit words are the labels of the Tools tab, in lower case: "widest rip" (`maxRip`), "longest crosscut"
+(`maxCrosscut`), "largest piece" (`maxPiece`, the value is `<length> × <width>`), "longest cut" (`maxCut`), and "most cut
+stages" (`maxStages`, the value is a plain number).
 
 The actions end with a full stop. The UI numbers them; the strings do not start with a number.
 
@@ -219,15 +233,93 @@ Step 7 · Cut 15 3/8" off the panel
 
 The `output` help text of the command lists the new fields.
 
-## 7. Errors and edge cases
+## 7. The default tools
+
+`newTool(type, units, taken)` in `packages/core/src/edit/tools.ts` gives these default limits (inch / mm):
+
+| Type | Limits |
+|---|---|
+| Table saw | `maxPiece` 96 × 24 (2440 × 610), `maxRip` 24 (610), `maxCrosscut` 24 (610) |
+| Track saw | `maxCut` 110 (2800): a 118" (3000 mm) rail with about 4" at each end |
+| Circular saw, panel saw | no limits, as now |
+
+A new function `defaultTools(units)` gives `[table saw, track saw]`, in that order. A new project in the web app
+(`newProject` in `Home.tsx`) and `opencutplan new` use it. **Add tool** on the Tools tab and `tools add` in the CLI use
+`newTool`, so a new table saw or track saw also gets the defaults.
+
+The reasons, from the research: a full sheet on a table saw is not safe; many jobsite saws and crosscut sleds reach
+about 24"; the table saw is better for repeated, fence-referenced parts and narrow strips. With these limits and the
+table saw first, a full 96 × 48 sheet (or a 60 × 60 sheet) is over the largest piece of the table saw, so the track
+saw makes its trims and first cuts; a strip 95 1/2" × 12" fits the table saw, so the table saw makes its crosscuts.
+
+Existing projects, tool profiles, and the examples do not change.
+
+## 8. Choosing the tool for a cut
+
+### 8.1 Core
+
+- `toolLimit(tool, cut, limits)` in `sequence/tools.ts` returns the first limit of the tool that the cut is over
+  (`"maxPiece" | "maxRip" | "maxCrosscut" | "maxCut" | "maxStages"`), or null. `toolCanCut` uses it and does not change
+  its behaviour. When the `toolLimits` feature is off, every tool can make every cut.
+- The sequence finds the stored choice of each cut (section 8.2). When the choice names an enabled tool, the step uses
+  that tool; the measured side is the side `toolCanCut` gives for that tool, or, when the tool is over a limit, the side
+  it measures with no limits. Otherwise the step uses the
+  recommended tool, as now.
+- `Step` gets three fields: `recommended: Tool | null` (the tool the cut analysis picks), `chosen: boolean` (true when
+  a stored choice sets the tool), and `overLimit: ToolLimit | null` (the limit of `step.tool` that the cut is over).
+- `setToolChoice(project, step, toolId | null)` in `edit/tools.ts` stores or removes the choice. A tool id equal to
+  `step.recommended` removes the choice.
+- The setup order groups cuts by the tool of the step, so it uses the chosen tool.
+
+### 8.2 The file (format 1.3)
+
+Each plan sheet gets an optional field:
+
+```json
+"toolChoices": [{ "axis": "y", "at": 12.375, "from": 0.25, "to": 95.75, "tool": "table-saw" }]
+```
+
+- A choice belongs to the cut on the same sheet with the same axis, `at`, `from`, and `to` (within `EPSILON`).
+- `withCuts` (the save) keeps only the choices that match a cut of the sheet. **Optimize** makes new sheets, so the
+  choices on unpinned sheets go; a pinned sheet keeps them.
+- A choice whose tool does not exist gives a `bad-ref` warning, like `cuts[].tool`. A choice whose tool is turned off
+  has no effect.
+- A change of units converts `at`, `from`, and `to` of each choice, as it converts the placements.
+- `FORMAT_VERSION` becomes `"1.3"`. `docs/format.md` describes the field. Readers of 1.2 ignore it, as the minor
+  version rules say.
+
+### 8.3 The Shop tab
+
+- Under the title of the current step, a `select` labelled **Tool** lists the enabled tools in order. The option of
+  the recommended tool ends with " (recommended)". The option of a tool that is over a limit for this cut ends with
+  " (over its <limit word>)", for example "Table saw (over its largest piece)". Every option can be picked.
+- A change of the select stores the choice at once (one undo step). The title, the method, the actions, the diagram,
+  and the list follow the change.
+- **Ticks:** a tick belongs to a cut, not to a step number. When the tool of a cut changes, the Shop tab finds each
+  ticked cut in the new steps by its sheet, kind, axis, `at`, `from`, and `to`, and stores the ticks with the new step
+  numbers and the new fingerprint, in the same edit. In the setup order, the steps can move; the ticks move with them.
+  When the ticks are already out of date (the banner shows), the change of tool leaves them as they are.
+
+### 8.4 The CLI
+
+- `opencutplan layout tool <file> <step> --tool <id>` stores a choice for the cut of that step (in the current order).
+  `--recommended` removes it. The command fails with `unknown-tool` for a tool id that does not exist, and with
+  `not-found` for a step number that does not exist. Like the other `layout` commands, it has `--dry-run` and `--json`.
+- `report sequence --json` adds `recommendedTool` (an id or null), `chosen`, and `overLimit` to each step.
+
+## 9. Errors and edge cases
 
 - A step with no tool: section 4.4 gives the warning action first. The method starts with "No tool".
 - A side with many parts: `parts` uses the shortening of `list` (three names, then "and N more").
 - The setup order (`orderMode: "setup"`): `requires` can be a step far before this one. The pick-up line still names it.
 - A sheet with a missing stock: `describeStep` treats the piece as a panel, as now.
 - A stale shop state: the text is for the current steps, as now.
+- A chosen tool that the user then turns off: the cut goes back to the recommended tool. The choice stays in the file
+  while its cut exists, so it comes back when the tool is turned on again. A deleted tool gives the `bad-ref` warning
+  until the user picks another tool for that cut.
+- A project with no enabled tool: the Tool select is not shown.
 
-## 8. Testing
+## 10. Testing
 
 - **Core** (`packages/core/test/sequence/text.test.ts`): the title, the method, the pick-up line, the actions, the
   results, and the body for a table saw rip and crosscut, a panel saw cut, a track saw cut, a circular saw cut, a step
@@ -239,14 +331,21 @@ The `output` help text of the command lists the new fields.
   and that "Go to step N" selects that step. It checks the list items and the run heading with one tool. The print test
   checks the three lines of one step.
 - **CLI:** the `report sequence` test checks the new JSON fields and the text output.
-- **e2e:** the Shop part of the plan test checks the pick-up line and the first action of step 1.
+- **Tools:** `newTool` and `defaultTools` give the limits of section 7 in both units; the sample project with the
+  default tools sends the full-sheet cuts to the track saw and the strip crosscuts to the table saw.
+- **Tool choice:** a stored choice sets the tool, the measured side, `chosen`, and `overLimit`; a choice for a turned-off
+  tool has no effect; `withCuts` drops a choice that matches no cut; the unit change converts a choice; a 1.2 file
+  loads; the Shop select changes the text and keeps the ticks (sheet order and setup order); `layout tool` stores and
+  removes a choice.
+- **e2e:** the Shop part of the plan test checks the pick-up line and the first action of step 1, and changes the tool
+  of one step.
 
-## 9. Docs
+## 11. Docs
 
 `docs/cut-analysis.md` (the step text), `docs/web-app.md` (the Shop tab and printing), and `docs/cli.md`
-(`report sequence`) describe the new form.
+(`report sequence`, `layout tool`) describe the new form. `docs/format.md` describes `toolChoices` and version 1.3.
 
-## 10. Delivery
+## 12. Delivery
 
-One implementation plan: the core text first, then the SVG outline, then the Shop tab, the print, and the CLI, then the
-docs.
+One implementation plan: the core text, the SVG outline, the default tools, the tool choice in the core and the file,
+then the Shop tab, the print, the CLI, and the docs.
