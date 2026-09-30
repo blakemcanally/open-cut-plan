@@ -1,8 +1,8 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { isTableText, PartsTab } from "../src/screens/PartsTab.tsx";
-import { sampleProject } from "./helpers.ts";
+import { designProject, sampleProject } from "./helpers.ts";
 import { renderWithStore } from "./render.tsx";
 
 vi.mock("../src/storage/files.ts", () => ({
@@ -52,6 +52,20 @@ describe("PartsTab", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Import 1 row" }));
     expect(current().project.parts.map((p) => p.name)).toEqual(["Side", "Shelf", "Top"]);
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("shows the parts of a design as rows that cannot change, with a link to the design", async () => {
+    const onShowDesign = vi.fn();
+    const project = designProject();
+    const orphan = { id: "plinth", name: "Plinth", material: "ply18", length: 700, width: 80, quantity: 1, grain: "length" as const, design: "gone" };
+    renderWithStore({ ...project, parts: [...project.parts, orphan] }, (store) => <PartsTab store={store} onShowDesign={onShowDesign} />);
+    const row = screen.getByRole("row", { name: /^Vertical panel/ });
+    expect(within(row).queryByRole("textbox")).toBeNull();
+    expect(within(row).queryByRole("button", { name: /^Delete/ })).toBeNull();
+    expect(within(row).getAllByRole("cell").map((cell) => cell.textContent)).toEqual(["Vertical panel", "724 mm", "390 mm", "3", "Plywood 18", "Along length", "Hall", "From design: Hall"]);
+    await userEvent.click(within(row).getByRole("button", { name: "Hall" }));
+    expect(onShowDesign).toHaveBeenCalledWith("hall");
+    expect(screen.getByLabelText("Name of Plinth")).toBeTruthy();
   });
 
   it("treats text with a tab or a line break as table text", () => {

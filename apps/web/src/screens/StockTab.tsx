@@ -123,7 +123,7 @@ export function StockTab({ store }: { store: ProjectStore }) {
                         type="button"
                         aria-label={`Delete material ${material.name}`}
                         disabled={used}
-                        title={used ? "Parts or stock use this material." : undefined}
+                        title={used ? "Parts, stock, or designs use this material." : undefined}
                         onClick={() => edit((p) => removeMaterial(p, material.id))}
                       >
                         Delete

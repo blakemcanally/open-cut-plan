@@ -57,7 +57,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
   const [handle, setHandle] = useState(initialHandle);
   const [fileStatus, setFileStatus] = useState<string | null>(null);
   const [printJob, setPrintJob] = useState<PrintJob | null>(null);
-  const [designFocus] = useState<string | null>(null);
+  const [designFocus, setDesignFocus] = useState<string | null>(null);
   const endPrint = useCallback(() => setPrintJob(null), []);
   const saveError = useAutosave(storage, id, project, stored);
 
@@ -165,7 +165,15 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
       </div>
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="panel">
         {tab === "design" && <DesignTab store={store} analysis={analysis} focus={designFocus} />}
-        {tab === "parts" && <PartsTab store={store} />}
+        {tab === "parts" && (
+          <PartsTab
+            store={store}
+            onShowDesign={(design) => {
+              setDesignFocus(design);
+              setTab("design");
+            }}
+          />
+        )}
         {tab === "stock" && <StockTab store={store} />}
         {tab === "tools" && <ToolsTab store={store} storage={storage} />}
         {tab === "layout" && <LayoutTab store={store} analysis={analysis} prefs={prefs} runs={runs} />}

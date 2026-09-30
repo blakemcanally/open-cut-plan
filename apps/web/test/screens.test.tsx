@@ -7,7 +7,7 @@ import { StockTab } from "../src/screens/StockTab.tsx";
 import { ToolsTab } from "../src/screens/ToolsTab.tsx";
 import { DEFAULT_PREFS, type ViewPrefs } from "../src/state/prefs.ts";
 import { openStorage } from "../src/storage/db.ts";
-import { sampleProject } from "./helpers.ts";
+import { designProject, sampleProject } from "./helpers.ts";
 import { renderWithStore } from "./render.tsx";
 
 vi.mock("../src/storage/files.ts", () => ({
@@ -21,6 +21,14 @@ describe("StockTab", () => {
     await userEvent.click(screen.getByRole("button", { name: "Delete stock ply-4x8" }));
     expect(current().project.stock).toEqual([]);
     expect(current().project.plan!.sheets).toEqual([]);
+  });
+
+  it("keeps a material that only a design uses as its back", () => {
+    const project = designProject();
+    renderWithStore({ ...project, designs: [{ ...project.designs![0]!, back: { material: "ply6" } }] }, (store) => <StockTab store={store} />);
+    const back = screen.getByRole("button", { name: "Delete material Plywood 6" });
+    expect(back).toHaveProperty("disabled", true);
+    expect(back).toHaveProperty("title", "Parts, stock, or designs use this material.");
   });
 
   it("lets a sheet use its factory edges or its own trim", async () => {

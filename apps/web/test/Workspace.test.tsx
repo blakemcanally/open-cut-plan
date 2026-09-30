@@ -1,9 +1,10 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { regenerateDesigns } from "@opencutplan/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TABS, Workspace } from "../src/screens/Workspace.tsx";
 import { openStorage, unavailableStorage, type Storage } from "../src/storage/db.ts";
-import { inProcessWorkers, sampleProject } from "./helpers.ts";
+import { designProject, inProcessWorkers, sampleProject } from "./helpers.ts";
 
 async function renderWorkspace(project = sampleProject(), given?: Storage) {
   const storage = given ?? (await openStorage(indexedDB));
@@ -164,5 +165,14 @@ describe("Workspace", () => {
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
     expect(document.body.querySelector(":scope > .print-root")?.getAttribute("data-job")).toBe("sheets");
     print.mockRestore();
+  });
+
+  it("opens the design of a part from the Parts tab", async () => {
+    const project = designProject();
+    await renderWorkspace(regenerateDesigns({ ...project, designs: [...project.designs!, { ...project.designs![0]!, id: "desk", name: "Desk" }] }));
+    await userEvent.click(screen.getByRole("tab", { name: "Parts" }));
+    await userEvent.click(within(screen.getAllByRole("row", { name: /^Vertical panel/ }).at(-1)!).getByRole("button", { name: "Desk" }));
+    expect(screen.getByRole("tab", { name: "Design" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("button", { name: /^Desk /, pressed: true })).toBeTruthy();
   });
 });

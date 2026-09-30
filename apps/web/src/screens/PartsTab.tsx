@@ -1,4 +1,4 @@
-import { addPart, errorMessage, formatArea, MAX_PART_QUANTITY, removePart, updatePart, type Grain, type Project } from "@opencutplan/core";
+import { addPart, errorMessage, formatArea, formatLength, MAX_PART_QUANTITY, removePart, updatePart, type Grain, type Project } from "@opencutplan/core";
 import { useState, type ClipboardEvent } from "react";
 import { CsvImportDialog } from "../components/CsvImportDialog.tsx";
 import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
@@ -16,8 +16,14 @@ export function isTableText(text: string): boolean {
   return /[\t\n]/.test(text.trim());
 }
 
-export function PartsTab({ store }: { store: ProjectStore }) {
+interface PartsTabProps {
+  store: ProjectStore;
+  onShowDesign?(design: string): void;
+}
+
+export function PartsTab({ store, onShowDesign }: PartsTabProps) {
   const { project, edit } = store;
+  const designs = new Map((project.designs ?? []).map((design) => [design.id, design]));
   const [importing, setImporting] = useState<string | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -101,6 +107,26 @@ export function PartsTab({ store }: { store: ProjectStore }) {
             </thead>
             <tbody>
               {project.parts.map((part) => {
+                const design = part.design === undefined ? undefined : designs.get(part.design);
+                if (design) {
+                  return (
+                    <tr key={part.id} className="generated">
+                      <td>{part.name}</td>
+                      <td>{formatLength(part.length, units, display)}</td>
+                      <td>{formatLength(part.width, units, display)}</td>
+                      <td>{part.quantity}</td>
+                      <td>{project.materials.find((material) => material.id === part.material)?.name ?? part.material}</td>
+                      <td>{GRAINS.find((grain) => grain.value === part.grain)?.label}</td>
+                      <td>{part.group}</td>
+                      <td colSpan={2}>
+                        From design:{" "}
+                        <button type="button" className="link" onClick={() => onShowDesign?.(design.id)}>
+                          {design.name}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                }
                 const change = (patch: Parameters<typeof updatePart>[2]) => edit((p: Project) => updatePart(p, part.id, patch));
                 return (
                   <tr key={part.id}>

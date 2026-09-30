@@ -148,6 +148,7 @@ table.grid td input.narrow { min-width: 60px; width: 80px; }
 .design-side { display: flex; flex-direction: column; gap: 14px; }
 .design-preview svg { display: block; width: 100%; height: auto; max-height: 60vh; }
 select[aria-invalid="true"] { border-color: var(--bad); outline: 2px solid var(--bad); }
+table.grid tr.generated td { color: var(--muted); }
 
 .reports section + section { margin-top: 24px; }
 .reports h2 { margin-bottom: 6px; }
