@@ -54,3 +54,5 @@ export * from "./design/errors.ts";
 export * from "./design/generate.ts";
 export * from "./design/checks.ts";
 export * from "./design/edit.ts";
+export * from "./design/ikea.ts";
+export * from "./design/hardware.ts";

@@ -264,16 +264,17 @@ a `hardware` section, and it has no prices in v1.
 
 - **Pocket screws**, coarse thread, from a chart in core:
 
-  | Thickness | Screw |
-  |---|---|
-  | 11.9 mm (15/32") to < 17.5 mm (11/16") | 1" (25 mm) |
-  | 17.5 mm to < 20.6 mm (13/16") | 1 1/4" (32 mm) |
-  | 20.6 mm to ≤ 25.4 mm (1") | 1 1/2" (38 mm) |
-  | > 25.4 mm to < 34.9 mm (1 3/8") | 2" (50 mm) |
-  | 34.9 mm to 38.1 mm (1 1/2") | 2 1/2" (64 mm) |
+  | Thickness | Jig setting | Screw |
+  |---|---|---|
+  | 11.9 mm (15/32") to < 17.5 mm (11/16") | 1/2" or 5/8" | 1" (25 mm) |
+  | 17.5 mm to < 20.6 mm (13/16") | 3/4" | 1 1/4" (32 mm) |
+  | 20.6 mm to < 30.2 mm (1 3/16") | 7/8", 1", or 1 1/8" | 1 1/2" (38 mm) |
+  | 30.2 mm to < 36.5 mm (1 7/16") | 1 1/4" or 1 3/8" | 2" (50 mm) |
+  | 36.5 mm to 38.1 mm (1 1/2") | 1 1/2" | 2 1/2" (64 mm) |
 
-  The chart follows common pocket-hole practice. Phase 2 checks it against a jig maker's published chart before it
-  ships. The count is the number of holes plus 10 %, rounded up.
+  The jig setting is the thickness rounded to the nearest 1/8". The screw for each setting is from the Kreg K4 and K5
+  manual (`POCKET_SCREW_SOURCE` in `design/hardware.ts`), checked in phase 2. The count is the number of holes plus
+  10 %, rounded up.
 - **Back screws**: #6 × 3/4" (4 × 20 mm) flat head, for backs up to 7 mm thick. There is one screw every 150 mm, at
   most, along the perimeter and along each interior panel edge, starting 25 mm from the ends. A thicker back gets
   #8 × 1 1/4" (4 × 30 mm).
