@@ -47,6 +47,9 @@ parts from the design, and the Parts tab lists them. The file format is in [form
 
 - **Add design** adds a KALLAX 2x2 of the first material that is thick enough for pocket screws. With no materials, it
   adds Plywood (3/4" or 18 mm) first.
+- The new design has a back of the first material that is too thin for pocket screws. With no such material, the app
+  adds Plywood 1/4" (or Plywood 6 mm) and one sheet stock of it, with the size of the first sheet of the design material
+  and no cost. Choose "No back" to remove the back.
 - The list on the left selects a design. The form has the name, the system, how many to build, the columns and rows,
   the depth, the material, the back, and the mount.
 - A KALLAX or EKET width or height takes its size from the cells. A custom axis is sized by the outside size, or by
