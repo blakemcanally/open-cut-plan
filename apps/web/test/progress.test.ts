@@ -1,7 +1,21 @@
 import { analyzeProject, parseProject, serializeProject, type Project } from "@opencutplan/core";
 import { describe, expect, it } from "vitest";
-import { APP_EXTENSION, keepProgress, readProgress, sequenceKey, setStepDone, shopState, writeProgress } from "../src/shop/progress.ts";
-import { sampleProject } from "./helpers.ts";
+import {
+  APP_EXTENSION,
+  assemblyCount,
+  assemblyGroups,
+  assemblyKey,
+  assemblyState,
+  keepAssemblyProgress,
+  keepProgress,
+  readProgress,
+  sequenceKey,
+  setAssemblyStepDone,
+  setStepDone,
+  shopState,
+  writeProgress,
+} from "../src/shop/progress.ts";
+import { designProject, sampleProject } from "./helpers.ts";
 
 const stepsOf = (project: Project) => analyzeProject(project).steps;
 
@@ -64,5 +78,37 @@ describe("shop progress", () => {
     expect(readProgress(bad)).toBeNull();
     const extra = writeProgress(sampleProject(), { sequence: sequenceKey(steps), done: [1, 0, 2.5, 99] });
     expect([...shopState(extra, steps).done]).toEqual([1]);
+  });
+});
+
+describe("assembly progress", () => {
+  it("numbers the steps of every design that can make parts, in design order", () => {
+    const project = designProject();
+    const second = { ...project.designs![0]!, id: "two", name: "Two" };
+    const broken = { ...project.designs![0]!, id: "broken", name: "Broken", material: "ply6" };
+    const groups = assemblyGroups({ ...project, designs: [...project.designs!, broken, second] });
+    expect(groups.map((group) => [group.design, group.start, group.steps.length])).toEqual([
+      ["hall", 1, 7],
+      ["two", 8, 7],
+    ]);
+    expect(assemblyCount(groups)).toBe(14);
+  });
+
+  it("stores its ticks apart from the cut ticks, and a change to the steps makes them stale", () => {
+    const project = designProject();
+    const groups = assemblyGroups(project);
+    const steps = stepsOf(project);
+    const ticked = setAssemblyStepDone(setStepDone(project, steps, 1, true), groups, 2, true);
+    expect(readProgress(ticked, "assemblyProgress")).toEqual({ sequence: assemblyKey(groups), done: [2] });
+    expect(readProgress(ticked)?.done).toEqual([1]);
+
+    const taller = { ...ticked, designs: [{ ...ticked.designs![0]!, height: { openings: [335, 400] } }] };
+    const changed = assemblyGroups(taller);
+    expect(assemblyKey(changed)).not.toBe(assemblyKey(groups));
+    expect(assemblyState(taller, changed)).toMatchObject({ stale: true, done: new Set() });
+    const kept = keepAssemblyProgress(taller, changed);
+    expect(assemblyState(kept, changed)).toMatchObject({ stale: false, done: new Set([2]) });
+    expect(readProgress(kept)?.done).toEqual([1]);
+    expect(writeProgress(kept, null, "assemblyProgress").extensions).toEqual({ [APP_EXTENSION]: { progress: readProgress(ticked) } });
   });
 });
