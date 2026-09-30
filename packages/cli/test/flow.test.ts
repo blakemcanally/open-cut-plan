@@ -79,6 +79,27 @@ describe("an agent flow in a real directory", () => {
     expect((await readdir(dir)).sort()).toEqual(["desk.cutplan.json", "svg"]);
   });
 
+  it("runs the design recipe in docs/cli.md", async () => {
+    const file = join(dir, "hall.cutplan.json");
+    expect((await real(["new", file, "--name", "Hall storage", "--units", "mm", "--json"])).code).toBe(0);
+    expect((await real(["tools", "add", file, "--type", "track-saw", "--max-cut", "2800", "--position", "1", "--json"])).code).toBe(0);
+    expect((await real(["materials", "add", file, "--name", "Birch ply 18", "--thickness", "18", "--json"])).code).toBe(0);
+    expect((await real(["stock", "add", file, "--length", "2440", "--width", "1220", "--cost", "80", "--json"])).code).toBe(0);
+    const added = await real(["design", "add", file, "--system", "kallax", "--cols", "2", "--rows", "4", "--json"]);
+    expect(added.json().design.id).toBe("kallax-2x4");
+    const optimized = await real(["optimize", file, "--iterations", "200", "--seed", "1", "--strict", "--json"]);
+    expect(optimized.code).toBe(0);
+    expect(optimized.json().after).toMatchObject({ placedCopies: 13, unplacedCopies: 0, errors: 0 });
+    const assembly = await real(["report", "assembly", file, "--json"]);
+    expect(assembly.json().designs[0].steps.length).toBe(7);
+    const shopping = await real(["report", "shopping", file, "--json"]);
+    expect(shopping.json().hardware[0]).toMatchObject({ item: "pocket-screws", quantity: 66, design: "kallax-2x4" });
+    const drawing = await real(["design", "drawing", file, "kallax-2x4", "--out", join(dir, "hall.svg"), "--json"]);
+    expect(drawing.code).toBe(0);
+    expect(await readFile(join(dir, "hall.svg"), "utf8")).toMatch(/^<svg /);
+    expect((await real(["validate", file, "--strict", "--json"])).json()).toMatchObject({ valid: true });
+  });
+
   it("gives exit 3 for a file that is missing or not a project", async () => {
     expect((await real(["show", join(dir, "missing.json")])).code).toBe(3);
     const bad = join(dir, "bad.json");

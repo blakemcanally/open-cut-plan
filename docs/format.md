@@ -106,7 +106,7 @@ An **axis** is one of:
 | `<id>-back` | Back | outside height × outside width | *q* |
 
 - An `outside` axis has openings of (outside − (cells + 1) × *t*) / cells. An `openings` axis has an outside size of
-  the sum of the openings + (cells + 1) × *t*.
+  the sum of the openings + (*n* + 1) × *t*, where *n* is the number of openings.
 - The panel depth is `depth` minus the back thickness.
 - The vertical panels run the full height. Each shelf fits between two vertical panels. All joints are butt joints
   with pocket screws.

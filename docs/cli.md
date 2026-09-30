@@ -30,15 +30,15 @@ node packages/cli/src/main.ts help parts add
   Warnings go to stderr, and the document also has them in `warnings`.
 - `ok` is true only when the exit code is 0. When a command runs but finds errors (exit 1), the document has
   `"ok": false`, the `error`, and the normal data.
-- Error codes are stable words, such as `not-found`, `missing-option`, `invalid-value`, `in-use`, `strict`, and
-  `unreadable-project`. The error can have more fields, such as `option`, `id`, or `known`.
+- Error codes are stable words, such as `not-found`, `missing-option`, `invalid-value`, `in-use`, `generated-part`,
+  `strict`, and `unreadable-project`. The error can have more fields, such as `option`, `id`, or `known`.
 
 ### Exit codes
 
 | Code | Meaning |
 | ---- | ------- |
 | 0 | Success. |
-| 1 | The command ran but found errors: a plan error with `--strict`, an invalid file for `validate`, a material in use, no free spot, a CSV that needs a column map. |
+| 1 | The command ran but found errors: a plan error with `--strict`, an invalid file for `validate`, a material in use, no free spot, a CSV that needs a column map, a change to a generated part, a design with an error. |
 | 2 | A usage error: an unknown command or option, a bad value, a missing argument, or an unknown id. Nothing is read or written. |
 | 3 | The input cannot be read: the file is missing, or it is not a readable OpenCutPlan project. |
 
@@ -59,10 +59,13 @@ node packages/cli/src/main.ts help parts add
 - The CLI does not write a file that core refuses. A refused input is exit 3, and the file does not change.
 - When the input file has cut lists (`plan.sheets[].cuts`), the CLI makes them again on each write, so they agree
   with the plan.
+- The CLI makes the parts of each design again on each write, so they agree with the design. A file that was changed
+  by hand gets the correct parts on its next write.
 
 ### Ids
 
-- Ids do not change. `set` commands do not change an id.
+- Ids do not change. `set` commands do not change an id. The one exception is `design set --id`, which also changes
+  the ids of the design parts, and keeps their copies on the sheets.
 - A new id comes from the name, as in the app: `Side panel` becomes `side-panel`, and a used id gets a number, such
   as `side-panel-2`. `--id` gives the id yourself.
 - A sheet reference is a sheet id, or its 1-based number in the plan: `s3` or `3`.
@@ -126,6 +129,41 @@ files.
 | `tools remove <file> <id>...` | Removes saws. | `opencutplan tools remove shelf.cutplan.json track-saw` |
 | `tools move <file> <id>` | Changes the place of a saw in the preference order. | `opencutplan tools move shelf.cutplan.json track-saw --position 1` |
 
+### Designs
+
+A design is a cabinet grid: vertical panels that run the full height, with shelves between them, all joined with
+pocket screws. The CLI makes the parts of the design, and you cannot change them with `parts set` or `parts remove`
+(exit 1, `generated-part`). Change the design, or use `design detach` to make them normal parts.
+
+| Command | What it does | Example |
+| ------- | ------------ | ------- |
+| `design systems` | Lists `kallax`, `eket`, and `custom`, with the IKEA numbers and their sources. It needs no file. | `opencutplan design systems --json` |
+| `design list <file>` | Lists the designs with the outside size and the part counts. | `opencutplan design list hall.cutplan.json` |
+| `design get <file> <id>` | Shows one design, its parts, and its checks. | `opencutplan design get hall.cutplan.json kallax-2x4 --json` |
+| `design add <file>` | Adds a design and makes its parts. | `opencutplan design add hall.cutplan.json --system kallax --cols 2 --rows 4` |
+| `design set <file> <id>` | Changes a design and makes its parts again. | `opencutplan design set hall.cutplan.json kallax-2x4 --rows 5` |
+| `design remove <file> <id>...` | Removes designs, their parts, and the copies on the sheets. | `opencutplan design remove hall.cutplan.json kallax-2x4` |
+| `design detach <file> <id>` | Keeps the parts as normal parts, and removes the design. | `opencutplan design detach hall.cutplan.json kallax-2x4` |
+| `design drawing <file> <id>` | Draws the front view as SVG, to `--out` or to stdout. | `opencutplan design drawing hall.cutplan.json kallax-2x4 --out hall.svg` |
+
+The flags of `design add` and `design set`:
+
+- `--system kallax|eket|custom`. The default for `add` is `custom`.
+- `--cols <n>` and `--rows <n>`. For `kallax`, each cell gets the KALLAX opening (335 mm) and the depth is 390 mm. For
+  `eket`, each cell is one 350 mm module and the depth is 350 mm. A `custom` design also needs `--width` and
+  `--height`.
+- `--width <length>` and `--height <length>`: the outside size. The cells divide it equally.
+- `--column-openings <list>` and `--row-openings <list>`: each opening, for example `335,400`. They replace `--cols`
+  and `--width`, or `--rows` and `--height`.
+- `--depth <length>`, `--material <id|name>`, `--back <id|name|none>`, `--mount floor|legs|feet|wall-rail`,
+  `--quantity <n>`, `--name <text>`, and `--id <id>`.
+
+The IKEA numbers are in millimetres. The CLI converts them to the project units, so an inch project gets 13 3/16" for
+335 mm. Without `--name`, the name is the system and the grid, such as `KALLAX 2x4`, and the id comes from the name:
+`kallax-2x4`. A change that gives a design error, such as stock that is too thin for pocket screws, is refused with
+exit 1 and `invalid-value`, and `error.issues` lists the checks. `design set` gives `partChanges` (the parts that were
+added, removed, or resized) and `removedPlacements` (the copies that went to the tray).
+
 ### Settings
 
 `settings get` shows all settings or one setting. `settings set` takes one or more key and value pairs. The pairs
@@ -186,6 +224,10 @@ The reports do not change the file.
 | `report offcuts <file>` | The usable offcuts, and if the stock has them. | `opencutplan report offcuts shelf.cutplan.json --json` |
 | `report labels <file>` | One label for each copy. `--layout` splits them into pages. | `opencutplan report labels shelf.cutplan.json --layout avery-5160` |
 | `report cutlist <file>` | All parts with the size, count, and sheet numbers. | `opencutplan report cutlist shelf.cutplan.json` |
+| `report assembly <file>` | The steps to build each design. `--design <id>` selects one. | `opencutplan report assembly hall.cutplan.json --json` |
+
+`report shopping` also lists the hardware for the designs in `hardware`: the pocket screws, the back screws, the
+glue, and the IKEA legs, feet, or rails, with the IKEA article numbers. The hardware has no prices.
 
 Money in the readable output is `12.00 USD`. In `--json`, money is a number, and `null` means that a price is not
 known.
@@ -223,11 +265,27 @@ opencutplan export svg $F --out svg --json                          # .files[].p
 opencutplan validate $F --strict --json                             # .valid
 ```
 
+This recipe makes a KALLAX 2x4 from a track saw, pocket screws, and one sheet size:
+
+```bash
+F=hall.cutplan.json
+opencutplan new $F --name "Hall storage" --units mm --json
+opencutplan tools add $F --type track-saw --max-cut 2800 --position 1 --json
+opencutplan materials add $F --name "Birch ply 18" --thickness 18 --json
+opencutplan stock add $F --length 2440 --width 1220 --cost 80 --json
+opencutplan design add $F --system kallax --cols 2 --rows 4 --json      # .design.id is kallax-2x4
+opencutplan optimize $F --iterations 200 --seed 1 --strict --json
+opencutplan report assembly $F --json                                   # .designs[].steps[]
+opencutplan report shopping $F --json                                   # .hardware[]
+opencutplan design drawing $F kallax-2x4 --out hall.svg
+```
+
 Some rules help an agent:
 
 - Use `--dry-run --json` to see `changes` and `validation` before a change.
 - Use `--iterations` with `optimize` when a later step compares results.
 - Use `--strict` so that a change with plan errors is not written.
-- Read the id of a new item from the result (`part.id`, `stock.id`, `material.id`), and use it in the next calls.
+- Read the id of a new item from the result (`part.id`, `stock.id`, `material.id`, `design.id`), and use it in the
+  next calls.
 - An error with exit 2 has the name of the bad option or id in `error.option` or `error.id`. Many errors also list the
   known ids in `error.known`.
