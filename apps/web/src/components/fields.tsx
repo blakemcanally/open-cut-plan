@@ -44,9 +44,12 @@ export function DraftInput({ value, onCommit, onKeyDown, onBlur, ...rest }: Draf
   );
 }
 
+/** An onChange that returns false refuses the value: the field keeps the text and marks it, as for text it cannot read. */
+type Change<T> = (value: T) => boolean | void;
+
 interface TextInputProps extends BaseProps {
   value: string;
-  onChange(value: string): void;
+  onChange: Change<string>;
   /** Rejects text that fails; the text is trimmed first. */
   valid?: (value: string) => boolean;
 }
@@ -61,8 +64,7 @@ export function TextInput({ value, onChange, required, valid, ...rest }: TextInp
       onCommit={(text) => {
         const trimmed = text.trim();
         if ((required && trimmed === "") || (valid && !valid(trimmed))) return false;
-        if (trimmed !== value) onChange(trimmed);
-        return true;
+        return trimmed === value || onChange(trimmed) !== false;
       }}
     />
   );
@@ -72,7 +74,7 @@ interface LengthInputProps extends BaseProps {
   value: number | undefined;
   units: Units;
   display: DisplayPrecision;
-  onChange(value: number | undefined): void;
+  onChange: Change<number | undefined>;
   /** Blank clears the value. */
   optional?: boolean;
   allowZero?: boolean;
@@ -88,13 +90,11 @@ export function LengthInput({ value, units, display, onChange, optional, allowZe
       onCommit={(text) => {
         if (text.trim() === "") {
           if (!optional) return false;
-          if (value !== undefined) onChange(undefined);
-          return true;
+          return value === undefined || onChange(undefined) !== false;
         }
         const parsed = parseLength(text, units);
         if (parsed === null || parsed < 0 || (parsed === 0 && !allowZero)) return false;
-        if (parsed !== value) onChange(parsed);
-        return true;
+        return parsed === value || onChange(parsed) !== false;
       }}
     />
   );
@@ -102,7 +102,7 @@ export function LengthInput({ value, units, display, onChange, optional, allowZe
 
 interface NumberInputProps extends BaseProps {
   value: number | undefined;
-  onChange(value: number | undefined): void;
+  onChange: Change<number | undefined>;
   optional?: boolean;
   integer?: boolean;
   minimum?: number;
@@ -119,13 +119,11 @@ export function NumberInput({ value, onChange, optional, integer, minimum = 0, m
       onCommit={(text) => {
         if (text.trim() === "") {
           if (!optional) return false;
-          if (value !== undefined) onChange(undefined);
-          return true;
+          return value === undefined || onChange(undefined) !== false;
         }
         const parsed = parsePlainNumber(text);
         if (parsed === null || parsed < minimum || parsed > maximum || (integer && !Number.isSafeInteger(parsed))) return false;
-        if (parsed !== value) onChange(parsed);
-        return true;
+        return parsed === value || onChange(parsed) !== false;
       }}
     />
   );

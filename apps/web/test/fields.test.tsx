@@ -29,6 +29,19 @@ describe("LengthInput", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("keeps the text marked when onChange refuses the value", async () => {
+    const onChange = vi.fn(() => false);
+    render(<LengthInput aria-label="Width" value={700} units="mm" display={display} onChange={onChange} />);
+    const input = screen.getByLabelText("Width");
+    await userEvent.clear(input);
+    await userEvent.type(input, "20{Enter}");
+    expect(onChange).toHaveBeenCalledWith(20);
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect(input).toHaveProperty("value", "20");
+    await userEvent.tab();
+    expect(input).toHaveProperty("value", "700 mm");
+  });
+
   it("clears an optional value with blank text, and Escape cancels an edit", async () => {
     const onChange = vi.fn();
     render(<LengthInput aria-label="Trim" value={6} units="mm" display={display} optional allowZero onChange={onChange} />);
