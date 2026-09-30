@@ -1,5 +1,6 @@
 import { checkDesigns } from "../design/checks.ts";
 import type { Project } from "../format/schema.ts";
+import { checkGoal } from "../optimize/goal-setting.ts";
 import { sequenceCuts, type Step } from "../sequence/sequence.ts";
 import { copyLabel, formatIn, planContext, type PlanContext } from "./context.ts";
 import { planError, type PlanIssue } from "./issues.ts";
@@ -12,7 +13,7 @@ export function validatePlan(project: Project): PlanIssue[] {
   const ctx = planContext(project);
   const sheets = analyzeSheets(ctx);
   const layout = checkLayout(ctx);
-  return [...layout, ...checkCuts(ctx, layout, sheets, sequenceCuts(ctx, sheets)), ...checkDesigns(project)];
+  return [...layout, ...checkCuts(ctx, layout, sheets, sequenceCuts(ctx, sheets)), ...checkDesigns(project), ...checkGoal(project)];
 }
 
 /**

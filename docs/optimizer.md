@@ -52,7 +52,8 @@ always give the same result. A timed run can stop at a different candidate on a 
 **Keep searching**: pass the previous result as `start`. The search starts from its plans, skips the first stage, and
 continues with new random numbers. For the goals `offcuts` and `cuts`, the cheapest cost C of each material starts at
 the `cheapestCost` of that material in `start`. A material with no `cheapestCost` in `start` (the CLI builds such a
-start for `optimize --continue`) runs the first stage again, so that the search finds a cheap plan again. Copies that are now on a pinned sheet, or no longer in the project, are left out of
+start for `optimize --continue`) runs the first stage again, so that the search finds a cheap plan again. Those
+first-stage candidates do not count against `iterations`. Copies that are now on a pinned sheet, or no longer in the project, are left out of
 those plans, and so are sheets past a stock's `quantity`.
 
 ## Validation

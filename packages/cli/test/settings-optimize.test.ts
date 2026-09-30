@@ -166,6 +166,12 @@ describe("optimize", () => {
     expect(plain.stdout).not.toContain("% more cost");
   });
 
+  it("says in the help that --continue can give a worse goal measure for the goals offcuts and cuts", async () => {
+    const help = (await cli(["help", "optimize"])).stdout;
+    expect(help).not.toContain("never worse than it");
+    expect(help).toContain("the result can cost less and have a worse goal measure");
+  });
+
   it("rejects conflicting modes and bad numbers", async () => {
     expect((await cli(["optimize", SHELF, "--rest-only", "--keep-pinned"], withExamples())).code).toBe(2);
     expect((await cli(["optimize", SHELF, "--time", "0"], withExamples())).code).toBe(2);

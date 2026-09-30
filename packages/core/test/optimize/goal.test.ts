@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { analyzeProject } from "../../src/analysis.ts";
 import type { Score } from "../../src/optimize/evaluate.ts";
-import { compareOffcuts, createTradeOffs, describeGoal, extraCostPercent, projectGoal } from "../../src/optimize/goal.ts";
+import { compareOffcuts, createTradeOffs, describeGoal, extraCostPercent } from "../../src/optimize/goal.ts";
+import { projectGoal } from "../../src/optimize/goal-setting.ts";
+import { validatePlan } from "../../src/plan/validate.ts";
 import { sampleProject } from "../helpers.ts";
 
 const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 0, offcuts: [], cuts: 10, sheets: 1, ...over });
@@ -95,6 +97,7 @@ describe("the project goal", () => {
     expect(analyzeProject(unknown).issues.filter((issue) => issue.code === "unknown-goal")).toEqual([
       { severity: "warning", code: "unknown-goal", message: 'The optimizer goal "time" is not known to this app. The optimizer uses the lowest cost.', refs: [] },
     ]);
+    expect(validatePlan(unknown).filter((issue) => issue.code === "unknown-goal")).toHaveLength(1);
     expect(analyzeProject(project).issues.some((issue) => issue.code === "unknown-goal")).toBe(false);
   });
 });

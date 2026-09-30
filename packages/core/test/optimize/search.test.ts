@@ -304,6 +304,15 @@ describe("the optimizer goal", () => {
     expect(result.materials.map((m) => m.cheapestCost)).toEqual(result.materials.map((m) => m.score.cost));
   });
 
+  it("still tries the full number of iterations when a continued search runs the first stage again", () => {
+    const project = load("living-room-shelf");
+    const fresh = optimize(project, { iterations: 5, goal: "offcuts" });
+    const start: OptimizeResult = { sheets: fresh.sheets, unplaced: [], materials: [], iterations: 0 };
+    const cost = optimize(project, { iterations: 5, goal: "cost", start });
+    expect(cost.iterations).toBe(5 * cost.materials.length);
+    expect(optimize(project, { iterations: 5, goal: "offcuts", start }).iterations).toBeGreaterThan(cost.iterations);
+  });
+
   it("never goes over the limit, also when it continues a search with or without the cheapest cost", () => {
     const arb = fc.record({
       goal: fc.constantFrom("offcuts" as const, "cuts" as const),

@@ -1,7 +1,8 @@
 import type { PlanSheet, Project, Stock } from "../format/schema.ts";
 import { uniqueId } from "../format/ids.ts";
 import { compareScores, evaluate, type Evaluated, type Score } from "./evaluate.ts";
-import { createTradeOffs, projectGoal, type OptimizerGoal, type TradeOffs } from "./goal.ts";
+import { projectGoal, type OptimizerGoal } from "./goal-setting.ts";
+import { createTradeOffs, type TradeOffs } from "./goal.ts";
 import { guillotinePack, SPLIT_RULES, type SplitRule } from "./guillotine.ts";
 import type { Packing, RotationPolicy } from "./pack.ts";
 import { buildProblem, type Copy, type MaterialProblem, type Problem, type UnplacedCopy } from "./problem.ts";
@@ -63,6 +64,8 @@ interface MaterialSearch {
   base: Candidate[];
   next: number;
   evaluated: number;
+  /** First-stage candidates that a continued search runs again; they do not count against `iterations`. */
+  rerun: number;
   best: Planned | null;
   /** Null for the goal `cost`, which keeps only the best plan. */
   trade: TradeOffs<Planned> | null;
@@ -93,7 +96,7 @@ export function createSearch(project: Project, options: OptimizeOptions = {}): S
   const extra = options.extraCostPercent ?? settings.extraCostPercent;
   const random = seededRandom(seed + (options.start?.iterations ?? 0));
   const tradeOffs = (cheapest?: number) => (goal === "cost" ? null : createTradeOffs<Planned>(goal, extra, cheapest));
-  const searches = problem.materials.map((m): MaterialSearch => ({ problem: m, base: baseCandidates(m), next: 0, evaluated: 0, best: null, trade: tradeOffs() }));
+  const searches = problem.materials.map((m): MaterialSearch => ({ problem: m, base: baseCandidates(m), next: 0, evaluated: 0, rerun: 0, best: null, trade: tradeOffs() }));
   if (options.start) seedFrom(problem, searches, options.start, tradeOffs);
   let iterations = options.start?.iterations ?? 0;
   let elapsed = 0;
@@ -112,7 +115,8 @@ export function createSearch(project: Project, options: OptimizeOptions = {}): S
     if (!search) return;
     const candidate = search.next < search.base.length ? search.base[search.next++]! : randomCandidate(random, search);
     const result = evaluate(problem, search.problem, pack(problem, search.problem, candidate), `${search.problem.material}:`);
-    search.evaluated++;
+    if (search.rerun > 0) search.rerun--;
+    else search.evaluated++;
     iterations++;
     record(search, { candidate, result });
   };
@@ -253,6 +257,7 @@ function seedFrom(problem: Problem, searches: MaterialSearch[], start: OptimizeR
     search.trade = tradeOffs(cheapest);
     record(search, { candidate: { ...base, order }, result: evaluate(problem, search.problem, { sheets, unplaced }, `${search.problem.material}:`) });
     search.next = search.trade && cheapest === undefined ? 0 : search.base.length;
+    search.rerun = search.base.length - search.next;
   }
 }
 

@@ -31,7 +31,7 @@ export const optimizeCommand: CommandSpec = {
   name: "optimize",
   summary: "Plan the parts on the stock, store the plan, and report what changed.",
   description:
-    "Run the optimizer and store its plan in the project. By default pinned sheets stay as they are and every other copy is planned again (the app's Optimize). --rest-only keeps every sheet and plans only the copies in the tray (Optimize the rest). --continue starts the search from the current plan, so the result is never worse than it (by the optimizer's objective). --goal and --extra-cost change the goal for this run only; the stored settings stay. A run with --iterations gives the same result for the same seed on every computer; a timed run can stop at a different candidate. The currency of cost is the project currency.",
+    "Run the optimizer and store its plan in the project. By default pinned sheets stay as they are and every other copy is planned again (the app's Optimize). --rest-only keeps every sheet and plans only the copies in the tray (Optimize the rest). --continue starts the search from the current plan. For the goal cost, the result is never worse than the current plan; for the goals offcuts and cuts, the search first tries its fixed candidates again, so the result can cost less and have a worse goal measure. --goal and --extra-cost change the goal for this run only; the stored settings stay. A run with --iterations gives the same result for the same seed on every computer; a timed run can stop at a different candidate. The currency of cost is the project currency.",
   args: [FILE_ARG],
   options: [
     { name: "time", type: "string", value: "<seconds>", description: "The search time. Default: the optimizer.timeLimitMs setting (2 s). Ignored with --iterations." },

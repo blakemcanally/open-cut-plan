@@ -1,6 +1,6 @@
 import { checkDesigns } from "./design/checks.ts";
 import type { Project } from "./format/schema.ts";
-import { checkGoal } from "./optimize/goal.ts";
+import { checkGoal } from "./optimize/goal-setting.ts";
 import { planContext, type PlanContext } from "./plan/context.ts";
 import type { PlanIssue } from "./plan/issues.ts";
 import { checkLayout } from "./plan/layout.ts";
