@@ -99,7 +99,7 @@ export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
         <button type="button" onClick={reset} disabled={state.done.size === 0}>
           Reset progress
         </button>
-        <button type="button" onClick={() => onPrint({ kind: "sequence" })}>
+        <button type="button" onClick={() => onPrint({ kind: "booklet", sections: ["sequence"] })}>
           Print cut sequence
         </button>
       </div>

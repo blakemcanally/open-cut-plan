@@ -141,7 +141,7 @@ describe("ShopTab", () => {
     const onPrint = vi.fn();
     renderShop(sampleProject(), onPrint);
     await userEvent.click(screen.getByRole("button", { name: "Print cut sequence" }));
-    expect(onPrint).toHaveBeenCalledWith({ kind: "sequence" });
+    expect(onPrint).toHaveBeenCalledWith({ kind: "booklet", sections: ["sequence"] });
   });
 
   it("scrolls only the step list, and only when the list scrolls", async () => {

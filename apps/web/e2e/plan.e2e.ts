@@ -93,14 +93,21 @@ test("plans a project from CSV, keeps shop progress, and prints and exports it",
 
   await page.getByRole("tab", { name: "Reports" }).click();
   await expect(page.getByText(/^Total: /)).toBeVisible();
-  await page.getByRole("button", { name: "Print sheet diagrams" }).click();
+  await page.getByRole("button", { name: "Print booklet" }).click();
   await expect.poll(() => page.evaluate(() => window.printed)).toBe(1);
   await page.emulateMedia({ media: "print" });
-  await expect(page.locator(".print-root .print-page").first()).toBeVisible();
-  await expect(page.locator(".print-root").getByRole("heading", { name: /^Sheet 1 of \d+: Plywood 96" × 48"$/ })).toBeVisible();
+  await expect(page.locator(".print-root .print-title")).toBeVisible();
+  await expect(page.locator(".print-root .print-sheet").getByRole("heading", { name: /^Sheet 1 of \d+: Plywood 96" × 48"$/ })).toBeVisible();
+  await expect(page.locator(".print-root").getByRole("heading", { name: /: cut sequence$/ })).toBeVisible();
   await expect(page.locator("#root")).toBeHidden();
-  const pdf = await page.pdf();
+  const pdf = await page.pdf({ preferCSSPageSize: true });
   expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
+  expect([...pdf.toString("latin1").matchAll(/\/MediaBox\s*\[0 0 (\d+) (\d+)\]/g)].map((box) => (Number(box[1]) > Number(box[2]) ? "landscape" : "portrait"))).toEqual([
+    "portrait",
+    "portrait",
+    "landscape",
+    "portrait",
+  ]);
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
   await page.emulateMedia({ media: "screen" });
   await expect(page.locator(".print-root")).toHaveCount(0);
@@ -203,11 +210,13 @@ test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware
 
   await page.getByRole("tab", { name: "Reports" }).click();
   await expect(page.getByRole("region", { name: "Hardware" }).getByRole("row", { name: /^Pocket screws/ })).toBeVisible();
-  await page.getByRole("button", { name: "Print assembly steps" }).click();
+  await page.getByRole("checkbox", { name: "Sheet diagrams" }).uncheck();
+  await page.getByRole("button", { name: "Print booklet" }).click();
   await expect.poll(() => page.evaluate(() => window.printed)).toBe(1);
   await page.emulateMedia({ media: "print" });
   await expect(page.locator(".print-root").getByRole("heading", { name: "E2E kallax: KALLAX 2x2" })).toBeVisible();
   await expect(page.locator(".print-root .print-elevation svg")).toBeVisible();
+  await expect(page.locator(".print-root .print-sheet")).toHaveCount(0);
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
   await page.emulateMedia({ media: "screen" });
   await expect(page.locator(".print-root")).toHaveCount(0);

@@ -1,23 +1,34 @@
 import { analyzeProject, fileBase, unsavedOffcuts, type Project } from "@opencutplan/core";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PrintJob } from "../src/print/PrintView.tsx";
 import { ReportsTab } from "../src/reports/ReportsTab.tsx";
+import { DEFAULT_PREFS, type ViewPrefs } from "../src/state/prefs.ts";
 import { useProject, type ProjectStore } from "../src/state/useProject.ts";
 import { designProject, sampleProject } from "./helpers.ts";
 
-function renderReports(initial: Project = sampleProject(), onPrint: (job: PrintJob) => void = () => undefined) {
+function renderReports(initial: Project = sampleProject(), onPrint: (job: PrintJob) => void = () => undefined, initialPrefs: ViewPrefs = DEFAULT_PREFS) {
   let latest: ProjectStore | null = null;
+  let savedPrefs = initialPrefs;
   function Harness() {
     const store = useProject(initial);
+    const [prefs, setPrefs] = useState(initialPrefs);
     latest = store;
     const analysis = useMemo(() => analyzeProject(store.project), [store.project]);
-    return <ReportsTab store={store} analysis={analysis} onPrint={onPrint} />;
+    const onPrefs = (next: ViewPrefs) => {
+      savedPrefs = next;
+      setPrefs(next);
+    };
+    return <ReportsTab store={store} analysis={analysis} prefs={prefs} onPrefs={onPrefs} onPrint={onPrint} />;
   }
   render(<Harness />);
-  return () => latest!;
+  return Object.assign(() => latest!, { prefs: () => savedPrefs });
+}
+
+function booklet() {
+  return within(screen.getByRole("group", { name: "Print booklet" }));
 }
 
 function withFeatures(features: Partial<Project["settings"]["features"]>): Project {
@@ -120,15 +131,32 @@ describe("ReportsTab", () => {
     expect(screen.queryByRole("region", { name: "Labels" })).toBeNull();
   });
 
-  it("prints and exports", async () => {
+  it("prints the chosen sections as one booklet and remembers the choice", async () => {
     const onPrint = vi.fn();
+    const reports = renderReports(sampleProject(), onPrint);
+    const names = ["Title page", "Shopping list", "Sheet diagrams", "Cut sequence"];
+    expect(booklet().getAllByRole("checkbox")).toEqual(names.map((name) => booklet().getByRole("checkbox", { name, checked: true })));
+    await userEvent.click(booklet().getByRole("checkbox", { name: "Sheet diagrams" }));
+    expect(reports.prefs().booklet).toEqual({ ...DEFAULT_PREFS.booklet, sheets: false });
+    await userEvent.click(booklet().getByRole("button", { name: "Print booklet" }));
+    expect(onPrint).toHaveBeenCalledWith({ kind: "booklet", sections: ["title", "shopping", "sequence"] });
+  });
+
+  it("loads the saved booklet choice and needs a section with content to print", async () => {
+    const onPrint = vi.fn();
+    renderReports(sampleProject(), onPrint, { ...DEFAULT_PREFS, booklet: { ...DEFAULT_PREFS.booklet, title: false, shopping: false } });
+    expect(booklet().getByRole("checkbox", { name: "Title page" })).toHaveProperty("checked", false);
+    await userEvent.click(booklet().getByRole("checkbox", { name: "Title page" }));
+    await userEvent.click(booklet().getByRole("checkbox", { name: "Sheet diagrams" }));
+    await userEvent.click(booklet().getByRole("checkbox", { name: "Cut sequence" }));
+    expect(booklet().getByRole("button", { name: "Print booklet" })).toHaveProperty("disabled", true);
+  });
+
+  it("prints and exports", async () => {
     const files = captureDownloads();
-    renderReports({ ...sampleProject(), project: { ...sampleProject().project, name: "Shelf: v2" } }, onPrint);
+    renderReports({ ...sampleProject(), project: { ...sampleProject().project, name: "Shelf: v2" } });
     const output = within(section("Print and export"));
-    await userEvent.click(output.getByRole("button", { name: "Print sheet diagrams" }));
-    await userEvent.click(output.getByRole("button", { name: "Print cut sequence" }));
-    await userEvent.click(output.getByRole("button", { name: "Print shopping list" }));
-    expect(onPrint.mock.calls.map(([job]) => job)).toEqual([{ kind: "sheets" }, { kind: "sequence" }, { kind: "shopping" }]);
+    expect(output.queryByRole("button", { name: "Print sheet diagrams" })).toBeNull();
     await userEvent.click(output.getByRole("button", { name: "Export parts CSV" }));
     await userEvent.click(output.getByRole("button", { name: "Export stock CSV" }));
     await userEvent.click(output.getByRole("button", { name: "Sheet 1 as SVG" }));
@@ -157,8 +185,9 @@ describe("ReportsTab", () => {
     const onPrint = vi.fn();
     const files = captureDownloads();
     renderReports(designProject(), onPrint);
-    await userEvent.click(screen.getByRole("button", { name: "Print assembly steps" }));
-    expect(onPrint).toHaveBeenCalledWith({ kind: "assembly" });
+    expect(booklet().getByRole("checkbox", { name: "Assembly steps" })).toHaveProperty("checked", true);
+    await userEvent.click(booklet().getByRole("button", { name: "Print booklet" }));
+    expect(onPrint).toHaveBeenCalledWith({ kind: "booklet", sections: ["title", "shopping", "sheets", "sequence", "assembly"] });
     const drawings = within(section("Front views"));
     expect(drawings.getByRole("img", { name: "Front view of Hall" }).querySelector("svg")).toBeTruthy();
     await userEvent.click(drawings.getByRole("button", { name: "Hall as SVG" }));
@@ -169,8 +198,12 @@ describe("ReportsTab", () => {
   it("says there is no plan and keeps the CSV exports", () => {
     renderReports({ ...sampleProject(), plan: { sheets: [] } });
     expect(screen.getByText("There is no plan yet. Optimize on the Layout tab.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Print sheet diagrams" })).toHaveProperty("disabled", true);
-    expect(screen.getByRole("button", { name: "Print cut sequence" })).toHaveProperty("disabled", true);
+    for (const [name, note] of [["Shopping list", "Needs a plan or a design."], ["Sheet diagrams", "Needs a plan."], ["Cut sequence", "Needs a plan."]] as const) {
+      const check = booklet().getByRole("checkbox", { name, description: note });
+      expect([check.hasAttribute("disabled"), (check as HTMLInputElement).checked]).toEqual([true, false]);
+    }
+    expect(booklet().getByRole("checkbox", { name: "Title page" })).toHaveProperty("disabled", false);
+    expect(booklet().getByRole("button", { name: "Print booklet" })).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Export parts CSV" })).toHaveProperty("disabled", false);
     expect(screen.queryByRole("region", { name: "Shopping list" })).toBeNull();
   });

@@ -178,7 +178,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
         {tab === "tools" && <ToolsTab store={store} storage={storage} />}
         {tab === "layout" && <LayoutTab store={store} analysis={analysis} prefs={prefs} runs={runs} onShowSettings={() => setTab("settings")} />}
         {tab === "shop" && <ShopTab store={store} analysis={analysis} onPrint={setPrintJob} />}
-        {tab === "reports" && <ReportsTab store={store} analysis={analysis} onPrint={setPrintJob} />}
+        {tab === "reports" && <ReportsTab store={store} analysis={analysis} prefs={prefs} onPrefs={setPrefs} onPrint={setPrintJob} />}
         {tab === "settings" && <SettingsTab store={store} prefs={prefs} onPrefs={setPrefs} />}
       </div>
       {printJob && <PrintView job={printJob} analysis={analysis} onDone={endPrint} />}

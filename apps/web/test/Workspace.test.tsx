@@ -156,7 +156,7 @@ describe("Workspace", () => {
     await userEvent.click(screen.getByRole("button", { name: "Print cut sequence" }));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
     const root = document.body.querySelector(":scope > .print-root");
-    expect(root?.getAttribute("data-job")).toBe("sequence");
+    expect(root?.querySelector("h1")?.textContent).toMatch(/: cut sequence$/);
     act(() => {
       window.dispatchEvent(new Event("afterprint"));
     });
@@ -164,13 +164,18 @@ describe("Workspace", () => {
     print.mockRestore();
   });
 
-  it("prints the sheet diagrams from the Reports tab", async () => {
+  it("prints the booklet from the Reports tab and keeps the choice in this browser", async () => {
     const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
     await renderWorkspace();
     await userEvent.click(screen.getByRole("tab", { name: "Reports" }));
-    await userEvent.click(screen.getByRole("button", { name: "Print sheet diagrams" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Title page" }));
+    await userEvent.click(screen.getByRole("button", { name: "Print booklet" }));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
-    expect(document.body.querySelector(":scope > .print-root")?.getAttribute("data-job")).toBe("sheets");
+    const root = document.body.querySelector(":scope > .print-root")!;
+    expect(root.getAttribute("data-job")).toBe("booklet");
+    expect(root.querySelector(".print-title")).toBeNull();
+    expect(root.querySelectorAll(".print-sheet")).toHaveLength(1);
+    expect(JSON.parse(localStorage.getItem("opencutplan.view")!).booklet.title).toBe(false);
     print.mockRestore();
   });
 
@@ -187,11 +192,10 @@ describe("Workspace", () => {
     const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
     await renderWorkspace(designProject());
     await userEvent.click(screen.getByRole("tab", { name: "Reports" }));
-    await userEvent.click(screen.getByRole("button", { name: "Print assembly steps" }));
+    await userEvent.click(screen.getByRole("button", { name: "Print booklet" }));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
     const root = document.body.querySelector(":scope > .print-root")!;
-    expect(root.getAttribute("data-job")).toBe("assembly");
-    expect(root.querySelectorAll(".print-steps li")).toHaveLength(9);
+    expect(root.querySelectorAll(".print-assembly .print-steps li")).toHaveLength(9);
     print.mockRestore();
   });
 });

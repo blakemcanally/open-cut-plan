@@ -24,9 +24,10 @@ import { createPortal } from "react-dom";
 import { HardwareTable } from "../reports/HardwareTable.tsx";
 import { ShoppingTables } from "../reports/ShoppingTables.tsx";
 import { assemblyGroups } from "../shop/progress.ts";
+import { BOOKLET_LABELS, BOOKLET_SECTIONS, type BookletSection } from "./booklet.ts";
 import { printScale, sheetPrintLayout } from "./scale.ts";
 
-export type PrintJob = { kind: "sheets" } | { kind: "sequence" } | { kind: "shopping" } | { kind: "assembly" } | { kind: "labels"; layout: LabelLayoutId; start: number };
+export type PrintJob = { kind: "booklet"; sections: readonly BookletSection[] } | { kind: "labels"; layout: LabelLayoutId; start: number };
 
 interface PrintViewProps {
   job: PrintJob;
@@ -36,13 +37,12 @@ interface PrintViewProps {
 
 const SEQUENCE_BOX = { width: 170, height: 90 };
 
+export const BOOKLET_PAGE_RULE = "@page { size: portrait; margin: 15mm; } @page sheet { size: landscape; margin: 12mm; }";
+
 function pageRule(job: PrintJob): string {
-  if (job.kind === "sheets") return "@page { size: landscape; margin: 12mm; }";
-  if (job.kind === "labels") {
-    const layout = labelLayout(job.layout);
-    return `@page { size: ${layout.page.width}${layout.unit} ${layout.page.height}${layout.unit}; margin: 0; }`;
-  }
-  return "@page { size: portrait; margin: 15mm; }";
+  if (job.kind === "booklet") return BOOKLET_PAGE_RULE;
+  const layout = labelLayout(job.layout);
+  return `@page { size: ${layout.page.width}${layout.unit} ${layout.page.height}${layout.unit}; margin: 0; }`;
 }
 
 /** Renders the job outside `#root` and opens the print dialog; `onDone` runs when the dialog closes. */
@@ -62,13 +62,47 @@ export function PrintView({ job, analysis, onDone }: PrintViewProps) {
   return createPortal(
     <div className="print-root" data-job={job.kind}>
       <style>{pageRule(job)}</style>
-      {job.kind === "sheets" && <SheetPages analysis={analysis} />}
-      {job.kind === "sequence" && <SequencePages analysis={analysis} />}
-      {job.kind === "shopping" && <ShoppingPage analysis={analysis} />}
-      {job.kind === "assembly" && <AssemblyPages analysis={analysis} />}
+      {job.kind === "booklet" && <BookletPages analysis={analysis} sections={job.sections} />}
       {job.kind === "labels" && <LabelPages analysis={analysis} layout={job.layout} start={job.start} />}
     </div>,
     document.body,
+  );
+}
+
+function BookletPages({ analysis, sections }: { analysis: ProjectAnalysis; sections: readonly BookletSection[] }) {
+  const included = BOOKLET_SECTIONS.filter((section) => sections.includes(section));
+  return (
+    <>
+      {included.map((section) => {
+        switch (section) {
+          case "title":
+            return <TitlePage key={section} analysis={analysis} contents={included.filter((other) => other !== "title")} />;
+          case "shopping":
+            return <ShoppingPage key={section} analysis={analysis} />;
+          case "sheets":
+            return <SheetPages key={section} analysis={analysis} />;
+          case "sequence":
+            return <SequencePages key={section} analysis={analysis} />;
+          case "assembly":
+            return <AssemblyPages key={section} analysis={analysis} />;
+        }
+      })}
+    </>
+  );
+}
+
+function TitlePage({ analysis, contents }: { analysis: ProjectAnalysis; contents: readonly BookletSection[] }) {
+  return (
+    <section className="print-page print-title">
+      <h1>{analysis.context.project.project.name}</h1>
+      <p className="print-meta">{new Date().toLocaleDateString(undefined, { dateStyle: "long" })}</p>
+      <h2>Contents</h2>
+      <ol>
+        {contents.map((section) => (
+          <li key={section}>{BOOKLET_LABELS[section]}</li>
+        ))}
+      </ol>
+    </section>
   );
 }
 

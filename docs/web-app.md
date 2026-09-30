@@ -153,10 +153,14 @@ list follows.
 
 ### Reports
 
-- **Print and export**: **Print sheet diagrams**, **Print cut sequence**, **Print shopping list**, **Print assembly
-  steps** (when there are designs), **Export parts CSV**, **Export stock CSV**, and one **Sheet N as SVG** button for
-  each sheet. File names start with the project
-  name: `Shelf-parts.csv`, `Shelf-stock.csv`, `Shelf-sheet-1.svg`.
+- **Print and export**: the **Print booklet** group, **Export parts CSV**, **Export stock CSV**, and one **Sheet N as
+  SVG** button for each sheet. File names start with the project name: `Shelf-parts.csv`, `Shelf-stock.csv`,
+  `Shelf-sheet-1.svg`.
+- **Print booklet**: a checkbox for each section of the booklet: **Title page**, **Shopping list**, **Sheet
+  diagrams**, **Cut sequence**, and **Assembly steps** (when there are designs). A section with no content has its
+  checkbox off and disabled, with a note that says why. **Print booklet** prints the checked sections as one
+  document. It needs at least one section other than the title page. The choice is kept in this browser, not in the
+  project file. All sections are on at first.
 - **Shopping list**: for each material, the stock, its size, the sheets in the plan, the count to buy (owned offcuts
   are not bought), the unit cost, the cost, and a subtotal; then the share of the stock that parts use, and the waste.
   The total follows, or a warning that names the stock with no price. The cost columns are hidden when the `cost`
@@ -176,9 +180,15 @@ With no plan, the tab says so. It keeps the CSV exports and the labels, and each
 
 ### Printing
 
-Each print button opens the browser's print dialog with only that output; the app is hidden on paper. Use the
-dialog's "Save as PDF" for a PDF.
+**Print booklet**, **Print labels**, and **Print cut sequence** on the Shop tab open the browser's print dialog with
+only that output; the app is hidden on paper. Use the dialog's "Save as PDF" for a PDF.
 
+The booklet has its sections in the order of the list below, and each section starts on a new page. The sheet
+diagrams are landscape pages; the other pages are portrait. **Print cut sequence** on the Shop tab prints a booklet
+with only the cut sequence.
+
+- **Title page**: the project name, the date, and a list of the other sections in the booklet.
+- **Shopping list**: the tables from the Reports tab, with the hardware.
 - **Sheet diagrams**: one landscape page per sheet with the sheet number, the stock, and the scale. The drawing uses
   the largest of 1:1, 1:2, 1:4, 1:5, 1:8, 1:10, 1:12, 1:16, 1:20, 1:25, and 1:50 that fits; the page says "Scale
   1:12", or "Not to scale" when none fits. The key lists the parts with their sizes and grain, and explains the cut
@@ -186,9 +196,10 @@ dialog's "Save as PDF" for a PDF.
   parts list. A row for more than one copy shows the part name and the count, for example "Side ×4". The key goes
   beside the drawing when that gives a larger scale.
 - **Cut sequence**: portrait pages with a small drawing of each sheet and a box to tick for each step.
-- **Shopping list**: the tables from the Reports tab, with the hardware.
 - **Assembly steps**: one page for each design, with its front view and a box to tick for each step.
-- **Labels**: the page size of the label sheet with no margins. Print at 100% ("Actual size"), not "Fit to page".
+
+**Print labels** prints the labels alone, on the page size of the label sheet with no margins. Print at 100% ("Actual
+size"), not "Fit to page".
 
 ### Settings
 
@@ -217,8 +228,8 @@ inside it.
 The optimizer tests run the real worker protocol in the test thread.
 
 `npm run e2e` runs the Playwright tests in `apps/web/e2e` in Chromium against a production build. They cover a new
-project from CSV through optimize, the Shop checklist across a reload and at a phone width, printing (with a PDF of
-the print pages), and the SVG and CSV downloads; drag, rotate, and undo in the layout editor; and a design through
-optimize, the assembly checklist across a reload, and the assembly print. Install the browser
-once with `npx playwright install chromium`. `npm run check` does not run them; CI runs both
+project from CSV through optimize, the Shop checklist across a reload and at a phone width, printing the booklet
+(with a PDF that has landscape sheet pages), and the SVG and CSV downloads; drag, rotate, and undo in the layout
+editor; and a design through optimize, the assembly checklist across a reload, and the assembly print. Install the
+browser once with `npx playwright install chromium`. `npm run check` does not run them; CI runs both
 (`.github/workflows/ci.yml`).

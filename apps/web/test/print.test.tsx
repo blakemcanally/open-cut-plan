@@ -2,7 +2,7 @@ import { analyzeProject, type Project } from "@opencutplan/core";
 import { act, render, within } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PrintView, type PrintJob } from "../src/print/PrintView.tsx";
+import { BOOKLET_PAGE_RULE, PrintView, type PrintJob } from "../src/print/PrintView.tsx";
 import { printScale, sheetPrintLayout } from "../src/print/scale.ts";
 import { formatMoney } from "../src/reports/money.ts";
 import { assemblyGroups } from "../src/shop/progress.ts";
@@ -60,10 +60,10 @@ describe("formatMoney", () => {
 
 describe("PrintView", () => {
   it("prints one page per sheet outside the app root, once, and ends when the dialog closes", () => {
-    const { root, onDone } = renderPrint({ kind: "sheets" });
+    const { root, onDone } = renderPrint({ kind: "booklet", sections: ["sheets"] });
     expect(print).toHaveBeenCalledTimes(1);
     expect(root.parentElement).toBe(document.body);
-    expect(root.querySelector("style")?.textContent).toBe("@page { size: landscape; margin: 12mm; }");
+    expect(root.getAttribute("data-job")).toBe("booklet");
     const pages = root.querySelectorAll(".print-page");
     expect(pages).toHaveLength(1);
     const page = within(pages[0] as HTMLElement);
@@ -80,6 +80,31 @@ describe("PrintView", () => {
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
+  it("prints the booklet sections in order, with portrait pages and landscape sheet pages", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 8, 30));
+    const { root } = renderPrint({ kind: "booklet", sections: ["assembly", "title", "sequence", "sheets", "shopping"] }, designProject());
+    vi.useRealTimers();
+    expect(root.querySelector("style")?.textContent).toBe(BOOKLET_PAGE_RULE);
+    expect(BOOKLET_PAGE_RULE).toBe("@page { size: portrait; margin: 15mm; } @page sheet { size: landscape; margin: 12mm; }");
+    expect([...root.querySelectorAll(":scope > section")].map((page) => page.querySelector("h1, h2")?.textContent)).toEqual([
+      "Hall",
+      "Hall: shopping list",
+      "Sheet 1 of 1: Plywood 18 2440 mm × 1220 mm",
+      "Hall: cut sequence",
+      "Hall: Hall",
+    ]);
+    const title = within(root.querySelector<HTMLElement>(".print-title")!);
+    expect(title.getByText(new Date(2026, 8, 30).toLocaleDateString(undefined, { dateStyle: "long" }))).toBeTruthy();
+    expect(title.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Shopping list", "Sheet diagrams", "Cut sequence", "Assembly steps"]);
+  });
+
+  it("leaves out the sections that are not in the job", () => {
+    const { root } = renderPrint({ kind: "booklet", sections: ["title", "sequence"] });
+    expect([...root.querySelectorAll(":scope > section")].map((page) => page.querySelector("h1")?.textContent)).toEqual(["Test", "Test: cut sequence"]);
+    expect(within(root.querySelector<HTMLElement>(".print-title")!).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Cut sequence"]);
+  });
+
   it("gives one key row for each part and orientation, in the parts-list order", () => {
     const project = sampleProject();
     project.parts[0]!.quantity = 3;
@@ -91,7 +116,7 @@ describe("PrintView", () => {
       { part: "side", copy: 2, x: 0.25, y: 12.375, rotated: false },
       { part: "side", copy: 0, x: 0.25, y: 0.25, rotated: false },
     ];
-    const { root } = renderPrint({ kind: "sheets" }, project);
+    const { root } = renderPrint({ kind: "booklet", sections: ["sheets"] }, project);
     expect([...root.querySelectorAll(".print-key li")].map((row) => row.textContent)).toEqual([
       'Side ×2 30" × 12" ↔',
       'Side 2 12" × 30" ↕ ⟂ across the grain',
@@ -100,9 +125,8 @@ describe("PrintView", () => {
   });
 
   it("prints the cut sequence with a box to tick for each step", () => {
-    const { root } = renderPrint({ kind: "sequence" });
+    const { root } = renderPrint({ kind: "booklet", sections: ["sequence"] });
     const steps = analyzeProject(sampleProject()).steps;
-    expect(root.querySelector("style")?.textContent).toBe("@page { size: portrait; margin: 15mm; }");
     expect(within(root).getByRole("heading", { name: "Test: cut sequence" })).toBeTruthy();
     const items = root.querySelectorAll(".print-steps li");
     expect(items).toHaveLength(steps.length);
@@ -111,14 +135,14 @@ describe("PrintView", () => {
   });
 
   it("prints the shopping list", () => {
-    const { root } = renderPrint({ kind: "shopping" });
+    const { root } = renderPrint({ kind: "booklet", sections: ["shopping"] });
     expect(within(root).getByRole("heading", { name: "Test: shopping list" })).toBeTruthy();
     expect(within(root).getByRole("heading", { name: "Plywood", level: 2 })).toBeTruthy();
     expect(within(root).getByText(/^Total: .*60\.00/)).toBeTruthy();
   });
 
   it("prints the hardware on the shopping list, even with no sheets", () => {
-    const { root } = renderPrint({ kind: "shopping" }, { ...designProject(), plan: { sheets: [] } });
+    const { root } = renderPrint({ kind: "booklet", sections: ["shopping"] }, { ...designProject(), plan: { sheets: [] } });
     expect(within(root).queryByRole("heading", { name: "Plywood 18", level: 2 })).toBeNull();
     const hardware = within(root).getByRole("heading", { name: "Hardware" }).closest("section")!;
     expect(within(hardware).getAllByRole("row")).toHaveLength(5);
@@ -126,7 +150,7 @@ describe("PrintView", () => {
 
   it("prints one page of assembly steps for each design", () => {
     const project = designProject();
-    const { root } = renderPrint({ kind: "assembly" }, project);
+    const { root } = renderPrint({ kind: "booklet", sections: ["assembly"] }, project);
     const pages = [...root.querySelectorAll<HTMLElement>(".print-page")];
     expect(pages).toHaveLength(1);
     expect(within(pages[0]!).getByRole("heading", { name: "Hall: Hall", level: 1 })).toBeTruthy();
