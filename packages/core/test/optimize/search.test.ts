@@ -1,10 +1,12 @@
 import fc from "fast-check";
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../../../examples/builders/index.ts";
 import type { Project } from "../../src/format/schema.ts";
 import { createProject } from "../../src/format/defaults.ts";
 import { parseProject } from "../../src/format/parse.ts";
-import { applyOptimizeResult, createSearch, optimize } from "../../src/optimize/search.ts";
+import { costLimit, withinLimit } from "../../src/optimize/goal.ts";
+import { applyOptimizeResult, createSearch, optimize, type OptimizeResult } from "../../src/optimize/search.ts";
 import { validatePlan } from "../../src/plan/validate.ts";
 import { sampleProject } from "../helpers.ts";
 
@@ -229,6 +231,110 @@ describe("optimize on random projects", () => {
         expect(result.unplaced.every((u) => u.reason !== "not-guillotine")).toBe(true);
       }),
       { numRuns: 150 },
+    );
+  });
+});
+
+describe("the optimizer goal", () => {
+  function twoStocks(a: { length: number; width: number; cost: number }, b: { length: number; width: number; cost: number }): Project {
+    const base = createProject("Goal", "mm");
+    return {
+      ...base,
+      materials: [{ id: "m", name: "M", thickness: 18, grained: false }],
+      stock: [
+        { id: "a", material: "m", ...a, quantity: null, kind: "sheet" },
+        { id: "b", material: "m", ...b, quantity: null, kind: "sheet" },
+      ],
+      parts: [{ id: "p", name: "P", material: "m", length: 900, width: 900, quantity: 1, grain: "none" }],
+      tools: [{ id: "t", name: "T", type: "table-saw", kerf: 3, enabled: true }],
+    };
+  }
+  const stockOf = (project: Project, options: Parameters<typeof optimize>[1]) => optimize(project, { iterations: 60, ...options }).sheets.map((sheet) => sheet.stock);
+
+  it("gives the same plans as before for the goal cost", () => {
+    const fingerprints = Object.fromEntries(
+      ["living-room-shelf", "simple-bookcase-mm", "kallax-2x4-mm", "eket-wall-in"].map((name) => {
+        const result = optimize(load(name), { iterations: 150, seed: 7, goal: "cost" });
+        const text = JSON.stringify({ sheets: result.sheets, unplaced: result.unplaced });
+        return [name, createHash("sha256").update(text).digest("hex").slice(0, 16)];
+      }),
+    );
+    expect(fingerprints).toEqual({
+      "living-room-shelf": "856f870d8ae44f6a",
+      "simple-bookcase-mm": "0179ead79bb2e7a9",
+      "kallax-2x4-mm": "09dce9c592a539a6",
+      "eket-wall-in": "12bae722ce52979a",
+    });
+  });
+
+  it("keeps to plans with no bought stock when an owned offcut makes the cheapest cost 0", () => {
+    const project = twoStocks({ length: 1000, width: 1000, cost: 100 }, { length: 2000, width: 1000, cost: 105 });
+    project.stock = [{ id: "o", material: "m", length: 950, width: 950, quantity: 1, kind: "offcut" }, project.stock[1]!];
+    const result = optimize(project, { iterations: 60, goal: "offcuts", extraCostPercent: 100 });
+    expect(result.sheets.map((sheet) => sheet.stock)).toEqual(["o"]);
+    expect(result.materials.map((m) => [m.score.cost, m.cheapestCost])).toEqual([[0, 0]]);
+  });
+
+  it("spends up to the limit for a larger offcut", () => {
+    const project = twoStocks({ length: 1000, width: 1000, cost: 100 }, { length: 2000, width: 1000, cost: 105 });
+    expect(stockOf(project, { goal: "cost" })).toEqual(["a"]);
+    expect(stockOf(project, { goal: "offcuts", extraCostPercent: 10 })).toEqual(["b"]);
+    expect(stockOf(project, { goal: "offcuts", extraCostPercent: 0 })).toEqual(["a"]);
+    const result = optimize(project, { iterations: 60, goal: "offcuts", extraCostPercent: 10 });
+    expect(result.materials.map((m) => [m.score.cost, m.cheapestCost])).toEqual([[105, 100]]);
+  });
+
+  it("spends up to the limit for fewer cuts", () => {
+    const project = twoStocks({ length: 1000, width: 1000, cost: 100 }, { length: 900, width: 900, cost: 104 });
+    expect(stockOf(project, { goal: "cuts", extraCostPercent: 10 })).toEqual(["b"]);
+    expect(stockOf(project, { goal: "cuts", extraCostPercent: 3 })).toEqual(["a"]);
+  });
+
+  it("takes the goal and the limit from the settings, and uses the lowest cost for an unknown goal", () => {
+    const project = twoStocks({ length: 1000, width: 1000, cost: 100 }, { length: 900, width: 900, cost: 104 });
+    const withGoal = (goal: string, extraCostPercent: number): Project => ({ ...project, settings: { ...project.settings, optimizer: { ...project.settings.optimizer, goal, extraCostPercent } } });
+    expect(stockOf(withGoal("cuts", 10), {})).toEqual(["b"]);
+    expect(stockOf(withGoal("cuts", 2), {})).toEqual(["a"]);
+    expect(stockOf(withGoal("time", 50), {})).toEqual(["a"]);
+    expect(stockOf(withGoal("cuts", 10), { goal: "cost" })).toEqual(["a"]);
+  });
+
+  it("gives the cost of the chosen plan as the cheapest cost for the goal cost", () => {
+    const result = optimize(load("simple-bookcase-mm"), { iterations: 30 });
+    expect(result.materials.map((m) => m.cheapestCost)).toEqual(result.materials.map((m) => m.score.cost));
+  });
+
+  it("never goes over the limit, also when it continues a search with or without the cheapest cost", () => {
+    const arb = fc.record({
+      goal: fc.constantFrom("offcuts" as const, "cuts" as const),
+      extra: fc.integer({ min: 0, max: 40 }),
+      stock: fc.array(fc.record({ length: fc.integer({ min: 30, max: 120 }), width: fc.integer({ min: 20, max: 60 }), cost: fc.integer({ min: 5, max: 60 }) }), { minLength: 1, maxLength: 3 }),
+      parts: fc.array(fc.record({ length: fc.integer({ min: 2, max: 60 }), width: fc.integer({ min: 2, max: 40 }), quantity: fc.integer({ min: 1, max: 4 }) }), { minLength: 1, maxLength: 6 }),
+      seed: fc.integer(),
+    });
+    fc.assert(
+      fc.property(arb, (a) => {
+        const base = createProject("Random", "in");
+        const project: Project = {
+          ...base,
+          materials: [{ id: "m", name: "M", thickness: 0.75, grained: false }],
+          stock: a.stock.map((s, i) => ({ id: `st${i}`, material: "m", ...s, quantity: null, kind: "sheet" as const })),
+          parts: a.parts.map((p, i) => ({ id: `p${i}`, name: `P${i}`, material: "m", ...p, grain: "none" as const })),
+          tools: [{ id: "t", name: "T", type: "table-saw", kerf: 0.125, enabled: true }],
+        };
+        const options = { iterations: 12, seed: a.seed, goal: a.goal, extraCostPercent: a.extra };
+        const within = (result: OptimizeResult) => result.materials.every((m) => withinLimit(m.score.cost, costLimit(m.cheapestCost, a.extra)));
+        let result = optimize(project, options);
+        expect(within(result)).toBe(true);
+        for (let run = 0; run < 3; run++) {
+          const next = optimize(project, { ...options, start: result });
+          expect(within(next)).toBe(true);
+          expect(next.materials.every((m, i) => m.cheapestCost <= result.materials[i]!.cheapestCost)).toBe(true);
+          result = next;
+        }
+        expect(within(optimize(project, { ...options, start: { ...result, materials: [] } }))).toBe(true);
+      }),
+      { numRuns: 60 },
     );
   });
 });

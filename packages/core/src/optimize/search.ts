@@ -1,6 +1,7 @@
 import type { PlanSheet, Project, Stock } from "../format/schema.ts";
 import { uniqueId } from "../format/ids.ts";
 import { compareScores, evaluate, type Evaluated, type Score } from "./evaluate.ts";
+import { createTradeOffs, projectGoal, type OptimizerGoal, type TradeOffs } from "./goal.ts";
 import { guillotinePack, SPLIT_RULES, type SplitRule } from "./guillotine.ts";
 import type { Packing, RotationPolicy } from "./pack.ts";
 import { buildProblem, type Copy, type MaterialProblem, type Problem, type UnplacedCopy } from "./problem.ts";
@@ -18,11 +19,17 @@ export interface OptimizeOptions {
   now?: () => number;
   /** A previous result for the same project: the search continues from its plans ("Keep searching"). */
   start?: OptimizeResult;
+  /** Defaults to `settings.optimizer.goal`, with `cost` for a goal that this app does not know. */
+  goal?: OptimizerGoal;
+  /** Defaults to `settings.optimizer.extraCostPercent`. Ignored for the goal `cost`. */
+  extraCostPercent?: number;
 }
 
 export interface MaterialResult {
   material: string;
   score: Score;
+  /** The lowest cost of the plans with the fewest unplaced copies that the search found. */
+  cheapestCost: number;
 }
 
 export interface OptimizeResult {
@@ -56,7 +63,14 @@ interface MaterialSearch {
   base: Candidate[];
   next: number;
   evaluated: number;
-  best: { candidate: Candidate; result: Evaluated } | null;
+  best: Planned | null;
+  /** Null for the goal `cost`, which keeps only the best plan. */
+  trade: TradeOffs<Planned> | null;
+}
+
+interface Planned {
+  candidate: Candidate;
+  result: Evaluated;
 }
 
 const ORDERS: readonly ((a: Copy, b: Copy) => number)[] = [
@@ -75,9 +89,12 @@ export function createSearch(project: Project, options: OptimizeOptions = {}): S
   const seed = options.seed ?? settings.seed ?? 1;
   const now = options.now ?? Date.now;
   const perMaterial = options.iterations === undefined ? undefined : Math.max(1, options.iterations);
+  const goal = options.goal ?? projectGoal(project);
+  const extra = options.extraCostPercent ?? settings.extraCostPercent;
   const random = seededRandom(seed + (options.start?.iterations ?? 0));
-  const searches = problem.materials.map((m): MaterialSearch => ({ problem: m, base: baseCandidates(m), next: 0, evaluated: 0, best: null }));
-  if (options.start) seedFrom(problem, searches, options.start);
+  const tradeOffs = (cheapest?: number) => (goal === "cost" ? null : createTradeOffs<Planned>(goal, extra, cheapest));
+  const searches = problem.materials.map((m): MaterialSearch => ({ problem: m, base: baseCandidates(m), next: 0, evaluated: 0, best: null, trade: tradeOffs() }));
+  if (options.start) seedFrom(problem, searches, options.start, tradeOffs);
   let iterations = options.start?.iterations ?? 0;
   let elapsed = 0;
   let turn = 0;
@@ -97,7 +114,7 @@ export function createSearch(project: Project, options: OptimizeOptions = {}): S
     const result = evaluate(problem, search.problem, pack(problem, search.problem, candidate), `${search.problem.material}:`);
     search.evaluated++;
     iterations++;
-    if (!search.best || compareScores(result.score, search.best.result.score) < 0) search.best = { candidate, result };
+    record(search, { candidate, result });
   };
 
   return {
@@ -128,6 +145,15 @@ export function optimize(project: Project, options: OptimizeOptions = {}): Optim
 /** The project with its plan replaced by the optimized sheets. */
 export function applyOptimizeResult(project: Project, result: OptimizeResult): Project {
   return { ...project, plan: { ...project.plan, sheets: result.sheets } };
+}
+
+function record(search: MaterialSearch, planned: Planned) {
+  if (!search.trade) {
+    if (!search.best || compareScores(planned.result.score, search.best.result.score) < 0) search.best = planned;
+    return;
+  }
+  search.trade.add(planned.result.score, planned);
+  search.best = search.trade.chosen()!.item;
 }
 
 function pack(problem: Problem, material: MaterialProblem, candidate: Candidate): Packing {
@@ -195,7 +221,7 @@ function randomCandidate(random: Random, search: MaterialSearch): Candidate {
   };
 }
 
-function seedFrom(problem: Problem, searches: MaterialSearch[], start: OptimizeResult) {
+function seedFrom(problem: Problem, searches: MaterialSearch[], start: OptimizeResult, tradeOffs: (cheapest?: number) => TradeOffs<Planned> | null) {
   const pinned = new Set(problem.pinned.map((s) => s.id));
   const reasons = new Map(start.unplaced.map((u) => [`${u.part}#${u.copy}`, u.reason]));
   for (const search of searches) {
@@ -223,8 +249,10 @@ function seedFrom(problem: Problem, searches: MaterialSearch[], start: OptimizeR
     }
     order.push(...copies.values());
     const unplaced = [...copies.values()].map((c) => ({ part: c.part.id, copy: c.copy, reason: reasons.get(`${c.part.id}#${c.copy}`) ?? ("no-stock" as const) }));
-    search.best = { candidate: { ...base, order }, result: evaluate(problem, search.problem, { sheets, unplaced }, `${search.problem.material}:`) };
-    search.next = search.base.length;
+    const cheapest = start.materials.find((m) => m.material === search.problem.material)?.cheapestCost;
+    search.trade = tradeOffs(cheapest);
+    record(search, { candidate: { ...base, order }, result: evaluate(problem, search.problem, { sheets, unplaced }, `${search.problem.material}:`) });
+    search.next = search.trade && cheapest === undefined ? 0 : search.base.length;
   }
 }
 
@@ -241,7 +269,7 @@ function assemble(problem: Problem, searches: MaterialSearch[], iterations: numb
       sheets.push({ id, stock: sheet.stock, placements: sheet.placements });
     }
     unplaced.push(...search.best.result.unplaced);
-    materials.push({ material: search.problem.material, score: search.best.result.score });
+    materials.push({ material: search.problem.material, score: search.best.result.score, cheapestCost: search.trade?.cheapest ?? search.best.result.score.cost });
   }
   return { sheets, unplaced, materials, iterations };
 }

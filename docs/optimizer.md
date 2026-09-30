@@ -41,7 +41,7 @@ The **rotation policy** decides which orientation a part that may rotate tries f
 
 1. The optimizer first tries every combination of four part orders (area, longest side, length, and width, each
    largest first), the five constructors, up to six sheet stock orders, and the rotation policies.
-2. It then tries random changes to the best candidate so far: swaps in the part order, a new order by area with
+2. It then tries random changes to the chosen candidate so far (see [Objective](#objective)): swaps in the part order, a new order by area with
    random noise, another constructor, another stock order, or another rotation policy.
 3. It stops at `timeLimitMs` (default `settings.optimizer.timeLimitMs`), but only after every material has at least
    one candidate. With `iterations`, it runs exactly that many candidates per material and ignores the time.
@@ -50,7 +50,9 @@ The random numbers come from `seed` (default `settings.optimizer.seed`, else 1).
 always give the same result. A timed run can stop at a different candidate on a different computer.
 
 **Keep searching**: pass the previous result as `start`. The search starts from its plans, skips the first stage, and
-continues with new random numbers. Copies that are now on a pinned sheet, or no longer in the project, are left out of
+continues with new random numbers. For the goals `offcuts` and `cuts`, the cheapest cost C of each material starts at
+the `cheapestCost` of that material in `start`. A material with no `cheapestCost` in `start` (the CLI builds such a
+start for `optimize --continue`) runs the first stage again, so that the search finds a cheap plan again. Copies that are now on a pinned sheet, or no longer in the project, are left out of
 those plans, and so are sheets past a stock's `quantity`.
 
 ## Validation
@@ -61,7 +63,9 @@ the plan-wide `no-tool` error drops nothing; the validator still reports it.
 
 ## Objective
 
-Candidates are compared per material, in this order:
+The goal is `goal` (default `settings.optimizer.goal`). A goal that this version does not know is `cost`.
+
+For the goal `cost`, candidates are compared per material, in this order:
 
 1. **Unplaced copies**: fewer is better.
 2. **Cost**: the sum of the stock `cost` of the sheets used. Owned offcuts count as 0. When the `cost` feature is off,
@@ -70,6 +74,20 @@ Candidates are compared per material, in this order:
 4. **Cut steps**, including trims: fewer is better.
 5. **Sheets**: fewer is better.
 
+For the goals `offcuts` and `cuts`, the search chooses a plan for each material with this rule:
+
+1. It keeps the candidates with the fewest unplaced copies.
+2. C is the lowest cost of those candidates. It keeps the candidates that cost at most
+   C × (1 + `extraCostPercent` / 100). `extraCostPercent` defaults to `settings.optimizer.extraCostPercent`.
+3. It chooses by the goal. For `offcuts`, the offcut areas compare largest first: the larger first area wins, then
+   the larger second area, and so on, and a list that ends first loses. For `cuts`, fewer cut steps win.
+4. When candidates are still equal, the order of the goal `cost` decides. Of two equal candidates, the first found
+   stays.
+
+Costs and areas that differ by less than a small relative tolerance are equal, so a candidate that costs exactly the
+limit stays. C can only go down, so the search drops a candidate when its cost goes over the limit. With the
+`offcuts` feature off, every offcut list is empty, and the goal `offcuts` gives the same plan as the goal `cost`.
+
 ## Result
 
 `OptimizeResult` has:
@@ -77,7 +95,9 @@ Candidates are compared per material, in this order:
 - `sheets`: the pinned sheets, then the new sheets of each material, in project material order;
 - `unplaced`: `{ part, copy, reason }` for each copy with no place, grouped by material in project material order,
   and in part order, then copy order, within each material;
-- `materials`: `{ material, score }`, with the score fields above;
+- `materials`: `{ material, score, cheapestCost }`. The `score` has the measures above, with `offcuts`: the area of
+  every offcut, largest first. `cheapestCost` is C for the goals `offcuts` and `cuts`, and the cost of the chosen plan
+  for the goal `cost`;
 - `iterations`: the candidates tried, over all materials, including those of a `start` result.
 
 | `reason` | Meaning |
