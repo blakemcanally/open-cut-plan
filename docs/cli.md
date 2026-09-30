@@ -131,8 +131,8 @@ files.
 
 ### Designs
 
-A design is a cabinet grid: vertical panels that run the full height, with shelves between them, all joined with
-pocket screws. The CLI makes the parts of the design, and you cannot change them with `parts set` or `parts remove`
+A design is a cabinet box: a top and a bottom that run the full width, the sides and the dividers between them, and
+the shelves between the sides and the dividers, all joined with pocket screws. The CLI makes the parts of the design, and you cannot change them with `parts set` or `parts remove`
 (exit 1, `generated-part`). Change the design, or use `design detach` to make them normal parts.
 
 | Command | What it does | Example |

@@ -230,7 +230,7 @@ const add: CommandSpec = {
   name: "design add",
   summary: "Add a design and make its parts.",
   description:
-    "Add a cabinet design and make its parts: the vertical panels, the shelves, and the back. Give each axis as --cols with --width (or --rows with --height), or as a list of openings. For kallax and eket, --cols and --rows alone give IKEA-size cells, and the depth is the IKEA depth; the numbers are converted to the project units. A design with an error (such as stock too thin for pocket screws) is refused with exit 1, invalid-value, and the checks in error.issues. The new parts are not placed; run optimize.",
+    "Add a cabinet design and make its parts: the top, the bottom, the sides, the dividers, the shelves, and the back. Give each axis as --cols with --width (or --rows with --height), or as a list of openings. For kallax and eket, --cols and --rows alone give IKEA-size cells, and the depth is the IKEA depth; the numbers are converted to the project units. A design with an error (such as stock too thin for pocket screws) is refused with exit 1, invalid-value, and the checks in error.issues. The new parts are not placed; run optimize.",
   args: [FILE_ARG],
   options: [...FIELD_OPTIONS, ID_OPTION, ...OUTPUT_OPTIONS],
   examples: [

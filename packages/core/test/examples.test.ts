@@ -97,10 +97,13 @@ describe("living-room-shelf", () => {
 describe("kallax-2x4-mm", () => {
   const project = build("kallax-2x4-mm");
 
-  it("makes 3 vertical panels and 10 shelves with 335 mm cells", () => {
+  it("makes a box with a full-width top and bottom, 2 sides, 1 divider, and 6 shelves with 335 mm cells", () => {
     expect(project.parts.map((p) => [p.id, p.length, p.width, p.quantity])).toEqual([
-      ["kallax-vertical", 1430, 390, 3],
-      ["kallax-horizontal", 335, 390, 10],
+      ["kallax-top", 724, 390, 1],
+      ["kallax-bottom", 724, 390, 1],
+      ["kallax-side", 1394, 390, 2],
+      ["kallax-divider", 1394, 390, 1],
+      ["kallax-shelf", 335, 390, 6],
     ]);
   });
 
@@ -125,8 +128,10 @@ describe("eket-wall-in", () => {
 
   it("makes the parts of 2 units, with a back", () => {
     expect(project.parts.map((p) => [p.id, p.quantity])).toEqual([
-      ["eket-vertical", 6],
-      ["eket-horizontal", 8],
+      ["eket-top", 2],
+      ["eket-bottom", 2],
+      ["eket-side", 4],
+      ["eket-divider", 2],
       ["eket-back", 2],
     ]);
   });

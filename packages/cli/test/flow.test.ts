@@ -89,7 +89,7 @@ describe("an agent flow in a real directory", () => {
     expect(added.json().design.id).toBe("kallax-2x4");
     const optimized = await real(["optimize", file, "--iterations", "200", "--seed", "1", "--strict", "--json"]);
     expect(optimized.code).toBe(0);
-    expect(optimized.json().after).toMatchObject({ placedCopies: 13, unplacedCopies: 0, errors: 0 });
+    expect(optimized.json().after).toMatchObject({ placedCopies: 11, unplacedCopies: 0, errors: 0 });
     const assembly = await real(["report", "assembly", file, "--json"]);
     expect(assembly.json().designs[0].steps.length).toBe(7);
     const shopping = await real(["report", "shopping", file, "--json"]);

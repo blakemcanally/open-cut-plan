@@ -183,7 +183,7 @@ test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware
   await expect(page.getByRole("img", { name: 'Front view of KALLAX 2x2: 28 5/8" × 42 9/16" × 15 11/32"' })).toBeVisible();
 
   await page.getByRole("tab", { name: "Parts" }).click();
-  await expect(page.getByRole("row", { name: /^Vertical panel/ })).toContainText("From design: KALLAX 2x2");
+  await expect(page.getByRole("row", { name: /^Side/ })).toContainText("From design: KALLAX 2x2");
 
   await page.getByRole("tab", { name: "Stock" }).click();
   await page.getByRole("button", { name: "Paste rows…" }).click();

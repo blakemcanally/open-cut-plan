@@ -101,15 +101,19 @@ An **axis** is one of:
 
 | Part id | Name | Length × width | Quantity |
 |---|---|---|---|
-| `<id>-vertical` | Vertical panel | outside height × panel depth | (*n* + 1) × *q* |
-| `<id>-horizontal`, or `<id>-horizontal-<k>` | Shelf, or Shelf *k* | column opening × panel depth | (*m* + 1) × the columns with that opening × *q* |
+| `<id>-top` | Top | outside width × panel depth | *q* |
+| `<id>-bottom` | Bottom | outside width × panel depth | *q* |
+| `<id>-side` | Side | (outside height − 2*t*) × panel depth | 2 × *q* |
+| `<id>-divider` | Divider | (outside height − 2*t*) × panel depth | (*n* − 1) × *q* |
+| `<id>-shelf`, or `<id>-shelf-<k>` | Shelf, or Shelf *k* | column opening × panel depth | (*m* − 1) × the columns with that opening × *q* |
 | `<id>-back` | Back | outside height × outside width | *q* |
 
 - An `outside` axis has openings of (outside − (cells + 1) × *t*) / cells. An `openings` axis has an outside size of
   the sum of the openings + (*n* + 1) × *t*, where *n* is the number of openings.
 - The panel depth is `depth` minus the back thickness.
-- The vertical panels run the full height. Each shelf fits between two vertical panels. All joints are butt joints
-  with pocket screws.
+- The design is a box. The top and the bottom run the full width. The sides and the dividers fit between the top and
+  the bottom, and each shelf fits between a side and a divider or between two dividers. All joints are butt joints
+  with pocket screws. A design with 1 column has no divider part, and a design with 1 row has no shelf part.
 - Columns with the same opening share one shelf part. With more than one opening size, *k* counts the sizes in column
   order from 1.
 - Every generated part has `grain: "length"` and `group` set to the design name.

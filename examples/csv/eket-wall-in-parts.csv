@@ -1,4 +1,6 @@
 ﻿name,length,width,quantity,material,grain,group,notes
-Vertical panel,13.7795,13.5608,6,"Plywood 3/4"" (23/32 actual)",length,Wall EKET,
-Shelf,12.7014,13.5608,8,"Plywood 3/4"" (23/32 actual)",length,Wall EKET,
+Top,27.5591,13.5608,2,"Plywood 3/4"" (23/32 actual)",length,Wall EKET,
+Bottom,27.5591,13.5608,2,"Plywood 3/4"" (23/32 actual)",length,Wall EKET,
+Side,12.342,13.5608,4,"Plywood 3/4"" (23/32 actual)",length,Wall EKET,
+Divider,12.342,13.5608,2,"Plywood 3/4"" (23/32 actual)",length,Wall EKET,
 Back,13.7795,27.5591,2,"Plywood 1/4"" (7/32 actual)",length,Wall EKET,

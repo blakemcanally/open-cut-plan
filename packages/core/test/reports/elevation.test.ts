@@ -10,10 +10,14 @@ describe("designElevationSvg", () => {
     const svg = designElevationSvg(project, "kx")!;
     expect(svg).toMatch(/^<svg xmlns="http:\/\/www.w3.org\/2000\/svg" viewBox="-143 -143 1010 1716" width="1010mm" height="1716mm"/);
     expect(svg).toContain("<title>Hall KALLAX: 724 mm × 1430 mm × 390 mm</title>");
-    expect(count(svg, /data-panel="vertical"/g)).toBe(3);
-    expect(count(svg, /data-panel="horizontal"/g)).toBe(10);
-    expect(svg).toContain('<rect data-panel="vertical" x="353" y="0" width="18" height="1430"');
-    expect(svg).toContain('<rect data-panel="horizontal" x="18" y="353" width="335" height="18"');
+    expect(count(svg, /data-panel="top"/g)).toBe(1);
+    expect(count(svg, /data-panel="bottom"/g)).toBe(1);
+    expect(count(svg, /data-panel="side"/g)).toBe(2);
+    expect(count(svg, /data-panel="divider"/g)).toBe(1);
+    expect(count(svg, /data-panel="shelf"/g)).toBe(6);
+    expect(svg).toContain('<rect data-panel="top" x="0" y="0" width="724" height="18"');
+    expect(svg).toContain('<rect data-panel="divider" x="353" y="18" width="18" height="1394"');
+    expect(svg).toContain('<rect data-panel="shelf" x="18" y="353" width="335" height="18"');
     expect(count(svg, />335 mm × 335 mm</g)).toBe(8);
     expect(svg).toContain(">724 mm</text>");
     expect(svg).toContain(">1430 mm</text>");

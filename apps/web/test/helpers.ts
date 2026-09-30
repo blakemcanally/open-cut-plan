@@ -31,7 +31,7 @@ export function sampleProject(): Project {
 
 /**
  * A millimetre project: 18 mm and 6 mm plywood, an unlimited 2440 × 1220 sheet of the 18 mm, a table saw, and the design
- * "hall", a KALLAX 2x2 in the 18 mm with its parts. One sheet holds a vertical panel and a shelf.
+ * "hall", a KALLAX 2x2 in the 18 mm with its parts. One sheet holds a side and a shelf.
  */
 export function designProject(): Project {
   const base = createProject("Hall", "mm");
@@ -50,8 +50,8 @@ export function designProject(): Project {
           id: "s1",
           stock: "ply18-sheet",
           placements: [
-            { part: "hall-vertical", copy: 0, x: 0, y: 0, rotated: false },
-            { part: "hall-horizontal", copy: 0, x: 0, y: 400, rotated: false },
+            { part: "hall-side", copy: 0, x: 0, y: 0, rotated: false },
+            { part: "hall-shelf", copy: 0, x: 0, y: 400, rotated: false },
           ],
         },
       ],

@@ -155,6 +155,10 @@ fixed, so later minor versions can add systems, such as PAX, and mounts.
 
 ### 5.1 Joinery rule
 
+> `2026-09-30-box-construction-design.md` replaces this construction, the part table in 5.2, the assembly steps in 6.1,
+> and the pocket screw count in 6.2: the top and the bottom now run the full width, and the sides and the dividers fit
+> between them.
+
 Only butt joints with pocket screws. The jig drills the holes in the end of the piece that butts.
 
 - Each side and each interior divider is one **vertical panel** that runs the full outside height. A unit with *n*

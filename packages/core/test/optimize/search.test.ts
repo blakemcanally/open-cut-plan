@@ -262,8 +262,8 @@ describe("the optimizer goal", () => {
     expect(fingerprints).toEqual({
       "living-room-shelf": "856f870d8ae44f6a",
       "simple-bookcase-mm": "0179ead79bb2e7a9",
-      "kallax-2x4-mm": "09dce9c592a539a6",
-      "eket-wall-in": "12bae722ce52979a",
+      "kallax-2x4-mm": "c3e32cca2747f250",
+      "eket-wall-in": "252be793e5f5e0fa",
     });
   });
 

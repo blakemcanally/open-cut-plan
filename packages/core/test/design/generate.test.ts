@@ -29,16 +29,16 @@ function withDesign(project: Project, patch: Partial<Design>): Project {
 
 describe("regenerateDesigns", () => {
   it("adds the parts of a design that has none", () => {
-    expect(ids(regenerateDesigns(designProject([kallaxDesign(), eketDesign()])))).toEqual(["kx-vertical", "kx-horizontal", "ek-vertical", "ek-horizontal", "ek-back"]);
+    expect(ids(regenerateDesigns(designProject([kallaxDesign(), eketDesign()])))).toEqual(["kx-top", "kx-bottom", "kx-side", "kx-divider", "kx-shelf", "ek-top", "ek-bottom", "ek-side", "ek-divider", "ek-back"]);
   });
 
   it("keeps the other parts, and puts the design's parts where they were", () => {
     const side: Part = { id: "side", name: "Side", material: "ply18", length: 900, width: 300, quantity: 2, grain: "length" };
     const top: Part = { id: "top", name: "Top", material: "ply18", length: 800, width: 300, quantity: 1, grain: "length" };
     const once = regenerateDesigns({ ...designProject(), parts: [side] });
-    expect(ids(once)).toEqual(["side", "kx-vertical", "kx-horizontal"]);
-    const moved = { ...once, parts: [once.parts[1]!, once.parts[2]!, side, top] };
-    expect(ids(regenerateDesigns(withDesign(moved, { width: { openings: [335, 335, 335] } })))).toEqual(["kx-vertical", "kx-horizontal", "side", "top"]);
+    expect(ids(once)).toEqual(["side", "kx-top", "kx-bottom", "kx-side", "kx-divider", "kx-shelf"]);
+    const moved = { ...once, parts: [...once.parts.slice(1), side, top] };
+    expect(ids(regenerateDesigns(withDesign(moved, { width: { openings: [335, 335, 335] } })))).toEqual(["kx-top", "kx-bottom", "kx-side", "kx-divider", "kx-shelf", "side", "top"]);
   });
 
   it("returns the same object when the parts are current", () => {
@@ -50,41 +50,62 @@ describe("regenerateDesigns", () => {
 
   it("keeps a copy on its sheet when its part keeps the same id and size", () => {
     const once = placed(regenerateDesigns(designProject()), [
-      { part: "kx-vertical", copy: 2 },
-      { part: "kx-horizontal", copy: 9 },
+      { part: "kx-top", copy: 0 },
+      { part: "kx-side", copy: 1 },
+      { part: "kx-divider", copy: 0 },
+      { part: "kx-shelf", copy: 5 },
     ]);
     const wider = regenerateDesigns(withDesign(once, { width: { openings: [335, 335, 335] } }));
-    expect(wider.parts.map((p) => [p.id, p.quantity])).toEqual([
-      ["kx-vertical", 4],
-      ["kx-horizontal", 15],
+    expect(wider.parts.map((p) => [p.id, p.length, p.quantity])).toEqual([
+      ["kx-top", 1077, 1],
+      ["kx-bottom", 1077, 1],
+      ["kx-side", 1394, 2],
+      ["kx-divider", 1394, 2],
+      ["kx-shelf", 335, 9],
     ]);
-    expect(onSheet(wider)).toEqual(["kx-vertical#2", "kx-horizontal#9"]);
+    expect(onSheet(wider)).toEqual(["kx-side#1", "kx-divider#0", "kx-shelf#5"]);
   });
 
   it("drops the copies of a part whose size changes, and the copies above the new quantity", () => {
     const once = placed(regenerateDesigns(designProject()), [
-      { part: "kx-vertical", copy: 0 },
-      { part: "kx-horizontal", copy: 1 },
-      { part: "kx-horizontal", copy: 9 },
+      { part: "kx-side", copy: 0 },
+      { part: "kx-shelf", copy: 1 },
+      { part: "kx-shelf", copy: 5 },
     ]);
     const shorter = regenerateDesigns(withDesign(once, { height: { openings: [335, 335, 335] } }));
-    expect(shorter.parts[0]!.length).toBe(1077);
-    expect(onSheet(shorter)).toEqual(["kx-horizontal#1"]);
+    expect(shorter.parts.find((p) => p.id === "kx-side")!.length).toBe(1041);
+    expect(onSheet(shorter)).toEqual(["kx-shelf#1"]);
 
-    const edited = { ...once, parts: once.parts.map((p) => (p.id === "kx-vertical" ? { ...p, length: 1400 } : p)) };
+    const edited = { ...once, parts: once.parts.map((p) => (p.id === "kx-side" ? { ...p, length: 1400 } : p)) };
     const restored = regenerateDesigns(edited);
-    expect(restored.parts[0]!.length).toBe(1430);
-    expect(onSheet(restored)).toEqual(["kx-horizontal#1", "kx-horizontal#9"]);
+    expect(restored.parts.find((p) => p.id === "kx-side")!.length).toBe(1394);
+    expect(onSheet(restored)).toEqual(["kx-shelf#1", "kx-shelf#5"]);
   });
 
   it("drops the copies of a part that the design no longer makes", () => {
     const once = placed(regenerateDesigns(designProject([eketDesign()])), [
       { part: "ek-back", copy: 0 },
-      { part: "ek-vertical", copy: 0 },
+      { part: "ek-side", copy: 0 },
     ]);
     const open = regenerateDesigns({ ...once, designs: [{ ...eketDesign(), back: undefined }] });
-    expect(ids(open)).toEqual(["ek-vertical", "ek-horizontal"]);
+    expect(ids(open)).toEqual(["ek-top", "ek-bottom", "ek-side", "ek-divider"]);
     expect(onSheet(open)).toEqual([]);
+  });
+
+  it("replaces the parts of a file from the ladder construction, and takes their copies off the sheets", () => {
+    const ladder: Part[] = [
+      { id: "kx-vertical", name: "Vertical panel", material: "ply18", length: 1430, width: 390, quantity: 3, grain: "length", group: "Hall KALLAX", design: "kx" },
+      { id: "kx-horizontal", name: "Shelf", material: "ply18", length: 335, width: 390, quantity: 10, grain: "length", group: "Hall KALLAX", design: "kx" },
+    ];
+    const old = placed({ ...designProject(), parts: ladder }, [
+      { part: "kx-vertical", copy: 0 },
+      { part: "kx-horizontal", copy: 9 },
+    ]);
+    expect(checkDesigns(old).map((issue) => issue.code)).toEqual(["design-stale"]);
+    const next = regenerateDesigns(old);
+    expect(ids(next)).toEqual(["kx-top", "kx-bottom", "kx-side", "kx-divider", "kx-shelf"]);
+    expect(onSheet(next)).toEqual([]);
+    expect(checkDesigns(next)).toEqual([]);
   });
 
   it("leaves the stored parts of a file from a newer minor version alone", () => {
@@ -101,7 +122,7 @@ describe("regenerateDesigns", () => {
     expect(regenerateDesigns(missing)).toBe(missing);
     const unknown = withDesign(once, { system: "pax", width: { openings: [500] } });
     expect(regenerateDesigns(unknown)).toBe(unknown);
-    const manual: Part = { id: "kx-vertical", name: "Side", material: "ply18", length: 900, width: 300, quantity: 2, grain: "length" };
+    const manual: Part = { id: "kx-side", name: "Side", material: "ply18", length: 900, width: 300, quantity: 2, grain: "length" };
     const conflict = designProject();
     conflict.parts = [manual];
     expect(regenerateDesigns(conflict).parts).toEqual([manual]);
@@ -155,8 +176,10 @@ describe("regenerateDesigns on random grids", () => {
         const once = regenerateDesigns(randomProject(input));
         expect(regenerateDesigns(once)).toBe(once);
         const geometry = designGeometry(once.designs![0]!, materialsById(once))!;
-        const vertical = once.parts.find((p) => p.id === "d-vertical")!;
-        expect(vertical.length).toBeCloseTo(geometry.rows.reduce((a, b) => a + b, 0) + (geometry.rows.length + 1) * geometry.thickness, 6);
+        const side = once.parts.find((p) => p.id === "d-side")!;
+        const top = once.parts.find((p) => p.id === "d-top")!;
+        expect(side.length + 2 * geometry.thickness).toBeCloseTo(geometry.rows.reduce((a, b) => a + b, 0) + (geometry.rows.length + 1) * geometry.thickness, 6);
+        expect(top.length).toBeCloseTo(geometry.outsideWidth, 6);
         expect(geometry.columns.reduce((a, b) => a + b, 0) + (geometry.columns.length + 1) * geometry.thickness).toBeCloseTo(geometry.outsideWidth, 6);
       }),
     );

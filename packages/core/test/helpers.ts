@@ -57,7 +57,7 @@ export function expectOk<R, F extends string>(result: CsvImport<R, F>) {
   return result;
 }
 
-/** KALLAX 2×4 in 18 mm plywood, no back: 3 vertical panels 1430 × 390 and 10 shelves 335 × 390. */
+/** KALLAX 2×4 in 18 mm plywood, no back: a top and a bottom 724 × 390, 2 sides and 1 divider 1394 × 390, and 6 shelves 335 × 390. */
 export function kallaxDesign(patch: Partial<Design> = {}): Design {
   return {
     id: "kx",

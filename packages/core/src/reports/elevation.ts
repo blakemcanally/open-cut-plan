@@ -2,8 +2,9 @@ import { convertLength } from "../geometry/units.ts";
 import { formatLength } from "../geometry/format.ts";
 import type { Project } from "../format/schema.ts";
 import { designParts } from "../design/generate.ts";
-import { designGeometry, materialsById, roundLength } from "../design/geometry.ts";
+import { designGeometry, materialsById } from "../design/geometry.ts";
 import { railsFor } from "../design/hardware.ts";
+import { designPanels } from "../design/panels.ts";
 import { DEFAULT_DESIGN_MOUNT } from "../design/systems.ts";
 import { groupColors, NO_GROUP_COLOR } from "./colors.ts";
 import { escapeXml } from "./svg.ts";
@@ -27,7 +28,7 @@ export function designElevationSvg(project: Project, designId: string): string |
   const show = (value: number) => formatLength(value, units, project.settings.display);
   const fromMm = (value: number) => convertLength(value, "mm", units);
   const mount = design.mount ?? DEFAULT_DESIGN_MOUNT;
-  const { thickness: t, columns, rows, outsideWidth: width, outsideHeight: height } = geometry;
+  const { thickness: t, outsideWidth: width, outsideHeight: height } = geometry;
   const unit = Math.max(width, height) / 40;
   const below = mount === "legs" ? fromMm(LEG_HEIGHT_MM) : mount === "feet" ? fromMm(FOOT_HEIGHT_MM) : 0;
   const margin = unit * 4;
@@ -44,22 +45,12 @@ export function designElevationSvg(project: Project, designId: string): string |
   const panel = (kind: string, x: number, y: number, w: number, h: number) =>
     out.push(`<rect data-panel="${kind}" x="${num(x)}" y="${num(y)}" width="${num(w)}" height="${num(h)}" fill="${escapeXml(fill)}" ${stroke}/>`);
 
-  let x = 0;
-  for (let column = 0; column <= columns.length; column++) {
-    panel("vertical", x, 0, t, height);
-    if (column === columns.length) break;
-    const opening = columns[column]!;
-    let y = 0;
-    for (let row = 0; row <= rows.length; row++) {
-      panel("horizontal", x + t, y, opening, t);
-      if (row === rows.length) break;
-      const cell = rows[row]!;
-      const size = `${show(opening)} × ${show(cell)}`;
-      const scale = Math.min(0.9, opening / (0.62 * size.length + 1) / unit);
-      out.push(`<text x="${num(x + t + opening / 2)}" y="${num(y + t + cell / 2)}" ${font(scale)} text-anchor="middle" dominant-baseline="middle" fill="#555">${escapeXml(size)}</text>`);
-      y = roundLength(y + t + cell);
-    }
-    x = roundLength(x + t + opening);
+  const { panels, cells } = designPanels(geometry);
+  for (const p of panels) panel(p.kind, p.x, p.y, p.width, p.height);
+  for (const cell of cells) {
+    const size = `${show(cell.width)} × ${show(cell.height)}`;
+    const scale = Math.min(0.9, cell.width / (0.62 * size.length + 1) / unit);
+    out.push(`<text x="${num(cell.x + cell.width / 2)}" y="${num(cell.y + cell.height / 2)}" ${font(scale)} text-anchor="middle" dominant-baseline="middle" fill="#555">${escapeXml(size)}</text>`);
   }
 
   if (mount === "legs" || mount === "feet") {

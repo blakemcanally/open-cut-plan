@@ -1,3 +1,6 @@
 ﻿name,length,width,quantity,material,grain,group,notes
-Vertical panel,1430,390,3,Birch plywood 18mm,length,Hall KALLAX,
-Shelf,335,390,10,Birch plywood 18mm,length,Hall KALLAX,
+Top,724,390,1,Birch plywood 18mm,length,Hall KALLAX,
+Bottom,724,390,1,Birch plywood 18mm,length,Hall KALLAX,
+Side,1394,390,2,Birch plywood 18mm,length,Hall KALLAX,
+Divider,1394,390,1,Birch plywood 18mm,length,Hall KALLAX,
+Shelf,335,390,6,Birch plywood 18mm,length,Hall KALLAX,

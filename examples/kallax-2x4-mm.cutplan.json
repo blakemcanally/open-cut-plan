@@ -26,23 +26,56 @@
   ],
   "parts": [
     {
-      "id": "kallax-vertical",
-      "name": "Vertical panel",
+      "id": "kallax-top",
+      "name": "Top",
       "material": "ply18",
-      "length": 1430,
+      "length": 724,
       "width": 390,
-      "quantity": 3,
+      "quantity": 1,
       "grain": "length",
       "group": "Hall KALLAX",
       "design": "kallax"
     },
     {
-      "id": "kallax-horizontal",
+      "id": "kallax-bottom",
+      "name": "Bottom",
+      "material": "ply18",
+      "length": 724,
+      "width": 390,
+      "quantity": 1,
+      "grain": "length",
+      "group": "Hall KALLAX",
+      "design": "kallax"
+    },
+    {
+      "id": "kallax-side",
+      "name": "Side",
+      "material": "ply18",
+      "length": 1394,
+      "width": 390,
+      "quantity": 2,
+      "grain": "length",
+      "group": "Hall KALLAX",
+      "design": "kallax"
+    },
+    {
+      "id": "kallax-divider",
+      "name": "Divider",
+      "material": "ply18",
+      "length": 1394,
+      "width": 390,
+      "quantity": 1,
+      "grain": "length",
+      "group": "Hall KALLAX",
+      "design": "kallax"
+    },
+    {
+      "id": "kallax-shelf",
       "name": "Shelf",
       "material": "ply18",
       "length": 335,
       "width": 390,
-      "quantity": 10,
+      "quantity": 6,
       "grain": "length",
       "group": "Hall KALLAX",
       "design": "kallax"

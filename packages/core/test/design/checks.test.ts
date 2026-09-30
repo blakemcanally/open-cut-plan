@@ -71,7 +71,7 @@ describe("checkDesigns", () => {
 
   it("warns when the stored parts do not match the design", () => {
     const once = current(kallaxDesign());
-    const edited = { ...once, parts: once.parts.map((p) => (p.id === "kx-vertical" ? { ...p, length: 1400 } : p)) };
+    const edited = { ...once, parts: once.parts.map((p) => (p.id === "kx-side" ? { ...p, length: 1400 } : p)) };
     expect(codes(edited)).toEqual(["warning:design-stale"]);
     expect(codes(designProject())).toEqual(["warning:design-stale"]);
   });

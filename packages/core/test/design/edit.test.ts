@@ -49,8 +49,8 @@ describe("removeDesign", () => {
     const project = placed(regenerateDesigns({ ...designProject([kallaxDesign(), eketDesign()]), parts: [side] }));
     const next = removeDesign(project, "kx");
     expect(next.designs!.map((d) => d.id)).toEqual(["ek"]);
-    expect(next.parts.map((p) => p.id)).toEqual(["side", "ek-vertical", "ek-horizontal", "ek-back"]);
-    expect(onSheet(next)).toEqual(["side", "ek-vertical", "ek-horizontal", "ek-back"]);
+    expect(next.parts.map((p) => p.id)).toEqual(["side", "ek-top", "ek-bottom", "ek-side", "ek-divider", "ek-back"]);
+    expect(onSheet(next)).toEqual(["side", "ek-top", "ek-bottom", "ek-side", "ek-divider", "ek-back"]);
   });
 
   it("leaves no designs field when the last design goes", () => {
@@ -66,11 +66,14 @@ describe("detachDesign", () => {
     const next = detachDesign(project, "kx");
     expect("designs" in next).toBe(false);
     expect(next.parts.map((p) => [p.id, p.design])).toEqual([
-      ["kx-vertical", undefined],
-      ["kx-horizontal", undefined],
+      ["kx-top", undefined],
+      ["kx-bottom", undefined],
+      ["kx-side", undefined],
+      ["kx-divider", undefined],
+      ["kx-shelf", undefined],
     ]);
     expect("design" in next.parts[0]!).toBe(false);
-    expect(onSheet(next)).toEqual(["kx-vertical", "kx-horizontal"]);
+    expect(onSheet(next)).toEqual(["kx-top", "kx-bottom", "kx-side", "kx-divider", "kx-shelf"]);
     expect(regenerateDesigns(next)).toBe(next);
   });
 });
@@ -82,10 +85,13 @@ describe("renameDesign", () => {
     expect(next.designs![0]!.id).toBe("hall");
     expect(next.parts.map((p) => [p.id, p.design])).toEqual([
       ["side", undefined],
-      ["hall-vertical", "hall"],
-      ["hall-horizontal", "hall"],
+      ["hall-top", "hall"],
+      ["hall-bottom", "hall"],
+      ["hall-side", "hall"],
+      ["hall-divider", "hall"],
+      ["hall-shelf", "hall"],
     ]);
-    expect(onSheet(next)).toEqual(["side", "hall-vertical", "hall-horizontal"]);
+    expect(onSheet(next)).toEqual(["side", "hall-top", "hall-bottom", "hall-side", "hall-divider", "hall-shelf"]);
     expect(regenerateDesigns(next)).toBe(next);
   });
 });
@@ -104,8 +110,10 @@ describe("materials that designs use", () => {
     const birch = { ...project, materials: [...project.materials, { id: "birch18", name: "Birch 18", thickness: 18, grained: true }] };
     const next = regenerateDesigns({ ...birch, designs: [eketDesign({ material: "birch18" })] });
     expect(next.parts.map((p) => [p.id, p.material])).toEqual([
-      ["ek-vertical", "birch18"],
-      ["ek-horizontal", "birch18"],
+      ["ek-top", "birch18"],
+      ["ek-bottom", "birch18"],
+      ["ek-side", "birch18"],
+      ["ek-divider", "birch18"],
       ["ek-back", "ply6"],
     ]);
     expect(onSheet(next)).toEqual(["ek-back"]);

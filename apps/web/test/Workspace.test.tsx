@@ -178,7 +178,7 @@ describe("Workspace", () => {
     const project = designProject();
     await renderWorkspace(regenerateDesigns({ ...project, designs: [...project.designs!, { ...project.designs![0]!, id: "desk", name: "Desk" }] }));
     await userEvent.click(screen.getByRole("tab", { name: "Parts" }));
-    await userEvent.click(within(screen.getAllByRole("row", { name: /^Vertical panel/ }).at(-1)!).getByRole("button", { name: "Desk" }));
+    await userEvent.click(within(screen.getAllByRole("row", { name: /^Side/ }).at(-1)!).getByRole("button", { name: "Desk" }));
     expect(screen.getByRole("tab", { name: "Design" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("button", { name: /^Desk /, pressed: true })).toBeTruthy();
   });

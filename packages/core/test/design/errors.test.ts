@@ -42,23 +42,23 @@ describe("designErrors", () => {
 
   it("reports a design that needs more than 10000 copies of one part", () => {
     const hundreds = { openings: Array.from({ length: 50 }, () => 100) };
-    expect(codes(designProject(), kallaxDesign({ width: hundreds, height: hundreds, quantity: 4 }))).toEqual(["design-too-large"]);
+    expect(codes(designProject(), kallaxDesign({ width: hundreds, height: hundreds, quantity: 5 }))).toEqual(["design-too-large"]);
   });
 
   it("reports a part that already uses a generated id", () => {
     const project = designProject();
-    project.parts = [{ id: "kx-vertical", name: "Side", material: "ply18", length: 900, width: 300, quantity: 2, grain: "length" }];
+    project.parts = [{ id: "kx-side", name: "Side", material: "ply18", length: 900, width: 300, quantity: 2, grain: "length" }];
     const issues = designErrors(project, kallaxDesign());
     expect(issues.map((issue) => issue.code)).toEqual(["design-conflict"]);
     expect(issues[0]!.refs).toEqual([
       { kind: "design", design: "kx" },
-      { kind: "part", part: "kx-vertical", copy: 0 },
+      { kind: "part", part: "kx-side", copy: 0 },
     ]);
   });
 
   it("does not report the design's own stored parts as a conflict", () => {
     const project = designProject();
-    project.parts = [{ id: "kx-vertical", name: "Vertical panel", material: "ply18", length: 1430, width: 390, quantity: 3, grain: "length", design: "kx" }];
+    project.parts = [{ id: "kx-side", name: "Side", material: "ply18", length: 1394, width: 390, quantity: 2, grain: "length", design: "kx" }];
     expect(codes(project, kallaxDesign())).toEqual([]);
   });
 });

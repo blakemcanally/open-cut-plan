@@ -52,6 +52,7 @@ export * from "./edit/layout.ts";
 export * from "./design/systems.ts";
 export * from "./design/geometry.ts";
 export * from "./design/parts.ts";
+export * from "./design/panels.ts";
 export * from "./design/errors.ts";
 export * from "./design/generate.ts";
 export * from "./design/checks.ts";

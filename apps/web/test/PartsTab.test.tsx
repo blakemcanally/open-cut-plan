@@ -59,10 +59,10 @@ describe("PartsTab", () => {
     const project = designProject();
     const orphan = { id: "plinth", name: "Plinth", material: "ply18", length: 700, width: 80, quantity: 1, grain: "length" as const, design: "gone" };
     renderWithStore({ ...project, parts: [...project.parts, orphan] }, (store) => <PartsTab store={store} onShowDesign={onShowDesign} />);
-    const row = screen.getByRole("row", { name: /^Vertical panel/ });
+    const row = screen.getByRole("row", { name: /^Side/ });
     expect(within(row).queryByRole("textbox")).toBeNull();
     expect(within(row).queryByRole("button", { name: /^Delete/ })).toBeNull();
-    expect(within(row).getAllByRole("cell").map((cell) => cell.textContent)).toEqual(["Vertical panel", "724 mm", "390 mm", "3", "Plywood 18", "Along length", "Hall", "From design: Hall"]);
+    expect(within(row).getAllByRole("cell").map((cell) => cell.textContent)).toEqual(["Side", "688 mm", "390 mm", "2", "Plywood 18", "Along length", "Hall", "From design: Hall"]);
     await userEvent.click(within(row).getByRole("button", { name: "Hall" }));
     expect(onShowDesign).toHaveBeenCalledWith("hall");
     expect(screen.getByLabelText("Name of Plinth")).toBeTruthy();

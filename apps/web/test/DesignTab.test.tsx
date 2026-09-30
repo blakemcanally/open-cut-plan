@@ -30,8 +30,11 @@ describe("DesignTab", () => {
     expect(current().project.materials.map((m) => [m.id, m.thickness])).toEqual([["plywood", 18]]);
     expect(design(current)).toMatchObject({ id: "kallax-2x2", name: "KALLAX 2x2", system: "kallax", material: "plywood" });
     expect(current().project.parts.map((part) => [part.id, part.quantity])).toEqual([
-      ["kallax-2x2-vertical", 3],
-      ["kallax-2x2-horizontal", 6],
+      ["kallax-2x2-top", 1],
+      ["kallax-2x2-bottom", 1],
+      ["kallax-2x2-side", 2],
+      ["kallax-2x2-divider", 1],
+      ["kallax-2x2-shelf", 2],
     ]);
     expect(screen.getByLabelText("Name")).toHaveProperty("value", "KALLAX 2x2");
     expect(preview()).toBe("Front view of KALLAX 2x2: 724 mm × 724 mm × 390 mm");
@@ -47,12 +50,15 @@ describe("DesignTab", () => {
     await userEvent.type(rows, "4{Enter}");
     expect(design(current).height).toEqual({ openings: [335, 335, 335, 335] });
     expect(current().project.parts.map((part) => [part.id, part.length, part.quantity])).toEqual([
-      ["hall-vertical", 1430, 3],
-      ["hall-horizontal", 335, 10],
+      ["hall-top", 724, 1],
+      ["hall-bottom", 724, 1],
+      ["hall-side", 1394, 2],
+      ["hall-divider", 1394, 1],
+      ["hall-shelf", 335, 6],
     ]);
     act(() => current().undo());
     expect(design(current).height).toEqual({ openings: [335, 335] });
-    expect(current().project.parts[1]!.quantity).toBe(6);
+    expect(current().project.parts.find((part) => part.id === "hall-shelf")!.quantity).toBe(2);
   });
 
   it("draws the new size while the user types, and Escape draws the stored size again", async () => {
@@ -93,8 +99,11 @@ describe("DesignTab", () => {
     await userEvent.selectOptions(screen.getByLabelText("System"), "eket");
     expect(design(current)).toMatchObject({ system: "eket", width: { outside: 700, cells: 2 }, height: { outside: 700, cells: 2 }, depth: 350 });
     expect(current().project.parts.map((part) => [part.id, part.length, part.width])).toEqual([
-      ["hall-vertical", 700, 350],
-      ["hall-horizontal", 323, 350],
+      ["hall-top", 700, 350],
+      ["hall-bottom", 700, 350],
+      ["hall-side", 664, 350],
+      ["hall-divider", 664, 350],
+      ["hall-shelf", 323, 350],
     ]);
   });
 
@@ -114,8 +123,11 @@ describe("DesignTab", () => {
     await userEvent.click(screen.getByRole("button", { name: "Detach" }));
     expect(current().project.designs).toBeUndefined();
     expect(current().project.parts.map((part) => [part.id, part.design])).toEqual([
-      ["hall-vertical", undefined],
-      ["hall-horizontal", undefined],
+      ["hall-top", undefined],
+      ["hall-bottom", undefined],
+      ["hall-side", undefined],
+      ["hall-divider", undefined],
+      ["hall-shelf", undefined],
     ]);
     expect(current().project.plan!.sheets[0]!.placements).toHaveLength(2);
   });
@@ -136,7 +148,7 @@ describe("DesignTab", () => {
     expect(screen.getByLabelText("Name")).toHaveProperty("value", "Two");
     await userEvent.click(screen.getByRole("button", { name: "Delete design" }));
     expect(current().project.designs!.map((d) => d.id)).toEqual(["hall"]);
-    expect(current().project.parts.map((part) => part.id)).toEqual(["hall-vertical", "hall-horizontal"]);
+    expect(current().project.parts.map((part) => part.id)).toEqual(["hall-top", "hall-bottom", "hall-side", "hall-divider", "hall-shelf"]);
     await userEvent.click(screen.getByRole("button", { name: "Delete design" }));
     expect(current().project.parts).toEqual([]);
     expect(current().project.plan!.sheets[0]!.placements).toEqual([]);

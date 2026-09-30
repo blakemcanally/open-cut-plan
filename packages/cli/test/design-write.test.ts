@@ -11,11 +11,14 @@ describe("every write makes the design parts again", () => {
     expect(stale.json().planIssues.map((issue: { code: string }) => issue.code)).toContain("design-stale");
     const added = await cli(["parts", "add", KALLAX, "--name", "Plinth", "--length", "724", "--width", "80", "--json"], io);
     expect(added.code).toBe(0);
-    expect(added.json().changes.parts).toEqual({ added: ["plinth"], removed: [], changed: ["kallax-vertical", "kallax-horizontal"], reordered: false });
+    expect(added.json().changes.parts).toEqual({ added: ["plinth"], removed: [], changed: ["kallax-side", "kallax-divider", "kallax-shelf"], reordered: false });
     const parts = added.file(KALLAX).parts.map((part) => [part.id, part.length, part.quantity]);
     expect(parts).toEqual([
-      ["kallax-vertical", 1783, 3],
-      ["kallax-horizontal", 335, 12],
+      ["kallax-top", 724, 1],
+      ["kallax-bottom", 724, 1],
+      ["kallax-side", 1747, 2],
+      ["kallax-divider", 1747, 1],
+      ["kallax-shelf", 335, 8],
       ["plinth", 724, 1],
     ]);
     const fixed = await cli(["validate", KALLAX, "--json"], io);
@@ -30,7 +33,7 @@ describe("every write makes the design parts again", () => {
     });
     const result = await cli(["optimize", KALLAX, "--iterations", "50", "--seed", "1", "--strict", "--json"], io);
     expect(result.code).toBe(0);
-    expect(result.json().after).toMatchObject({ placedCopies: 13, unplacedCopies: 0 });
+    expect(result.json().after).toMatchObject({ placedCopies: 11, unplacedCopies: 0 });
     const valid = await cli(["validate", KALLAX, "--strict", "--json"], io);
     expect(valid.json()).toMatchObject({ valid: true, errors: 0, warnings: 0 });
   });
@@ -42,16 +45,16 @@ describe("every write makes the design parts again", () => {
     expect(result.stdout).not.toContain("design-stale");
     const text = await cli(["settings", "set", KALLAX, "units", "in"], withDesignExamples());
     expect(text.stdout).toContain("Changed design: kallax.");
-    expect(result.file(KALLAX).parts.map((part) => part.quantity)).toEqual([3, 10]);
+    expect(result.file(KALLAX).parts.map((part) => part.quantity)).toEqual([1, 1, 2, 1, 6]);
   });
 
   it("keeps every placed copy when the units change", async () => {
     const io = withDesignExamples();
     await cli(["optimize", KALLAX, "--iterations", "50", "--seed", "1"], io);
     const result = await cli(["settings", "set", KALLAX, "units", "in", "--json"], io);
-    expect(result.json().changes.plan).toMatchObject({ placementsBefore: 13, placementsAfter: 13 });
+    expect(result.json().changes.plan).toMatchObject({ placementsBefore: 11, placementsAfter: 11 });
     const back = await cli(["settings", "set", KALLAX, "units", "mm", "--json"], io);
-    expect(back.json().changes.plan).toMatchObject({ placementsBefore: 13, placementsAfter: 13 });
+    expect(back.json().changes.plan).toMatchObject({ placementsBefore: 11, placementsAfter: 11 });
   });
 });
 
@@ -59,13 +62,13 @@ describe("generated parts", () => {
   it("refuses parts set and parts remove with exit 1, and writes nothing", async () => {
     const io = withDesignExamples();
     const before = io.files.get(KALLAX);
-    const set = await cli(["parts", "set", KALLAX, "kallax-vertical", "--quantity", "1", "--json"], io);
+    const set = await cli(["parts", "set", KALLAX, "kallax-side", "--quantity", "1", "--json"], io);
     expect(set.code).toBe(1);
-    expect(set.json().error).toMatchObject({ code: "generated-part", id: "kallax-vertical", design: "kallax" });
+    expect(set.json().error).toMatchObject({ code: "generated-part", id: "kallax-side", design: "kallax" });
     expect(set.json().error.message).toContain("design detach");
-    const remove = await cli(["parts", "remove", KALLAX, "kallax-horizontal", "--json"], io);
+    const remove = await cli(["parts", "remove", KALLAX, "kallax-shelf", "--json"], io);
     expect(remove.code).toBe(1);
-    expect(remove.json().error).toMatchObject({ code: "generated-part", id: "kallax-horizontal", design: "kallax" });
+    expect(remove.json().error).toMatchObject({ code: "generated-part", id: "kallax-shelf", design: "kallax" });
     expect(io.files.get(KALLAX)).toBe(before);
     expect(io.writes).toEqual([]);
   });
@@ -75,9 +78,9 @@ describe("generated parts", () => {
     editFile(io, KALLAX, (file) => {
       delete file.designs;
     });
-    const set = await cli(["parts", "set", KALLAX, "kallax-vertical", "--quantity", "2", "--json"], io);
+    const set = await cli(["parts", "set", KALLAX, "kallax-side", "--quantity", "2", "--json"], io);
     expect(set.code).toBe(0);
-    expect(set.json().part).toMatchObject({ id: "kallax-vertical", quantity: 2, design: "kallax" });
+    expect(set.json().part).toMatchObject({ id: "kallax-side", quantity: 2, design: "kallax" });
   });
 });
 
@@ -86,7 +89,7 @@ describe("materials that designs use", () => {
     const io = withDesignExamples();
     const list = await cli(["materials", "list", EKET, "--json"], io);
     expect(list.json().materials.map((m: { id: string; usedBy: unknown }) => [m.id, m.usedBy])).toEqual([
-      ["ply-23-32", { parts: 2, stock: 1, designs: 1 }],
+      ["ply-23-32", { parts: 4, stock: 1, designs: 1 }],
       ["ply-7-32", { parts: 1, stock: 1, designs: 1 }],
     ]);
     expect((await cli(["materials", "get", EKET, "ply-7-32", "--json"], io)).json().usedBy).toEqual({ parts: ["eket-back"], stock: ["ply-7-32-4x8"], designs: ["eket"] });
