@@ -112,7 +112,7 @@ export const validateCommand: CommandSpec = {
   name: "validate",
   summary: "Check the file format and the plan; exit 1 when there is an error.",
   description:
-    "Check the project file. File issues come from the format checks (the JSON, the version, the schema, ids, and references). Plan issues come from the layout validator (off-sheet, overlap, grain, cut order, tools, unplaced copies). The command exits 1 when there is any error, and also for a warning with --strict. A file that the format checks refuse is reported here with exit 1, not 3; exit 3 is only for a file that cannot be read.",
+    "Check the project file. File issues come from the format checks (the JSON, the version, the schema, ids, and references). Plan issues come from the layout validator (off-sheet, overlap, grain, cut order, tools, unplaced copies) and from the design checks. The command exits 1 when there is any error, and also for a warning with --strict. A file that the format checks refuse is reported here with exit 1, not 3; exit 3 is only for a file that cannot be read.",
   args: [FILE_ARG],
   options: [{ name: "strict", type: "boolean", description: "Treat warnings (such as unplaced copies) as errors." }],
   examples: [
@@ -120,7 +120,7 @@ export const validateCommand: CommandSpec = {
     { command: `${PROGRAM} validate shelf.cutplan.json --strict --json`, description: "Fail also on warnings, and get the issues as JSON." },
   ],
   output:
-    "valid, errors, warnings (counts over both lists), fileIssues [{ severity, code, message, path }], planIssues [{ severity, code, message, refs }]. refs point at sheets, placements (sheet id and index), part copies, stock, or cut steps.",
+    "valid, errors, warnings (counts over both lists), fileIssues [{ severity, code, message, path }], planIssues [{ severity, code, message, refs }]. refs point at sheets, placements (sheet id and index), part copies, stock, cut steps, or designs.",
   async run({ args, options, io }) {
     const source = args[0]!;
     const text = await readSource(io, source);

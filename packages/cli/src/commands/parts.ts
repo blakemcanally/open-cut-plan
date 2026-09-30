@@ -4,7 +4,7 @@ import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines } f
 import { type CommandSpec, type GroupSpec, type OptionValues } from "../spec.ts";
 import { len, size, table } from "../text.ts";
 import { integerValue, optionalChoice, optionalLength, str } from "../values.ts";
-import { assertNoConflict, findAll, findById, ID_OPTION, materialFor, newId, nonEmpty, resolveMaterial, unsetFields, unsetOption } from "./common.ts";
+import { assertNoConflict, assertNotGenerated, findAll, findById, ID_OPTION, materialFor, newId, nonEmpty, resolveMaterial, unsetFields, unsetOption } from "./common.ts";
 import { CSV_ARGS, EXPORT_OUT, exportCsv, importCsv, importOptions } from "./csv.ts";
 
 const GRAINS = GrainSchema.options;
@@ -140,19 +140,20 @@ const set: CommandSpec = {
   name: "parts set",
   summary: "Change a part.",
   description:
-    "Change the fields of a part. Only the fields you give change. The id does not change. A lower quantity takes the extra copies off the sheets, as the app does; removedPlacements lists them.",
+    "Change the fields of a part. Only the fields you give change. The id does not change. A lower quantity takes the extra copies off the sheets, as the app does; removedPlacements lists them. A part that a design makes cannot change (exit 1, generated-part); change the design instead.",
   args: [FILE_ARG, { name: "id", description: "The part id." }],
   options: [OPTIONS.name, OPTIONS.length, OPTIONS.width, OPTIONS.quantity, OPTIONS.material, OPTIONS.grain, OPTIONS.group, OPTIONS.notes, unsetOption(["group", "notes"]), ...OUTPUT_OPTIONS],
   examples: [
     { command: `${PROGRAM} parts set shelf.cutplan.json side --quantity 4 --width "11 7/8"`, description: "Change the quantity and the width." },
     { command: `${PROGRAM} parts set shelf.cutplan.json side --unset group --dry-run`, description: "See what removing the group changes." },
   ],
-  output: "part (after the change), removedPlacements [{ part, copy }], changes, validation, written, dryRun.",
+  output: "part (after the change), removedPlacements [{ part, copy }], changes, validation, written, dryRun. For a generated part: error { code: \"generated-part\", id, design }.",
   async run(invocation) {
     const { args, options, io } = invocation;
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const old = findById(project.parts, args[1]!, "part");
+    assertNotGenerated(project, old);
     const unset = unsetFields(options, ["group", "notes"] as const);
     assertNoConflict(options, ["group", "notes"], unset);
     const patch = fields(project, options);
@@ -171,16 +172,17 @@ const set: CommandSpec = {
 const remove: CommandSpec = {
   name: "parts remove",
   summary: "Remove parts and their placements.",
-  description: "Remove one or more parts. Their copies leave the plan. Nothing is removed when any id is unknown.",
+  description: "Remove one or more parts. Their copies leave the plan. Nothing is removed when any id is unknown, or when a design makes any of the parts (exit 1, generated-part).",
   args: [FILE_ARG, { name: "id", description: "A part id.", variadic: true }],
   options: [...OUTPUT_OPTIONS],
   examples: [{ command: `${PROGRAM} parts remove shelf.cutplan.json side shelf-2`, description: "Remove two parts." }],
-  output: "removed (the ids), removedPlacements [{ part, copy }], changes, validation, written, dryRun.",
+  output: "removed (the ids), removedPlacements [{ part, copy }], changes, validation, written, dryRun. For a generated part: error { code: \"generated-part\", id, design }.",
   async run(invocation) {
     const { args, io } = invocation;
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const parts = findAll(project.parts, args.slice(1), "part");
+    for (const part of parts) assertNotGenerated(project, part);
     const next = parts.reduce((p, part) => removePart(p, part.id), project);
     const removed = parts.map((part) => part.id);
     return finishMutation(invocation, loaded, next, { summary: `Removed part ${removed.join(", ")}.`, data: { removed, removedPlacements: droppedCopies(project, next) } });

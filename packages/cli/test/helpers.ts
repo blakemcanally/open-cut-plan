@@ -80,3 +80,18 @@ export const BOOKCASE = "simple-bookcase-mm.cutplan.json";
 export function withExamples(extra: Record<string, string> = {}, stdin = ""): MemoryIo {
   return memoryIo({ "shelf.cutplan.json": example(SHELF), "bookcase.cutplan.json": example(BOOKCASE), ...extra }, stdin);
 }
+
+export const KALLAX = "kallax.cutplan.json";
+export const EKET = "eket.cutplan.json";
+
+/** The KALLAX 2x4 example (mm, design id kallax) and the EKET wall example (in, design id eket), with no plan. */
+export function withDesignExamples(extra: Record<string, string> = {}): MemoryIo {
+  return memoryIo({ [KALLAX]: example("kallax-2x4-mm.cutplan.json"), [EKET]: example("eket-wall-in.cutplan.json"), ...extra });
+}
+
+/** Changes one JSON file in the memory io by hand, as a person with a text editor would. */
+export function editFile(io: MemoryIo, path: string, change: (file: Record<string, any>) => void): void {
+  const file = JSON.parse(io.files.get(path)!) as Record<string, any>;
+  change(file);
+  io.files.set(path, `${JSON.stringify(file, null, 2)}\n`);
+}

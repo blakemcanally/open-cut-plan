@@ -1,4 +1,4 @@
-import { analyzeProject, errorMessage, formatPath, parseProject, serializeProject, withCuts, type Issue, type PlanIssue, type Project } from "@opencutplan/core";
+import { analyzeProject, errorMessage, formatPath, parseProject, regenerateDesigns, serializeProject, withCuts, type Issue, type PlanIssue, type Project } from "@opencutplan/core";
 import { describeChanges, diffProjects, type Changes } from "./diff.ts";
 import type { Io } from "./io.ts";
 import { CliError, EXIT, type Invocation, type OptionSpec, type Outcome } from "./spec.ts";
@@ -92,11 +92,13 @@ function target(invocation: Invocation, loaded: Loaded): string {
 }
 
 /**
- * Checks the changed project, then writes it (or not, with --dry-run or a failed --strict). The file is refused when
- * core cannot read the result back, so the CLI never writes a file that the app would not open.
+ * Makes the parts of every design again, checks the changed project, then writes it (or not, with --dry-run or a failed
+ * --strict). The file is refused when core cannot read the result back, so the CLI never writes a file that the app
+ * would not open.
  */
-export async function finishMutation(invocation: Invocation, loaded: Loaded, next: Project, mutation: Mutation): Promise<Outcome> {
+export async function finishMutation(invocation: Invocation, loaded: Loaded, changed: Project, mutation: Mutation): Promise<Outcome> {
   const { io, options } = invocation;
+  const next = regenerateDesigns(changed);
   const output = loaded.hadCuts ? withCuts(next) : next;
   const text = serializeProject(output);
   const reparsed = parseProject(text);

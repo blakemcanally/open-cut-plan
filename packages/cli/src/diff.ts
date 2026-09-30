@@ -24,6 +24,7 @@ export interface Changes {
   stock: CollectionChanges;
   parts: CollectionChanges;
   tools: CollectionChanges;
+  designs: CollectionChanges;
   settings: string[];
   plan: PlanChanges;
 }
@@ -86,6 +87,7 @@ export function diffProjects(before: Project, after: Project): Changes {
     stock: collection(before.stock, after.stock),
     parts: collection(before.parts, after.parts),
     tools: collection(before.tools, after.tools),
+    designs: collection(before.designs ?? [], after.designs ?? []),
     settings: changedKeys(before.settings, after.settings),
     plan: {
       sheetsBefore: beforeSheets.length,
@@ -104,6 +106,7 @@ export function diffProjects(before: Project, after: Project): Changes {
     !isEmpty(changes.stock) ||
     !isEmpty(changes.parts) ||
     !isEmpty(changes.tools) ||
+    !isEmpty(changes.designs) ||
     !isEmpty(sheets) ||
     (before.plan === undefined) !== (after.plan === undefined);
   return changes;
@@ -112,8 +115,8 @@ export function diffProjects(before: Project, after: Project): Changes {
 export function describeChanges(changes: Changes): string[] {
   if (!changes.changed) return ["No changes."];
   const lines: string[] = [];
-  const noun = { materials: "material", stock: "stock", parts: "part", tools: "tool" } as const;
-  for (const key of ["materials", "stock", "parts", "tools"] as const) {
+  const noun = { materials: "material", stock: "stock", parts: "part", tools: "tool", designs: "design" } as const;
+  for (const key of ["materials", "stock", "designs", "parts", "tools"] as const) {
     const c = changes[key];
     if (c.added.length > 0) lines.push(`Added ${noun[key]}: ${c.added.join(", ")}.`);
     if (c.changed.length > 0) lines.push(`Changed ${noun[key]}: ${c.changed.join(", ")}.`);

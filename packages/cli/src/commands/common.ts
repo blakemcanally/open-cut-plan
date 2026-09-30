@@ -1,5 +1,5 @@
-import { slugify, uniqueId, type Material, type Project } from "@opencutplan/core";
-import { usageError, type OptionSpec, type OptionValues } from "../spec.ts";
+import { slugify, uniqueId, type Material, type Part, type Project } from "@opencutplan/core";
+import { CliError, EXIT, usageError, type OptionSpec, type OptionValues } from "../spec.ts";
 import { list } from "../values.ts";
 
 export function findById<T extends { id: string }>(items: readonly T[], id: string, noun: string): T {
@@ -74,4 +74,15 @@ export function assertNoConflict(options: OptionValues, fields: readonly string[
   for (const field of unset) {
     if (fields.includes(field) && options[field] !== undefined) throw usageError(`Give --${field} or --unset ${field}, not both.`, "conflict", { option: field });
   }
+}
+
+/** Refuses a change to a part that a design makes. A part whose design is missing is a normal part. */
+export function assertNotGenerated(project: Project, part: Part): void {
+  if (part.design === undefined || !(project.designs ?? []).some((design) => design.id === part.design)) return;
+  throw new CliError(
+    EXIT.failed,
+    "generated-part",
+    `The design ${part.design} makes the part ${part.id}. Change the design with 'opencutplan design set', or run 'opencutplan design detach' to make its parts normal parts.`,
+    { id: part.id, design: part.design },
+  );
 }

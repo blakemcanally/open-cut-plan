@@ -10,12 +10,13 @@ function usedBy(project: Project, id: string) {
   return {
     parts: project.parts.filter((part) => part.material === id).map((part) => part.id),
     stock: project.stock.filter((stock) => stock.material === id).map((stock) => stock.id),
+    designs: (project.designs ?? []).filter((design) => design.material === id || design.back?.material === id).map((design) => design.id),
   };
 }
 
 function listed(project: Project, material: Material) {
   const users = usedBy(project, material.id);
-  return { ...material, usedBy: { parts: users.parts.length, stock: users.stock.length } };
+  return { ...material, usedBy: { parts: users.parts.length, stock: users.stock.length, designs: users.designs.length } };
 }
 
 function line(project: Project, material: Material): string {
@@ -32,18 +33,18 @@ const FIELD_OPTIONS = {
 const list: CommandSpec = {
   name: "materials list",
   summary: "List the materials.",
-  description: "List the materials with the number of parts and stock items that use each one.",
+  description: "List the materials with the number of parts, stock items, and designs that use each one.",
   args: [FILE_ARG],
   options: [],
   examples: [{ command: `${PROGRAM} materials list shelf.cutplan.json --json`, description: "List the materials as JSON." }],
-  output: "units, materials [{ id, name, thickness, grained, color?, usedBy { parts, stock } }]. usedBy is derived; it is not a file field.",
+  output: "units, materials [{ id, name, thickness, grained, color?, usedBy { parts, stock, designs } }]. usedBy is derived; it is not a file field.",
   async run({ args, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const materials = project.materials.map((material) => listed(project, material));
     const text = table(
-      ["id", "name", "thickness", "grained", "color", "parts", "stock"],
-      materials.map((m) => [m.id, m.name, len(project, m.thickness), String(m.grained), m.color ?? "", String(m.usedBy.parts), String(m.usedBy.stock)]),
+      ["id", "name", "thickness", "grained", "color", "parts", "stock", "designs"],
+      materials.map((m) => [m.id, m.name, len(project, m.thickness), String(m.grained), m.color ?? "", String(m.usedBy.parts), String(m.usedBy.stock), String(m.usedBy.designs)]),
     );
     return { data: { units: project.project.units, materials }, text, warnings: warningLines(loaded) };
   },
@@ -52,17 +53,17 @@ const list: CommandSpec = {
 const get: CommandSpec = {
   name: "materials get",
   summary: "Show one material.",
-  description: "Show one material by id, with the ids of the parts and stock that use it.",
+  description: "Show one material by id, with the ids of the parts, stock, and designs that use it.",
   args: [FILE_ARG, { name: "id", description: "The material id." }],
   options: [],
   examples: [{ command: `${PROGRAM} materials get shelf.cutplan.json bb18 --json`, description: "Show the material bb18." }],
-  output: "units, material { id, name, thickness, grained, color? }, usedBy { parts: [ids], stock: [ids] }.",
+  output: "units, material { id, name, thickness, grained, color? }, usedBy { parts: [ids], stock: [ids], designs: [ids] }.",
   async run({ args, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const material = findById(project.materials, args[1]!, "material");
     const users = usedBy(project, material.id);
-    const text = [line(project, material), `Used by parts: ${users.parts.join(", ") || "none"}.`, `Used by stock: ${users.stock.join(", ") || "none"}.`].join("\n");
+    const text = [line(project, material), `Used by parts: ${users.parts.join(", ") || "none"}.`, `Used by stock: ${users.stock.join(", ") || "none"}.`, `Used by designs: ${users.designs.join(", ") || "none"}.`].join("\n");
     return { data: { units: project.project.units, material, usedBy: users }, text, warnings: warningLines(loaded) };
   },
 };
@@ -132,11 +133,11 @@ const set: CommandSpec = {
 const remove: CommandSpec = {
   name: "materials remove",
   summary: "Remove materials that no part or stock uses.",
-  description: "Remove one or more materials. A material that a part or a stock item uses cannot be removed (exit 1); change or remove those first. Nothing is removed when any id fails.",
+  description: "Remove one or more materials. A material that a part, a stock item, or a design uses cannot be removed (exit 1); change or remove those first. Nothing is removed when any id fails.",
   args: [FILE_ARG, { name: "id", description: "A material id.", variadic: true }],
   options: [...OUTPUT_OPTIONS],
   examples: [{ command: `${PROGRAM} materials remove shelf.cutplan.json spare-ply`, description: "Remove an unused material." }],
-  output: "removed (the ids), changes, validation, written, dryRun. For a material in use: error { code: \"in-use\", id, parts, stock }.",
+  output: "removed (the ids), changes, validation, written, dryRun. For a material in use: error { code: \"in-use\", id, parts, stock, designs }.",
   async run(invocation) {
     const { args, io } = invocation;
     const loaded = await loadProject(io, args[0]!);
@@ -146,7 +147,7 @@ const remove: CommandSpec = {
     for (const material of materials) {
       if (materialInUse(project, material.id)) {
         const users = usedBy(project, material.id);
-        throw new CliError(EXIT.failed, "in-use", `The material ${material.id} is in use by ${users.parts.length} parts and ${users.stock.length} stock items.`, {
+        throw new CliError(EXIT.failed, "in-use", `The material ${material.id} is in use by ${users.parts.length} parts, ${users.stock.length} stock items, and ${users.designs.length} designs.`, {
           id: material.id,
           ...users,
         });
