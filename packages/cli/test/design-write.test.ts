@@ -22,6 +22,19 @@ describe("every write makes the design parts again", () => {
     expect(fixed.json().planIssues.map((issue: { code: string }) => issue.code)).not.toContain("design-stale");
   });
 
+  it("makes stale design parts again before it optimizes, so --strict sees the parts that it writes", async () => {
+    const io = withDesignExamples();
+    editFile(io, KALLAX, (file) => {
+      file.parts = [];
+      delete file.plan;
+    });
+    const result = await cli(["optimize", KALLAX, "--iterations", "50", "--seed", "1", "--strict", "--json"], io);
+    expect(result.code).toBe(0);
+    expect(result.json().after).toMatchObject({ placedCopies: 13, unplacedCopies: 0 });
+    const valid = await cli(["validate", KALLAX, "--strict", "--json"], io);
+    expect(valid.json()).toMatchObject({ valid: true, errors: 0, warnings: 0 });
+  });
+
   it("lists the designs in changes, and converts them with the units", async () => {
     const result = await cli(["settings", "set", KALLAX, "units", "in", "--json"], withDesignExamples());
     expect(result.code).toBe(0);

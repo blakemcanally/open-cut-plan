@@ -1,4 +1,4 @@
-import { applyRun, copyLabel, optimize, optimizeRequest, type OptimizeOptions, type OptimizeResult } from "@opencutplan/core";
+import { applyRun, copyLabel, optimize, optimizeRequest, regenerateDesigns, type OptimizeOptions, type OptimizeResult } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS } from "../project.ts";
 import { usageError, type CommandSpec } from "../spec.ts";
@@ -40,7 +40,7 @@ export const optimizeCommand: CommandSpec = {
     const { args, options, io } = invocation;
     if (flag(options, "rest-only") && flag(options, "keep-pinned")) throw usageError("Give --keep-pinned or --rest-only, not both.", "conflict");
     const loaded = await loadProject(io, args[0]!);
-    const { project } = loaded;
+    const project = regenerateDesigns(loaded.project);
     const mode = flag(options, "rest-only") ? "rest" : "all";
     const request = optimizeRequest(project, mode);
     const settings = project.settings.optimizer;
