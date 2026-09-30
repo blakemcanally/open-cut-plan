@@ -13,6 +13,8 @@ export interface SheetSvgOptions {
   showCuts?: boolean;
   /** A step number to draw stronger than the others. */
   highlight?: number | null;
+  /** Pales the sheet outside the piece of the `highlight` step and outlines that piece. */
+  focus?: boolean;
   /** Step numbers to draw as done. */
   done?: ReadonlySet<number>;
   /** Starts every element id. Give each drawing in one page its own prefix, or the drawings share their patterns. Defaults to `ocp`. */
@@ -104,6 +106,16 @@ export function sheetSvg(ctx: PlanContext, sheet: SheetAnalysis, steps: readonly
       }
     }
     out.push("</g>");
+  }
+
+  const focused = options.focus ? steps.find((step) => step.step === options.highlight && step.sheetNumber === number) : undefined;
+  if (focused) {
+    const p = focused.piece;
+    const box = (x: number, y: number, length: number, width: number) => `M${num(x)} ${num(y)}h${num(length)}v${num(width)}h${num(-length)}z`;
+    out.push(
+      `<path data-focus="true" d="${box(0, 0, stock.length, stock.width)} ${box(p.x, p.y, p.length, p.width)}" fill="#fff" fill-opacity="0.55" fill-rule="evenodd"/>`,
+      `<rect data-piece="true" x="${num(p.x)}" y="${num(p.y)}" width="${num(p.length)}" height="${num(p.width)}" fill="none" stroke="#111" stroke-width="${num(base * 0.15)}"/>`,
+    );
   }
 
   if (options.showCuts ?? true) {

@@ -12,6 +12,16 @@ function count(text: string, pattern: RegExp): number {
 }
 
 describe("sheetSvg", () => {
+  it("pales the sheet outside the piece of the highlighted step and outlines the piece, only with focus", () => {
+    const { analysis, svg } = drawn(sampleProject(), { highlight: 5, focus: true });
+    const piece = analysis.steps.find((step) => step.step === 5)!.piece;
+    expect(svg).toContain(`<rect data-piece="true" x="${piece.x}" y="${piece.y}" width="${piece.length}" height="${piece.width}"`);
+    expect(count(svg, /data-focus="true"/g)).toBe(1);
+    expect(svg.indexOf('data-piece="true"')).toBeLessThan(svg.indexOf('data-step="1"'));
+    expect(drawn(sampleProject(), { highlight: 5 }).svg).not.toMatch(/data-piece|data-focus/);
+    expect(drawn(sampleProject(), { highlight: 99, focus: true }).svg).not.toMatch(/data-piece|data-focus/);
+  });
+
   it("draws the sheet at its real size with one group per part and one numbered cut per step", () => {
     const { analysis, svg } = drawn(sampleProject());
     expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1.6 -1.6 99.2 51.2" width="99.2in" height="51.2in"')).toBe(true);
