@@ -1,6 +1,7 @@
 import { slugify, uniqueId } from "../format/ids.ts";
-import type { Project, Tool, ToolType } from "../format/schema.ts";
+import type { PlanSheet, Project, Tool, ToolType } from "../format/schema.ts";
 import type { Units } from "../geometry/units.ts";
+import { matchesChoice, type Step } from "../sequence/sequence.ts";
 import { idsOf } from "./patch.ts";
 
 export const TOOL_TYPE_NAMES: Readonly<Record<ToolType, string>> = {
@@ -50,4 +51,16 @@ export function moveTool(project: Project, id: string, delta: -1 | 1): Project {
   const tools = [...project.tools];
   [tools[from], tools[to]] = [tools[to]!, tools[from]!];
   return { ...project, tools };
+}
+
+export function setToolChoice(project: Project, step: Pick<Step, "sheet" | "axis" | "at" | "from" | "to" | "recommended">, tool: string | null): Project {
+  if (!project.plan) return project;
+  const sheets = project.plan.sheets.map((sheet): PlanSheet => {
+    if (sheet.id !== step.sheet) return sheet;
+    const { toolChoices, ...rest } = sheet;
+    const kept = (toolChoices ?? []).filter((choice) => !matchesChoice(step, choice));
+    const choices = tool === null || tool === step.recommended?.id ? kept : [...kept, { axis: step.axis, at: step.at, from: step.from, to: step.to, tool }];
+    return choices.length > 0 ? { ...rest, toolChoices: choices } : rest;
+  });
+  return { ...project, plan: { ...project.plan, sheets } };
 }

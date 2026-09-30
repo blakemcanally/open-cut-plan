@@ -38,23 +38,37 @@ export function measuredSide(cut: Pick<CutGeometry, "kind" | "axis" | "released"
   return cut.kind === "trim" || sizeAlong(cut.released, cut.axis) > EPSILON ? "released" : "remainder";
 }
 
-export function toolCanCut(tool: Tool, cut: CutGeometry, limits: boolean): SettingSide | null {
-  const side = measuredSide(cut);
-  if (!limits) return side;
+export type ToolLimit = "maxPiece" | "maxRip" | "maxCrosscut" | "maxCut" | "maxStages";
+
+type TableSaw = Extract<Tool, { type: "table-saw" }>;
+
+function tableRipSide(tool: TableSaw, cut: CutGeometry): SettingSide | null {
+  if (measuredSide(cut) === "released" && within(sizeAlong(cut.released, "y"), tool.maxRip)) return "released";
+  if (within(sizeAlong(cut.remainder, "y"), tool.maxRip)) return "remainder";
+  return null;
+}
+
+/** The first limit of the tool that the cut is over, or null when the tool can make the cut. */
+export function toolLimit(tool: Tool, cut: CutGeometry, limits: boolean): ToolLimit | null {
+  if (!limits) return null;
   switch (tool.type) {
-    case "table-saw": {
-      if (tool.maxPiece && !fitsWithin(cut.piece, tool.maxPiece)) return null;
-      if (cut.axis === "x") return within(cut.length, tool.maxCrosscut) ? side : null;
-      if (side === "released" && within(sizeAlong(cut.released, "y"), tool.maxRip)) return "released";
-      if (within(sizeAlong(cut.remainder, "y"), tool.maxRip)) return "remainder";
-      return null;
-    }
+    case "table-saw":
+      if (tool.maxPiece && !fitsWithin(cut.piece, tool.maxPiece)) return "maxPiece";
+      if (cut.axis === "x") return within(cut.length, tool.maxCrosscut) ? null : "maxCrosscut";
+      return tableRipSide(tool, cut) ? null : "maxRip";
     case "track-saw":
     case "circular-saw":
-      return within(cut.length, tool.maxCut) ? side : null;
+      return within(cut.length, tool.maxCut) ? null : "maxCut";
     case "panel-saw":
-      return within(cut.length, tool.maxCut) && (tool.maxStages === undefined || cut.stage <= tool.maxStages) ? side : null;
+      if (!within(cut.length, tool.maxCut)) return "maxCut";
+      return tool.maxStages === undefined || cut.stage <= tool.maxStages ? null : "maxStages";
   }
+}
+
+export function toolCanCut(tool: Tool, cut: CutGeometry, limits: boolean): SettingSide | null {
+  if (toolLimit(tool, cut, limits)) return null;
+  if (limits && tool.type === "table-saw" && cut.axis === "y") return tableRipSide(tool, cut);
+  return measuredSide(cut);
 }
 
 /** The first tool, in profile order, that can make the cut. */

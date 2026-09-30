@@ -1,6 +1,8 @@
 import { EPSILON, sameRect, sizeAlong, type Axis, type Rect } from "../geometry/rect.ts";
+import type { Tool } from "../format/schema.ts";
 import { copyLabel, formatIn, formatSize, isOffcutSize, stockRect, type PlanContext } from "../plan/context.ts";
 import type { Step } from "./sequence.ts";
+import type { ToolLimit } from "./tools.ts";
 
 export type StepResultKind = "part" | "next" | "offcut" | "waste";
 
@@ -33,6 +35,21 @@ const MEANING = {
 } as const;
 
 const AWAY: Readonly<Record<Edge, string>> = { top: "below", bottom: "above", left: "to the right of", right: "to the left of" };
+
+export const LIMIT_WORDS: Readonly<Record<ToolLimit, string>> = {
+  maxRip: "widest rip",
+  maxCrosscut: "longest crosscut",
+  maxPiece: "largest piece",
+  maxCut: "longest cut",
+  maxStages: "most cut stages",
+};
+
+function limitValue(ctx: PlanContext, tool: Tool, limit: ToolLimit): string {
+  const values = tool as Partial<Record<"maxRip" | "maxCrosscut" | "maxCut" | "maxStages", number>> & { maxPiece?: { length: number; width: number } };
+  if (limit === "maxPiece") return `${formatIn(ctx, values.maxPiece!.length)} × ${formatIn(ctx, values.maxPiece!.width)}`;
+  if (limit === "maxStages") return String(values.maxStages);
+  return formatIn(ctx, values[limit]!);
+}
 
 const LABEL: Readonly<Record<StepResultKind, string>> = { part: "Part", next: "Next", offcut: "Offcut", waste: "Waste" };
 
@@ -88,15 +105,21 @@ export function describeStep(ctx: PlanContext, step: Step): StepText {
   };
   const released = (where: string | null) => result(step.released, step.releasedPlacements, step.releasedNext, where);
   const remainder = (where: string | null) => result(step.remainder, step.remainderPlacements, step.remainderNext, where);
-  const finish = (headline: string, actions: string[], results: StepResult[]): StepText => ({
-    title: `Step ${step.step} · ${headline}`,
-    headline,
-    method,
-    pickUp,
-    actions,
-    results,
-    body: [`Pick up ${pickUp}.`, ...actions.map((action, i) => `${i + 1}. ${action}`), ...results.map(resultSentence)].join(" "),
-  });
+  const finish = (headline: string, stepActions: string[], results: StepResult[]): StepText => {
+    const actions =
+      step.tool && step.overLimit
+        ? [`This cut is over a limit of the ${step.tool.name}: ${LIMIT_WORDS[step.overLimit]} ${limitValue(ctx, step.tool, step.overLimit)}.`, ...stepActions]
+        : stepActions;
+    return {
+      title: `Step ${step.step} · ${headline}`,
+      headline,
+      method,
+      pickUp,
+      actions,
+      results,
+      body: [`Pick up ${pickUp}.`, ...actions.map((action, i) => `${i + 1}. ${action}`), ...results.map(resultSentence)].join(" "),
+    };
+  };
 
   if (step.kind === "trim") {
     const edge = edgeOf(step.piece, step.released, step.axis);

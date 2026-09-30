@@ -762,6 +762,42 @@
                   ],
                   "additionalProperties": {}
                 }
+              },
+              "toolChoices": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "axis": {
+                      "type": "string",
+                      "enum": [
+                        "x",
+                        "y"
+                      ]
+                    },
+                    "at": {
+                      "type": "number"
+                    },
+                    "from": {
+                      "type": "number"
+                    },
+                    "to": {
+                      "type": "number"
+                    },
+                    "tool": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "axis",
+                    "at",
+                    "from",
+                    "to",
+                    "tool"
+                  ],
+                  "additionalProperties": {}
+                }
               }
             },
             "required": [

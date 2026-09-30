@@ -2,7 +2,7 @@ import { z } from "zod";
 import { INCH_PRECISIONS, MM_PRECISIONS } from "../geometry/format.ts";
 
 export const FORMAT_ID = "opencutplan";
-export const FORMAT_VERSION = "1.2";
+export const FORMAT_VERSION = "1.3";
 /** Analysis and the editor work per copy, so a larger quantity would freeze them. */
 export const MAX_PART_QUANTITY = 10_000;
 export const MAX_DESIGN_CELLS = 50;
@@ -175,6 +175,16 @@ export const CutSchema = z
   })
   .loose();
 
+export const ToolChoiceSchema = z
+  .object({
+    axis: z.enum(["x", "y"]),
+    at: z.number(),
+    from: z.number(),
+    to: z.number(),
+    tool: id,
+  })
+  .loose();
+
 export const PlanSheetSchema = z
   .object({
     id,
@@ -182,6 +192,7 @@ export const PlanSheetSchema = z
     pinned: z.boolean().optional(),
     placements: z.array(PlacementSchema),
     cuts: z.array(CutSchema).optional(),
+    toolChoices: z.array(ToolChoiceSchema).optional(),
   })
   .loose();
 
@@ -241,6 +252,7 @@ export type Features = StripIndex<z.output<typeof FeaturesSchema>>;
 export type Settings = StripIndex<z.output<typeof SettingsSchema>>;
 export type Placement = StripIndex<z.output<typeof PlacementSchema>>;
 export type Cut = StripIndex<z.output<typeof CutSchema>>;
+export type CutToolChoice = StripIndex<z.output<typeof ToolChoiceSchema>>;
 export type PlanSheet = StripIndex<z.output<typeof PlanSheetSchema>>;
 export type Plan = StripIndex<z.output<typeof PlanSchema>>;
 export type Project = StripIndex<z.output<typeof ProjectSchema>>;

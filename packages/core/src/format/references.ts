@@ -84,6 +84,13 @@ export function checkReferences(project: Project): Issue[] {
         );
       }
     });
+    (sheet.toolChoices ?? []).forEach((choice, choiceIndex) => {
+      if (!tools.has(choice.tool)) {
+        issues.push(
+          warningIssue("bad-ref", `A cut on sheet "${sheet.id}" is set to tool "${choice.tool}", which does not exist.`, [...base, "toolChoices", choiceIndex, "tool"]),
+        );
+      }
+    });
   });
 
   return issues;

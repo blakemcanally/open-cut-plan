@@ -1,9 +1,9 @@
-import type { Cut, PlanSheet, Project, Tool } from "../format/schema.ts";
-import { otherAxis, sizeAlong, span, withSpan, type Axis, type Rect } from "../geometry/rect.ts";
+import type { Cut, CutToolChoice, PlanSheet, Project, Tool } from "../format/schema.ts";
+import { EPSILON, otherAxis, sizeAlong, span, withSpan, type Axis, type Rect } from "../geometry/rect.ts";
 import { formatIn, planContext, type PlanContext } from "../plan/context.ts";
 import { nodeItems, type CutNode } from "../plan/cutTree.ts";
 import { analyzeSheets, type SheetAnalysis } from "../plan/sheets.ts";
-import { assignTool, cutKind, measuredSide, type CutKind, type SettingSide } from "./tools.ts";
+import { assignTool, cutKind, measuredSide, toolCanCut, toolLimit, type CutKind, type SettingSide, type ToolLimit } from "./tools.ts";
 
 export interface Step {
   /** 1-based position in the shop order. */
@@ -25,6 +25,11 @@ export interface Step {
   releasedPlacements: number[];
   remainderPlacements: number[];
   tool: Tool | null;
+  /** The tool that the cut analysis picks; `tool` is another tool when a stored choice sets it. */
+  recommended: Tool | null;
+  chosen: boolean;
+  /** The limit of `tool` that the cut is over, or null. */
+  overLimit: ToolLimit | null;
   side: SettingSide;
   /** Size of `side` across the cut line: the fence, stop, or mark setting. */
   setting: number;
@@ -49,14 +54,22 @@ export function sequencePlan(project: Project): Step[] {
   return sequenceCuts(ctx, analyzeSheets(ctx));
 }
 
-/** Returns the project with each sheet's `cuts` set from the sequence; sheets without steps get no `cuts`. */
+export function matchesChoice(cut: Pick<Step, "axis" | "at" | "from" | "to">, choice: CutToolChoice): boolean {
+  return cut.axis === choice.axis && Math.abs(cut.at - choice.at) <= EPSILON && Math.abs(cut.from - choice.from) <= EPSILON && Math.abs(cut.to - choice.to) <= EPSILON;
+}
+
+/** Returns the project with each sheet's `cuts` set from the sequence, and only the `toolChoices` that match a cut. */
 export function withCuts(project: Project): Project {
   if (!project.plan) return project;
   const steps = sequencePlan(project);
   const sheets = project.plan.sheets.map((sheet, index): PlanSheet => {
-    const { cuts: _old, ...rest } = sheet;
-    const cuts = steps.filter((step) => step.sheetNumber === index + 1).map(toCut);
-    return cuts.length > 0 ? { ...rest, cuts } : rest;
+    const { cuts: _old, toolChoices, ...rest } = sheet;
+    const sheetSteps = steps.filter((step) => step.sheetNumber === index + 1);
+    const cuts = sheetSteps.map(toCut);
+    const next: PlanSheet = cuts.length > 0 ? { ...rest, cuts } : rest;
+    const kept = project.settings.features.cutOrder ? (toolChoices ?? []).filter((choice) => sheetSteps.some((step) => matchesChoice(step, choice))) : (toolChoices ?? []);
+    if (kept.length > 0) next.toolChoices = kept;
+    return next;
   });
   return { ...project, plan: { ...project.plan, sheets } };
 }
@@ -87,10 +100,16 @@ export function sequenceCuts(ctx: PlanContext, sheets: readonly SheetAnalysis[])
 
 function collectSheet(ctx: PlanContext, analysis: SheetAnalysis, cuts: RawCut[]): void {
   const half = ctx.kerf / 2;
+  const choices = analysis.sheet.toolChoices ?? [];
   const push = (geometry: Geometry, parent: RawCut | null, parentSide: SettingSide): RawCut => {
     const [from, to] = span(geometry.piece, otherAxis(geometry.axis));
-    const choice = assignTool(ctx.tools, { ...geometry, length: to - from }, ctx.features.toolLimits);
-    const side = choice?.side ?? measuredSide(geometry);
+    const cutGeometry = { ...geometry, length: to - from };
+    const limits = ctx.features.toolLimits;
+    const recommended = assignTool(ctx.tools, cutGeometry, limits);
+    const stored = choices.find((choice) => matchesChoice({ axis: geometry.axis, at: geometry.at, from, to }, choice));
+    const chosen = stored ? ctx.tools.find((tool) => tool.id === stored.tool) : undefined;
+    const tool = chosen ?? recommended?.tool ?? null;
+    const side = chosen ? (toolCanCut(chosen, cutGeometry, limits) ?? measuredSide(geometry)) : (recommended?.side ?? measuredSide(geometry));
     const cut: RawCut = {
       ...geometry,
       id: cuts.length,
@@ -98,7 +117,10 @@ function collectSheet(ctx: PlanContext, analysis: SheetAnalysis, cuts: RawCut[])
       sheetNumber: analysis.index + 1,
       from,
       to,
-      tool: choice?.tool ?? null,
+      tool,
+      recommended: recommended?.tool ?? null,
+      chosen: chosen !== undefined,
+      overLimit: tool ? toolLimit(tool, cutGeometry, limits) : null,
       side,
       setting: sizeAlong(geometry[side], geometry.axis),
       requires: parent?.id ?? null,

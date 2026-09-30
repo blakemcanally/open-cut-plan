@@ -1,4 +1,4 @@
-import type { Design, DesignAxis, Project, Tool } from "../format/schema.ts";
+import type { Design, DesignAxis, PlanSheet, Project, Tool } from "../format/schema.ts";
 import { convertLength, type Units } from "../geometry/units.ts";
 
 const TOOL_LENGTHS = ["maxRip", "maxCrosscut", "maxCut"] as const;
@@ -56,8 +56,10 @@ export function convertProjectUnits(project: Project, units: Units): Project {
   if (project.designs) next.designs = project.designs.map((design) => convertDesign(design, c));
   if (project.plan) {
     const sheets = project.plan.sheets.map((sheet) => {
-      const { cuts: _cuts, ...rest } = sheet;
-      return { ...rest, placements: sheet.placements.map((placement) => ({ ...placement, x: c(placement.x), y: c(placement.y) })) };
+      const { cuts: _cuts, toolChoices, ...rest } = sheet;
+      const converted: PlanSheet = { ...rest, placements: sheet.placements.map((placement) => ({ ...placement, x: c(placement.x), y: c(placement.y) })) };
+      if (toolChoices) converted.toolChoices = toolChoices.map((choice) => ({ ...choice, at: c(choice.at), from: c(choice.from), to: c(choice.to) }));
+      return converted;
     });
     next.plan = { ...project.plan, sheets };
   }
