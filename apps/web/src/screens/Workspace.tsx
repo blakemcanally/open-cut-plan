@@ -12,12 +12,14 @@ import { ShopTab } from "../shop/ShopTab.tsx";
 import { useProject } from "../state/useProject.ts";
 import type { Storage } from "../storage/db.ts";
 import { saveProjectFile } from "../storage/files.ts";
+import { DesignTab } from "./DesignTab.tsx";
 import { PartsTab } from "./PartsTab.tsx";
 import { SettingsTab } from "./SettingsTab.tsx";
 import { StockTab } from "./StockTab.tsx";
 import { ToolsTab } from "./ToolsTab.tsx";
 
 export const TABS = [
+  { id: "design", label: "Design" },
   { id: "parts", label: "Parts" },
   { id: "stock", label: "Stock" },
   { id: "tools", label: "Tools" },
@@ -55,6 +57,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
   const [handle, setHandle] = useState(initialHandle);
   const [fileStatus, setFileStatus] = useState<string | null>(null);
   const [printJob, setPrintJob] = useState<PrintJob | null>(null);
+  const [designFocus] = useState<string | null>(null);
   const endPrint = useCallback(() => setPrintJob(null), []);
   const saveError = useAutosave(storage, id, project, stored);
 
@@ -161,6 +164,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
         ))}
       </div>
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="panel">
+        {tab === "design" && <DesignTab store={store} analysis={analysis} focus={designFocus} />}
         {tab === "parts" && <PartsTab store={store} />}
         {tab === "stock" && <StockTab store={store} />}
         {tab === "tools" && <ToolsTab store={store} storage={storage} />}

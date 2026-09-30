@@ -30,6 +30,8 @@ describe("Workspace", () => {
     expect(screen.getByRole("tab", { name: "Parts" }).getAttribute("aria-selected")).toBe("true");
     expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Parts" }));
     await userEvent.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("tab", { name: "Design" }).getAttribute("aria-selected")).toBe("true");
+    await userEvent.keyboard("{ArrowLeft}");
     expect(screen.getByRole("tab", { name: TABS.at(-1)!.label }).getAttribute("aria-selected")).toBe("true");
   });
 

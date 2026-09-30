@@ -139,6 +139,16 @@ table.grid td input.narrow { min-width: 60px; width: 80px; }
 .shop-steps li.done button { color: var(--muted); text-decoration: line-through; }
 .shop-steps input[type="checkbox"] { width: 20px; height: 20px; flex: none; }
 
+.design-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
+.design-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+.design-list button { width: 100%; text-align: left; display: flex; flex-direction: column; }
+.design-list button[aria-pressed="true"] { background: #eaf1fb; border-color: var(--focus); }
+.design-editor { display: grid; grid-template-columns: minmax(280px, 400px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.design-form fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 10px; }
+.design-side { display: flex; flex-direction: column; gap: 14px; }
+.design-preview svg { display: block; width: 100%; height: auto; max-height: 60vh; }
+select[aria-invalid="true"] { border-color: var(--bad); outline: 2px solid var(--bad); }
+
 .reports section + section { margin-top: 24px; }
 .reports h2 { margin-bottom: 6px; }
 .shopping-material + .shopping-material { margin-top: 14px; }
@@ -176,6 +186,7 @@ table.grid td input.narrow { min-width: 60px; width: 80px; }
 
 @media (max-width: 800px) {
   .layout-body { grid-template-columns: 1fr; }
+  .design-body, .design-editor { grid-template-columns: 1fr; }
   .layout-side { border-left: none; padding-left: 0; }
   .shop-body { grid-template-columns: 1fr; }
   .shop-steps { position: static; max-height: none; }
