@@ -7,10 +7,13 @@ This spec replaces sections 5.1, 5.2 (the part table), 6.1, and 6.2 (the pocket 
 
 ## 1. Summary
 
-A design now makes a ladder: every vertical panel runs the full height, and the top, the bottom, and the shelves are
-pieces between two vertical panels. So a divider cuts the top and the bottom into pieces. This change makes a box
-instead: the top and the bottom run the full width, the sides fit between them, the dividers run from the top to the
-bottom, and the shelves fit between a side and a divider.
+**The new construction (a box):** the top and the bottom run the full width. The sides and the dividers fit between
+the top and the bottom. The shelves fill the rest: each shelf fits between a side and a divider, or between two
+dividers.
+
+**The construction that this spec replaces (a ladder):** in the current code, every vertical panel runs the full
+height, and the top, the bottom, and the shelves are pieces between two vertical panels. So a divider cuts the top
+and the bottom into pieces.
 
 ## 2. Goals and success criteria
 
