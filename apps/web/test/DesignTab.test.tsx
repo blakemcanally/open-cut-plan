@@ -120,6 +120,16 @@ describe("DesignTab", () => {
     expect(current().project.plan!.sheets[0]!.placements).toHaveLength(2);
   });
 
+  it("does not add a design to a file from a newer version", async () => {
+    const current = renderDesign({ ...designProject(), version: "1.9" });
+    const before = current().project;
+    const add = screen.getByRole("button", { name: "Add design" });
+    expect(add.matches(":disabled")).toBe(true);
+    expect(add.getAttribute("title")).toBe("This file is from a newer OpenCutPlan. Update the app to add designs.");
+    await userEvent.click(add);
+    expect(current().project).toBe(before);
+  });
+
   it("deletes a design with its parts and their copies, and shows the design that the Parts tab chose", async () => {
     const project = designProject();
     const current = renderDesign(regenerateDesigns({ ...project, designs: [...project.designs!, { ...project.designs![0]!, id: "two", name: "Two" }] }), "two");

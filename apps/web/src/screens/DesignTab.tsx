@@ -55,6 +55,7 @@ export function DesignTab({ store, analysis, focus = null }: DesignTabProps) {
   const [chosen, setChosen] = useState<string | null>(focus);
   const [addError, setAddError] = useState<string | null>(null);
   const selected = designs.find((design) => design.id === chosen) ?? designs[0];
+  const newer = isNewerMinor(project.version);
 
   const add = () => {
     const result = addDesign(project);
@@ -71,7 +72,13 @@ export function DesignTab({ store, analysis, focus = null }: DesignTabProps) {
     <div className="design-tab">
       <div className="toolbar">
         <h2 id="design-title">Designs</h2>
-        <button type="button" className="primary" onClick={add}>
+        <button
+          type="button"
+          className="primary"
+          disabled={newer}
+          title={newer ? "This file is from a newer OpenCutPlan. Update the app to add designs." : undefined}
+          onClick={add}
+        >
           Add design
         </button>
       </div>
