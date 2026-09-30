@@ -170,6 +170,49 @@ test("edits the layout with the mouse and the keyboard, and undoes the edits", a
   await expect(page.getByLabel("X (from the left)")).toHaveValue('66"');
 });
 
+test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware and steps", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Name").fill("E2E kallax");
+  await page.getByRole("button", { name: "Create project" }).click();
+
+  await page.getByRole("tab", { name: "Design" }).click();
+  await page.getByRole("button", { name: "Add design" }).click();
+  await expect(page.getByRole("img", { name: /^Front view of KALLAX 2x2: / })).toBeVisible();
+  await page.getByLabel("Rows").fill("3");
+  await page.getByLabel("Rows").press("Enter");
+  await expect(page.getByRole("img", { name: 'Front view of KALLAX 2x2: 28 5/8" × 42 9/16" × 15 11/32"' })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Parts" }).click();
+  await expect(page.getByRole("row", { name: /^Vertical panel/ })).toContainText("From design: KALLAX 2x2");
+
+  await page.getByRole("tab", { name: "Stock" }).click();
+  await page.getByRole("button", { name: "Paste rows…" }).click();
+  await page.getByLabel("Rows (paste from a spreadsheet, or edit)").fill(STOCK);
+  await page.getByRole("button", { name: "Import 1 row" }).click();
+  await optimize(page);
+
+  await page.getByRole("tab", { name: "Shop" }).click();
+  const assembly = page.getByRole("region", { name: "Assembly" });
+  await assembly.getByRole("checkbox", { name: "Assembly step 1 done" }).check();
+  await expect(assembly.getByText(/^1 of \d+ assembly steps done\.$/)).toBeVisible();
+  await expect.poll(() => savedData(page)).toContain('"assemblyProgress"');
+  await page.reload();
+  await page.getByRole("tab", { name: "Shop" }).click();
+  await expect(page.getByRole("checkbox", { name: "Assembly step 1 done" })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Step 1 done", exact: true })).not.toBeChecked();
+
+  await page.getByRole("tab", { name: "Reports" }).click();
+  await expect(page.getByRole("region", { name: "Hardware" }).getByRole("row", { name: /^Pocket screws/ })).toBeVisible();
+  await page.getByRole("button", { name: "Print assembly steps" }).click();
+  await expect.poll(() => page.evaluate(() => window.printed)).toBe(1);
+  await page.emulateMedia({ media: "print" });
+  await expect(page.locator(".print-root").getByRole("heading", { name: "E2E kallax: KALLAX 2x2" })).toBeVisible();
+  await expect(page.locator(".print-root .print-elevation svg")).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+  await page.emulateMedia({ media: "screen" });
+  await expect(page.locator(".print-root")).toHaveCount(0);
+});
+
 async function readDownload(download: { createReadStream(): Promise<NodeJS.ReadableStream> }): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of await download.createReadStream()) chunks.push(Buffer.from(chunk));
