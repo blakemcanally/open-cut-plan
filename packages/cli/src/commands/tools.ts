@@ -1,4 +1,4 @@
-import { DEFAULT_KERF, moveTool, removeTool, TOOL_TYPE_NAMES, TOOL_TYPES, updateTool, type Project, type Tool, type ToolType } from "@opencutplan/core";
+import { moveTool, newTool, removeTool, TOOL_TYPE_NAMES, TOOL_TYPES, updateTool, type Project, type Tool, type ToolType } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines } from "../project.ts";
 import { usageError, type CommandSpec, type GroupSpec, type OptionValues } from "../spec.ts";
@@ -147,7 +147,7 @@ const get: CommandSpec = {
 const add: CommandSpec = {
   name: "tools add",
   summary: "Add a saw.",
-  description: "Add a saw with its kerf and limits. A missing limit means no limit. The tool goes last in the order unless you give --position.",
+  description: "Add a saw with its kerf and limits. A missing limit gets the default of its type (see docs/cut-analysis.md); tools set --unset removes a limit. The tool goes last in the order unless you give --position.",
   args: [FILE_ARG],
   options: [
     { name: "type", type: "string", value: "<table-saw|track-saw|circular-saw|panel-saw>", required: true, description: "The kind of saw." },
@@ -170,7 +170,7 @@ const add: CommandSpec = {
     const { project } = loaded;
     const type = choiceValue(str(options, "type")!, "type", TOOL_TYPES);
     const name = nonEmpty(str(options, "name"), "name") ?? TOOL_TYPE_NAMES[type];
-    const base = { id: newId(project.tools, str(options, "id"), name, "tool"), name, type, kerf: DEFAULT_KERF[project.project.units], enabled: true } as Tool;
+    const base: Tool = { ...newTool(type, project.project.units, new Set()), id: newId(project.tools, str(options, "id"), name, "tool"), name };
     const tool = applyLimits(project, applyBase(project, base, options), options, []);
     let next: Project = { ...project, tools: [...project.tools, tool] };
     const position = str(options, "position");

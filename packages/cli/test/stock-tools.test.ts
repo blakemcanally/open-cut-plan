@@ -69,6 +69,10 @@ describe("tools", () => {
     const wrong = await cli(["tools", "add", SHELF, "--type", "track-saw", "--max-rip", "24", "--json"], io);
     expect(wrong.code).toBe(2);
     expect(wrong.json().error.code).toBe("invalid-option");
+    const track = await cli(["tools", "add", SHELF, "--type", "track-saw", "--json"], io);
+    expect(track.json().tool).toEqual({ id: "track-saw", name: "Track saw", type: "track-saw", kerf: 0.125, enabled: true, maxCut: 110 });
+    const table = await cli(["tools", "add", SHELF, "--type", "table-saw", "--name", "Jobsite saw", "--max-rip", "20", "--json"], io);
+    expect(table.json().tool).toMatchObject({ id: "jobsite-saw", maxRip: 20, maxCrosscut: 24, maxPiece: { length: 96, width: 24 } });
   });
 
   it("sets and removes table saw limits", async () => {
