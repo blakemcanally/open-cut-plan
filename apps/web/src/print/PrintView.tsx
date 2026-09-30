@@ -8,6 +8,7 @@ import {
   hardwareList,
   labelLayout,
   labelPages,
+  resultSentence,
   sheetSvg,
   sheetSvgExtent,
   stageColor,
@@ -254,7 +255,13 @@ function SequencePages({ analysis }: { analysis: ProjectAnalysis }) {
                       ☐
                     </span>
                     <div>
-                      <strong>{text.title}</strong> {text.body}
+                      <div>
+                        <strong>{text.title}</strong> · {text.method}
+                      </div>
+                      <div>
+                        Pick up {text.pickUp}. {text.actions.map((action, index) => `${index + 1}. ${action}`).join(" ")}
+                      </div>
+                      <div>{text.results.map(resultSentence).join(" ")}</div>
                     </div>
                   </li>
                 );

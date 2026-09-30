@@ -130,7 +130,12 @@ describe("PrintView", () => {
     expect(within(root).getByRole("heading", { name: "Test: cut sequence" })).toBeTruthy();
     const items = root.querySelectorAll(".print-steps li");
     expect(items).toHaveLength(steps.length);
-    expect(items[0]!.textContent).toMatch(/^☐Step 1 · Trim 1\/4" off the top edge/);
+    expect(items[0]!.querySelector(".print-box")?.textContent).toBe("☐");
+    expect([...items[0]!.querySelectorAll(":scope > div > div")].map((line) => line.textContent)).toEqual([
+      'Step 1 · Trim 1/4" off the top edge · Table saw · trim: a cut that removes the rough factory edge',
+      'Pick up the full sheet 96" × 48" (sheet 1). 1. Cut 1/4" off the top edge.',
+      'Waste: 96" × 1/8". Next: 96" × 47 3/4" with Side 1, Side 2, for step 2.',
+    ]);
     expect(within(root).getByText("Scale 1:16")).toBeTruthy();
   });
 
