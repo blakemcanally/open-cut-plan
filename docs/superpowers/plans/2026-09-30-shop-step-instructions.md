@@ -36,7 +36,6 @@
 - [ ] **Step 1: Create the worktree and the package links**
 
 ```bash
-cd /Users/bmcanally/Development/open-cut-plan
 git worktree add -q worktrees/shop-steps -b shop-steps main
 cd worktrees/shop-steps
 mkdir -p node_modules/@opencutplan
