@@ -13,19 +13,25 @@
   "scripts": {
     "dev": "npm run dev -w @opencutplan/web",
     "build": "npm run build -w @opencutplan/web",
+    "preview": "npm run preview -w @opencutplan/web",
     "lint": "oxlint",
-    "typecheck": "tsc -p packages/core && tsc -p packages/cli && tsc -p examples && tsc -p apps/web && tsc -p apps/web/e2e",
+    "typecheck": "tsc -p packages/core && tsc -p packages/cli && tsc -p examples && tsc -p scripts && tsc -p apps/web && tsc -p apps/web/e2e",
     "test": "npm test -w @opencutplan/core && npm test -w @opencutplan/cli && npm test -w @opencutplan/web",
     "cli": "node packages/cli/src/main.ts",
     "schema": "node packages/core/scripts/write-schema.ts",
     "examples": "node examples/build.ts",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build",
-    "e2e": "npm run e2e -w @opencutplan/web"
+    "check": "npm run lockfile && npm run lint && npm run typecheck && npm test && npm run build",
+    "e2e": "npm run e2e -w @opencutplan/web",
+    "e2e:install": "playwright install chromium",
+    "lockfile": "node scripts/lockfile.ts"
   },
   "devDependencies": {
     "@types/node": "26.6.3",
     "oxlint": "1.85.0",
     "oxlint-tsgolint": "7.0.2002",
     "typescript": "7.0.2"
+  },
+  "allowScripts": {
+    "fsevents": false
   }
 }

@@ -6,10 +6,12 @@ the user's machine, in the browser's storage and in `.cutplan.json` files.
 ```bash
 npm run dev        # start a development server
 npm run build      # write a static build to apps/web/dist
+npm run preview    # serve the static build at http://localhost:4173
 npm run e2e        # build, start a preview server, and run the Playwright tests
 ```
 
-The build uses relative paths, so `apps/web/dist` works from any static host or folder.
+The build uses relative paths and hash routes, so `apps/web/dist` works from any static host or folder, such as
+GitHub Pages at `https://<owner>.github.io/<repo>/`. CI publishes it to GitHub Pages on each push to `main`.
 
 ## Home
 
@@ -242,5 +244,5 @@ The optimizer tests run the real worker protocol in the test thread.
 project from CSV through optimize, the Shop checklist across a reload and at a phone width, printing the booklet
 (with a PDF that has landscape sheet pages), and the SVG and CSV downloads; drag, rotate, and undo in the layout
 editor; and a design through optimize, the assembly checklist across a reload, and the assembly print. Install the
-browser once with `npx playwright install chromium`. `npm run check` does not run them; CI runs both
+browser once with `npm run e2e:install`. `npm run check` does not run them; CI runs both
 (`.github/workflows/ci.yml`).

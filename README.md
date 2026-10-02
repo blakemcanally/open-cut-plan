@@ -21,7 +21,8 @@ sequence, a shopping list, and part labels.
 ## Command line
 
 The `opencutplan` command creates, changes, checks, optimizes, and reports on project files. Each command has a
-`--json` result and a fixed exit code, so scripts and AI agents can use it. See [`docs/cli.md`](docs/cli.md).
+`--json` result and a fixed exit code, so scripts and AI agents can use it. See [`docs/cli.md`](docs/cli.md). The
+package is not on npm, so run these commands in a clone of this repository after `npm install`.
 
 ```bash
 npx opencutplan new desk.cutplan.json --name "Desk" --units in
@@ -35,19 +36,41 @@ npx opencutplan help
 
 ## Development
 
-Requires Node.js 24 or later.
+You need Node.js 24 or later. The repository pins the version in `.nvmrc`, so `nvm use` or `fnm use` selects it.
+`npm install` stops with an error on an older Node.js.
 
 ```bash
+git clone https://github.com/blakemcanally/open-cut-plan.git
+cd open-cut-plan
 npm install
-npm run dev        # start the web app at http://localhost:5173
-npm run build      # build the web app into apps/web/dist
-npm run lint       # lint with oxlint, with type-aware rules (config: .oxlintrc.json)
-npm run check      # lint, typecheck, run all tests, and build the web app
-npm run cli -- …   # run the opencutplan command
-npm run e2e        # run the Playwright end-to-end tests (first: npx playwright install chromium)
-npm run schema     # regenerate schema/cutplan.schema.json after changing the format
-npm run examples   # regenerate the files in examples/ after changing a builder
+npm run dev        # open http://localhost:5173
 ```
+
+The app runs in the browser only. It has no server, no account, and no environment variables. Projects stay in the
+browser's IndexedDB and in the `.cutplan.json` files that you save. To try it, click **Open example** on the home
+screen.
+
+| Command | What it does |
+| ------- | ------------ |
+| `npm run dev` | Starts the web app at http://localhost:5173, with hot reload. |
+| `npm run check` | Checks the lockfile, lints, typechecks, runs all unit tests, and builds the web app. Run it before you push. |
+| `npm test` | Runs the unit tests of all packages with Vitest. |
+| `npm run build` | Builds the web app into `apps/web/dist`. |
+| `npm run preview` | Serves `apps/web/dist` at http://localhost:4173, as a static host serves it. |
+| `npm run e2e:install` | Downloads Chromium for the end-to-end tests. Run it once. |
+| `npm run e2e` | Builds the web app and runs the Playwright end-to-end tests. |
+| `npm run lint` | Lints with oxlint, with type-aware rules (config: `.oxlintrc.json`). |
+| `npm run cli -- …` | Runs the `opencutplan` command. |
+| `npm run schema` | Regenerates `schema/cutplan.schema.json` after a change to the format. |
+| `npm run examples` | Regenerates the files in `examples/` after a change to a builder. |
+| `npm run lockfile` | Makes sure that `package-lock.json` resolves every package from the public npm registry. Add `-- --fix` to rewrite the URLs of a private mirror. |
+
+### Deploy
+
+The web app is a static site. The `CI` workflow (`.github/workflows/ci.yml`) runs `npm run check` and the end-to-end
+tests on each push and pull request. On a push to `main`, it also publishes `apps/web/dist` to GitHub Pages. The build
+uses relative paths and hash routes, so it works at `https://<owner>.github.io/<repo>/` with no change. To turn on
+the deploy, set **Settings → Pages → Source** to **GitHub Actions** once.
 
 ## License
 
