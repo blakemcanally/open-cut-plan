@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../../../examples/builders/index.ts";
 import { defaultTools, describeStep, EPSILON, formatLength, parseProject, planContext, sequencePlan, withCuts, type Project, type Step } from "../../src/index.ts";
-import { sampleProject } from "../helpers.ts";
+import { sampleProject, stripProject } from "../helpers.ts";
 
 function shelf(): Project {
   const result = parseProject(EXAMPLES["living-room-shelf"]!());
@@ -17,38 +17,50 @@ function setupChanges(steps: Step[]): number {
 }
 
 describe("sequencePlan", () => {
-  it("orders the sample sheet: trims, rips, then crosscuts in each strip", () => {
+  it("orders the sample sheet: trims, a crosscut across the short side, then rips in the strip", () => {
     expect(sequencePlan(sampleProject()).map(summary)).toEqual([
+      [1, "trim", '1/8"', null, null, 2],
+      [2, "trim", '1/8"', 1, null, 3],
+      [3, "trim", '1/8"', 2, null, 4],
+      [4, "trim", '1/8"', 3, null, 5],
+      [5, "crosscut", '30"', 4, 6, null],
+      [6, "rip", '12"', 5, null, 7],
+      [7, "rip", '12"', 6, null, null],
+    ]);
+  });
+
+  it("rips strips first and crosscuts in each strip when that is shorter", () => {
+    expect(sequencePlan(stripProject()).map(summary)).toEqual([
       [1, "trim", '1/8"', null, null, 2],
       [2, "trim", '1/8"', 1, null, 3],
       [3, "trim", '1/8"', 2, null, 4],
       [4, "trim", '1/8"', 3, null, 5],
       [5, "rip", '12"', 4, 7, 6],
       [6, "rip", '12"', 5, 8, null],
-      [7, "crosscut", '30"', 5, null, null],
-      [8, "crosscut", '30"', 6, null, null],
+      [7, "crosscut", '90"', 5, null, null],
+      [8, "crosscut", '90"', 6, null, null],
     ]);
   });
 
   it("sends the full-sheet cuts to the track saw and the strip crosscuts to the table saw with the default tools", () => {
-    const project = sampleProject();
+    const project = stripProject();
     project.tools = defaultTools("in");
     expect(sequencePlan(project).map((step) => step.tool?.id)).toEqual(["track-saw", "track-saw", "track-saw", "track-saw", "track-saw", "track-saw", "table-saw", "table-saw"]);
   });
 
   it("describes the geometry of each cut", () => {
-    const rip = sequencePlan(sampleProject())[4]!;
+    const rip = sequencePlan(sampleProject())[5]!;
     expect(rip).toMatchObject({
       sheet: "s1",
       sheetNumber: 1,
       axis: "y",
-      stage: 1,
+      stage: 2,
       at: 12.3125,
       from: 0.25,
-      to: 95.75,
-      piece: { x: 0.25, y: 0.25, length: 95.5, width: 47.5 },
-      released: { x: 0.25, y: 0.25, length: 95.5, width: 12 },
-      remainder: { x: 0.25, y: 12.375, length: 95.5, width: 35.375 },
+      to: 30.25,
+      piece: { x: 0.25, y: 0.25, length: 30, width: 47.5 },
+      released: { x: 0.25, y: 0.25, length: 30, width: 12 },
+      remainder: { x: 0.25, y: 12.375, length: 30, width: 35.375 },
       releasedPlacements: [0],
       remainderPlacements: [1],
       side: "released",
@@ -102,7 +114,7 @@ describe("sequencePlan", () => {
     const project = sampleProject();
     project.tools[0]!.enabled = false;
     const steps = sequencePlan(project);
-    expect(steps).toHaveLength(9);
+    expect(steps).toHaveLength(8);
     expect(steps.every((step) => step.tool === null && step.side === "released")).toBe(true);
   });
 
@@ -124,7 +136,7 @@ describe("sequencePlan", () => {
     expect([sliver.side, sliver.setting]).toEqual(["remainder", 35.3125]);
     expect(describeStep(planContext(gap), sliver).actions[0]).toBe('Set the fence 35 5/16" from the blade.');
     const stop = sequencePlan(edge).find((step) => step.at === 0.21875)!;
-    expect([stop.side, stop.setting]).toEqual(["remainder", 95.46875]);
+    expect([stop.side, stop.setting]).toEqual(["remainder", 30]);
   });
 
   it("gives every non-trim step of the examples a positive setting in both order modes", () => {
@@ -152,9 +164,9 @@ describe("sequencePlan", () => {
 describe("withCuts", () => {
   it("writes the sequence into each sheet's cuts", () => {
     const cuts = withCuts(sampleProject()).plan!.sheets[0]!.cuts!;
-    expect(cuts).toHaveLength(8);
+    expect(cuts).toHaveLength(7);
     expect(cuts[0]).toEqual({ step: 1, stage: 1, axis: "y", at: 0.1875, from: 0, to: 96, tool: "ts", trim: true });
-    expect(cuts[4]).toEqual({ step: 5, stage: 1, axis: "y", at: 12.3125, from: 0.25, to: 95.75, tool: "ts" });
+    expect(cuts[4]).toEqual({ step: 5, stage: 1, axis: "x", at: 30.3125, from: 0.25, to: 47.75, tool: "ts" });
   });
 
   it("removes stale cuts when there is no sequence", () => {

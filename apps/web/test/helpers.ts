@@ -29,6 +29,13 @@ export function sampleProject(): Project {
   };
 }
 
+/** The sample project with 90 × 12 sides, so the shortest cuts rip two strips along the sheet, then crosscut each strip. */
+export function stripProject(): Project {
+  const project = sampleProject();
+  project.parts[0] = { ...project.parts[0]!, length: 90 };
+  return project;
+}
+
 /**
  * A millimetre project: 18 mm and 6 mm plywood, an unlimited 2440 × 1220 sheet of the 18 mm, a table saw, and the design
  * "hall", a KALLAX 2x2 in the 18 mm with its parts. One sheet holds a side and a shelf.

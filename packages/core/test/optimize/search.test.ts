@@ -260,9 +260,9 @@ describe("the optimizer goal", () => {
       }),
     );
     expect(fingerprints).toEqual({
-      "living-room-shelf": "856f870d8ae44f6a",
-      "simple-bookcase-mm": "0179ead79bb2e7a9",
-      "kallax-2x4-mm": "c3e32cca2747f250",
+      "living-room-shelf": "33a240fe9e5d1e9c",
+      "simple-bookcase-mm": "f5da80086c18d5be",
+      "kallax-2x4-mm": "df858571c0e70e17",
       "eket-wall-in": "252be793e5f5e0fa",
     });
   });

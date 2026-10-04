@@ -8,7 +8,7 @@ import type { PrintJob } from "../src/print/PrintView.tsx";
 import { assemblyGroups, readProgress, setAssemblyStepDone, setStepDone } from "../src/shop/progress.ts";
 import { ShopTab } from "../src/shop/ShopTab.tsx";
 import { useProject, type ProjectStore } from "../src/state/useProject.ts";
-import { designProject, sampleProject } from "./helpers.ts";
+import { designProject, sampleProject, stripProject } from "./helpers.ts";
 
 function renderShop(initial: Project = sampleProject(), onPrint: (job: PrintJob) => void = () => undefined) {
   let latest: ProjectStore | null = null;
@@ -212,7 +212,9 @@ describe("ShopTab", () => {
   });
 
   it("shows the method, the piece to pick up, the numbered actions, and a label for each result", async () => {
-    renderShop();
+    const project = stripProject();
+    project.settings.minOffcut = { length: 5, width: 5 };
+    renderShop(project);
     await userEvent.click(within(screen.getByRole("region", { name: "Cut sequence" })).getByRole("button", { name: /^5\. / }));
     const step = within(document.querySelector<HTMLElement>(".shop-current")!);
     expect(heading()).toBe('Step 5 · Cut 12" off the panel');
@@ -226,7 +228,7 @@ describe("ShopTab", () => {
     expect([...document.querySelectorAll(".shop-results .result-label")].map((label) => label.textContent)).toEqual(["Next", "Next"]);
     expect(document.querySelector(".shop-results li")?.textContent).toContain("between the fence and the blade");
     await userEvent.click(step.getByRole("button", { name: "Go to step 7" }));
-    expect(heading()).toBe('Step 7 · Cut 30" off the panel');
+    expect(heading()).toBe('Step 7 · Cut 90" off the panel');
     expect([...document.querySelectorAll(".shop-results .result-label")].map((label) => label.textContent)).toEqual(["Part", "Offcut"]);
   });
 

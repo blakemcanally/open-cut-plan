@@ -24,6 +24,22 @@ function parts(node: CutNode): number[] {
   return [];
 }
 
+function cutLength(node: CutNode): number {
+  if (node.kind !== "split") return 0;
+  const [lo, hi] = span(node.rect, otherAxis(node.axis));
+  return node.cuts.length * (hi - lo) + node.children.reduce((sum, child) => sum + cutLength(child), 0);
+}
+
+function cutCount(node: CutNode): number {
+  return node.kind === "split" ? node.cuts.length + node.children.reduce((sum, child) => sum + cutCount(child), 0) : 0;
+}
+
+function maxStage(node: CutNode): number {
+  return node.kind === "split" ? Math.max(node.stage, ...node.children.map(maxStage)) : 0;
+}
+
+const sortedGroups = (groups: number[][]) => groups.map((group) => [...group].sort((a, b) => a - b)).sort((a, b) => a[0]! - b[0]!);
+
 function wastes(node: CutNode): Rect[] {
   if (node.kind === "waste") return [node.rect];
   if (node.kind === "split") return node.children.flatMap(wastes);
@@ -124,6 +140,105 @@ describe("buildCutTree", () => {
       }),
       { numRuns: 300 },
     );
+  });
+
+  it("crosscuts first when a part is in a corner, so the cuts across the waste are short", () => {
+    const k = 0.125;
+    const tree = buildCutTree(r(0, 0, 96, 48), items(r(0, 0, 20, 10)), k, 0);
+    expect(tree.root).toMatchObject({ kind: "split", axis: "x", stage: 1, cuts: [20 + k / 2] });
+    const root = tree.root as Extract<CutNode, { kind: "split" }>;
+    expect(root.children[0]).toMatchObject({ kind: "split", axis: "y", stage: 2, cuts: [10 + k / 2] });
+    expect(cutLength(tree.root)).toBe(48 + 20);
+    expect(cutCount(tree.root)).toBe(2);
+  });
+
+  it("leaves the waste between two runs on the piece where a shorter cut removes it", () => {
+    const tree = buildCutTree(r(0, 0, 100, 50), items(r(0, 0, 100, 20), r(0, 25, 10, 25)), 0, 0);
+    expect(tree.root).toMatchObject({ kind: "split", axis: "y", stage: 1, cuts: [20] });
+    const root = tree.root as Extract<CutNode, { kind: "split" }>;
+    expect(root.children[0]).toMatchObject({ kind: "part", item: 0 });
+    expect(root.children[1]).toMatchObject({ kind: "split", axis: "x", stage: 2, cuts: [10], rect: r(0, 20, 100, 30) });
+    expect(cutLength(tree.root)).toBe(100 + 30 + 10);
+  });
+
+  it("keeps the old tree when no tree has shorter cuts", () => {
+    const k = 0.125;
+    const tree = buildCutTree(r(0, 0, 20 + k, 10 + k + 5), items(r(0, 0, 10, 10), r(10 + k, 0, 10, 10), r(0, 10 + k, 20 + k, 5)), k, 0);
+    expect(tree.root).toMatchObject({ kind: "split", axis: "y", stage: 1, cuts: [10 + k / 2] });
+  });
+
+  it("prefers a longer tree when the shorter one has a cut that no tool can make", () => {
+    const k = 0.125;
+    const tree = buildCutTree(r(0, 0, 96, 48), items(r(0, 0, 20, 10)), k, 0, (cut) => cut.axis === "y" || cut.length <= 30);
+    expect(tree.root).toMatchObject({ kind: "split", axis: "y", cuts: [10 + k / 2] });
+    expect(cutLength(tree.root)).toBe(96 + 10);
+  });
+
+  it("gives the tool check the cut as the sequence makes it", () => {
+    const seen: string[] = [];
+    buildCutTree(r(0, 0, 100, 50), items(r(0, 0, 100, 20), r(0, 25, 10, 25)), 0, 0, (cut) => {
+      seen.push(`${cut.axis}${cut.stage} ${cut.length} ${JSON.stringify([cut.piece, cut.released, cut.remainder])}`);
+      return true;
+    });
+    expect(seen).toContain(`y1 100 ${JSON.stringify([r(0, 0, 100, 50), r(0, 0, 100, 20), r(0, 20, 100, 30)])}`);
+    expect(seen).toContain(`x2 30 ${JSON.stringify([r(0, 20, 100, 30), r(0, 20, 10, 30), r(10, 20, 90, 30)])}`);
+  });
+
+  it("uses no more stages than the tool check allows", () => {
+    const layout = items(r(0, 0, 100, 20), r(0, 25, 10, 25));
+    expect(maxStage(buildCutTree(r(0, 0, 100, 50), layout, 0, 0).root)).toBe(3);
+    const tree = buildCutTree(r(0, 0, 100, 50), layout, 0, 0, (cut) => cut.stage <= 2);
+    expect(maxStage(tree.root)).toBe(2);
+    expect(tree.root).toMatchObject({ kind: "split", axis: "y", cuts: [20, 25] });
+  });
+
+  it("never has longer cuts than the old tree, cuts every part free, and finds the same stuck parts", () => {
+    fc.assert(
+      fc.property(fc.integer(), fc.constantFrom(0, 0.125, 0.25), (seed, kerf) => {
+        const random = mulberry32(seed);
+        const region = r(0, 0, 96, 48);
+        const rects: Rect[] = [];
+        guillotine(random, region, kerf, 6, rects);
+        const tree = buildCutTree(region, items(...rects), kerf, 0);
+        const old = oldTree(region, items(...rects), kerf);
+        expect(cutLength(tree.root)).toBeLessThanOrEqual(cutLength(old.root) + 1e-6);
+        expect(parts(tree.root).sort((a, b) => a - b)).toEqual(rects.map((_, i) => i));
+        expect(sortedGroups(tree.stuck)).toEqual(sortedGroups(old.stuck));
+      }),
+      { numRuns: 300 },
+    );
+  });
+
+  it("finds the same stuck groups as the old tree for random rectangles on the sheet, and the same stuck parts anywhere", () => {
+    const eighths = (min: number, max: number) => fc.integer({ min: min * 8, max: max * 8 }).map((n) => n / 8);
+    const anywhere = fc.record({ x: eighths(-20, 100), y: eighths(-10, 50), length: eighths(0.125, 60), width: eighths(0.125, 30) });
+    const onSheet = fc
+      .record({ x: eighths(0, 95.875), y: eighths(0, 47.875) })
+      .chain(({ x, y }) => fc.record({ x: fc.constant(x), y: fc.constant(y), length: eighths(0.125, 96 - x), width: eighths(0.125, 48 - y) }));
+    const kerfs = fc.constantFrom(0, 0.125, 1);
+    fc.assert(
+      fc.property(fc.array(onSheet, { maxLength: 8 }), kerfs, (rects, kerf) => {
+        const tree = buildCutTree(r(0, 0, 96, 48), items(...rects), kerf, 0);
+        const old = oldTree(r(0, 0, 96, 48), items(...rects), kerf);
+        expect(sortedGroups(tree.stuck)).toEqual(sortedGroups(old.stuck));
+        expect(cutLength(tree.root)).toBeLessThanOrEqual(cutLength(old.root) + 1e-6);
+      }),
+      { numRuns: 500 },
+    );
+    fc.assert(
+      fc.property(fc.array(anywhere, { maxLength: 8 }), kerfs, (rects, kerf) => {
+        const tree = buildCutTree(r(0, 0, 96, 48), items(...rects), kerf, 0);
+        const old = oldTree(r(0, 0, 96, 48), items(...rects), kerf);
+        expect(tree.stuck.flat().sort((a, b) => a - b)).toEqual(old.stuck.flat().sort((a, b) => a - b));
+        expect(cutLength(tree.root)).toBeLessThanOrEqual(cutLength(old.root) + 1e-6);
+      }),
+      { numRuns: 500 },
+    );
+  });
+
+  it("terminates when a part edge is within the tolerance of a cut", () => {
+    const tree = buildCutTree(r(0, 0, 96, 48), items(r(59.99999899999998, 0, 0.01, 0.01), r(0, 0, 59.99999999999998, 0.01)), 0, 0);
+    expect(parts(tree.root).sort((a, b) => a - b)).toEqual([0, 1]);
   });
 
   it("puts parts outside the usable area in stuck groups instead of splitting forever", () => {
@@ -227,4 +342,53 @@ function assertCutsMissParts(node: CutNode, rects: readonly Rect[], kerf: number
     }
   }
   node.children.forEach((child) => assertCutsMissParts(child, rects, kerf));
+}
+
+function oldTree(rect: Rect, list: readonly TreeItem[], kerf: number): { root: CutNode; stuck: number[][] } {
+  const stuck: number[][] = [];
+  const split = (piece: Rect, inside: readonly TreeItem[], stage: number, prefer: "x" | "y"): CutNode => {
+    if (inside.length === 0) return { kind: "waste", rect: piece, stage };
+    const only = inside.length === 1 ? inside[0]! : undefined;
+    if (only && Math.abs(only.rect.x - piece.x) <= 1e-6 && Math.abs(only.rect.y - piece.y) <= 1e-6 && Math.abs(only.rect.length - piece.length) <= 1e-6 && Math.abs(only.rect.width - piece.width) <= 1e-6) {
+      return { kind: "part", rect: piece, stage, item: only.index };
+    }
+    if (piece.length > 1e-6 && piece.width > 1e-6) {
+      for (const axis of [prefer, otherAxis(prefer)]) {
+        const [lo, hi] = span(piece, axis);
+        const intervals = inside.map((item) => span(item.rect, axis)).sort((a, b) => a[0] - b[0]);
+        const merged: [number, number][] = [];
+        for (const [start, end] of intervals) {
+          const last = merged.at(-1);
+          if (last && start - last[1] < kerf - 1e-6) last[1] = Math.max(last[1], end);
+          else merged.push([start, end]);
+        }
+        const cuts: number[] = [];
+        if (merged[0]![0] - lo > 1e-6) cuts.push(merged[0]![0] - kerf / 2);
+        merged.forEach(([, end], i) => {
+          const next = merged[i + 1];
+          if (!next) {
+            if (hi - end > 1e-6) cuts.push(end + kerf / 2);
+            return;
+          }
+          cuts.push(end + kerf / 2);
+          if (next[0] - end - kerf > 1e-6) cuts.push(next[0] - kerf / 2);
+        });
+        if (cuts.length === 0) continue;
+        const clamp = (value: number) => Math.min(hi, Math.max(lo, value));
+        const pieces = cuts.concat(Number.NaN).map((_, i) => {
+          const start = clamp(i === 0 ? lo : cuts[i - 1]! + kerf / 2);
+          const end = Math.max(start, clamp(i === cuts.length ? hi : cuts[i]! - kerf / 2));
+          return axis === "x" ? { ...piece, x: start, length: end - start } : { ...piece, y: start, width: end - start };
+        });
+        const groups = pieces.map((): TreeItem[] => []);
+        for (const item of inside) groups[cuts.filter((cut) => cut < span(item.rect, axis)[0] + 1e-6).length]!.push(item);
+        const children = pieces.map((p, i) => split(p, groups[i]!, stage + 1, otherAxis(axis)));
+        return { kind: "split", rect: piece, stage, axis, cuts, children, items: inside.map((item) => item.index) };
+      }
+    }
+    const indices = inside.map((item) => item.index);
+    stuck.push(indices);
+    return { kind: "stuck", rect: piece, stage, items: indices };
+  };
+  return { root: split(rect, list, 1, "y"), stuck };
 }

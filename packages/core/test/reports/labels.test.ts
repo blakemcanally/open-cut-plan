@@ -13,8 +13,8 @@ describe("partLabels", () => {
   it("makes one label per part copy with its sheet and the step that frees it", () => {
     const project = sampleProject();
     expect(labelsOf(project)).toEqual([
-      { part: "side", copy: 0, name: "Side 1", group: null, length: 30, width: 12, material: "Plywood 3/4", grain: "length", sheetNumber: 1, step: 7 },
-      { part: "side", copy: 1, name: "Side 2", group: null, length: 30, width: 12, material: "Plywood 3/4", grain: "length", sheetNumber: 1, step: 8 },
+      { part: "side", copy: 0, name: "Side 1", group: null, length: 30, width: 12, material: "Plywood 3/4", grain: "length", sheetNumber: 1, step: 6 },
+      { part: "side", copy: 1, name: "Side 2", group: null, length: 30, width: 12, material: "Plywood 3/4", grain: "length", sheetNumber: 1, step: 7 },
     ]);
   });
 

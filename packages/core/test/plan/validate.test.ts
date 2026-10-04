@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../../../examples/builders/index.ts";
-import { parseProject, validatePlan, type Project } from "../../src/index.ts";
+import { parseProject, sequencePlan, validatePlan, type Project } from "../../src/index.ts";
 import { sampleProject } from "../helpers.ts";
 
 function pinwheel(): Project {
@@ -77,5 +77,23 @@ describe("validatePlan", () => {
     expect(validatePlan(project)[0]!.refs).toEqual([{ kind: "cut", sheet: "s1", step: 3 }]);
     project.settings.features.toolLimits = false;
     expect(validatePlan(project)).toEqual([]);
+  });
+
+  it("chooses a tree with more cut length when the shortest one needs a stage that no tool can make", () => {
+    const project = sampleProject();
+    project.parts = [
+      { id: "long", name: "Long", material: "ply", length: 95.5, width: 20, quantity: 1, grain: "none" },
+      { id: "small", name: "Small", material: "ply", length: 10, width: 25, quantity: 1, grain: "none" },
+    ];
+    project.plan!.sheets[0]!.placements = [
+      { part: "long", copy: 0, x: 0.25, y: 0.25, rotated: false },
+      { part: "small", copy: 0, x: 0.25, y: 22.75, rotated: false },
+    ];
+    const saw = { id: "ps", name: "Panel saw", type: "panel-saw", kerf: 0.125, enabled: true, maxCut: 100, maxStages: 2 } as const;
+    project.tools = [saw];
+    expect(validatePlan(project)).toEqual([]);
+    expect(Math.max(...sequencePlan(project).map((step) => step.stage))).toBe(2);
+    project.tools = [{ ...saw, maxStages: 3 }];
+    expect(Math.max(...sequencePlan(project).map((step) => step.stage))).toBe(3);
   });
 });

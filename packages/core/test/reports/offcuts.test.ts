@@ -10,16 +10,15 @@ function offcuts(project: Project) {
 describe("listOffcuts", () => {
   it("lists waste pieces at least the minimum offcut size", () => {
     expect(offcuts(sampleProject())).toEqual([
-      { sheet: "s1", sheetNumber: 1, stock: "ply-4x8", material: "ply", rect: { x: 30.375, y: 0.25, length: 65.375, width: 12 } },
-      { sheet: "s1", sheetNumber: 1, stock: "ply-4x8", material: "ply", rect: { x: 30.375, y: 12.375, length: 65.375, width: 12 } },
-      { sheet: "s1", sheetNumber: 1, stock: "ply-4x8", material: "ply", rect: { x: 0.25, y: 24.5, length: 95.5, width: 23.25 } },
+      { sheet: "s1", sheetNumber: 1, stock: "ply-4x8", material: "ply", rect: { x: 0.25, y: 24.5, length: 30, width: 23.25 } },
+      { sheet: "s1", sheetNumber: 1, stock: "ply-4x8", material: "ply", rect: { x: 30.375, y: 0.25, length: 65.375, width: 47.5 } },
     ]);
   });
 
   it("uses the minimum offcut setting and the offcuts feature", () => {
     const project = sampleProject();
-    project.settings.minOffcut = { length: 70, width: 20 };
-    expect(offcuts(project).map((offcut) => offcut.rect.width)).toEqual([23.25]);
+    project.settings.minOffcut = { length: 60, width: 40 };
+    expect(offcuts(project).map((offcut) => offcut.rect.width)).toEqual([47.5]);
     project.settings.features.offcuts = false;
     expect(offcuts(project)).toEqual([]);
   });
@@ -36,9 +35,8 @@ describe("saveOffcutsToStock", () => {
     const project = sampleProject();
     const saved = saveOffcutsToStock(project, offcuts(project));
     expect(saved.stock.slice(1)).toEqual([
-      { id: "ply-offcut", material: "ply", length: 65.375, width: 12, quantity: 1, cost: 0, kind: "offcut", trim: 0, name: "Offcut from Test, sheet 1" },
-      { id: "ply-offcut-2", material: "ply", length: 65.375, width: 12, quantity: 1, cost: 0, kind: "offcut", trim: 0, name: "Offcut from Test, sheet 1" },
-      { id: "ply-offcut-3", material: "ply", length: 95.5, width: 23.25, quantity: 1, cost: 0, kind: "offcut", trim: 0, name: "Offcut from Test, sheet 1" },
+      { id: "ply-offcut", material: "ply", length: 30, width: 23.25, quantity: 1, cost: 0, kind: "offcut", trim: 0, name: "Offcut from Test, sheet 1" },
+      { id: "ply-offcut-2", material: "ply", length: 65.375, width: 47.5, quantity: 1, cost: 0, kind: "offcut", trim: 0, name: "Offcut from Test, sheet 1" },
     ]);
     expect(project.stock).toHaveLength(1);
     expect(validatePlan(saved)).toEqual([]);
@@ -72,8 +70,8 @@ describe("unsavedOffcuts", () => {
     const [first] = offcuts(project);
     const stock = saveOffcutsToStock(project, [first!]).stock.at(-1)!;
     const otherSheet = { ...project, stock: [...project.stock, { ...stock, name: "Offcut from Test, sheet 2" }] };
-    expect(unsavedOffcuts(otherSheet, offcuts(otherSheet))).toHaveLength(3);
+    expect(unsavedOffcuts(otherSheet, offcuts(otherSheet))).toHaveLength(2);
     const bigger = { ...project, stock: [...project.stock, { ...stock, length: stock.length + 1 / 32 }] };
-    expect(unsavedOffcuts(bigger, offcuts(bigger))).toHaveLength(3);
+    expect(unsavedOffcuts(bigger, offcuts(bigger))).toHaveLength(2);
   });
 });

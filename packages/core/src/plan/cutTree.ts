@@ -1,4 +1,4 @@
-import { EPSILON, inset, otherAxis, sameRect, span, withSpan, type Axis, type Rect } from "../geometry/rect.ts";
+import { contains, EPSILON, inset, otherAxis, sameRect, span, withSpan, type Axis, type Rect } from "../geometry/rect.ts";
 
 export interface TreeItem {
   /** Index of the placement in its sheet's `placements`. */
@@ -27,16 +27,54 @@ export interface CutTree {
   stuck: number[][];
 }
 
+/** A cut as the sequence makes it: the piece on the saw, the side that the cut separates off, and the side that continues. */
+export interface TreeCut {
+  axis: Axis;
+  stage: number;
+  /** Length of the cut line. */
+  length: number;
+  piece: Rect;
+  released: Rect;
+  remainder: Rect;
+}
+
 /**
  * Cut positions are kerf centre lines. Each split node's `cuts` are ascending along `axis`, and `children[i]` is the
  * piece before `cuts[i]` (the last child is the piece after the last cut). Children can have zero size where a kerf
  * removes a sliver narrower than itself.
+ *
+ * Each piece gets the split whose subtree has the fewest stuck parts, then the fewest cuts that `canCut` rejects, then
+ * the least total cut length, then the fewest cuts. Equal subtrees keep rips first at the first stage and the other
+ * direction first at each deeper stage, with every cut of the direction made at once.
  */
-export function buildCutTree(sheet: Rect, items: readonly TreeItem[], kerf: number, trim: number): CutTree {
+export function buildCutTree(sheet: Rect, items: readonly TreeItem[], kerf: number, trim: number, canCut?: (cut: TreeCut) => boolean): CutTree {
   const stuck: number[][] = [];
   const trims = trim > 0 ? trimCuts(sheet, trim, kerf) : [];
   const region = trim > 0 ? inset(sheet, trim) : sheet;
-  return { trims, root: split(region, items, 1, "y", kerf, stuck), stuck };
+  const inner = items.map((item): Item => {
+    const it: Item = { ...item, x: span(item.rect, "x"), y: span(item.rect, "y"), run: 0, alone: NO_ITEMS };
+    it.alone = { items: [it], x: [it], y: [it], runs: {} };
+    return it;
+  });
+  const group = { items: inner, x: inner.toSorted((a, b) => a.x[0] - b.x[0]), y: inner.toSorted((a, b) => a.y[0] - b.y[0]), runs: {} };
+  const root = treeBuilder(kerf, undefined)(region, group, 1, "y", stuck);
+  if (!canCut || everyCut(root, kerf, canCut)) return { trims, root, stuck };
+  const again: number[][] = [];
+  return { trims, root: treeBuilder(kerf, canCut)(region, group, 1, "y", again), stuck: again };
+}
+
+function everyCut(node: CutNode, kerf: number, canCut: (cut: TreeCut) => boolean): boolean {
+  if (node.kind !== "split") return true;
+  const [lo, hi] = span(node.rect, node.axis);
+  const [from, to] = span(node.rect, otherAxis(node.axis));
+  let start = lo;
+  for (const [i, at] of node.cuts.entries()) {
+    const remainder = Math.min(hi, Math.max(start, at + kerf / 2));
+    const cut = { axis: node.axis, stage: node.stage, length: to - from, piece: withSpan(node.rect, node.axis, start, hi), released: node.children[i]!.rect, remainder: withSpan(node.rect, node.axis, remainder, hi) };
+    if (!canCut(cut)) return false;
+    start = remainder;
+  }
+  return node.children.every((child) => everyCut(child, kerf, canCut));
 }
 
 function trimCuts(sheet: Rect, trim: number, kerf: number): TrimCut[] {
@@ -59,62 +97,321 @@ function trimCuts(sheet: Rect, trim: number, kerf: number): TrimCut[] {
   return cuts;
 }
 
-function split(rect: Rect, items: readonly TreeItem[], stage: number, prefer: Axis, kerf: number, stuck: number[][]): CutNode {
-  if (items.length === 0) return { kind: "waste", rect, stage };
-  const only = items.length === 1 ? items[0]! : undefined;
-  if (only && sameRect(only.rect, rect)) return { kind: "part", rect, stage, item: only.index };
-  if (rect.length > EPSILON && rect.width > EPSILON) {
-    for (const axis of [prefer, otherAxis(prefer)]) {
-      const cuts = cutPositions(rect, items, axis, kerf);
-      if (cuts.length === 0) continue;
-      const pieces = piecesBetween(rect, axis, cuts, kerf);
-      const groups = pieces.map((): TreeItem[] => []);
-      for (const item of items) {
-        const start = span(item.rect, axis)[0];
-        groups[cuts.filter((cut) => cut < start + EPSILON).length]!.push(item);
+interface Cost {
+  stuck: number;
+  noTool: number;
+  length: number;
+  cuts: number;
+}
+
+const FREE: Cost = { stuck: 0, noTool: 0, length: 0, cuts: 0 };
+
+function plus(a: Cost, b: Cost): Cost {
+  return { stuck: a.stuck + b.stuck, noTool: a.noTool + b.noTool, length: a.length + b.length, cuts: a.cuts + b.cuts };
+}
+
+function compareCost(a: Cost, b: Cost): number {
+  if (a.stuck !== b.stuck) return a.stuck - b.stuck;
+  if (a.noTool !== b.noTool) return a.noTool - b.noTool;
+  if (Math.abs(a.length - b.length) > EPSILON) return a.length - b.length;
+  return a.cuts - b.cuts;
+}
+
+interface Item extends TreeItem {
+  x: [number, number];
+  y: [number, number];
+  run: number;
+  alone: Group;
+}
+
+/** A set of items in item order, and in order of their start along each axis, with its runs along each axis once known. */
+interface Group {
+  items: readonly Item[];
+  x: readonly Item[];
+  y: readonly Item[];
+  runs: Partial<Record<Axis, Run[]>>;
+}
+
+const NO_ITEMS: Group = { items: [], x: [], y: [], runs: {} };
+
+interface Piece {
+  rect: Rect;
+  group: Group;
+}
+
+interface Plan {
+  cost: Cost;
+  cuts: number[];
+  pieces: Piece[];
+}
+
+interface Solved {
+  cost: Cost;
+  plans: Record<Axis, Plan | null>;
+}
+
+interface Known {
+  rect: Rect;
+  items: readonly Item[];
+  stage: number;
+  solved: Solved;
+}
+
+interface Run {
+  start: number;
+  end: number;
+  group: Group;
+}
+
+/**
+ * The cuts at one end of a run of parts. `end` is where the piece before the cuts ends and `start` where the piece after
+ * them starts; `waste` is the piece that the cuts separate off, when there is one.
+ */
+interface Boundary {
+  cuts: number[];
+  end: number;
+  start: number;
+  waste: Rect | null;
+}
+
+interface Step {
+  cost: Cost;
+  next: number;
+}
+
+type Build = (rect: Rect, group: Group, stage: number, prefer: Axis, stuck: number[][]) => CutNode;
+
+function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefined): Build {
+  const half = kerf / 2;
+  const memo = new Map<number, Known[]>();
+
+  const lookup = (x: number, y: number, length: number, width: number, items: readonly Item[], stage: number): Known | undefined => {
+    for (const known of memo.get(items[0]!.index) ?? []) {
+      const r = known.rect;
+      if (r.x !== x || r.y !== y || r.length !== length || r.width !== width || (canCut && known.stage !== stage)) continue;
+      if (known.items.length === items.length && known.items.every((item, i) => item === items[i])) return known;
+    }
+    return undefined;
+  };
+
+  const solve = (rect: Rect, group: Group, stage: number): Solved => {
+    const { items } = group;
+    const known = lookup(rect.x, rect.y, rect.length, rect.width, items, stage);
+    if (known) return known.solved;
+    const open = rect.length > EPSILON && rect.width > EPSILON;
+    const x = open ? plan(rect, group, "x", stage) : null;
+    const y = open ? plan(rect, group, "y", stage) : null;
+    const best = x && (!y || compareCost(x.cost, y.cost) <= 0) ? x : y;
+    const solved = { cost: best?.cost ?? { ...FREE, stuck: items.length }, plans: { x, y } };
+    const list = memo.get(items[0]!.index);
+    if (list) list.push({ rect, items, stage, solved });
+    else memo.set(items[0]!.index, [{ rect, items, stage, solved }]);
+    return solved;
+  };
+
+  /** The cost of the piece of `rect` from `start` to `end` along `axis`. */
+  const pieceCost = (rect: Rect, axis: Axis, start: number, end: number, group: Group, stage: number): Cost => {
+    const { items } = group;
+    const size = Math.max(start, end) - start;
+    const x = axis === "x" ? start : rect.x;
+    const y = axis === "y" ? start : rect.y;
+    const length = axis === "x" ? size : rect.length;
+    const width = axis === "y" ? size : rect.width;
+    if (items.length === 1) {
+      const part = items[0]!.rect;
+      const fits =
+        Math.abs(part.x - x) <= EPSILON && Math.abs(part.y - y) <= EPSILON && Math.abs(part.length - length) <= EPSILON && Math.abs(part.width - width) <= EPSILON;
+      if (fits) return FREE;
+      if (!canCut && length > EPSILON && width > EPSILON && contains({ x, y, length, width }, part)) return singleCost(x, y, length, width, part);
+    }
+    return (lookup(x, y, length, width, items, stage)?.solved ?? solve({ x, y, length, width }, group, stage)).cost;
+  };
+
+  const plan = (rect: Rect, group: Group, axis: Axis, stage: number): Plan | null => {
+    const [lo, hi] = span(rect, axis);
+    const clamp = (value: number) => Math.min(hi, Math.max(lo, value));
+    const between = (start: number, end: number) => withSpan(rect, axis, start, Math.max(start, end));
+    const length = axis === "x" ? rect.width : rect.length;
+    const runs = (group.runs[axis] ??= runsAlong(group, axis, kerf));
+    const last = runs.length - 1;
+
+    const boundaries: Boundary[][] = [];
+    const first = runs[0]!.start;
+    if (first - lo > EPSILON) {
+      const at = first - half;
+      boundaries.push([
+        { cuts: [at], end: lo, start: clamp(at + half), waste: between(lo, clamp(at - half)) },
+        { cuts: [], end: lo, start: lo, waste: null },
+      ]);
+    } else boundaries.push([{ cuts: [], end: lo, start: lo, waste: null }]);
+    for (let i = 0; i < last; i++) {
+      const after = runs[i]!.end + half;
+      const before = runs[i + 1]!.start - half;
+      const tight: Boundary = { cuts: [after], end: clamp(after - half), start: clamp(after + half), waste: null };
+      if (runs[i + 1]!.start - runs[i]!.end - kerf > EPSILON) {
+        boundaries.push([
+          { cuts: [after, before], end: clamp(after - half), start: clamp(before + half), waste: between(clamp(after + half), clamp(before - half)) },
+          { cuts: [before], end: clamp(before - half), start: clamp(before + half), waste: null },
+          tight,
+        ]);
+      } else boundaries.push([tight]);
+    }
+    const end = runs[last]!.end;
+    if (hi - end > EPSILON) {
+      const at = end + half;
+      boundaries.push([
+        { cuts: [at], end: clamp(at - half), start: hi, waste: between(clamp(at + half), hi) },
+        { cuts: [], end: hi, start: hi, waste: null },
+      ]);
+    } else boundaries.push([{ cuts: [], end: hi, start: hi, waste: null }]);
+
+    const cutCost = (boundary: Boundary, start: number, released: () => Rect): Cost => {
+      const count = boundary.cuts.length;
+      let noTool = 0;
+      if (canCut) {
+        let piece = start;
+        boundary.cuts.forEach((at, i) => {
+          const remainder = Math.min(hi, Math.max(piece, at + half));
+          const cut = { axis, stage, length, piece: withSpan(rect, axis, piece, hi), released: i === 0 ? released() : boundary.waste!, remainder: withSpan(rect, axis, remainder, hi) };
+          if (!canCut(cut)) noTool++;
+          piece = remainder;
+        });
       }
-      const children = pieces.map((piece, i) => split(piece, groups[i]!, stage + 1, otherAxis(axis), kerf, stuck));
-      return { kind: "split", rect, stage, axis, cuts, children, items: items.map((item) => item.index) };
+      return { stuck: 0, noTool, length: count * length, cuts: count };
+    };
+
+    // tail[b][o]: the best cost of run b and everything after it, when option o of boundary b starts run b.
+    const tail: (Step | undefined)[][] = boundaries.map(() => []);
+    for (let b = last; b >= 0; b--) {
+      const options = boundaries[b]!;
+      const nexts = boundaries[b + 1]!;
+      for (let o = 0; o < options.length; o++) {
+        const option = options[o]!;
+        let best: Step | undefined;
+        for (let n = 0; n < nexts.length; n++) {
+          const next = nexts[n]!;
+          if (last === 0 && option.cuts.length === 0 && next.cuts.length === 0) continue;
+          const after = b < last ? tail[b + 1]![n] : undefined;
+          if (b < last && !after) continue;
+          let cost = plus(pieceCost(rect, axis, option.start, next.end, runs[b]!.group, stage + 1), cutCost(next, option.start, () => between(option.start, next.end)));
+          if (after) cost = plus(cost, after.cost);
+          if (!best || compareCost(cost, best.cost) < 0) best = { cost, next: n };
+        }
+        tail[b]![o] = best;
+      }
     }
-  }
-  const indices = items.map((item) => item.index);
-  stuck.push(indices);
-  return { kind: "stuck", rect, stage, items: indices };
+
+    let chosen: Step | undefined;
+    boundaries[0]!.forEach((option, o) => {
+      const rest = tail[0]![o];
+      if (!rest) return;
+      const cost = option.waste ? plus(rest.cost, cutCost(option, lo, () => option.waste!)) : rest.cost;
+      if (!chosen || compareCost(cost, chosen.cost) < 0) chosen = { cost, next: o };
+    });
+    if (!chosen) return null;
+
+    const cuts: number[] = [];
+    const pieces: Piece[] = [];
+    let index = chosen.next;
+    for (let b = 0; b <= last; b++) {
+      const option = boundaries[b]![index]!;
+      cuts.push(...option.cuts);
+      if (option.waste) pieces.push({ rect: option.waste, group: NO_ITEMS });
+      index = tail[b]![index]!.next;
+      pieces.push({ rect: between(option.start, boundaries[b + 1]![index]!.end), group: runs[b]!.group });
+    }
+    const option = boundaries[last + 1]![index]!;
+    cuts.push(...option.cuts);
+    if (option.waste) pieces.push({ rect: option.waste, group: NO_ITEMS });
+    return { cost: chosen.cost, cuts, pieces };
+  };
+
+  const build: Build = (rect, group, stage, prefer, stuck) => {
+    const { items } = group;
+    if (items.length === 0) return { kind: "waste", rect, stage };
+    const only = items.length === 1 ? items[0]! : undefined;
+    if (only && sameRect(only.rect, rect)) return { kind: "part", rect, stage, item: only.index };
+    const { plans } = solve(rect, group, stage);
+    let axis: Axis | null = null;
+    for (const candidate of [prefer, otherAxis(prefer)]) {
+      const p = plans[candidate];
+      if (p && (axis === null || compareCost(p.cost, plans[axis]!.cost) < 0)) axis = candidate;
+    }
+    const indices = items.map((item) => item.index);
+    if (axis === null) {
+      stuck.push(indices);
+      return { kind: "stuck", rect, stage, items: indices };
+    }
+    const { cuts, pieces } = plans[axis]!;
+    const children = pieces.map((piece) => build(piece.rect, piece.group, stage + 1, otherAxis(axis), stuck));
+    return { kind: "split", rect, stage, axis, cuts, children, items: indices };
+  };
+  return build;
 }
 
-function cutPositions(rect: Rect, items: readonly TreeItem[], axis: Axis, kerf: number): number[] {
-  const [lo, hi] = span(rect, axis);
-  const intervals = items.map((item) => span(item.rect, axis)).sort((a, b) => a[0] - b[0]);
-  const merged: [number, number][] = [];
-  for (const [start, end] of intervals) {
-    const last = merged.at(-1);
-    if (last && start - last[1] < kerf - EPSILON) last[1] = Math.max(last[1], end);
-    else merged.push([start, end]);
-  }
-  const cuts: number[] = [];
-  if (merged[0]![0] - lo > EPSILON) cuts.push(merged[0]![0] - kerf / 2);
-  merged.forEach(([, end], i) => {
-    const next = merged[i + 1];
-    if (!next) {
-      if (hi - end > EPSILON) cuts.push(end + kerf / 2);
-      return;
+const lengths = new Float64Array(16);
+const counts = new Int32Array(16);
+
+/** The cost of cutting one part free from a piece that contains it: each edge with waste takes one cut. */
+function singleCost(x: number, y: number, length: number, width: number, part: Rect): Cost {
+  const waste = [part.x - x, x + length - part.x - part.length, part.y - y, y + width - part.y - part.width];
+  let full = 0;
+  for (let side = 0; side < 4; side++) if (waste[side]! > EPSILON) full |= 1 << side;
+  lengths[0] = 0;
+  counts[0] = 0;
+  for (let mask = 1; mask <= full; mask++) {
+    if ((mask & full) !== mask) continue;
+    const across = [part.width + (mask & 4 ? waste[2]! : 0) + (mask & 8 ? waste[3]! : 0), part.length + (mask & 1 ? waste[0]! : 0) + (mask & 2 ? waste[1]! : 0)];
+    let best = Number.POSITIVE_INFINITY;
+    let fewest = 0;
+    for (let a = 0; a < 2; a++) {
+      const sides = a === 0 ? 3 : 12;
+      const open = mask & sides;
+      for (let cut = open; cut > 0; cut = (cut - 1) & open) {
+        const n = cut === sides ? 2 : 1;
+        const total = n * across[a]! + lengths[mask & ~cut]!;
+        const cuts = n + counts[mask & ~cut]!;
+        if (total < best - EPSILON || (Math.abs(total - best) <= EPSILON && cuts < fewest)) {
+          best = total;
+          fewest = cuts;
+        }
+      }
     }
-    cuts.push(end + kerf / 2);
-    if (next[0] - end - kerf > EPSILON) cuts.push(next[0] - kerf / 2);
+    lengths[mask] = best;
+    counts[mask] = fewest;
+  }
+  return { stuck: 0, noTool: 0, length: lengths[full]!, cuts: counts[full]! };
+}
+
+/** Groups the parts into runs along the axis: parts closer than the kerf share a run. */
+function runsAlong(group: Group, axis: Axis, kerf: number): Run[] {
+  const sorted = group[axis];
+  const runs: Run[] = [];
+  const sizes: number[] = [];
+  for (const item of sorted) {
+    const [start, end] = item[axis];
+    const last = runs.at(-1);
+    if (last && start - last.end < kerf - EPSILON) {
+      last.end = Math.max(last.end, end);
+      sizes[runs.length - 1]!++;
+    } else {
+      runs.push({ start, end, group: item.alone });
+      sizes.push(1);
+    }
+    item.run = runs.length - 1;
+  }
+  if (runs.length === 1) {
+    runs[0]!.group = group;
+    return runs;
+  }
+  const many = runs.map((_, i) => (sizes[i]! > 1 ? { items: [] as Item[], x: [] as Item[], y: [] as Item[], runs: {} } : null));
+  for (const key of ["items", "x", "y"] as const) {
+    for (const item of group[key]) many[item.run]?.[key].push(item);
+  }
+  runs.forEach((run, i) => {
+    if (many[i]) run.group = many[i];
   });
-  return cuts;
-}
-
-function piecesBetween(rect: Rect, axis: Axis, cuts: readonly number[], kerf: number): Rect[] {
-  const [lo, hi] = span(rect, axis);
-  const clamp = (value: number) => Math.min(hi, Math.max(lo, value));
-  const pieces: Rect[] = [];
-  for (let i = 0; i <= cuts.length; i++) {
-    const start = clamp(i === 0 ? lo : cuts[i - 1]! + kerf / 2);
-    const end = Math.max(start, clamp(i === cuts.length ? hi : cuts[i]! - kerf / 2));
-    pieces.push(withSpan(rect, axis, start, end));
-  }
-  return pieces;
+  return runs;
 }
 
 export function nodeItems(node: CutNode): number[] {

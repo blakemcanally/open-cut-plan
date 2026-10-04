@@ -29,7 +29,7 @@ describe("evaluate", () => {
     const { problem, material, packing: p } = packing(sampleProject());
     const result = evaluate(problem, material, p, "t");
     expect(result.sheets.map((s) => s.id)).toEqual(["t1"]);
-    expect(result.score).toMatchObject({ unplaced: 0, cost: 60, cuts: 8, sheets: 1 });
+    expect(result.score).toMatchObject({ unplaced: 0, cost: 60, cuts: 7, sheets: 1 });
     expect(result.score.largestOffcut).toBeGreaterThan(0);
   });
 

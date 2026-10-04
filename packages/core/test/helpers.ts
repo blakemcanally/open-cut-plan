@@ -24,6 +24,13 @@ export function sampleProject(): Project {
   };
 }
 
+/** The sample project with 90 × 12 sides, so the shortest cuts rip two strips along the sheet, then crosscut each strip. */
+export function stripProject(): Project {
+  const project = sampleProject();
+  project.parts[0] = { ...project.parts[0]!, length: 90 };
+  return project;
+}
+
 /** An inch project: plywood (grained), an unlimited 96 × 48 sheet, two 30 × 12 sides and a 20 × 10 shelf, a table saw, and one sheet that holds both sides. */
 export function editSampleProject(): Project {
   const base = createProject("Test", "in");

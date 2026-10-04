@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../../../examples/builders/index.ts";
 import { convertProjectUnits, describeStep, formatSize, parseProject, planContext, sequencePlan, type Project, type Tool } from "../../src/index.ts";
-import { sampleProject } from "../helpers.ts";
+import { sampleProject, stripProject } from "../helpers.ts";
 
 function texts(project: Project) {
   const ctx = planContext(project);
@@ -9,7 +9,7 @@ function texts(project: Project) {
 }
 
 function withTool(tool: Tool): Project {
-  const project = sampleProject();
+  const project = stripProject();
   project.tools = [tool];
   return project;
 }
@@ -45,7 +45,7 @@ describe("describeStep", () => {
   });
 
   it("sets the fence for a table saw rip and says where each side goes", () => {
-    const rip = texts(sampleProject())[4]!;
+    const rip = texts(stripProject())[4]!;
     expect(rip.title).toBe('Step 5 · Cut 12" off the panel');
     expect(rip.method).toBe("Table saw · rip: a cut along the length of the sheet");
     expect(rip.pickUp).toBe('the panel 95 1/2" × 47 1/2" from step 4');
@@ -60,21 +60,21 @@ describe("describeStep", () => {
   });
 
   it("labels an offcut, or waste when offcuts are off", () => {
-    expect(texts(sampleProject())[5]!.results[1]).toEqual({ kind: "offcut", where: null, size: '95 1/2" × 23 1/4"', parts: [], next: null });
-    expect(texts(sampleProject())[5]!.body).toMatch(/ Offcut: 95 1\/2" × 23 1\/4"\. Set it aside\.$/);
-    const project = sampleProject();
+    expect(texts(stripProject())[5]!.results[1]).toEqual({ kind: "offcut", where: null, size: '95 1/2" × 23 1/4"', parts: [], next: null });
+    expect(texts(stripProject())[5]!.body).toMatch(/ Offcut: 95 1\/2" × 23 1\/4"\. Set it aside\.$/);
+    const project = stripProject();
     project.settings.features.offcuts = false;
     expect(texts(project)[5]!.results[1]!.kind).toBe("waste");
     expect(texts(project)[5]!.body).toMatch(/ Waste: 95 1\/2" × 23 1\/4"\.$/);
   });
 
   it("uses the stop for a table saw crosscut and labels a finished part", () => {
-    const cut = texts(sampleProject())[6]!;
-    expect(cut.headline).toBe('Cut 30" off the panel');
+    const cut = texts(stripProject())[6]!;
+    expect(cut.headline).toBe('Cut 90" off the panel');
     expect(cut.method).toBe("Table saw · crosscut: a cut across the length of the sheet");
-    expect(cut.actions).toEqual(['Set the stop 30" from the blade.', 'Put a 12" edge of the panel against the stop.', "Make the cut."]);
-    expect(cut.results[0]).toEqual({ kind: "part", where: "at the stop", size: '30" × 12"', parts: ["Side 1"], next: null });
-    expect(cut.body).toContain('Part (at the stop): Side 1, 30" × 12".');
+    expect(cut.actions).toEqual(['Set the stop 90" from the blade.', 'Put a 12" edge of the panel against the stop.', "Make the cut."]);
+    expect(cut.results[0]).toEqual({ kind: "part", where: "at the stop", size: '90" × 12"', parts: ["Side 1"], next: null });
+    expect(cut.body).toContain('Part (at the stop): Side 1, 90" × 12".');
   });
 
   it("uses the stop on a panel saw, for a rip too", () => {
@@ -86,7 +86,7 @@ describe("describeStep", () => {
   it("marks the cut for a track saw and a circular saw", () => {
     const track = texts(withTool({ id: "track", name: "Track saw", type: "track-saw", kerf: 0.125, enabled: true }))[6]!;
     expect(track.method).toBe("Track saw · crosscut: a cut across the length of the sheet");
-    expect(track.actions).toEqual(['Mark 30" from the left edge, at the two ends of the cut.', "Put the edge of the track on the marks.", "Cut with the blade to the right of the marks."]);
+    expect(track.actions).toEqual(['Mark 90" from the left edge, at the two ends of the cut.', "Put the edge of the track on the marks.", "Cut with the blade to the right of the marks."]);
     expect(track.results[0]!.where).toBe("the left piece");
     const circular = texts(withTool({ id: "circ", name: "Circular saw", type: "circular-saw", kerf: 0.125, enabled: true }))[4]!;
     expect(circular.actions).toEqual(['Mark 12" from the top edge, at the two ends of the cut.', "Clamp a straightedge so that the blade cuts next to the marks.", "Cut with the blade below the marks."]);
@@ -100,11 +100,11 @@ describe("describeStep", () => {
     expect(cut.method).toMatch(/^No tool · /);
     expect(cut.actions).toEqual([
       "No enabled tool can make this cut. Check the Tools tab.",
-      'Mark 12" from the top edge, at the two ends of the cut.',
+      'Mark 30" from the left edge, at the two ends of the cut.',
       "Clamp a straightedge so that the blade cuts next to the marks.",
-      "Cut with the blade below the marks.",
+      "Cut with the blade to the right of the marks.",
     ]);
-    expect(cut.results[0]!.where).toBe("the top piece");
+    expect(cut.results[0]!.where).toBe("the left piece");
     expect(texts(project)[0]!.actions).toEqual(["No enabled tool can make this cut. Check the Tools tab.", 'Cut 1/4" off the top edge.']);
   });
 

@@ -7,7 +7,7 @@ import type { PrintJob } from "../src/print/PrintView.tsx";
 import { ReportsTab } from "../src/reports/ReportsTab.tsx";
 import { DEFAULT_PREFS, type ViewPrefs } from "../src/state/prefs.ts";
 import { useProject, type ProjectStore } from "../src/state/useProject.ts";
-import { designProject, sampleProject } from "./helpers.ts";
+import { designProject, sampleProject, stripProject } from "./helpers.ts";
 
 function renderReports(initial: Project = sampleProject(), onPrint: (job: PrintJob) => void = () => undefined, initialPrefs: ViewPrefs = DEFAULT_PREFS) {
   let latest: ProjectStore | null = null;
@@ -89,22 +89,22 @@ describe("ReportsTab", () => {
     const current = renderReports();
     const offcuts = within(section("Offcuts"));
     expect(offcuts.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
-      'Sheet 1: 65 3/8" × 12" Plywood',
-      'Sheet 1: 65 3/8" × 12" Plywood',
-      'Sheet 1: 95 1/2" × 23 1/4" Plywood',
+      'Sheet 1: 30" × 23 1/4" Plywood',
+      'Sheet 1: 65 3/8" × 47 1/2" Plywood',
     ]);
     await userEvent.click(offcuts.getByRole("button", { name: "Save offcuts to stock" }));
-    expect(current().project.stock.filter((stock) => stock.kind === "offcut")).toHaveLength(3);
-    expect(offcuts.getByRole("status").textContent).toBe("3 offcuts were added to the Stock tab.");
+    expect(current().project.stock.filter((stock) => stock.kind === "offcut")).toHaveLength(2);
+    expect(offcuts.getByRole("status").textContent).toBe("2 offcuts were added to the Stock tab.");
     expect(offcuts.getByRole("button", { name: "Every offcut is in stock" })).toHaveProperty("disabled", true);
     act(() => current().undo());
     expect(offcuts.getByRole("button", { name: "Save offcuts to stock" })).toHaveProperty("disabled", false);
   });
 
   it("counts two offcuts of the same size separately", () => {
-    const project = sampleProject();
+    const project = stripProject();
+    project.settings.minOffcut = { length: 5, width: 5 };
     const { offcuts } = analyzeProject(project);
-    const oneSaved = { ...project, stock: [...project.stock, { id: "o1", material: "ply", length: 65.375, width: 12, quantity: 1, cost: 0, kind: "offcut" as const, trim: 0, name: "Offcut from Test, sheet 1" }] };
+    const oneSaved = { ...project, stock: [...project.stock, { id: "o1", material: "ply", length: 5.375, width: 12, quantity: 1, cost: 0, kind: "offcut" as const, trim: 0, name: "Offcut from Test, sheet 1" }] };
     expect(unsavedOffcuts(oneSaved, offcuts).map((offcut) => offcut.rect.y)).toEqual([12.375, 24.5]);
     renderReports(oneSaved);
     expect(screen.getByRole("button", { name: "Save 2 new offcuts to stock" })).toBeTruthy();
