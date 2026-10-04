@@ -93,6 +93,11 @@ table.grid.catalog-sizes th[scope="row"] { font-size: inherit; color: inherit; f
 .issues { padding-left: 0; list-style: none; margin: 4px 0; }
 .issues li { margin: 3px 0; }
 
+.run-status { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 330px; min-height: 32px; overflow: hidden; }
+.run-status progress { width: 110px; }
+.run-status .muted { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.run-result { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+.run-result p { flex: 1; }
 .layout-body { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; }
 .layout-main { min-width: 0; }
 .layout-side { border-left: 1px solid var(--line); padding-left: 14px; display: flex; flex-direction: column; gap: 18px; }

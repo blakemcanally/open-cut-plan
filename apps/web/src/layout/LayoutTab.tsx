@@ -33,7 +33,7 @@ import {
   type UnplacedReason,
 } from "@opencutplan/core";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
-import type { OptimizeRuns } from "../optimizer/useOptimizeRuns.ts";
+import { RUN_NAMES, type OptimizeRuns } from "../optimizer/useOptimizeRuns.ts";
 import type { ViewPrefs } from "../state/prefs.ts";
 import type { ProjectStore } from "../state/useProject.ts";
 import { ColorLegend } from "./ColorLegend.tsx";
@@ -41,6 +41,7 @@ import { CutLegend } from "./CutLegend.tsx";
 import { fitScale, WINDOW_ALLOWANCE } from "./fit.ts";
 import { Inspector } from "./Inspector.tsx";
 import { IssueList } from "./IssueList.tsx";
+import { comparisonText, statsText } from "./runSummary.ts";
 import { sheetSummary } from "./sheetSummary.ts";
 import { copyKey, SheetView, type DropPreview } from "./SheetView.tsx";
 import { snapPosition, type Snapped } from "./snap.ts";
@@ -319,6 +320,14 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
     .map((m) => ({ name: project.materials.find((material) => material.id === m.material)?.name ?? m.material, percent: extraCostPercent(m.score.cost, m.cheapestCost) }))
     .filter((m) => m.percent > 0);
   const groupText = runs.current && project.settings.optimizer.keepGroupsTogether ? describeGroupSpread(project) : null;
+  const outcome = runs.outcome;
+  const runText = runs.error
+    ? `✖ The optimizer failed: ${runs.error}`
+    : runs.undone
+      ? "The plan from before the optimize run is back. Redo puts the new plan back."
+      : outcome?.changed
+        ? `${runs.notice} ${comparisonText(ctx, outcome.before, outcome.after)}`
+        : runs.notice;
 
   return (
     // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- layout shortcuts for the focused part or sheet bubble up to this element
@@ -333,17 +342,19 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
         <button type="button" disabled={busy || !runs.current} onClick={runs.keepSearching} title="Continue the last search from its best plan.">
           Keep searching
         </button>
-        {busy && (
-          <>
-            <button type="button" onClick={runs.stop}>
-              Stop
-            </button>
-            <progress max={1} value={progress} aria-label="Optimizer progress" />
-            <span className="muted" aria-live="polite">
-              {runs.running?.best ? `${runs.running.best.iterations.toLocaleString()} plans tried` : "Starting…"}
-            </span>
-          </>
-        )}
+        <span className="run-status">
+          {busy && (
+            <>
+              <button type="button" onClick={runs.stop}>
+                Stop
+              </button>
+              <progress max={1} value={progress} aria-label="Optimizer progress" />
+              <span className="muted" aria-live="polite">
+                {runs.running?.best ? `${runs.running.best.iterations.toLocaleString()} plans tried` : "Starting…"}
+              </span>
+            </>
+          )}
+        </span>
         <span className="spacer" />
         <label className="inline">
           Stock
@@ -384,10 +395,15 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
         ))}
         {groupText && <span> {groupText}</span>}
       </p>
-      {(runs.error || runs.notice) && (
-        <p role="status" className={runs.error ? "banner error" : "banner"}>
-          {runs.error ? `✖ The optimizer failed: ${runs.error}` : runs.notice}
-        </p>
+      {runText && (
+        <div className={`banner run-result${runs.error ? " error" : ""}`}>
+          <p role="status">{runText}</p>
+          {outcome?.changed && (
+            <button type="button" onClick={runs.undo} title={`Puts back the plan from before ${RUN_NAMES[outcome.kind]}: ${statsText(ctx, outcome.before)}. Undo does the same.`}>
+              Undo optimize
+            </button>
+          )}
+        </div>
       )}
       {project.parts.length === 0 && <p className="muted">Add parts on the Parts tab first.</p>}
       {project.parts.length > 0 && enabledStock.length === 0 && <p className="muted">Add stock on the Stock tab to lay out or optimize.</p>}

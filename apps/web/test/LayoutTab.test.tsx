@@ -7,6 +7,7 @@ import { SHEET_CHROME, WINDOW_ALLOWANCE } from "../src/layout/fit.ts";
 import { LayoutTab } from "../src/layout/LayoutTab.tsx";
 import { SheetView } from "../src/layout/SheetView.tsx";
 import { useOptimizeRuns } from "../src/optimizer/useOptimizeRuns.ts";
+import { formatMoney } from "../src/reports/money.ts";
 import type { WorkerFactory, WorkerLike } from "../src/optimizer/useOptimizer.ts";
 import { DEFAULT_PREFS } from "../src/state/prefs.ts";
 import { useProject, type ProjectStore } from "../src/state/useProject.ts";
@@ -309,6 +310,81 @@ describe("LayoutTab", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Keep searching" }).hasAttribute("disabled")).toBe(false), { timeout: 10000 });
     expect(screen.queryByText(/is on one sheet/)).toBeNull();
   }, 20000);
+
+  it("compares the plan before and after a run, and Undo optimize puts back the plan from before it", async () => {
+    const current = renderLayout();
+    const placed = () => current().project.plan!.sheets.flatMap((s) => s.placements).length;
+    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    const undoRun = await screen.findByRole("button", { name: "Undo optimize" }, { timeout: 10000 });
+    const status = screen.getByRole("status").textContent;
+    expect(status).toContain(`Before: 1 sheet, ${formatMoney(60, "USD")}, 1 part unplaced, `);
+    expect(status).toContain(`After: 1 sheet, ${formatMoney(60, "USD")}, every part placed, `);
+    expect(undoRun.getAttribute("title")).toMatch(/^Puts back the plan from before Optimize: 1 sheet,/);
+    expect(placed()).toBe(3);
+    await userEvent.click(undoRun);
+    expect(placed()).toBe(2);
+    expect(screen.getByRole("status").textContent).toBe("The plan from before the optimize run is back. Redo puts the new plan back.");
+    expect(screen.queryByRole("button", { name: "Undo optimize" })).toBeNull();
+    act(() => current().redo());
+    expect(placed()).toBe(3);
+    expect(screen.getByRole("button", { name: "Undo optimize" })).toBeTruthy();
+    part("Shelf").focus();
+    await userEvent.keyboard("r");
+    expect(screen.queryByRole("button", { name: "Undo optimize" })).toBeNull();
+    expect(screen.getByRole("status").textContent).not.toContain("Before:");
+  }, 15000);
+
+  it("compares the stock area when the cost feature is off", async () => {
+    const project = sampleProject();
+    project.settings = { ...project.settings, features: { ...project.settings.features, cost: false } };
+    renderLayout(project);
+    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await screen.findByRole("button", { name: "Undo optimize" }, { timeout: 10000 });
+    expect(screen.getByRole("status").textContent).toContain("Before: 1 sheet, 32.0 sq ft of stock, 1 part unplaced");
+  }, 15000);
+
+  it("says when Keep searching finds no better plan, and offers no undo for it", async () => {
+    const inner = inProcessWorkers().factory;
+    const factory: WorkerFactory = () => {
+      const worker = inner();
+      const wrapped: WorkerLike = {
+        onmessage: null,
+        onerror: null,
+        postMessage: (message) => {
+          if (message.type === "start" && message.options?.start) {
+            const result = { ...message.options.start, iterations: 40 };
+            setTimeout(() => wrapped.onmessage?.({ data: { type: "done", id: message.id, result, cancelled: false } } as MessageEvent), 0);
+          } else {
+            worker.postMessage(message);
+          }
+        },
+        terminate: () => worker.terminate(),
+      };
+      worker.onmessage = (event) => wrapped.onmessage?.(event);
+      return wrapped;
+    };
+    const current = renderLayout(sampleProject(), factory);
+    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await screen.findByRole("button", { name: "Undo optimize" }, { timeout: 10000 });
+    const optimized = current().project;
+    const canUndo = current().canUndo;
+    await userEvent.click(screen.getByRole("button", { name: "Keep searching" }));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Tried 40 plans. Keep searching found no better plan, so the plan did not change."));
+    expect(current().project).toBe(optimized);
+    expect(current().canUndo).toBe(canUndo);
+    expect(screen.queryByRole("button", { name: "Undo optimize" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Keep searching" }).hasAttribute("disabled")).toBe(false);
+  }, 15000);
+
+  it("keeps the room for the optimizer status in the toolbar while no search runs", async () => {
+    renderLayout();
+    const toolbar = screen.getByRole("toolbar", { name: "Layout" });
+    const room = toolbar.querySelector<HTMLElement>(".run-status")!;
+    expect(room.children).toHaveLength(0);
+    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    expect(within(room).getByRole("button", { name: "Stop" })).toBeTruthy();
+    await screen.findByRole("button", { name: "Undo optimize" }, { timeout: 10000 });
+  }, 15000);
 
   it("offers Keep searching only while the layout is the one the search produced", async () => {
     renderLayout();

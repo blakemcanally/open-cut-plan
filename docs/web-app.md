@@ -163,6 +163,16 @@ part that asks for a factory edge and does not get one.
 - **Keep searching** continues the last search from its best plan. It is offered while the project is still the one
   the last search produced.
 - **Stop** ends a search and uses the best plan so far.
+- After a run, a line compares the plan before and after the run, for example "Before: 4 sheets, $260.00, 2 parts
+  unplaced, 1344" of cuts. After: 3 sheets, $195.00, every part placed, 1176" of cuts." The line gives the cost when
+  the `cost` feature is on and each stock has a price; otherwise it gives the stock area of the sheets. The cut length
+  shows when the `cutOrder` feature is on.
+- **Undo optimize** puts back the plan from before the run. It is one undo step, so **Undo** in the header does the
+  same, and **Redo** puts the new plan back. The button shows while the project is still the one the run produced.
+- When a run does not change the plan, the line says so, for example "Keep searching found no better plan, so the
+  plan did not change." The run then adds no undo step.
+- While the optimizer runs, the toolbar shows **Stop**, the progress bar, and the count of plans tried. The toolbar
+  keeps the space for them when no search runs, so the buttons do not move.
 - A line under the buttons names the optimizer goal, for example "Goal: best offcuts, up to 10 % extra cost.", and
   **Change** opens the Optimizer section of the Settings tab. After a search, the line names each material whose plan
   costs more than the cheapest plan found, for example "Plywood: 4 % more cost than the cheapest plan found." When
