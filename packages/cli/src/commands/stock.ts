@@ -1,4 +1,5 @@
 import {
+  addCatalogStock,
   analyzeProject,
   removeStock,
   saveOffcutsToStock,
@@ -11,11 +12,12 @@ import {
   type Stock,
 } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
-import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines } from "../project.ts";
-import { usageError, type CommandSpec, type GroupSpec, type OptionValues } from "../spec.ts";
+import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines, type Loaded } from "../project.ts";
+import { usageError, type CommandSpec, type GroupSpec, type Invocation, type OptionValues, type Outcome } from "../spec.ts";
 import { len, money, size, table } from "../text.ts";
 import { flag, integerValue, lengthValue, numberValue, optionalBoolean, optionalChoice, optionalLength, str } from "../values.ts";
-import { assertNoConflict, findAll, findById, ID_OPTION, materialFor, newId, resolveMaterial, unsetFields, unsetOption } from "./common.ts";
+import { assertNoCatalogConflict, catalogOption, catalogSizeArg } from "./catalog.ts";
+import { assertNoConflict, findAll, findById, ID_OPTION, materialFor, missingOption, newId, resolveMaterial, unsetFields, unsetOption } from "./common.ts";
 import { CSV_ARGS, EXPORT_OUT, exportCsv, importCsv, importOptions } from "./csv.ts";
 import { planContextOf } from "./context.ts";
 
@@ -132,12 +134,13 @@ const get: CommandSpec = {
 const add: CommandSpec = {
   name: "stock add",
   summary: "Add a stock item.",
-  description: "Add a stock item: a sheet size of a material that can be cut, or an owned offcut.",
+  description:
+    "Add a stock item: a sheet size of a material that can be cut, or an owned offcut. With --catalog, the material, the size, and the cost come from the catalogue (see catalog list). The material is added when the project does not have it. The cost is the typical price when the project currency is USD; otherwise there is no cost. When the project has a sheet of that material and size, nothing changes.",
   args: [FILE_ARG],
   options: [
     OPTIONS.material,
-    { ...OPTIONS.length, required: true },
-    { ...OPTIONS.width, required: true },
+    { ...OPTIONS.length, description: `${OPTIONS.length.description} Required without --catalog.` },
+    { ...OPTIONS.width, description: `${OPTIONS.width.description} Required without --catalog.` },
     OPTIONS.quantity,
     OPTIONS.cost,
     OPTIONS.kind,
@@ -145,18 +148,25 @@ const add: CommandSpec = {
     OPTIONS.factoryEdges,
     OPTIONS.enabled,
     OPTIONS.name,
+    catalogOption("size"),
     ID_OPTION,
     ...OUTPUT_OPTIONS,
   ],
   examples: [
     { command: `${PROGRAM} stock add shelf.cutplan.json --material ply --length 96 --width 48 --cost 65`, description: "Add unlimited 4 × 8 ft sheets at 65 each." },
     { command: `${PROGRAM} stock add shelf.cutplan.json --material ply --length 30 --width 20 --quantity 1 --kind offcut --factory-edges`, description: "Add an owned offcut with cut edges." },
+    { command: `${PROGRAM} stock add shelf.cutplan.json --catalog baltic-birch-18mm-5x5`, description: "Add 5 × 5 ft Baltic birch 3/4\" (18 mm) sheets from the catalogue, and the material." },
   ],
-  output: "stock (the new item), changes, validation, written, dryRun.",
+  output:
+    "stock (the new item, or the one the project has), added (false when --catalog found the sheet in the project), material and addedMaterial (with --catalog), changes, validation, written, dryRun.",
   async run(invocation) {
     const { args, options, io } = invocation;
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
+    const catalog = str(options, "catalog");
+    if (catalog !== undefined) return addFromCatalog(invocation, loaded, catalog);
+    if (str(options, "length") === undefined) throw missingOption("length");
+    if (str(options, "width") === undefined) throw missingOption("width");
     const patch = fields(project, options);
     const material = patch.material ?? materialFor(project, undefined).id;
     const materialName = project.materials.find((m) => m.id === material)!.name;
@@ -174,9 +184,32 @@ const add: CommandSpec = {
     if (patch.enabled !== undefined) stock.enabled = patch.enabled;
     if (patch.name !== undefined) stock.name = patch.name;
     const next = { ...project, stock: [...project.stock, stock] };
-    return finishMutation(invocation, loaded, next, { summary: `Added stock ${line(project, stock)}.`, data: { stock } });
+    return finishMutation(invocation, loaded, next, { summary: `Added stock ${line(project, stock)}.`, data: { stock, added: true } });
   },
 };
+
+async function addFromCatalog(invocation: Invocation, loaded: Loaded, catalog: string): Promise<Outcome> {
+  const { options } = invocation;
+  const { project } = loaded;
+  assertNoCatalogConflict(options, ["material", "length", "width", "kind"]);
+  const { size: catalogEntry } = catalogSizeArg(catalog);
+  const patch = fields(project, options);
+  const requested = str(options, "id");
+  const result = addCatalogStock(project, catalogEntry.id, { quantity: patch.quantity ?? null });
+  let next = result.project;
+  let id = result.stock!;
+  if (result.addedStock) {
+    const newIdValue = requested === undefined ? id : newId(project.stock, requested, "", "stock");
+    next = updateStock(next, id, { ...patch, id: newIdValue });
+    id = newIdValue;
+  }
+  const stock = findById(next.stock, id, "stock");
+  const material = findById(next.materials, result.material, "material");
+  const summary = result.addedStock
+    ? `Added stock ${line(next, stock)}${result.addedMaterial ? ` and material ${material.id}` : ""}.`
+    : `The project already has the stock ${line(next, stock)}. Nothing changed.`;
+  return finishMutation(invocation, loaded, next, { summary, data: { stock, added: result.addedStock, material, addedMaterial: result.addedMaterial } });
+}
 
 const set: CommandSpec = {
   name: "stock set",

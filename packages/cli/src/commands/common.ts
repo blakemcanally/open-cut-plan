@@ -49,6 +49,10 @@ export function newId(items: readonly { id: string }[], requested: string | unde
   return requested;
 }
 
+export function missingOption(name: string) {
+  return usageError(`--${name} is required.`, "missing-option", { option: name });
+}
+
 export function nonEmpty(text: string | undefined, name: string): string | undefined {
   if (text !== undefined && text.trim() === "") throw usageError(`--${name} must not be empty.`, "invalid-value", { option: name });
   return text;

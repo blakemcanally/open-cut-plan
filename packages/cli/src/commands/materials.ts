@@ -1,10 +1,11 @@
-import { materialInUse, removeMaterial, updateMaterial, type Material, type Patch, type Project } from "@opencutplan/core";
+import { addCatalogMaterial, materialInUse, removeMaterial, updateMaterial, type Material, type Patch, type Project } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
-import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines } from "../project.ts";
-import { CliError, EXIT, type CommandSpec, type GroupSpec } from "../spec.ts";
+import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines, type Loaded } from "../project.ts";
+import { CliError, EXIT, type CommandSpec, type GroupSpec, type Invocation, type Outcome } from "../spec.ts";
 import { len, table } from "../text.ts";
 import { optionalBoolean, optionalLength, str } from "../values.ts";
-import { assertNoConflict, findAll, findById, ID_OPTION, newId, nonEmpty, unsetFields, unsetOption } from "./common.ts";
+import { assertNoCatalogConflict, catalogMaterialArg, catalogOption } from "./catalog.ts";
+import { assertNoConflict, findAll, findById, ID_OPTION, missingOption, newId, nonEmpty, unsetFields, unsetOption } from "./common.ts";
 
 function usedBy(project: Project, id: string) {
   return {
@@ -71,32 +72,66 @@ const get: CommandSpec = {
 const add: CommandSpec = {
   name: "materials add",
   summary: "Add a material.",
-  description: "Add a material. Parts and stock refer to it by its id.",
+  description:
+    "Add a material. Parts and stock refer to it by its id. With --catalog, the name, the actual thickness, and the grain come from the catalogue (see catalog list); when the project has a material with that catalogue id or name and the same thickness, nothing changes.",
   args: [FILE_ARG],
-  options: [{ ...FIELD_OPTIONS.name, required: true }, { ...FIELD_OPTIONS.thickness, required: true }, FIELD_OPTIONS.grained, FIELD_OPTIONS.color, ID_OPTION, ...OUTPUT_OPTIONS],
+  options: [
+    { ...FIELD_OPTIONS.name, description: `${FIELD_OPTIONS.name.description} Required without --catalog.` },
+    { ...FIELD_OPTIONS.thickness, description: `${FIELD_OPTIONS.thickness.description} Required without --catalog.` },
+    FIELD_OPTIONS.grained,
+    FIELD_OPTIONS.color,
+    catalogOption("material"),
+    ID_OPTION,
+    ...OUTPUT_OPTIONS,
+  ],
   examples: [
     { command: `${PROGRAM} materials add shelf.cutplan.json --name "Baltic birch 18mm" --thickness 18mm`, description: "Add a grained material; the id is baltic-birch-18mm." },
     { command: `${PROGRAM} materials add shelf.cutplan.json --name MDF --thickness 3/4 --grained false --id mdf`, description: "Add MDF with the id mdf." },
+    { command: `${PROGRAM} materials add shelf.cutplan.json --catalog baltic-birch-18mm`, description: "Add Baltic birch 3/4\" (18 mm) from the catalogue." },
   ],
-  output: "material (the new material), changes, validation, written, dryRun.",
+  output: "material (the new material, or the one the project has), added (false when --catalog found the material in the project), changes, validation, written, dryRun.",
   async run(invocation) {
     const { args, options, io } = invocation;
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const units = project.project.units;
-    const name = nonEmpty(str(options, "name"), "name")!;
+    const catalog = str(options, "catalog");
+    if (catalog !== undefined) return addFromCatalog(invocation, loaded, catalog);
+    const name = nonEmpty(str(options, "name"), "name");
+    if (name === undefined) throw missingOption("name");
+    const thickness = optionalLength(options, "thickness", units);
+    if (thickness === undefined) throw missingOption("thickness");
     const material: Material = {
       id: newId(project.materials, str(options, "id"), name, "material"),
       name,
-      thickness: optionalLength(options, "thickness", units)!,
+      thickness,
       grained: optionalBoolean(options, "grained") ?? true,
     };
     const color = str(options, "color");
     if (color !== undefined) material.color = color;
     const next = { ...project, materials: [...project.materials, material] };
-    return finishMutation(invocation, loaded, next, { summary: `Added material ${line(project, material)}.`, data: { material } });
+    return finishMutation(invocation, loaded, next, { summary: `Added material ${line(project, material)}.`, data: { material, added: true } });
   },
 };
+
+async function addFromCatalog(invocation: Invocation, loaded: Loaded, catalog: string): Promise<Outcome> {
+  const { options } = invocation;
+  const { project } = loaded;
+  assertNoCatalogConflict(options, ["name", "thickness", "grained"]);
+  const entry = catalogMaterialArg(catalog);
+  const requested = str(options, "id");
+  const result = addCatalogMaterial(project, entry.id);
+  let id = result.material;
+  let next = result.project;
+  if (result.addedMaterial) {
+    const newIdValue = requested === undefined ? id : newId(project.materials, requested, "", "material");
+    next = updateMaterial(next, id, { id: newIdValue, color: str(options, "color") });
+    id = newIdValue;
+  }
+  const material = findById(next.materials, id, "material");
+  const summary = result.addedMaterial ? `Added material ${line(next, material)}.` : `The project has the material ${line(next, material)}. Nothing changed.`;
+  return finishMutation(invocation, loaded, next, { summary, data: { material, added: result.addedMaterial } });
+}
 
 const set: CommandSpec = {
   name: "materials set",
