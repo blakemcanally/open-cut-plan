@@ -178,6 +178,8 @@ these items has started. Size: S is a day or less, M is a few days, L is a week 
 
 ## 8. Warn about plan problems on the Shop tab, the Reports tab, and in print
 
+**Status:** Done.
+
 **Size:** S–M. **Recommended.**
 
 **Problem:** The Shop tab, the Reports tab, and the printed booklet do not read the plan issues. In the review, a part
@@ -194,7 +196,22 @@ parts.
 **Files:** `apps/web/src/shop/ShopTab.tsx`, `reports/ReportsTab.tsx`, `print/PrintView.tsx`, `print/booklet.ts`,
 `screens/Workspace.tsx`, `layout/IssueList.tsx`.
 
+**Chosen approach:**
+
+- `planAlert` in the core reads the issues of `analyzeProject`. It names the placed parts that an error points at, and
+  the parts with the `unplaced` warning. It counts the errors that name no part. The text is short, for example "The
+  plan is not ready to cut. 2 parts have a layout error: Side 1 and Side 2. 1 part is not on a sheet: Shelf." A list
+  of more than 5 parts ends with "and N more".
+- The Shop tab and the Reports tab show the text in a banner. **Show the problems on the Layout tab** opens the Layout
+  tab and puts the focus on the Problems heading. The banner only warns. **Mark done** and the other controls stay.
+- The first page of the booklet starts with the same text, whichever section is first.
+- The Layout tab has a red badge with the number of errors. The badge is hidden from screen readers, so the tab name
+  stays "Layout". The tab has a description, for example "The plan has 1 error."
+- The CLI reports `shopping`, `sequence`, `offcuts`, `labels`, and `cutlist` give the text as a warning.
+
 ## 9. Help the user set up a design so that the first optimize works
+
+**Status:** Done.
 
 **Size:** M. **Recommended.**
 
@@ -211,6 +228,21 @@ is that the material has no stock.
 
 **Files:** `apps/web/src/design/form.ts`, `packages/core/src/optimize/problem.ts`, `apps/web/src/layout/Tray.tsx`,
 `screens/PartsTab.tsx`, `screens/StockTab.tsx`, `screens/Workspace.tsx`.
+
+**Chosen approach:**
+
+- `suggestedStock` in the core gives the sheet for a material: the largest size of the catalogue material with the
+  same id or name, with the typical price in USD projects, or else a 96" × 48" (2440 × 1220 mm) sheet with no price.
+- **Add design**, and a change of the material or the back material of a design, add the suggested sheet for each
+  design material that has no enabled stock. `design add` and `design set` in the CLI do the same, and give
+  `addedStock`. `stock add --suggested` adds the sheet for one material.
+- The new unplaced reason `no-stock-for-material` is for a part whose material has no enabled stock. `too-large` is
+  now only for a part that fits no enabled stock of its material. The tray shows the reason before a run, with
+  **Add stock**. `optimize` in the CLI gives the command that adds the stock.
+- The Parts tab and the Stock tab have a line with **Add stock** for each material that parts use and that has no
+  enabled stock. The line for a material with no price is left for item 17.
+- A new project opens on the Design tab. The empty states of the Layout, Parts, Shop, and Reports tabs link to the tab
+  that fixes them.
 
 ## 10. Show the result of an optimize run, and undo it
 
