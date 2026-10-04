@@ -1,4 +1,4 @@
-# The OpenCutPlan file format (`.cutplan.json`), version 1.3
+# The OpenCutPlan file format (`.cutplan.json`), version 1.4
 
 An OpenCutPlan file describes a sheet-goods cutting project: the parts to cut, the stock to cut them from, the tools
 available, settings, and optionally a layout of parts on sheets with an ordered list of cuts.
@@ -21,12 +21,13 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | Always `"opencutplan"`. |
-| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.3"`. |
+| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.4"`. |
 | `project` | yes | `name` (text), `units` (`"in"` or `"mm"`), optional `notes`, `created`, `modified` (should be ISO 8601 date-times; readers accept any string). |
 | `materials` | yes | Materials; see below. |
 | `stock` | yes | Stock pieces available for cutting. |
 | `parts` | yes | Parts to cut. |
 | `designs` | no | Box units that generate parts (added in 1.1); see below. |
+| `groups` | no | Settings for each group of parts, keyed by the group name (added in 1.4); see [Colours](#colours-added-in-14). |
 | `tools` | yes | Saws the user owns (may be empty). |
 | `settings` | no | Defaults apply to every missing setting. |
 | `plan` | no | A layout of parts on stock. |
@@ -91,6 +92,7 @@ stored parts as normal parts.
 | `depth` | yes | The outside depth, including the back. |
 | `back` | no | `{ "material": <id> }`: a back on the rear edges. No field means no back. |
 | `mount` | no | `"floor"`, `"legs"`, `"feet"`, or `"wall-rail"`. Default `"floor"`. Other values can come in later minor versions. |
+| `colors` | no | The chosen colour of each unit, 0 to 100 values (added in 1.4). See [Colours](#colours-added-in-14). |
 
 An **axis** is one of:
 
@@ -116,10 +118,33 @@ An **axis** is one of:
   with pocket screws. A design with 1 column has no divider part, and a design with 1 row has no shelf part.
 - Columns with the same opening share one shelf part. With more than one opening size, *k* counts the sizes in column
   order from 1.
-- Every generated part has `grain: "length"` and `group` set to the design name.
+- Every generated part has `grain: "length"` and `group` set to the design name. The colour of a part copy comes
+  from its unit; see [Colours](#colours-added-in-14).
 
 When a design and its stored parts do not agree, the design wins: an app makes the parts again and moves the copies
 of changed parts off their sheets.
+
+## Colours (added in 1.4)
+
+An app shows each part copy in the colour of its **colour key**:
+
+- A copy of a design part belongs to one unit of the design. With a design quantity *q*, a part with quantity
+  *count* × *q* has copies 0 to *count* × *q* − 1. Copy *c* belongs to unit ⌊*c* / *count*⌋ + 1. Each unit is one
+  colour key, for example "Hall KALLAX 2 of 3". With a quantity of 1, the key is the design name.
+- A part without a design uses its `group` as the key. A part without a group has no key, and an app shows it in a
+  neutral grey.
+
+An app gives each key an automatic colour from a palette, in the order that the keys first occur: the parts in file
+order, and the copies of each part in copy order. A chosen colour replaces the automatic colour of its key. It does
+not change the automatic colours of the other keys.
+
+A colour is `"#rrggbb"` (six hexadecimal digits, upper or lower case).
+
+- `designs[].colors[i]` is the chosen colour of unit *i* + 1. An empty string, or a missing value at the end of the
+  list, means "automatic". A writer removes the empty strings at the end of the list, and removes the list when it is
+  empty. Values past the design quantity have no effect. A writer keeps them, so a larger quantity uses them again.
+- `groups` is an object keyed by the group name. Each value is an object with an optional `color`: the chosen colour of
+  the parts without a design that have that group. An entry for a group that no part has has no effect.
 
 ## Tools
 

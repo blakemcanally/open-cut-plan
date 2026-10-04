@@ -328,6 +328,22 @@
           "mount": {
             "type": "string",
             "minLength": 1
+          },
+          "colors": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$"
+                },
+                {
+                  "type": "string",
+                  "const": ""
+                }
+              ]
+            }
           }
         },
         "required": [
@@ -339,6 +355,22 @@
           "height",
           "depth"
         ],
+        "additionalProperties": {}
+      }
+    },
+    "groups": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          }
+        },
         "additionalProperties": {}
       }
     },

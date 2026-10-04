@@ -125,13 +125,13 @@ describe("parseProject", () => {
     expect(result.ok && result.project.settings.features.cutOrder).toBe(true);
   });
 
-  it.each(["1.0", "1.1"])("loads a %s file as version 1.3 with the default goal and no warnings", (version) => {
+  it.each(["1.0", "1.1"])("loads a %s file as version 1.4 with the default goal and no warnings", (version) => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = version;
     delete doc.settings.optimizer.goal;
     delete doc.settings.optimizer.extraCostPercent;
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.3");
+    expect(result.ok && result.project.version).toBe("1.4");
     expect(result.ok && result.project.settings.optimizer).toMatchObject({ goal: "cost", extraCostPercent: 10 });
     expect(result.warnings).toEqual([]);
   });
@@ -154,7 +154,7 @@ describe("parseProject", () => {
   it("loads a newer minor version with a warning and keeps every unknown field on re-save", () => {
     const project = sampleProject();
     const doc = JSON.parse(serializeProject(project));
-    doc.version = "1.4";
+    doc.version = "1.5";
     doc.future = { x: 1 };
     doc.parts[0].edgeBanding = { top: "birch", bottom: null };
     doc.stock[0].supplier = "Local yard";
@@ -169,7 +169,7 @@ describe("parseProject", () => {
       {
         severity: "warning",
         code: "newer-minor",
-        message: "This file uses format version 1.4, which is newer than this app (1.3). Unknown fields are kept but ignored.",
+        message: "This file uses format version 1.5, which is newer than this app (1.4). Unknown fields are kept but ignored.",
         path: ["version"],
       },
     ]);

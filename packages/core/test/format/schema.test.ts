@@ -6,7 +6,7 @@ describe("createProject", () => {
   it("fills every default", () => {
     const project = createProject("Shelf", "in");
     expect(project.format).toBe("opencutplan");
-    expect(project.version).toBe("1.3");
+    expect(project.version).toBe("1.4");
     expect(project.project).toEqual({ name: "Shelf", units: "in" });
     expect(project.settings).toEqual({
       features: Object.fromEntries(FEATURE_KEYS.map((key) => [key, true])),
@@ -95,5 +95,28 @@ describe("designs", () => {
   ])("refuses %s", (_name, patch) => {
     const project = designProject([{ ...kallaxDesign(), ...patch } as Design]);
     expect(parseProject(JSON.parse(serializeProject(project))).ok).toBe(false);
+  });
+});
+
+describe("chosen colours", () => {
+  it("loads the colours of the build copies and of the groups, and round-trips them", () => {
+    const project = designProject([kallaxDesign({ quantity: 3, colors: ["#ff8800", "", "#00AA11"] })]);
+    project.groups = { Doors: { color: "#123abc" }, Drawers: {} };
+    const result = parseProject(serializeProject(project));
+    expect(result.ok && result.warnings).toEqual([]);
+    expect(result.ok && result.project).toEqual(project);
+  });
+
+  it("loads a file without the colour fields unchanged", () => {
+    const project = sampleProject();
+    const result = parseProject(serializeProject(project));
+    expect(result.ok && result.project).toEqual(project);
+    expect(result.ok && "groups" in result.project).toBe(false);
+  });
+
+  it.each([["red"], ["#fff"], ["#12345g"], ["#1234567"]])("refuses the colour %j", (color) => {
+    expect(parseProject(JSON.parse(serializeProject(designProject([kallaxDesign({ colors: [color] })])))).ok).toBe(false);
+    const project = sampleProject();
+    expect(parseProject(JSON.parse(serializeProject({ ...project, groups: { A: { color } } }))).ok).toBe(false);
   });
 });

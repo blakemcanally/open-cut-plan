@@ -2,7 +2,7 @@ import { z } from "zod";
 import { INCH_PRECISIONS, MM_PRECISIONS } from "../geometry/format.ts";
 
 export const FORMAT_ID = "opencutplan";
-export const FORMAT_VERSION = "1.3";
+export const FORMAT_VERSION = "1.4";
 /** Analysis and the editor work per copy, so a larger quantity would freeze them. */
 export const MAX_PART_QUANTITY = 10_000;
 export const MAX_DESIGN_CELLS = 50;
@@ -11,6 +11,7 @@ export const MAX_DESIGN_QUANTITY = 100;
 const id = z.string().min(1);
 const positive = z.number().positive();
 const nonNegative = z.number().nonnegative();
+export const HexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
 export const UnitsSchema = z.enum(["in", "mm"]);
 export const GrainSchema = z.enum(["length", "width", "none"]);
@@ -76,8 +77,11 @@ export const DesignSchema = z
     depth: positive,
     back: z.object({ material: id }).loose().optional(),
     mount: z.string().min(1).optional(),
+    colors: z.array(z.union([HexColorSchema, z.literal("")])).max(MAX_DESIGN_QUANTITY).optional(),
   })
   .loose();
+
+export const GroupSchema = z.object({ color: HexColorSchema.optional() }).loose();
 
 const toolBase = {
   id,
@@ -217,6 +221,7 @@ export const ProjectSchema = z
     stock: z.array(StockSchema),
     parts: z.array(PartSchema),
     designs: z.array(DesignSchema).optional(),
+    groups: z.record(z.string(), GroupSchema).optional(),
     tools: z.array(ToolSchema),
     settings: SettingsSchema.prefault({}),
     plan: PlanSchema.optional(),
@@ -246,6 +251,7 @@ export type StockKind = Stock["kind"];
 export type Part = StripIndex<z.output<typeof PartSchema>>;
 export type DesignAxis = StripIndex<z.output<typeof DesignAxisSchema>>;
 export type Design = StripIndex<z.output<typeof DesignSchema>>;
+export type Group = StripIndex<z.output<typeof GroupSchema>>;
 export type Tool = StripIndex<z.output<typeof ToolSchema>>;
 export type ToolType = Tool["type"];
 export type Features = StripIndex<z.output<typeof FeaturesSchema>>;
