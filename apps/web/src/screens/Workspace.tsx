@@ -1,6 +1,7 @@
-import { analyzeProject, errorMessage, projectFileName, serializeProjectChecked, withCuts, type Project } from "@opencutplan/core";
+import { analyzeProject, errorMessage, planAlert, projectFileName, serializeProjectChecked, withCuts, type Project } from "@opencutplan/core";
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { TextInput } from "../components/fields.tsx";
+import { PlanAlertBanner } from "../components/PlanAlertBanner.tsx";
 import { ShowTab } from "../components/TabLink.tsx";
 import { LayoutTab } from "../layout/LayoutTab.tsx";
 import { useOptimizeRuns } from "../optimizer/useOptimizeRuns.ts";
@@ -51,9 +52,12 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
   const store = useProject(initial);
   const { project, edit } = store;
   const analysis = useMemo(() => analyzeProject(project), [project]);
+  const alert = useMemo(() => planAlert(analysis.context, analysis.issues), [analysis]);
+  const errors = analysis.issues.filter((issue) => issue.severity === "error").length;
   const runs = useOptimizeRuns(store, workerFactory);
   const [prefs, setPrefs] = usePrefs();
   const [tab, setTab] = useState<TabId>(initial.parts.length > 0 ? "layout" : "design");
+  const [focusProblems, setFocusProblems] = useState(false);
   const [notices, setNotices] = useState(initialNotices);
   const [handle, setHandle] = useState(initialHandle);
   const [fileStatus, setFileStatus] = useState<string | null>(null);
@@ -77,6 +81,12 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
     return () => window.removeEventListener("keydown", onKey);
   }, [store]);
 
+  useEffect(() => {
+    if (!focusProblems || tab !== "layout") return;
+    setFocusProblems(false);
+    document.getElementById("issues-title")?.focus();
+  }, [focusProblems, tab]);
+
   const save = async (as: boolean) => {
     try {
       const text = serializeProjectChecked(withCuts(project));
@@ -97,6 +107,11 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
   const showLinked = (next: TabId, section?: SettingsSectionId) => {
     if (section) setSettingsSection(section);
     showTab(next);
+  };
+
+  const showProblems = () => {
+    showTab("layout");
+    setFocusProblems(true);
   };
 
   const onTabKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -170,14 +185,26 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
             aria-selected={tab === t.id}
             aria-controls={`panel-${t.id}`}
             tabIndex={tab === t.id ? 0 : -1}
+            aria-describedby={t.id === "layout" && errors > 0 ? "layout-errors" : undefined}
             onClick={() => showTab(t.id)}
           >
             {t.label}
+            {t.id === "layout" && errors > 0 && (
+              <span className="tab-badge" aria-hidden="true">
+                {errors}
+              </span>
+            )}
           </button>
         ))}
       </div>
+      {errors > 0 && (
+        <span id="layout-errors" className="visually-hidden">
+          The plan has {errors} {errors === 1 ? "error" : "errors"}.
+        </span>
+      )}
       <ShowTab.Provider value={showLinked}>
         <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="panel">
+          {(tab === "shop" || tab === "reports") && alert && <PlanAlertBanner alert={alert} onShow={showProblems} />}
           {tab === "design" && <DesignTab store={store} analysis={analysis} focus={designFocus} />}
           {tab === "parts" && (
             <PartsTab

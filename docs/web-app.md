@@ -43,9 +43,14 @@ is `#/project/<id>`, so a reload opens the same project.
 The tabs are **Design**, **Parts**, **Stock**, **Tools**, **Layout**, **Shop**, **Reports**, and **Settings**. The
 left and right arrow keys move between tabs.
 
+- When the plan has errors, the **Layout** tab shows the number of errors in a red badge.
 - An empty tab tells the user what to do, with a link to the tab that does it. For example, the Layout tab with no
   parts links to the Design tab and the Parts tab, and with no stock it links to the Stock tab. The Shop tab and the
   Reports tab with no plan link to the Layout tab.
+- The **Shop** tab and the **Reports** tab show a banner when the plan is not ready to cut: the plan has an error, or
+  a part is not on a sheet. The banner names the parts, for example "✖ The plan is not ready to cut. 2 parts have a
+  layout error: Side 1 and Side 2. 1 part is not on a sheet: Shelf." **Show the problems on the Layout tab** opens the
+  Layout tab and puts the focus on the **Problems** list. The banner only warns: the tabs stay usable.
 
 ### Design
 
@@ -299,6 +304,8 @@ The booklet has its sections in the order of the list below, and each section st
 diagrams are landscape pages; the other pages are portrait. **Print cut sequence** on the Shop tab prints a booklet
 with only the cut sequence.
 
+- When the plan is not ready to cut, the first page of the booklet starts with the text of the banner on the Shop tab,
+  and "See the Problems list on the Layout tab."
 - **Title page**: the project name, the date, and a list of the other sections in the booklet.
 - **Shopping list**: the tables from the Reports tab, with the hardware.
 - **Sheet diagrams**: one landscape page per sheet with the sheet number, the stock, and the scale. The drawing uses

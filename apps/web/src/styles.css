@@ -43,6 +43,7 @@ input[aria-invalid="true"] { border-color: var(--bad); outline: 2px solid var(--
 .banner { margin: 8px 16px; padding: 8px 12px; border-radius: 6px; background: #fff7d6; border: 1px solid #e9d27a; }
 .banner.error { background: #fdecea; border-color: #f0a9a2; color: var(--bad); }
 .banner p { margin: 2px 0; }
+.banner.plan-alert { margin: 0 0 12px; }
 .stock-note { margin: 4px 0 8px; }
 
 .home { max-width: 960px; margin: 0 auto; padding: 24px 16px 60px; }
@@ -57,6 +58,7 @@ input[aria-invalid="true"] { border-color: var(--bad); outline: 2px solid var(--
 .tabs { display: flex; gap: 2px; padding: 8px 16px 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
 .tabs [role="tab"] { border: 1px solid transparent; border-bottom: none; border-radius: 6px 6px 0 0; background: none; padding: 7px 16px; }
 .tabs [role="tab"][aria-selected="true"] { background: var(--panel); border-color: var(--line); font-weight: 600; margin-bottom: -1px; }
+.tab-badge { display: inline-block; min-width: 18px; margin-left: 6px; padding: 0 5px; border-radius: 9px; background: var(--bad); color: #fff; font-size: 11px; font-weight: 600; line-height: 18px; text-align: center; }
 .panel { flex: 1; background: var(--panel); padding: 16px; }
 
 .table-wrap { overflow-x: auto; }
@@ -231,6 +233,7 @@ table.grid tr.generated td { color: var(--muted); }
   .print-root h1 { font-size: 16pt; margin: 0 0 8pt; }
   .print-root h2 { font-size: 13pt; margin: 0 0 2pt; }
   .print-meta { margin: 0 0 6pt; color: #444; }
+  .print-alert { margin: 0 0 8pt; padding: 4pt 6pt; border: 1pt solid #000; font-weight: 600; }
   .print-diagram svg { display: block; }
   .print-key { list-style: none; padding: 0; margin: 6pt 0 0; columns: 3; column-gap: 12pt; font-size: 9pt; }
   .print-note { font-size: 8.5pt; margin: 4pt 0 0; }

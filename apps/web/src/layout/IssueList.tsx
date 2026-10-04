@@ -23,7 +23,7 @@ export function IssueList({ project, issues, onShow }: IssueListProps) {
   const errors = issues.filter((issue) => issue.severity === "error").length;
   return (
     <section aria-labelledby="issues-title">
-      <h3 id="issues-title">
+      <h3 id="issues-title" tabIndex={-1}>
         Problems <span className="muted">({errors} {errors === 1 ? "error" : "errors"}, {issues.length - errors} {issues.length - errors === 1 ? "warning" : "warnings"})</span>
       </h3>
       {issues.length === 0 && <p className="ok">✔ The layout has no problems.</p>}

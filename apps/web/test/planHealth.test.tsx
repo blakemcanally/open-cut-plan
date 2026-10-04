@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { describe, expect, it } from "vitest";
 import { LayoutTab } from "../src/layout/LayoutTab.tsx";
 import { useOptimizeRuns } from "../src/optimizer/useOptimizeRuns.ts";
+import { PrintView } from "../src/print/PrintView.tsx";
 import { Workspace } from "../src/screens/Workspace.tsx";
 import { DEFAULT_PREFS } from "../src/state/prefs.ts";
 import { useProject, type ProjectStore } from "../src/state/useProject.ts";
@@ -66,6 +67,53 @@ async function renderWorkspace(project: Project) {
 
 const tab = (name: string) => screen.getByRole("tab", { name });
 const selectedTab = () => document.querySelector('[role="tab"][aria-selected="true"]')!.id;
+
+/** The sample project with the two sides on top of each other. */
+function overlapProject(): Project {
+  const project = sampleProject();
+  project.plan!.sheets[0]!.placements[1]!.y = 5;
+  return project;
+}
+
+describe("the plan problems on the Shop tab and the Reports tab", () => {
+  it("shows a banner that names the parts, keeps the Shop tab usable, and opens the Problems list", async () => {
+    await renderWorkspace(overlapProject());
+    await userEvent.click(tab("Shop"));
+    const banner = screen.getByRole("status");
+    expect(banner.textContent).toContain("✖ The plan is not ready to cut. 2 parts have a layout error: Side 1 and Side 2. 1 part is not on a sheet: Shelf.");
+    expect(screen.getByRole("button", { name: "Mark done" })).toBeTruthy();
+    await userEvent.click(within(banner).getByRole("button", { name: "Show the problems on the Layout tab" }));
+    expect(selectedTab()).toBe("tab-layout");
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: /^Problems/ }));
+  });
+
+  it("shows the banner on the Reports tab, and none when every part is placed with no error", async () => {
+    await renderWorkspace(sampleProject());
+    await userEvent.click(tab("Reports"));
+    expect(screen.getByRole("status").textContent).toContain("⚠ The plan is not ready to cut. 1 part is not on a sheet: Shelf.");
+    await userEvent.click(tab("Parts"));
+    await userEvent.click(screen.getByRole("button", { name: "Delete Shelf" }));
+    await userEvent.click(tab("Reports"));
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("puts the count of errors on the Layout tab, and keeps the name of the tab", async () => {
+    await renderWorkspace(overlapProject());
+    const layout = tab("Layout");
+    expect(layout.textContent).toBe("Layout1");
+    expect(layout.getAttribute("aria-describedby")).toBe("layout-errors");
+    expect(document.getElementById("layout-errors")!.textContent).toBe("The plan has 1 error.");
+  });
+
+  it("puts the banner on the first page of the booklet", () => {
+    render(<PrintView job={{ kind: "booklet", sections: ["shopping", "sheets"] }} analysis={analyzeProject(overlapProject())} onDone={() => {}} />);
+    const first = document.querySelector(".print-root .print-page")!;
+    expect(first.querySelector(".print-alert")!.textContent).toBe(
+      "✖ The plan is not ready to cut. 2 parts have a layout error: Side 1 and Side 2. 1 part is not on a sheet: Shelf. See the Problems list on the Layout tab.",
+    );
+    expect(document.querySelectorAll(".print-alert")).toHaveLength(1);
+  });
+});
 
 describe("a new project", () => {
   it("opens on the Design tab, and each empty state links to the tab that fixes it", async () => {

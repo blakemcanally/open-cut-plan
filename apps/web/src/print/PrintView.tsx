@@ -8,6 +8,7 @@ import {
   hardwareList,
   labelLayout,
   labelPages,
+  planAlert,
   resultSentence,
   sheetSvg,
   sheetSvgExtent,
@@ -20,7 +21,7 @@ import {
   type SheetAnalysis,
   type TreeItem,
 } from "@opencutplan/core";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { HardwareTable } from "../reports/HardwareTable.tsx";
 import { ShoppingTables } from "../reports/ShoppingTables.tsx";
@@ -72,31 +73,39 @@ export function PrintView({ job, analysis, onDone }: PrintViewProps) {
 
 function BookletPages({ analysis, sections }: { analysis: ProjectAnalysis; sections: readonly BookletSection[] }) {
   const included = BOOKLET_SECTIONS.filter((section) => sections.includes(section));
+  const problems = planAlert(analysis.context, analysis.issues);
+  const notice = problems && (
+    <p className="print-alert">
+      {problems.severity === "error" ? "✖" : "⚠"} {problems.text} See the Problems list on the Layout tab.
+    </p>
+  );
   return (
     <>
-      {included.map((section) => {
+      {included.map((section, index) => {
+        const alert = index === 0 ? notice : null;
         switch (section) {
           case "title":
-            return <TitlePage key={section} analysis={analysis} contents={included.filter((other) => other !== "title")} />;
+            return <TitlePage key={section} analysis={analysis} contents={included.filter((other) => other !== "title")} alert={alert} />;
           case "shopping":
-            return <ShoppingPage key={section} analysis={analysis} />;
+            return <ShoppingPage key={section} analysis={analysis} alert={alert} />;
           case "sheets":
-            return <SheetPages key={section} analysis={analysis} />;
+            return <SheetPages key={section} analysis={analysis} alert={alert} />;
           case "sequence":
-            return <SequencePages key={section} analysis={analysis} />;
+            return <SequencePages key={section} analysis={analysis} alert={alert} />;
           case "assembly":
-            return <AssemblyPages key={section} analysis={analysis} />;
+            return <AssemblyPages key={section} analysis={analysis} alert={alert} />;
         }
       })}
     </>
   );
 }
 
-function TitlePage({ analysis, contents }: { analysis: ProjectAnalysis; contents: readonly BookletSection[] }) {
+function TitlePage({ analysis, contents, alert }: { analysis: ProjectAnalysis; contents: readonly BookletSection[]; alert: ReactNode }) {
   return (
     <section className="print-page print-title">
       <h1>{analysis.context.project.project.name}</h1>
       <p className="print-meta">{new Date().toLocaleDateString(undefined, { dateStyle: "long" })}</p>
+      {alert}
       <h2>Contents</h2>
       <ol>
         {contents.map((section) => (
@@ -107,27 +116,29 @@ function TitlePage({ analysis, contents }: { analysis: ProjectAnalysis; contents
   );
 }
 
-function ShoppingPage({ analysis }: { analysis: ProjectAnalysis }) {
+function ShoppingPage({ analysis, alert }: { analysis: ProjectAnalysis; alert: ReactNode }) {
   const project = analysis.context.project;
   const hardware = hardwareList(project);
   return (
     <section className="print-page">
       <h1>{project.project.name}: shopping list</h1>
+      {alert}
       {analysis.sheets.length > 0 && <ShoppingTables analysis={analysis} level={2} />}
       {hardware.length > 0 && <HardwareTable project={project} lines={hardware} level={2} />}
     </section>
   );
 }
 
-function AssemblyPages({ analysis }: { analysis: ProjectAnalysis }) {
+function AssemblyPages({ analysis, alert }: { analysis: ProjectAnalysis; alert: ReactNode }) {
   const project = analysis.context.project;
   return (
     <>
-      {assemblyGroups(project).map((group) => (
+      {assemblyGroups(project).map((group, groupIndex) => (
         <section key={group.design} className="print-page print-assembly">
           <h1>
             {project.project.name}: {group.name}
           </h1>
+          {groupIndex === 0 && alert}
           <div className="print-elevation" dangerouslySetInnerHTML={{ __html: designElevationSvg(project, group.design)! }} />
           <ol className="print-steps">
             {group.steps.map((step, index) => (
@@ -186,7 +197,7 @@ function keyRows(analysis: ProjectAnalysis, sheet: SheetAnalysis): KeyRow[] {
   return [...rows.values()].sort((a, b) => order.get(a.part.id)! - order.get(b.part.id)! || Number(a.rotated) - Number(b.rotated));
 }
 
-function SheetPages({ analysis }: { analysis: ProjectAnalysis }) {
+function SheetPages({ analysis, alert }: { analysis: ProjectAnalysis; alert: ReactNode }) {
   const ctx = analysis.context;
   const colors = useMemo(() => partColors(ctx.project), [ctx.project]);
   return (
@@ -201,6 +212,7 @@ function SheetPages({ analysis }: { analysis: ProjectAnalysis }) {
             <p className="print-meta">
               {scaleText(scale.ratio)} · {ctx.project.project.name}
             </p>
+            {sheet.index === 0 && alert}
             <div className={keyBeside ? "print-sheet-body key-beside" : "print-sheet-body"}>
               <div className="print-diagram" dangerouslySetInnerHTML={{ __html: sheetSvg(ctx, sheet, analysis.steps, { colors, width: scale.width, height: scale.height, idPrefix: "print" }) }} />
               <ul className="print-key">
@@ -230,12 +242,13 @@ function SheetPages({ analysis }: { analysis: ProjectAnalysis }) {
   );
 }
 
-function SequencePages({ analysis }: { analysis: ProjectAnalysis }) {
+function SequencePages({ analysis, alert }: { analysis: ProjectAnalysis; alert: ReactNode }) {
   const ctx = analysis.context;
   const colors = useMemo(() => partColors(ctx.project), [ctx.project]);
   return (
     <section className="print-page">
       <h1>{ctx.project.project.name}: cut sequence</h1>
+      {alert}
       {analysis.steps.length === 0 && <p>There are no cut steps.</p>}
       {analysis.sheets.map((sheet) => {
         const steps = analysis.steps.filter((step) => step.sheetNumber === sheet.index + 1);
