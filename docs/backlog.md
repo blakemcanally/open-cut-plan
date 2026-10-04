@@ -35,6 +35,8 @@ touch it. Nothing makes the optimizer *prefer* it.
 
 ## 3. Give each copy of a design its own colour, and let the user choose colours
 
+**Status:** Done.
+
 **Request:** When a design has a quantity of 2, the layout shows the parts of the two cabinets in different colours.
 The user can choose the colour of each one.
 
@@ -49,6 +51,18 @@ A design with a quantity of 2 doubles the quantity of each part, so both cabinet
 - Add an optional `color` to a design (and to a group of manual parts) in the file format.
 - Add a colour picker in the Design tab and the Parts tab.
 - This item also helps item 1: "keep the parts of cabinet #1 on one sheet".
+
+**Chosen approach:**
+
+- Each unit of a design is one colour key, for example "Calyx cabinet 2 of 2". Copy *c* of a part belongs to unit
+  ⌊*c* / *count*⌋ + 1. Each group of parts without a design is one key. The `group` of the parts does not change.
+- `partColors` in core gives the colour of each copy and a legend (`packages/core/src/reports/colors.ts`). The palette
+  has 12 light colours. The first 8 are the old colours, so a file without designs of 2 or more units keeps its colours.
+- File format 1.4: an optional `designs[].colors` (one `#rrggbb` for each unit) and an optional top-level `groups`
+  (a `color` for each group). See [format.md](format.md#colours-added-in-14).
+- A colour box and **Automatic** for each unit on the Design tab, and for each group on the Parts tab. A **Colours**
+  list in the Layout tab. Labels show the unit.
+- `design add` and `design set --color <unit>=<#rrggbb|auto>`, `parts group-color`, and `parts colors` in the CLI.
 
 ## 4. A full catalogue of materials and stock
 
