@@ -146,7 +146,9 @@ projects and to 0.1 mm in mm projects.
   returns no labels when the `labels` feature is off.
 - `sheetSvg`: a standalone SVG drawing of one sheet in project units, with the parts in their colours, grain
   stripes and arrows, the trim zone, and numbered cut lines in stage colours. Options pick the part colours, the
-  `width` and `height` attributes, a step to draw stronger, and the steps to draw as done. `sheetSvgExtent` gives the
+  `width` and `height` attributes, a step to draw stronger, and the steps to draw as done. With the option
+  `cutColors: "tool"`, the cut lines and their numbers have the colours of `toolColors`, and the number of a cut with
+  a warning has the fill `TOOL_WARNING_FILL`. The highlighted step and the steps that are done keep their colours. `sheetSvgExtent` gives the
   area it draws: the sheet and a margin on every side, so the numbers on edge cuts are not clipped. All text is
   escaped, so the result is safe to put in a page.
 - `partColors(project)` gives the colour of each part copy. Each unit of a design is one colour key, and each group of
@@ -158,6 +160,11 @@ projects and to 0.1 mm in mm projects.
 - `setDesignColor(project, design, unit, color)` and `setGroupColor(project, group, color)` set a chosen colour, or
   make it automatic again with `null`. `detachDesign` keeps the colour of the first unit as the colour of the group.
 - `stageColor` gives the colour of the cut lines of a stage.
+- `toolColors(tools)` gives one colour from `TOOL_COLORS` to each enabled tool, in profile order. After the sixth
+  tool, the colours start again. A tool keeps its colour while the plan changes. `legend` lists the enabled tools
+  with their colours, and `colorOf(id)` gives the colour of one tool. `cutColor(step)` gives the colour of a cut. A
+  cut with no tool, or over a limit of its tool (`toolWarning(step)`), has `TOOL_WARNING_COLOR` (red). The tool
+  colours have a contrast of 4.5 or more against white, and none of them is red.
 - `LABEL_LAYOUTS` has the label sheets: Avery 5160 (US Letter, 3 × 10), Avery L7160 (A4, 3 × 7), and a 4 × 2 in
   thermal label. `labelPages(labels, layout, start)` puts the labels on pages from a start position (1 is the top
   left, then along the row) and fills the rest of the last page with `null`.

@@ -125,8 +125,23 @@ Sheets are drawn to scale. Parts have their colour, grain stripes, and a ⟂ mar
 unit of a design has its own colour, and each group of parts without a design has one colour. A part without a design
 or a group is grey. The **Colours** list beside the sheets names each colour, for example "Hall KALLAX 2 of 2". The
 user chooses the colours on the Design tab and the Parts tab. The Shop tab, the Reports tab, the printed booklet, and
-the SVG files use the same colours. See [format.md](format.md#colours-added-in-14). The trim zone is dashed. Cut lines are numbered in sequence order and coloured by stage. A part with a problem
+the SVG files use the same colours. See [format.md](format.md#colours-added-in-14). The trim zone is dashed. Cut lines are numbered in sequence order. A part with a problem
 turns red and has a ⚠ mark; the **Problems** list names each problem, and **Show** selects the part.
+
+- Under the title of each sheet, the app shows the full stock name. The name wraps, so it is never cut off.
+- Under the stock name, a summary line gives the cuts of each tool, the part of the sheet that parts use, and the
+  cost of the sheet, for example "Track saw 3 cuts · Table saw 9 cuts · 72% used · $65.00". The tools are in profile
+  order, and "No tool" is last. The cost shows when the `cost` feature is on and the stock has a price. An owned
+  offcut has no cost.
+- **Cut lines** beside the sheets has the **Colour cuts by** choice: **Stage** (the default) or **Tool**, and a
+  legend for the choice. With **Stage**, each stage has its colour. With **Tool**, each enabled tool has one colour,
+  in profile order. A cut with no tool, or with a chosen tool that is over one of its limits, is red, and its number
+  has a light red fill. The legend then has the item "No tool, or over a tool limit". The choice belongs to the
+  browser, not to the project file. **Cut lines** shows only when the sheets show cut lines.
+- A click on a cut number opens its step on the Shop tab. Tab moves the focus to the cut numbers after the parts of
+  the sheet; Enter or Space opens the step. Each cut number has a name such as "Step 5, Table saw rip". The name of
+  a cut with a problem adds "no tool" or the limit, for example "Step 1, Table saw trim, over its largest piece".
+  While the focus is on a cut number, the part keys (**R**, **Delete**, and the arrow keys) do not act.
 
 - **Optimize** plans every part again. Pinned sheets stay as they are.
 - **Optimize the rest** keeps every sheet and plans only the parts in the tray.
@@ -170,8 +185,13 @@ list follows.
 - **Tool** changes the tool of the current cut. The recommended tool has "(recommended)"; a tool that is over one of
   its limits for the cut says which limit, and the first action warns about it. The file keeps the choice. The ticks
   stay on their cuts.
+- A colour box beside **Tool** shows the colour of the tool, as on the Layout tab. The box is red when the cut has
+  no tool, or when the tool is over one of its limits.
 - The list shows each step as its number and what it does. When all the steps of a sheet use one tool, the sheet
-  heading names the tool; otherwise each step names its tool.
+  heading names the tool; otherwise each step names its tool. Each tool name has the colour box of the tool.
+- The drawing colours the cuts as the **Colour cuts by** choice on the Layout tab does.
+- A cut number on the Layout tab opens the Shop tab at its step, and puts the focus on the step title. A later
+  visit to the Shop tab starts at the first step that is not done again.
 - **Mark done** ticks the current step and goes to the next step that is not done. **← Previous** and **Next →** move
   without a tick. The list groups the steps by sheet; a click on a step makes it current, and its box ticks it.
 - The ticks are saved in the project (`extensions["opencutplan.app"].progress`), so they stay after a reload and go

@@ -132,6 +132,23 @@ length of the two directions. The optimizer score counts cut steps, not cut leng
 - A side list of the sections. A click on a section shows that section only.
 - A search box above the list. A search shows the settings that match it, from all sections.
 
-## Open
+## 7. Tools in the layout and the cut plan
 
-- **Tools in the layout and the cut plan:** something to improve here, not yet defined. The tool colours are good.
+**Status:** Done.
+
+**Request:** "There was something on the layout and the cut plan that I wanted to optimize for tools. I like how it
+shows in different colours for those things."
+
+**Now:** On the Layout tab, the cut lines have stage colours only. The sheet header shows only the stock name, and
+the name is cut off at three columns. The use of each sheet shows only on the Reports tab.
+
+**Chosen approach:**
+
+- The Layout drawing has a "Colour cuts by: stage / tool" choice, with the other view choices of the browser. The
+  default is stage. With "tool", each cut line and its number have the colour of the tool. Each enabled tool has one
+  colour, in profile order. A cut with no tool, or with a chosen tool over its limit, has a warning style. The stage
+  colours do not change. A small legend shows the colours of the current choice. The Shop tab uses the same tool
+  colours. In the core, the tool colours are next to `stageColor`, and `sheetSvg` can colour the cuts by tool.
+- Under each sheet title, one short summary line, for example "Track saw 3 cuts · Table saw 9 cuts · 96% used ·
+  $65". The sheet title wraps, so it is not cut off at three columns.
+- A click (or Enter) on a cut number in the Layout drawing opens that step on the Shop tab.
