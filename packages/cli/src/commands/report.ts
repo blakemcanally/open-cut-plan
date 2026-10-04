@@ -2,6 +2,7 @@ import {
   analyzeProject,
   assemblySteps,
   describeStep,
+  factoryEdgeRequest,
   resultSentence,
   formatArea,
   hardwareList,
@@ -149,7 +150,7 @@ const LAYOUT_IDS = LABEL_LAYOUTS.map((layout) => layout.id);
 const labels: CommandSpec = {
   name: "report labels",
   summary: "One label per part copy, and the label pages.",
-  description: `The part labels: name, size, material, grain, sheet, and the step that cuts the part free. With --layout, the labels are also split into pages of that label sheet. The list is empty when the labels feature is off (settings set <file> features.labels true). Layouts: ${LABEL_LAYOUTS.map((l) => `${l.id} (${l.name})`).join(", ")}.`,
+  description: `The part labels: name, size, material, grain, factory edge (true when the part asks for a long edge on a factory edge of the sheet), sheet, and the step that cuts the part free. With --layout, the labels are also split into pages of that label sheet. The list is empty when the labels feature is off (settings set <file> features.labels true). Layouts: ${LABEL_LAYOUTS.map((l) => `${l.id} (${l.name})`).join(", ")}.`,
   args: [FILE_ARG],
   options: [
     { name: "layout", type: "string", value: `<${LAYOUT_IDS.join("|")}>`, description: "Split the labels into pages of this label sheet." },
@@ -160,7 +161,7 @@ const labels: CommandSpec = {
     { command: `${PROGRAM} report labels shelf.cutplan.json --layout avery-5160 --start 7 --json`, description: "Pages of Avery 5160 labels, from the 7th label." },
   ],
   output:
-    "enabled (the labels feature), labels [{ part, copy, name, group, length, width, material, grain, sheetNumber, step }]. With --layout: layout (the label sheet), pages [[{ part, copy } or null]] (null is an empty slot).",
+    "enabled (the labels feature), labels [{ part, copy, name, group, length, width, material, grain, factoryEdge, sheetNumber, step }]. With --layout: layout (the label sheet), pages [[{ part, copy } or null]] (null is an empty slot).",
   async run({ args, options, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
@@ -171,7 +172,7 @@ const labels: CommandSpec = {
     const enabled = project.settings.features.labels;
     const data: Record<string, unknown> = { enabled, labels: analysis.labels };
     const lines = enabled
-      ? analysis.labels.map((l) => `${l.name}: ${len(project, l.length)} × ${len(project, l.width)}, ${analysis.context.materials.get(l.material)?.name ?? l.material}${l.sheetNumber === null ? ", not placed" : `, sheet ${l.sheetNumber}`}${l.step === null ? "" : `, step ${l.step}`}`)
+      ? analysis.labels.map((l) => `${l.name}: ${len(project, l.length)} × ${len(project, l.width)}, ${analysis.context.materials.get(l.material)?.name ?? l.material}${l.factoryEdge ? ", factory edge" : ""}${l.sheetNumber === null ? ", not placed" : `, sheet ${l.sheetNumber}`}${l.step === null ? "" : `, step ${l.step}`}`)
       : ["The labels feature is off. Turn it on with: settings set <file> features.labels true"];
     if (layoutId !== undefined) {
       const layout = LABEL_LAYOUTS.find((l) => l.id === layoutId)!;
@@ -205,6 +206,7 @@ function cutList(project: Project) {
     thickness: analysis.context.materials.get(part.material)?.thickness ?? null,
     quantity: part.quantity,
     grain: part.grain,
+    factoryEdge: factoryEdgeRequest(project, part),
     group: part.group ?? null,
     placed: Math.min(placed.get(part.id) ?? 0, part.quantity),
     sheets: where.get(part.id) ?? [],
@@ -227,11 +229,12 @@ function cutList(project: Project) {
 const cutlist: CommandSpec = {
   name: "report cutlist",
   summary: "Every part with its size, count, and sheets.",
-  description: "The cut list: every part with its size, material, quantity, the copies placed, and the sheet numbers they are on; then the part count and area of each material.",
+  description:
+    "The cut list: every part with its size, material, quantity, the factory edge that it asks for (by its own choice or by the settings rule), the copies placed, and the sheet numbers they are on; then the part count and area of each material.",
   args: [FILE_ARG],
   options: [],
   examples: [{ command: `${PROGRAM} report cutlist shelf.cutplan.json`, description: "Print the cut list." }],
-  output: "units, parts [{ id, name, material, length, width, thickness, quantity, grain, group, placed, sheets (numbers) }], materials [{ material, name, parts, copies, partArea (square units) }].",
+  output: "units, parts [{ id, name, material, length, width, thickness, quantity, grain, factoryEdge (long, or null), group, placed, sheets (numbers) }], materials [{ material, name, parts, copies, partArea (square units) }].",
   async run({ args, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
@@ -239,8 +242,8 @@ const cutlist: CommandSpec = {
     const units = project.project.units;
     const text = [
       table(
-        ["part", "name", "size", "qty", "placed", "material", "sheets"],
-        parts.map((p) => [p.id, p.name, size(project, p), String(p.quantity), String(p.placed), p.material, p.sheets.join(", ")]),
+        ["part", "name", "size", "qty", "placed", "material", "factory edge", "sheets"],
+        parts.map((p) => [p.id, p.name, size(project, p), String(p.quantity), String(p.placed), p.material, p.factoryEdge ?? "", p.sheets.join(", ")]),
       ),
       ...materials.map((m) => `${m.name}: ${plural(m.parts, "part")}, ${plural(m.copies, "copy", "copies")}, ${formatArea(m.partArea, units)}.`),
     ].join("\n");

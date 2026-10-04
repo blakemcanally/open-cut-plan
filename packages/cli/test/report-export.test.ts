@@ -87,6 +87,26 @@ describe("report", () => {
   });
 });
 
+describe("factory edges in the reports", () => {
+  it("says factory edge on the labels and in the cut list for each part that asks for one", async () => {
+    const io = withExamples();
+    await cli(["settings", "set", SHELF, "factoryEdge.minLength", "40"], io);
+    await cli(["parts", "set", SHELF, "a-top", "--factory-edge", "long"], io);
+    const labels = await cli(["report", "labels", SHELF, "--json"], io);
+    const named = (name: string) => labels.json().labels.find((label: { name: string }) => label.name === name);
+    expect(named("A Top").factoryEdge).toBe(true);
+    expect(named("A Side 1").factoryEdge).toBe(false);
+    const text = (await cli(["report", "labels", SHELF], io)).stdout.split("\n");
+    expect(text.find((line) => line.startsWith("A Top:"))).toContain(", factory edge");
+    expect(text.find((line) => line.startsWith("A Side 1:"))).not.toContain("factory edge");
+    const cutlist = await cli(["report", "cutlist", SHELF, "--json"], io);
+    const part = (id: string) => cutlist.json().parts.find((p: { id: string }) => p.id === id);
+    expect(part("a-top").factoryEdge).toBe("long");
+    expect(part("a-side").factoryEdge).toBeNull();
+    expect((await cli(["report", "cutlist", SHELF], io)).stdout.split("\n")[0]).toContain("factory edge");
+  });
+});
+
 describe("export", () => {
   it("writes one SVG per sheet into a directory", async () => {
     const io = withExamples();

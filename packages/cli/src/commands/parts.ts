@@ -1,4 +1,4 @@
-import { GrainSchema, isHexColor, MAX_PART_QUANTITY, partColors, removePart, setGroupColor, updatePart, type Part, type Patch, type Project } from "@opencutplan/core";
+import { FACTORY_EDGE_CHOICES, factoryEdgeRequest, GrainSchema, isHexColor, MAX_PART_QUANTITY, partColors, removePart, setGroupColor, updatePart, type Part, type Patch, type Project } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines } from "../project.ts";
 import { usageError, type CommandSpec, type GroupSpec, type OptionValues } from "../spec.ts";
@@ -16,6 +16,12 @@ const OPTIONS = {
   quantity: { name: "quantity", type: "string", value: "<n>", description: `The number of copies, 1 to ${MAX_PART_QUANTITY}. Default for add: 1.` },
   material: { name: "material", type: "string", value: "<id|name>", description: "The material id or name. For add, required when the project has more than one material." },
   grain: { name: "grain", type: "string", value: "<length|width|none>", description: "The part dimension that must run along the stock grain, or none. Default for add: length." },
+  factoryEdge: {
+    name: "factory-edge",
+    type: "string",
+    value: `<${FACTORY_EDGE_CHOICES.join("|")}>`,
+    description: "long asks for a long edge of the part on a factory edge of the sheet; none does not. Without it, the rule factoryEdge.minLength of the settings decides.",
+  },
   group: { name: "group", type: "string", value: "<text>", description: "An assembly or cabinet name, for colours and labels." },
   notes: { name: "notes", type: "string", value: "<text>", description: "Notes." },
 } as const;
@@ -43,11 +49,18 @@ function fields(project: Project, options: OptionValues): Patch<Part> {
   if (material !== undefined) patch.material = resolveMaterial(project, material).id;
   const grain = optionalChoice(options, "grain", GRAINS);
   if (grain !== undefined) patch.grain = grain;
+  const factoryEdge = optionalChoice(options, "factory-edge", FACTORY_EDGE_CHOICES);
+  if (factoryEdge !== undefined) patch.factoryEdge = factoryEdge;
   const group = str(options, "group");
   if (group !== undefined) patch.group = group;
   const notes = str(options, "notes");
   if (notes !== undefined) patch.notes = notes;
   return patch;
+}
+
+function factoryEdgeText(project: Project, part: Part): string {
+  if (part.factoryEdge !== undefined) return part.factoryEdge;
+  return factoryEdgeRequest(project, part) === null ? "" : "long (rule)";
 }
 
 function droppedCopies(before: Project, after: Project): { part: string; copy: number }[] {
@@ -62,14 +75,14 @@ const list: CommandSpec = {
   args: [FILE_ARG],
   options: [],
   examples: [{ command: `${PROGRAM} parts list shelf.cutplan.json`, description: "List the parts as a table." }],
-  output: "units, parts [{ id, name, material, length, width, quantity, grain, group?, notes?, placedCopies }]. placedCopies is derived; it is not a file field.",
+  output: "units, parts [{ id, name, material, length, width, quantity, grain, factoryEdge?, group?, notes?, placedCopies }]. placedCopies is derived; it is not a file field. The text column factory edge shows long (rule) for a part that the settings rule asks for.",
   async run({ args, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const parts = project.parts.map((part) => ({ ...part, placedCopies: placedCopies(project, part.id) }));
     const text = table(
-      ["id", "name", "length", "width", "qty", "placed", "material", "grain", "group"],
-      parts.map((p) => [p.id, p.name, len(project, p.length), len(project, p.width), String(p.quantity), String(p.placedCopies), p.material, p.grain, p.group ?? ""]),
+      ["id", "name", "length", "width", "qty", "placed", "material", "grain", "factory edge", "group"],
+      parts.map((p) => [p.id, p.name, len(project, p.length), len(project, p.width), String(p.quantity), String(p.placedCopies), p.material, p.grain, factoryEdgeText(project, p), p.group ?? ""]),
     );
     return { data: { units: project.project.units, parts }, text, warnings: warningLines(loaded) };
   },
@@ -82,7 +95,7 @@ const get: CommandSpec = {
   args: [FILE_ARG, { name: "id", description: "The part id." }],
   options: [],
   examples: [{ command: `${PROGRAM} parts get shelf.cutplan.json a-side --json`, description: "Show the part a-side." }],
-  output: "units, part { id, name, material, length, width, quantity, grain, group?, notes? }, placedCopies.",
+  output: "units, part { id, name, material, length, width, quantity, grain, factoryEdge?, group?, notes? }, placedCopies.",
   async run({ args, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
@@ -104,6 +117,7 @@ const add: CommandSpec = {
     OPTIONS.quantity,
     OPTIONS.material,
     OPTIONS.grain,
+    OPTIONS.factoryEdge,
     OPTIONS.group,
     OPTIONS.notes,
     ID_OPTION,
@@ -129,6 +143,7 @@ const add: CommandSpec = {
       quantity: patch.quantity ?? 1,
       grain: patch.grain ?? "length",
     };
+    if (patch.factoryEdge !== undefined) part.factoryEdge = patch.factoryEdge;
     if (patch.group !== undefined) part.group = patch.group;
     if (patch.notes !== undefined) part.notes = patch.notes;
     const next = { ...project, parts: [...project.parts, part] };
@@ -142,10 +157,11 @@ const set: CommandSpec = {
   description:
     "Change the fields of a part. Only the fields you give change. The id does not change. A lower quantity takes the extra copies off the sheets, as the app does; removedPlacements lists them. A part that a design makes cannot change (exit 1, generated-part); change the design instead.",
   args: [FILE_ARG, { name: "id", description: "The part id." }],
-  options: [OPTIONS.name, OPTIONS.length, OPTIONS.width, OPTIONS.quantity, OPTIONS.material, OPTIONS.grain, OPTIONS.group, OPTIONS.notes, unsetOption(["group", "notes"]), ...OUTPUT_OPTIONS],
+  options: [OPTIONS.name, OPTIONS.length, OPTIONS.width, OPTIONS.quantity, OPTIONS.material, OPTIONS.grain, OPTIONS.factoryEdge, OPTIONS.group, OPTIONS.notes, unsetOption(["factory-edge", "group", "notes"]), ...OUTPUT_OPTIONS],
   examples: [
     { command: `${PROGRAM} parts set shelf.cutplan.json side --quantity 4 --width "11 7/8"`, description: "Change the quantity and the width." },
     { command: `${PROGRAM} parts set shelf.cutplan.json side --unset group --dry-run`, description: "See what removing the group changes." },
+    { command: `${PROGRAM} parts set shelf.cutplan.json side --factory-edge long`, description: "Put a long edge of the side on a factory edge of the sheet." },
   ],
   output: "part (after the change), removedPlacements [{ part, copy }], changes, validation, written, dryRun. For a generated part: error { code: \"generated-part\", id, design }.",
   async run(invocation) {
@@ -154,10 +170,10 @@ const set: CommandSpec = {
     const { project } = loaded;
     const old = findById(project.parts, args[1]!, "part");
     assertNotGenerated(project, old);
-    const unset = unsetFields(options, ["group", "notes"] as const);
-    assertNoConflict(options, ["group", "notes"], unset);
+    const unset = unsetFields(options, ["factory-edge", "group", "notes"] as const);
+    assertNoConflict(options, ["factory-edge", "group", "notes"], unset);
     const patch = fields(project, options);
-    for (const field of unset) patch[field] = undefined;
+    for (const field of unset) patch[field === "factory-edge" ? "factoryEdge" : field] = undefined;
     const next = updatePart(project, old.id, patch);
     const part = findById(next.parts, old.id, "part");
     const removedPlacements = droppedCopies(project, next);

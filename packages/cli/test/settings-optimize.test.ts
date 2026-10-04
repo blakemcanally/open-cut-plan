@@ -42,6 +42,19 @@ describe("settings", () => {
     expect(after).toMatchObject({ "optimizer.seed": null, "minOffcut.length": 12, "minOffcut.width": 8, minOffcut: "custom", notes: null });
   });
 
+  it("sets and removes the rule that puts long parts on a factory edge", async () => {
+    const io = withExamples();
+    expect((await cli(["settings", "get", SHELF, "factoryEdge.minLength", "--json"], io)).json().value).toBeNull();
+    const result = await cli(["settings", "set", SHELF, "factoryEdge.minLength", "3'", "--json"], io);
+    expect(result.code).toBe(0);
+    expect(result.file(SHELF).settings.factoryEdge).toEqual({ minLength: 36 });
+    expect((await cli(["settings", "get", SHELF, "factoryEdge.minLength"], io)).stdout).toBe('36 (36")\n');
+    const bad = await cli(["settings", "set", SHELF, "factoryEdge.minLength", "0", "--json"], io);
+    expect(bad.code).toBe(2);
+    const removed = await cli(["settings", "set", SHELF, "factoryEdge.minLength", "none", "--json"], io);
+    expect(removed.file(SHELF).settings).not.toHaveProperty("factoryEdge");
+  });
+
   it("uses the factory edges", async () => {
     const io = withExamples();
     const result = await cli(["settings", "set", SHELF, "--factory-edges", "--json"], io);
@@ -110,6 +123,18 @@ describe("optimize", () => {
     expect(data.after.sheets).toBeGreaterThan(0);
     expect(data.after.cost).toEqual(expect.any(Number));
     expect(result.file(BOOKCASE).plan!.sheets.length).toBe(data.after.sheets);
+  });
+
+  it("puts long parts on the factory edges and says how many get one", async () => {
+    const io = withExamples();
+    const plain = await cli(["optimize", BOOKCASE, "--iterations", "20"], io);
+    expect(plain.stdout).not.toContain("Factory edges:");
+    await cli(["settings", "set", BOOKCASE, "--factory-edges", "factoryEdge.minLength", "900"], io);
+    const result = await cli(["optimize", BOOKCASE, "--iterations", "40", "--json"], io);
+    const misses = result.json().materials.reduce((sum: number, m: { score: { factoryEdgeMisses: number } }) => sum + m.score.factoryEdgeMisses, 0);
+    expect(misses).toBe(result.json().validation.issues.filter((issue: { code: string }) => issue.code === "factory-edge").length);
+    const text = await cli(["optimize", BOOKCASE, "--iterations", "40"], io);
+    expect(text.stdout).toMatch(/Factory edges: \d+ of \d+ copies that ask for one get one\./);
   });
 
   it("gives the same plan for the same seed and iterations", async () => {

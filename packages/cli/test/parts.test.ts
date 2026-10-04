@@ -65,6 +65,33 @@ describe("parts", () => {
     expect(result.file(SHELF).plan!.sheets.flatMap((s) => s.placements).filter((p) => p.part === "a-side")).toHaveLength(1);
   });
 
+  it("asks for a factory edge on a part, and removes the choice with --unset factory-edge", async () => {
+    const io = withExamples();
+    const set = await cli(["parts", "set", SHELF, "a-side", "--factory-edge", "long", "--json"], io);
+    expect(set.code).toBe(0);
+    expect(set.json().part.factoryEdge).toBe("long");
+    expect(set.json().validation.issues.filter((issue: { code: string }) => issue.code === "factory-edge").map((issue: { message: string }) => issue.message)).toEqual([
+      "Sheet 3: A Side 1 asks for a factory edge, but the trim cuts off the factory edges of this sheet.",
+      "Sheet 3: A Side 2 asks for a factory edge, but the trim cuts off the factory edges of this sheet.",
+    ]);
+    const list = await cli(["parts", "list", SHELF], io);
+    expect(list.stdout.split("\n")[0]).toContain("factory edge");
+    const conflict = await cli(["parts", "set", SHELF, "a-side", "--factory-edge", "none", "--unset", "factory-edge", "--json"], io);
+    expect(conflict.json().error).toMatchObject({ code: "conflict", option: "factory-edge" });
+    const unset = await cli(["parts", "set", SHELF, "a-side", "--unset", "factory-edge", "--json"], io);
+    expect(unset.json().part).not.toHaveProperty("factoryEdge");
+    const bad = await cli(["parts", "set", SHELF, "a-side", "--factory-edge", "both", "--json"], io);
+    expect(bad.code).toBe(2);
+    expect(bad.json().error).toMatchObject({ code: "invalid-value", option: "factory-edge", value: "both" });
+  });
+
+  it("adds a part that asks for no factory edge", async () => {
+    const io = await newProject();
+    await cli(["materials", "add", "p.json", "--name", "Ply", "--thickness", "3/4"], io);
+    const result = await cli(["parts", "add", "p.json", "--name", "Rail", "--length", "60", "--width", "4", "--factory-edge", "none", "--json"], io);
+    expect(result.json().part).toMatchObject({ id: "rail", factoryEdge: "none" });
+  });
+
   it("refuses an edit that leaves errors with --strict, and writes nothing", async () => {
     const io = withExamples();
     const before = io.files.get(SHELF);

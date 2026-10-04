@@ -103,6 +103,15 @@ const KEYS: Key[] = [
     },
   },
   {
+    key: "factoryEdge.minLength",
+    values: "<length>|none",
+    description:
+      "Each part with a long side of at least this length asks for a long edge on a factory edge of the sheet, as parts set --factory-edge long does. The choice of a part (parts set --factory-edge) comes first. none removes the rule. Default: none.",
+    get: (p) => p.settings.factoryEdge?.minLength ?? null,
+    set: (p, v) =>
+      withSettings(p, ({ factoryEdge: old, ...s }) => (v === "none" ? s : { ...s, factoryEdge: { ...old, minLength: lengthValue(v, p.project.units, "factoryEdge.minLength") } })),
+  },
+  {
     key: "display.inch",
     values: INCH_PRECISIONS.join("|"),
     description: "The rounding of inch lengths in text: to 1/8, 1/16, 1/32, or 1/64, or decimal.",
@@ -195,7 +204,7 @@ function values(project: Project): Record<string, string | number | boolean | nu
 
 function show(project: Project, key: Key): string {
   const value = key.get(project);
-  const lengthKeys = ["trim", "minOffcut.length", "minOffcut.width"];
+  const lengthKeys = ["trim", "minOffcut.length", "minOffcut.width", "factoryEdge.minLength"];
   return typeof value === "number" && lengthKeys.includes(key.key) ? `${value} (${len(project, value)})` : String(value);
 }
 

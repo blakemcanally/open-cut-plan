@@ -4,15 +4,19 @@ import {
   describeGoal,
   describeGroupSpread,
   extraCostPercent,
+  factoryEdgeRequest,
   MAX_EXTRA_COST_PERCENT,
   OPTIMIZER_GOALS,
   optimize,
   optimizeRequest,
+  planContext,
   projectGoal,
   regenerateDesigns,
+  sheetFactoryEdgeMisses,
   spreadGroups,
   type OptimizeOptions,
   type OptimizeResult,
+  type Project,
 } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS } from "../project.ts";
@@ -20,6 +24,15 @@ import { usageError, type CommandSpec } from "../spec.ts";
 import { planStats, type PlanStats } from "../stats.ts";
 import { money, plural } from "../text.ts";
 import { flag, integerValue, numberValue, optionalBoolean, optionalChoice, str } from "../values.ts";
+
+function factoryEdgeLine(project: Project): string | null {
+  const ctx = planContext(project);
+  const sheets = project.plan?.sheets ?? [];
+  const asking = sheets.reduce((sum, sheet) => sum + sheet.placements.filter((p) => ctx.parts.has(p.part) && factoryEdgeRequest(project, ctx.parts.get(p.part)!) !== null).length, 0);
+  if (asking === 0) return null;
+  const misses = sheets.reduce((sum, sheet) => sum + sheetFactoryEdgeMisses(ctx, sheet), 0);
+  return `Factory edges: ${asking - misses} of ${plural(asking, "copy", "copies")} that ask for one get one.`;
+}
 
 function statsLine(stats: PlanStats): string {
   return `${plural(stats.sheets, "sheet")}, ${stats.placedCopies} of ${stats.copies} copies placed, buy ${plural(stats.sheetsToBuy, "sheet")}, cost ${money(stats.cost, stats.currency)}`;
@@ -63,7 +76,7 @@ export const optimizeCommand: CommandSpec = {
     { command: `${PROGRAM} optimize shelf.cutplan.json --time 10 --continue --json`, description: "Search 10 more seconds from the current plan." },
   ],
   output:
-    'mode ("all" or "rest"), continued, goal, extraCostPercent (the limit of the run), keepGroupsTogether, seed, timeLimitMs (null with --iterations), iterations (candidates tried), deterministic, before and after { sheets, placedCopies, unplacedCopies, sheetsToBuy, cost, errors }, unplaced [{ part, copy, name, reason }] (reason: too-large, no-stock, no-tool, not-guillotine), materials [{ material, score (with groupSpread: the sheets past the first that hold each unit or group, summed), cheapestCost, extraCostPercent (the extra cost that the plan uses) }], groups [{ key, label, material, sheets }] (the units and groups on more than one sheet of a material), changes, validation, written, dryRun. With --strict, unplaced copies also give exit 1.',
+    'mode ("all" or "rest"), continued, goal, extraCostPercent (the limit of the run), keepGroupsTogether, seed, timeLimitMs (null with --iterations), iterations (candidates tried), deterministic, before and after { sheets, placedCopies, unplacedCopies, sheetsToBuy, cost, errors }, unplaced [{ part, copy, name, reason }] (reason: too-large, no-stock, no-tool, not-guillotine), materials [{ material, score (with groupSpread: the sheets past the first that hold each unit or group, summed; factoryEdgeMisses: the placed copies that ask for a factory edge and do not get one), cheapestCost, extraCostPercent (the extra cost that the plan uses) }], groups [{ key, label, material, sheets }] (the units and groups on more than one sheet of a material), changes, validation, written, dryRun. With --strict, unplaced copies also give exit 1.',
   async run(invocation) {
     const { args, options, io } = invocation;
     if (flag(options, "rest-only") && flag(options, "keep-pinned")) throw usageError("Give --keep-pinned or --rest-only, not both.", "conflict");
@@ -107,6 +120,7 @@ export const optimizeCommand: CommandSpec = {
     const materials = result.materials.map((m) => ({ ...m, extraCostPercent: extraCostPercent(m.score.cost, m.cheapestCost) }));
     const names = new Map(project.materials.map((material) => [material.id, material.name]));
     const groupText = together ? describeGroupSpread(next) : null;
+    const edgeLine = factoryEdgeLine(next);
     const groups = spreadGroups(next).map((g) => ({ key: g.key.key, label: g.key.label, material: g.material, sheets: g.sheets }));
     const details = [
       `Before: ${statsLine(before)}.`,
@@ -116,6 +130,7 @@ export const optimizeCommand: CommandSpec = {
         .filter((m) => m.extraCostPercent > 0)
         .map((m) => `  ${names.get(m.material) ?? m.material}: ${plural(m.score.sheets, "sheet")}, ${m.extraCostPercent} % more cost than the cheapest plan found.`),
       ...(groupText === null ? [] : [`Groups: ${groupText}`]),
+      ...(edgeLine === null ? [] : [edgeLine]),
       ...unplaced.map((u) => `  not placed: ${u.name} (${u.part} copy ${u.copy}): ${u.reason}`),
       `Tried ${result.iterations} candidates${deterministic ? "" : " (a timed run; use --iterations for the same result every time)"}.`,
     ];

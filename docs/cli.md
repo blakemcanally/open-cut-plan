@@ -106,6 +106,7 @@ files. `parts` also has `colors` and `group-color` for the colours of the layout
 | `parts get <file> <id>` | Shows one part. | `opencutplan parts get shelf.cutplan.json a-side --json` |
 | `parts add <file>` | Adds a part. | `opencutplan parts add shelf.cutplan.json --name Side --material bb18 --length 30 --width "11 1/4" --quantity 2` |
 | `parts set <file> <id>` | Changes a part. A lower quantity removes the extra placements. | `opencutplan parts set shelf.cutplan.json a-side --quantity 3 --grain none` |
+| `parts set <file> <id> --factory-edge <long\|none>` | Asks for a long edge of the part on a factory edge of the sheet (`long`), or for none. `--unset factory-edge` gives the choice back to the rule `factoryEdge.minLength`. `parts add` takes the same option. | `opencutplan parts set shelf.cutplan.json a-side --factory-edge long` |
 | `parts remove <file> <id>...` | Removes parts and their placements. | `opencutplan parts remove shelf.cutplan.json a-back` |
 | `parts colors <file>` | Lists the colour of each design unit and each group, as the layout shows them. | `opencutplan parts colors shelf.cutplan.json` |
 | `parts group-color <file> <group> <#rrggbb\|auto>` | Chooses the colour of a group of parts without a design. `auto` gives the automatic colour again. | `opencutplan parts group-color shelf.cutplan.json "3x2 A" "#ff8800"` |
@@ -197,10 +198,12 @@ apply in order, so a length after `units` is in the new units. `opencutplan help
 | `settings set <file> <key> <value>...` | `opencutplan settings set shelf.cutplan.json trim 1/4 orderMode setup optimizer.seed 7` |
 
 The keys are `name`, `notes`, `units`, `trim` (a length, or `factory`), `orderMode`, `minOffcut.length`,
-`minOffcut.width`, `minOffcut` (`default`), `display.inch`, `display.mm`, `optimizer.timeLimitMs`, `optimizer.seed`
+`minOffcut.width`, `minOffcut` (`default`), `factoryEdge.minLength` (a length, or `none`), `display.inch`, `display.mm`, `optimizer.timeLimitMs`, `optimizer.seed`
 (a number, or `none`), `optimizer.goal` (`cost`, `offcuts`, or `cuts`), `optimizer.extraCostPercent` (0 to 100),
 `optimizer.keepGroupsTogether` (`true` or `false`), `currency`, and `features.<name>` for each feature switch. A change of `units` converts all
-lengths in the project. `--factory-edges` is the same as `trim factory`.
+lengths in the project. `--factory-edges` is the same as `trim factory`. With `factoryEdge.minLength`, each part with
+a long side of at least that length asks for a long edge on a factory edge of the sheet. The choice of a part with
+`parts set --factory-edge` comes first. See [Factory edges](format.md#factory-edges-added-in-16).
 
 ### Optimize
 
@@ -223,12 +226,15 @@ lengths in the project. `--factory-edges` is the same as `trim factory`.
 The text output names the goal. For each material whose plan costs more than the cheapest plan found, it adds a line:
 `Plywood: 3 sheets, 4 % more cost than the cheapest plan found.` When the groups stay together, a `Groups:` line tells
 which units and groups are on more than one sheet, for example `Groups: Hall KALLAX is on 2 sheets.`, or
-`Groups: Each unit is on one sheet.`
+`Groups: Each unit is on one sheet.` When a placed copy asks for a factory edge, a `Factory edges:` line tells how
+many get one, for example `Factory edges: 5 of 6 copies that ask for one get one.` The `validation` issues have a
+`factory-edge` warning for each copy that does not get one.
 
 The `--json` output has `goal`, `extraCostPercent` (the limit of the run), `keepGroupsTogether`, and `materials`:
 `{ material, score, cheapestCost, extraCostPercent }` for each material, where `extraCostPercent` is the extra cost
 that the plan uses, rounded to one decimal (0 when `cheapestCost` is 0). The `score` has `groupSpread`: for each unit
-or group, the sheets of the material that hold it minus 1, summed. `groups` lists `{ key, label, material, sheets }`
+or group, the sheets of the material that hold it minus 1, summed, and `factoryEdgeMisses`: the placed copies that
+ask for a factory edge and do not get one. `groups` lists `{ key, label, material, sheets }`
 for each unit or group that is on more than one sheet of a material.
 
 ```bash
@@ -265,8 +271,8 @@ The reports do not change the file.
 | `report shopping <file>` | What to buy, the cost, and the use of each sheet. | `opencutplan report shopping shelf.cutplan.json` |
 | `report sequence <file>` | The cut steps in shop order, with the text of the Shop mode, and the total cut length. | `opencutplan report sequence shelf.cutplan.json --sheet 1` |
 | `report offcuts <file>` | The usable offcuts, and if the stock has them. | `opencutplan report offcuts shelf.cutplan.json --json` |
-| `report labels <file>` | One label for each copy. `--layout` splits them into pages. | `opencutplan report labels shelf.cutplan.json --layout avery-5160` |
-| `report cutlist <file>` | All parts with the size, count, and sheet numbers. | `opencutplan report cutlist shelf.cutplan.json` |
+| `report labels <file>` | One label for each copy, with `factoryEdge` (true when the copy asks for a factory edge). `--layout` splits them into pages. | `opencutplan report labels shelf.cutplan.json --layout avery-5160` |
+| `report cutlist <file>` | All parts with the size, count, factory edge request (`long` or `null`), and sheet numbers. | `opencutplan report cutlist shelf.cutplan.json` |
 | `report assembly <file>` | The steps to build each design. `--design <id>` selects one. | `opencutplan report assembly hall.cutplan.json --json` |
 
 `report shopping` also lists the hardware for the designs in `hardware`: the pocket screws, the back screws, the
