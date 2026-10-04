@@ -47,14 +47,14 @@ A design with a quantity of 2 doubles the quantity of each part, so both cabinet
 
 **Possible approach:**
 
-- Give each copy of a design its own group, or a sub-group ("Calyx cabinet #1", "Calyx cabinet #2").
+- Give each copy of a design its own group, or a sub-group ("KALLAX #1", "KALLAX #2").
 - Add an optional `color` to a design (and to a group of manual parts) in the file format.
 - Add a colour picker in the Design tab and the Parts tab.
 - This item also helps item 1: "keep the parts of cabinet #1 on one sheet".
 
 **Chosen approach:**
 
-- Each unit of a design is one colour key, for example "Calyx cabinet 2 of 2". Copy *c* of a part belongs to unit
+- Each unit of a design is one colour key, for example "KALLAX 2 of 2". Copy *c* of a part belongs to unit
   ⌊*c* / *count*⌋ + 1. Each group of parts without a design is one key. The `group` of the parts does not change.
 - `partColors` in core gives the colour of each copy and a legend (`packages/core/src/reports/colors.ts`). The palette
   has 12 light colours. The first 8 are the old colours, so a file without designs of 2 or more units keeps its colours.
