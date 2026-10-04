@@ -1,4 +1,5 @@
 import {
+  assemblyDrawings,
   copyLabel,
   describeStep,
   designElevationSvg,
@@ -146,27 +147,31 @@ function AssemblyPages({ analysis, alert }: { analysis: ProjectAnalysis; alert: 
   const project = analysis.context.project;
   return (
     <>
-      {assemblyGroups(project).map((group, groupIndex) => (
-        <section key={group.design} className="print-page print-assembly">
-          <h1>
-            {project.project.name}: {group.name}
-          </h1>
-          {groupIndex === 0 && alert}
-          <div className="print-elevation" dangerouslySetInnerHTML={{ __html: designElevationSvg(project, group.design)! }} />
-          <ol className="print-steps">
-            {group.steps.map((step, index) => (
-              <li key={index}>
-                <span className="print-box" aria-hidden="true">
-                  ☐
-                </span>
-                <div>
-                  <strong>{step.title}</strong> {step.body}
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
-      ))}
+      {assemblyGroups(project).map((group, groupIndex) => {
+        const drawings = assemblyDrawings(project, group.design)!;
+        return (
+          <section key={group.design} className="print-page print-assembly">
+            <h1>
+              {project.project.name}: {group.name}
+            </h1>
+            {groupIndex === 0 && alert}
+            <div className="print-elevation" dangerouslySetInnerHTML={{ __html: designElevationSvg(project, group.design)! }} />
+            <ol className="print-steps">
+              {group.steps.map((step, index) => (
+                <li key={index}>
+                  <span className="print-box" aria-hidden="true">
+                    ☐
+                  </span>
+                  <div className="print-step-text">
+                    <strong>{step.title}</strong> {step.body}
+                  </div>
+                  <div className="print-step-drawing" role="img" aria-label={drawings[index]!.description} dangerouslySetInnerHTML={{ __html: drawings[index]!.svg }} />
+                </li>
+              ))}
+            </ol>
+          </section>
+        );
+      })}
     </>
   );
 }

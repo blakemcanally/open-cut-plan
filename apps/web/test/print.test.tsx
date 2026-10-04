@@ -1,4 +1,4 @@
-import { analyzeProject, stageColor, TOOL_COLORS, TOOL_WARNING_COLOR, type Project } from "@opencutplan/core";
+import { analyzeProject, assemblyDrawings, stageColor, TOOL_COLORS, TOOL_WARNING_COLOR, type Project } from "@opencutplan/core";
 import { act, render, within } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -232,14 +232,20 @@ describe("PrintView", () => {
     expect(within(hardware).getAllByRole("row")).toHaveLength(5);
   });
 
-  it("prints one page of assembly steps for each design", () => {
+  it("prints one page of assembly steps for each design, with a drawing for each step", () => {
     const project = designProject();
     const { root } = renderPrint({ kind: "booklet", sections: ["assembly"] }, project);
     const pages = [...root.querySelectorAll<HTMLElement>(".print-page")];
     expect(pages).toHaveLength(1);
     expect(within(pages[0]!).getByRole("heading", { name: "Hall: Hall", level: 1 })).toBeTruthy();
     expect(pages[0]!.querySelector(".print-elevation svg")).toBeTruthy();
-    expect([...pages[0]!.querySelectorAll(".print-steps li")].map((step) => step.textContent)).toEqual(assemblyGroups(project)[0]!.steps.map((step) => `☐${step.title} ${step.body}`));
+    const steps = [...pages[0]!.querySelectorAll(".print-steps li")];
+    expect(steps.map((step) => `${step.querySelector(".print-box")!.textContent}${step.querySelector(".print-step-text")!.textContent}`)).toEqual(
+      assemblyGroups(project)[0]!.steps.map((step) => `☐${step.title} ${step.body}`),
+    );
+    const drawings = assemblyDrawings(project, "hall")!;
+    expect(steps.map((step) => within(step as HTMLElement).getByRole("img").getAttribute("aria-label"))).toEqual(drawings.map((drawing) => drawing.description));
+    expect(steps[4]!.querySelector(".print-step-drawing svg")!.outerHTML).toContain('data-state="current"');
   });
 
   it("places labels on the label sheet from the start position", () => {
