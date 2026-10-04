@@ -265,7 +265,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
           {tab === "settings" && <SettingsTab store={store} prefs={prefs} onPrefs={setPrefs} section={settingsSection} onSection={setSettingsSection} />}
         </div>
       </ShowTab.Provider>
-      {printJob && <PrintView job={printJob} analysis={analysis} onDone={endPrint} />}
+      {printJob && <PrintView job={printJob} analysis={analysis} options={prefs} onDone={endPrint} />}
     </div>
   );
 }

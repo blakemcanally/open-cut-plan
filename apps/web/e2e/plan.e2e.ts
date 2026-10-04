@@ -109,6 +109,7 @@ test("plans a project from CSV, keeps shop progress, and prints and exports it",
   await expect(page.locator(".print-root .print-title")).toBeVisible();
   await expect(page.locator(".print-root .print-sheet").getByRole("heading", { name: /^Sheet 1 of \d+: Plywood 96" × 48"$/ })).toBeVisible();
   await expect(page.locator(".print-root").getByRole("heading", { name: /: cut sequence$/ })).toBeVisible();
+  await expect(page.locator(".print-root .print-sequence").getByRole("columnheader", { name: "Setting" })).toBeVisible();
   await expect(page.locator("#root")).toBeHidden();
   const pdf = await page.pdf({ preferCSSPageSize: true });
   expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
@@ -116,8 +117,8 @@ test("plans a project from CSV, keeps shop progress, and prints and exports it",
     "portrait",
     "portrait",
     "landscape",
-    "portrait",
-    "portrait",
+    "landscape",
+    "landscape",
   ]);
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
   await page.emulateMedia({ media: "screen" });

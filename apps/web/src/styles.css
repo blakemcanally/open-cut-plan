@@ -268,7 +268,7 @@ table.grid tr.generated td { color: var(--muted); }
   .print-root { display: block; font-size: 10pt; color: #000; }
   .print-page { break-after: page; }
   .print-page:last-child { break-after: auto; }
-  .print-sheet { page: sheet; }
+  .print-landscape { page: sheet; }
   .print-title ol { margin: 4pt 0 0; padding-left: 16pt; font-size: 12pt; }
   .print-root h1 { font-size: 16pt; margin: 0 0 8pt; }
   .print-root h2 { font-size: 13pt; margin: 0 0 2pt; }
@@ -277,11 +277,29 @@ table.grid tr.generated td { color: var(--muted); }
   .print-diagram svg { display: block; }
   .print-key { list-style: none; padding: 0; margin: 6pt 0 0; columns: 3; column-gap: 12pt; font-size: 9pt; }
   .print-note { font-size: 8.5pt; margin: 4pt 0 0; }
-  .print-stage { margin-left: 6pt; font-weight: 600; }
+  .print-stage { margin-left: 6pt; font-weight: 600; white-space: nowrap; }
   .print-sheet-body.key-beside { display: flex; gap: 6mm; align-items: flex-start; }
   .print-sheet-body.key-beside .print-key { columns: 1; margin: 0; }
-  .print-sequence-sheet { margin-bottom: 14pt; }
-  .print-sequence-sheet > h2, .print-sequence-sheet > .print-diagram { break-after: avoid; }
+  .print-landscape h1 { line-height: 8mm; margin: 0 0 2mm; }
+  .print-landscape h2 { line-height: 6mm; margin: 0; }
+  .print-landscape .print-meta { line-height: 5mm; margin: 0 0 2mm; }
+  .print-landscape .print-alert { line-height: 4.5mm; margin: 0 0 2mm; padding: 1mm 2mm; }
+  .print-landscape .print-note { line-height: 3.6mm; margin: 1.5mm 0 0; }
+  .print-landscape .print-key { margin-top: 2mm; }
+  .print-landscape .print-key li { line-height: 4mm; }
+  .print-sequence-body.table-beside { display: flex; gap: 6mm; align-items: flex-start; }
+  .print-sequence-body.table-beside > div { flex: none; width: min-content; }
+  .print-sequence-body.table-beside > table { flex: 1; }
+  .print-sequence-body.table-below > table { margin-top: 2mm; }
+  .print-sequence-body.table-next-page > :last-child { break-before: page; }
+  .print-continued { font-size: 11pt; margin: 0 0 2mm; }
+  .print-cuts { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  .print-cuts th, .print-cuts td { text-align: left; vertical-align: top; padding: 0.6mm 2mm; line-height: 4.2mm; border-bottom: 0.5pt solid #999; overflow-wrap: anywhere; }
+  .print-cuts th { font-size: 8pt; border-bottom-color: #000; }
+  .print-cuts tr { break-inside: avoid; }
+  .print-cuts td.print-box { width: 1%; font-size: 12pt; }
+  .print-cuts td:nth-child(2) { font-weight: 700; }
+  .print-cuts td:nth-child(-n + 2), .print-cuts th { white-space: nowrap; }
   .print-steps { list-style: none; padding: 0; margin: 6pt 0 0; }
   .print-steps li { display: flex; gap: 6pt; margin: 0 0 5pt; break-inside: avoid; }
   .print-box { font-size: 13pt; line-height: 1; }

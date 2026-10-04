@@ -10,15 +10,21 @@ import {
   labelPages,
   planAlert,
   resultSentence,
+  sequenceRows,
   sheetSvg,
   sheetSvgExtent,
   stageColor,
   stockLabel,
+  TOOL_WARNING_COLOR,
+  toolColors,
+  toolWarning,
+  type CutColoring,
   type LabelLayoutId,
   type Part,
   type PartLabel,
   type ProjectAnalysis,
   type SheetAnalysis,
+  type Step,
   type TreeItem,
 } from "@opencutplan/core";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
@@ -27,19 +33,26 @@ import { HardwareTable } from "../reports/HardwareTable.tsx";
 import { ShoppingTables } from "../reports/ShoppingTables.tsx";
 import { assemblyGroups } from "../shop/progress.ts";
 import { BOOKLET_LABELS, BOOKLET_SECTIONS, type BookletSection } from "./booklet.ts";
-import { printScale, sheetPrintLayout } from "./scale.ts";
+import { sequencePrintLayout, sheetPrintLayout } from "./scale.ts";
 
 export type PrintJob = { kind: "booklet"; sections: readonly BookletSection[] } | { kind: "labels"; layout: LabelLayoutId; start: number };
+
+export interface PrintOptions {
+  /** The "Colour cuts by" choice of the Layout tab. */
+  cutColors: CutColoring;
+  detailedSteps: boolean;
+}
 
 interface PrintViewProps {
   job: PrintJob;
   analysis: ProjectAnalysis;
+  options?: PrintOptions;
   onDone(): void;
 }
 
-const SEQUENCE_BOX = { width: 170, height: 90 };
+const DEFAULT_OPTIONS: PrintOptions = { cutColors: "stage", detailedSteps: false };
 
-export const BOOKLET_PAGE_RULE = "@page { size: portrait; margin: 15mm; } @page sheet { size: landscape; margin: 12mm; }";
+export const BOOKLET_PAGE_RULE = "@page { size: portrait; margin: 15mm; } @page sheet { size: landscape; margin: 10mm; }";
 
 function pageRule(job: PrintJob): string {
   if (job.kind === "booklet") return BOOKLET_PAGE_RULE;
@@ -48,7 +61,7 @@ function pageRule(job: PrintJob): string {
 }
 
 /** Renders the job outside `#root` and opens the print dialog; `onDone` runs when the dialog closes. */
-export function PrintView({ job, analysis, onDone }: PrintViewProps) {
+export function PrintView({ job, analysis, options = DEFAULT_OPTIONS, onDone }: PrintViewProps) {
   useEffect(() => {
     window.addEventListener("afterprint", onDone);
     return () => window.removeEventListener("afterprint", onDone);
@@ -64,14 +77,14 @@ export function PrintView({ job, analysis, onDone }: PrintViewProps) {
   return createPortal(
     <div className="print-root" data-job={job.kind}>
       <style>{pageRule(job)}</style>
-      {job.kind === "booklet" && <BookletPages analysis={analysis} sections={job.sections} />}
+      {job.kind === "booklet" && <BookletPages analysis={analysis} sections={job.sections} options={options} />}
       {job.kind === "labels" && <LabelPages analysis={analysis} layout={job.layout} start={job.start} />}
     </div>,
     document.body,
   );
 }
 
-function BookletPages({ analysis, sections }: { analysis: ProjectAnalysis; sections: readonly BookletSection[] }) {
+function BookletPages({ analysis, sections, options }: { analysis: ProjectAnalysis; sections: readonly BookletSection[]; options: PrintOptions }) {
   const included = BOOKLET_SECTIONS.filter((section) => sections.includes(section));
   const problems = planAlert(analysis.context, analysis.issues);
   const notice = problems && (
@@ -89,9 +102,9 @@ function BookletPages({ analysis, sections }: { analysis: ProjectAnalysis; secti
           case "shopping":
             return <ShoppingPage key={section} analysis={analysis} alert={alert} />;
           case "sheets":
-            return <SheetPages key={section} analysis={analysis} alert={alert} />;
+            return <SheetPages key={section} analysis={analysis} alert={alert} coloring={options.cutColors} />;
           case "sequence":
-            return <SequencePages key={section} analysis={analysis} alert={alert} />;
+            return <SequencePages key={section} analysis={analysis} alert={alert} coloring={options.cutColors} detailed={options.detailedSteps} />;
           case "assembly":
             return <AssemblyPages key={section} analysis={analysis} alert={alert} />;
         }
@@ -197,26 +210,56 @@ function keyRows(analysis: ProjectAnalysis, sheet: SheetAnalysis): KeyRow[] {
   return [...rows.values()].sort((a, b) => order.get(a.part.id)! - order.get(b.part.id)! || Number(a.rotated) - Number(b.rotated));
 }
 
-function SheetPages({ analysis, alert }: { analysis: ProjectAnalysis; alert: ReactNode }) {
+function CutKey({ analysis, steps, coloring }: { analysis: ProjectAnalysis; steps: readonly Step[]; coloring: CutColoring }) {
+  if (steps.length === 0) return null;
+  const items =
+    coloring === "tool"
+      ? [
+          ...toolColors(analysis.context.tools)
+            .legend.filter((entry) => steps.some((step) => step.tool?.id === entry.tool && !toolWarning(step)))
+            .map((entry) => ({ key: entry.tool, label: entry.name, color: entry.color })),
+          ...(steps.some(toolWarning) ? [{ key: "warning", label: "no tool, or over a tool limit", color: TOOL_WARNING_COLOR }] : []),
+        ]
+      : [...new Set(steps.map((step) => step.stage))]
+          .sort((a, b) => a - b)
+          .map((stage) => ({ key: `stage-${stage}`, label: `stage ${stage}`, color: stageColor(stage) }));
+  return (
+    <p className="print-note">
+      The number on a cut line is its step in the cut sequence. The colour shows the {coloring}:{" "}
+      {items.map((item) => (
+        <span key={item.key} className="print-stage" style={{ color: item.color }}>
+          ■ {item.label}
+        </span>
+      ))}
+      . A dashed line is a trim cut.
+    </p>
+  );
+}
+
+function SheetPages({ analysis, alert, coloring }: { analysis: ProjectAnalysis; alert: ReactNode; coloring: CutColoring }) {
   const ctx = analysis.context;
   const colors = useMemo(() => partColors(ctx.project), [ctx.project]);
   return (
     <>
       {analysis.sheets.map((sheet) => {
-        const { scale, keyBeside } = sheetPrintLayout(sheetSvgExtent(sheet), ctx.units);
+        const rows = keyRows(analysis, sheet);
+        const notice = sheet.index === 0 ? alert : null;
+        const { scale, keyBeside } = sheetPrintLayout(sheetSvgExtent(sheet), ctx.units, rows.length, { alert: Boolean(notice) });
         const steps = analysis.steps.filter((step) => step.sheetNumber === sheet.index + 1);
-        const stages = [...new Set(steps.map((step) => step.stage))].sort((a, b) => a - b);
         return (
-          <section key={sheet.sheet.id} className="print-page print-sheet">
+          <section key={sheet.sheet.id} className="print-page print-landscape print-sheet">
             <h2>{sheetTitle(analysis, sheet)}</h2>
             <p className="print-meta">
               {scaleText(scale.ratio)} · {ctx.project.project.name}
             </p>
-            {sheet.index === 0 && alert}
+            {notice}
             <div className={keyBeside ? "print-sheet-body key-beside" : "print-sheet-body"}>
-              <div className="print-diagram" dangerouslySetInnerHTML={{ __html: sheetSvg(ctx, sheet, analysis.steps, { colors, width: scale.width, height: scale.height, idPrefix: "print" }) }} />
+              <div
+                className="print-diagram"
+                dangerouslySetInnerHTML={{ __html: sheetSvg(ctx, sheet, analysis.steps, { colors, cutColors: coloring, width: scale.width, height: scale.height, idPrefix: "print" }) }}
+              />
               <ul className="print-key">
-                {keyRows(analysis, sheet).map((row) => (
+                {rows.map((row) => (
                   <li key={row.item.index}>
                     <strong>{row.count > 1 ? `${row.part.name} ×${row.count}` : copyLabel(row.part, row.copy)}</strong> {formatSize(ctx, row.item.rect)}
                     {grainText(analysis, sheet, row.item.index)}
@@ -224,17 +267,7 @@ function SheetPages({ analysis, alert }: { analysis: ProjectAnalysis; alert: Rea
                 ))}
               </ul>
             </div>
-            {stages.length > 0 && (
-              <p className="print-note">
-                The number on a cut line is its step in the cut sequence. The colour shows the stage:{" "}
-                {stages.map((stage) => (
-                  <span key={stage} className="print-stage" style={{ color: stageColor(stage) }}>
-                    ■ stage {stage}
-                  </span>
-                ))}
-                . A dashed line is a trim cut.
-              </p>
-            )}
+            <CutKey analysis={analysis} steps={steps} coloring={coloring} />
           </section>
         );
       })}
@@ -242,48 +275,128 @@ function SheetPages({ analysis, alert }: { analysis: ProjectAnalysis; alert: Rea
   );
 }
 
-function SequencePages({ analysis, alert }: { analysis: ProjectAnalysis; alert: ReactNode }) {
+function SequenceTable({ analysis, steps }: { analysis: ProjectAnalysis; steps: readonly Step[] }) {
+  const ctx = analysis.context;
+  const tools = toolColors(ctx.tools);
+  const rows = sequenceRows(ctx, steps);
+  return (
+    <table className="print-cuts">
+      <thead>
+        <tr>
+          <th scope="col">Done</th>
+          <th scope="col">Step</th>
+          <th scope="col">Tool</th>
+          <th scope="col">Setting</th>
+          <th scope="col">Finished parts</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, index) => (
+          <tr key={row.step}>
+            <td className="print-box">☐</td>
+            <td>{row.step}</td>
+            <td>
+              <span className="print-swatch" style={{ color: tools.cutColor(steps[index]!) }} aria-hidden="true">
+                ■
+              </span>{" "}
+              {row.toolName}
+              {row.warning && " ⚠"}
+            </td>
+            <td>{row.setting}</td>
+            <td>{row.parts.join(", ")}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function DetailedSteps({ analysis, steps }: { analysis: ProjectAnalysis; steps: readonly Step[] }) {
+  return (
+    <ol className="print-steps">
+      {steps.map((step) => {
+        const text = describeStep(analysis.context, step);
+        return (
+          <li key={step.step}>
+            <span className="print-box" aria-hidden="true">
+              ☐
+            </span>
+            <div>
+              <div>
+                <strong>{text.title}</strong> · {text.method}
+              </div>
+              <div>
+                Pick up {text.pickUp}. {text.actions.map((action, index) => `${index + 1}. ${action}`).join(" ")}
+              </div>
+              <div>{text.results.map(resultSentence).join(" ")}</div>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function stepRange(steps: readonly Step[]): string {
+  const first = steps[0]!.step;
+  const last = steps[steps.length - 1]!.step;
+  return first === last ? `Step ${first}` : `Steps ${first}–${last}`;
+}
+
+function SequencePages({ analysis, alert, coloring, detailed }: { analysis: ProjectAnalysis; alert: ReactNode; coloring: CutColoring; detailed: boolean }) {
   const ctx = analysis.context;
   const colors = useMemo(() => partColors(ctx.project), [ctx.project]);
+  const title = `${ctx.project.project.name}: cut sequence`;
+  const sheets = analysis.sheets.flatMap((sheet) => {
+    const steps = analysis.steps.filter((step) => step.sheetNumber === sheet.index + 1);
+    return steps.length === 0 ? [] : [{ sheet, steps }];
+  });
+  if (sheets.length === 0) {
+    return (
+      <section className="print-page">
+        <h1>{title}</h1>
+        {alert}
+        <p>There are no cut steps.</p>
+      </section>
+    );
+  }
   return (
-    <section className="print-page">
-      <h1>{ctx.project.project.name}: cut sequence</h1>
-      {alert}
-      {analysis.steps.length === 0 && <p>There are no cut steps.</p>}
-      {analysis.sheets.map((sheet) => {
-        const steps = analysis.steps.filter((step) => step.sheetNumber === sheet.index + 1);
-        if (steps.length === 0) return null;
-        const scale = printScale(sheetSvgExtent(sheet), ctx.units, SEQUENCE_BOX);
+    <>
+      {sheets.map(({ sheet, steps }, index) => {
+        const first = index === 0;
+        const { scale, table } = sequencePrintLayout(sheetSvgExtent(sheet), ctx.units, steps.length, { title: first, alert: first && Boolean(alert), detailed });
+        const list = detailed ? <DetailedSteps analysis={analysis} steps={steps} /> : <SequenceTable analysis={analysis} steps={steps} />;
         return (
-          <section key={sheet.sheet.id} className="print-sequence-sheet">
+          <section key={sheet.sheet.id} className="print-page print-landscape print-sequence">
+            {first && <h1>{title}</h1>}
             <h2>{sheetTitle(analysis, sheet)}</h2>
-            <div className="print-diagram" dangerouslySetInnerHTML={{ __html: sheetSvg(ctx, sheet, analysis.steps, { colors, width: scale.width, height: scale.height, idPrefix: "print" }) }} />
-            <p className="print-meta">{scaleText(scale.ratio)}</p>
-            <ol className="print-steps">
-              {steps.map((step) => {
-                const text = describeStep(ctx, step);
-                return (
-                  <li key={step.step}>
-                    <span className="print-box" aria-hidden="true">
-                      ☐
-                    </span>
-                    <div>
-                      <div>
-                        <strong>{text.title}</strong> · {text.method}
-                      </div>
-                      <div>
-                        Pick up {text.pickUp}. {text.actions.map((action, index) => `${index + 1}. ${action}`).join(" ")}
-                      </div>
-                      <div>{text.results.map(resultSentence).join(" ")}</div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
+            <p className="print-meta">
+              {scaleText(scale.ratio)} · {stepRange(steps)}
+            </p>
+            {first && alert}
+            <div className={`print-sequence-body table-${table}`}>
+              <div>
+                <div
+                  className="print-diagram"
+                  dangerouslySetInnerHTML={{ __html: sheetSvg(ctx, sheet, analysis.steps, { colors, cutColors: coloring, width: scale.width, height: scale.height, idPrefix: "print-seq" }) }}
+                />
+                <CutKey analysis={analysis} steps={steps} coloring={coloring} />
+              </div>
+              {table === "next-page" ? (
+                <div>
+                  <h3 className="print-continued">
+                    {sheetTitle(analysis, sheet)} · {stepRange(steps)}
+                  </h3>
+                  {list}
+                </div>
+              ) : (
+                list
+              )}
+            </div>
           </section>
         );
       })}
-    </section>
+    </>
   );
 }
 
