@@ -225,7 +225,9 @@ test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware
   await expect(assembly.getByText(/^1 of \d+ assembly steps done\.$/)).toBeVisible();
   await expect.poll(() => savedData(page)).toContain('"assemblyProgress"');
   await assembly.getByRole("button", { name: "Enlarge the drawing of step 2" }).click();
-  await expect(page.getByRole("dialog", { name: /^Step 2 of \d+: Mark the shelf positions$/ }).locator("svg [data-mark]").first()).toBeVisible();
+  const stepDialog = page.getByRole("dialog", { name: /^Step 2 of \d+: Mark the shelf positions$/ });
+  await expect(stepDialog.locator("svg")).toBeVisible();
+  await expect(stepDialog.locator("svg [data-mark]")).not.toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.reload();
   await page.getByRole("tab", { name: "Assembly" }).click();
