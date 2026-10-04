@@ -398,7 +398,10 @@ columns.
 
 - **Offcuts against cut length (item 5):** The shortest cuts can cut the waste into smaller pieces. On one sheet of
   `simple-bookcase-mm`, the largest offcut became about 23% smaller. Idea: when the optimizer goal is `offcuts`, the
-  cut tree compares the largest offcut before the cut length.
+  cut tree compares the largest offcut before the cut length. **Status:** Done. When `settings.optimizer.goal` is
+  `offcuts`, each piece of the cut tree keeps the largest offcut that it can, and then the shortest cuts. The plan
+  context holds the choice, so the validator, the sequence, the Shop tab, and the reports use the same tree. On
+  `simple-bookcase-mm`, the largest offcut of the HDF sheet is 0.983 m² again (0.755 m² with the shortest cuts).
 - **Tool colours (item 7):** The table saw is dark blue and the track saw is dark green. A cut can be hard to see on a
   part with a blue or green fill. Idea: give the cut lines a white outline, or choose tool colours far from the part
   colours. **Status:** Done. Each cut line has a white halo under it (`CUT_HALO_COLOR`), on the Layout tab and in
@@ -406,11 +409,17 @@ columns.
 - **Print and export (item 7):** The booklet and the "Sheet N as SVG" export colour the cuts by stage only. Idea: use
   the choice from the Layout tab.
 - **Typical price (item 4):** The typical price is the lowest listing. Some low prices come from old search results.
-  Idea: use the median, or the newest listing.
+  Idea: use the median, or the newest listing. **Status:** Done. The typical price is the median of the priced
+  listings, because all the listings have the same check date. The catalogue shows the store and the date of the
+  middle listing, or "median of N listings" when the count is even.
 - **Speed with factory edges (item 2):** With requests, each candidate takes 2–3 times as long. Idea: push only the
-  candidates that can become the best plan.
+  candidates that can become the best plan. **Status:** Done. The search pushes each different packing one time,
+  and evaluates a pushed copy only when its best possible score can go into the result. The plans do not change.
+  With requests, the iterations per second go up by about 1.3 to 2.3 times on the examples.
 - **Group renames (item 3):** A chosen group colour does not follow a rename of the group. Idea: an edit helper that
-  renames a group and moves its colour.
+  renames a group and moves its colour. **Status:** Done. `renameGroup` renames the group on all the parts that
+  are not in a design, moves its entry in `groups`, and merges it when the new name is a group already. The Parts tab
+  has a "Rename" action next to each group colour, and the CLI has `parts rename-group`.
 
 ## 21. Combined cubbies: the next phases
 
