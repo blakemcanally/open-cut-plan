@@ -238,3 +238,76 @@ function member(layout: BoardLayout, board: Board, end: "start" | "end", columns
   if (!found) throw new Error(`No shelf holds the ${end} of the divider ${JSON.stringify(board)}.`);
   return found;
 }
+
+const LEFT = { kind: "side", side: "left" } as const;
+const RIGHT = { kind: "side", side: "right" } as const;
+const TOP = { kind: "top" } as const;
+const BOTTOM = { kind: "bottom" } as const;
+const divider = (line: number, from: number, to: number): Board => ({ kind: "divider", line, from, to });
+const shelf = (line: number, from: number, to: number): Board => ({ kind: "shelf", line, from, to });
+
+describe("the boards of each assembly step", () => {
+  it("names the boards that each KALLAX step works on, and the boards that each join step adds", () => {
+    const steps = assemblySteps(project, "kx")!;
+    const column = (c: number) => [1, 2, 3].map((line) => shelf(line, c, c));
+    expect(steps.map((step) => step.action)).toEqual(["drill", "mark", "mark", "spacers", "join", "join", "join", "square", "anchor"]);
+    expect(steps[0]!.boards).toEqual([LEFT, RIGHT, divider(1, 0, 3), shelf(1, 0, 0), shelf(1, 1, 1), shelf(2, 0, 0), shelf(2, 1, 1), shelf(3, 0, 0), shelf(3, 1, 1)]);
+    expect(steps[1]!.boards).toEqual([LEFT, RIGHT, divider(1, 0, 3)]);
+    expect(steps[2]!.boards).toEqual([TOP, BOTTOM]);
+    expect(steps[3]!.boards).toEqual([]);
+    expect(steps[4]!.boards).toEqual([LEFT, ...column(0), divider(1, 0, 3)]);
+    expect(steps[5]!.boards).toEqual([...column(1), RIGHT]);
+    expect(steps[6]!.boards).toEqual([BOTTOM, TOP]);
+    expect(steps[7]!.boards).toEqual([]);
+  });
+
+  it("fits every board of a unit with no shelves in the bottom and top step, then the back, then hangs it", () => {
+    const steps = assemblySteps(project, "ek")!;
+    expect(steps.map((step) => step.action)).toEqual(["drill", "mark", "join", "square", "join", "mount"]);
+    expect(steps[0]!.boards).toEqual([LEFT, RIGHT, divider(1, 0, 0)]);
+    expect(steps[2]!.boards).toEqual([BOTTOM, TOP, LEFT, RIGHT, divider(1, 0, 0)]);
+    expect(steps[4]!.boards).toEqual([{ kind: "back" }]);
+    expect(steps[5]!.boards).toEqual([]);
+  });
+
+  it("names the boards of the combined cells steps (spec 14.1)", () => {
+    const steps = assemblySteps(regenerateDesigns(designProject([grid("a", 4, 2, [span(1, 1, 2, 1)])])), "a")!;
+    const of = (title: string) => steps.find((step) => step.title === title)!;
+    expect(of("Mark the shelf positions").boards).toEqual([LEFT, divider(2, 0, 1), divider(3, 0, 1), RIGHT]);
+    expect(of("Mark the divider positions").boards).toEqual([TOP, BOTTOM, shelf(1, 0, 1)]);
+    expect(of("Assemble the long shelves")).toMatchObject({ action: "subassembly", boards: [shelf(1, 0, 1), divider(1, 1, 1)] });
+    expect(of("Assemble column 1 of 4").boards).toEqual([LEFT, shelf(1, 0, 1), divider(1, 1, 1)]);
+    expect(of("Assemble column 2 of 4").boards).toEqual([divider(2, 0, 1)]);
+    expect(of("Assemble column 3 of 4").boards).toEqual([shelf(1, 2, 2), divider(3, 0, 1)]);
+    expect(of("Assemble column 4 of 4").boards).toEqual([shelf(1, 3, 3), RIGHT]);
+    expect(of("Fit the bottom and the top").boards).toEqual([BOTTOM, TOP]);
+  });
+
+  it("adds each board of the box to the unit in one join step, for random layouts", () => {
+    const arb = fc
+      .record({
+        columns: fc.integer({ min: 1, max: 5 }),
+        rows: fc.integer({ min: 1, max: 5 }),
+        back: fc.boolean(),
+        picks: fc.array(fc.record({ column: fc.nat(4), row: fc.nat(4), columns: fc.integer({ min: 1, max: 4 }), rows: fc.integer({ min: 1, max: 4 }) }), { maxLength: 6 }),
+      })
+      .map(({ columns, rows, back, picks }) => {
+        let design = grid("r", columns, rows, []);
+        for (const pick of picks) design = combineCells(design, { ...pick, column: (pick.column % columns) + 1, row: (pick.row % rows) + 1 }) ?? design;
+        return { design: back ? { ...design, back: { material: "ply6" } } : design, columns, rows };
+      });
+    fc.assert(
+      fc.property(arb, ({ design, columns, rows }) => {
+        const unit = regenerateDesigns(designProject([design]));
+        const steps = assemblySteps(unit, "r");
+        fc.pre(steps !== null);
+        const layout = boardLayout(columns, rows, design.combined ?? []);
+        const joined = steps.filter((step) => step.action === "join").flatMap((step) => step.boards!);
+        const expected = [TOP, BOTTOM, LEFT, RIGHT, ...layout.dividers, ...layout.shelves, ...(design.back ? [{ kind: "back" }] : [])];
+        const key = (board: object) => JSON.stringify(board);
+        expect(joined.map(key).sort()).toEqual(expected.map(key).sort());
+      }),
+      { numRuns: 150 },
+    );
+  });
+});

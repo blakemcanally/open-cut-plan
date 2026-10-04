@@ -9,9 +9,33 @@ import { dividerName, shelfName } from "./parts.ts";
 import { IKEA_FEET, IKEA_LEGS, IKEA_RAIL_35, IKEA_RAIL_70, RAIL_CLEARANCE_MM } from "./ikea.ts";
 import { DEFAULT_DESIGN_MOUNT, DEFAULT_DESIGN_QUANTITY, isDesignMount } from "./systems.ts";
 
+/** A board of one unit: a box panel, the back, or a divider or shelf board of `designLayout`. */
+export type AssemblyBoard = { kind: "top" | "bottom" | "back" } | { kind: "side"; side: "left" | "right" } | Board;
+
+/**
+ * What a step does: drill or mark its boards, cut spacers, join its boards to each other off the unit (`subassembly`),
+ * add its boards to the unit (`join`), check the diagonals (`square`), fit the legs, the feet, or the wall rail
+ * (`mount`), or fix the unit to the wall (`anchor`).
+ */
+export type AssemblyAction = "drill" | "mark" | "spacers" | "subassembly" | "join" | "square" | "mount" | "anchor";
+
 export interface AssemblyStep {
   title: string;
   body: string;
+  action?: AssemblyAction;
+  /** The boards that the step works on. A `join` step gives only the boards that it adds to the unit. */
+  boards?: AssemblyBoard[];
+}
+
+const LEFT: AssemblyBoard = { kind: "side", side: "left" };
+const RIGHT: AssemblyBoard = { kind: "side", side: "right" };
+const TOP: AssemblyBoard = { kind: "top" };
+const BOTTOM: AssemblyBoard = { kind: "bottom" };
+
+export function assemblyBoardKey(board: AssemblyBoard): string {
+  if (board.kind === "side") return `side-${board.side}`;
+  if (board.kind === "divider" || board.kind === "shelf") return `${board.kind}-${board.line}-${board.from}-${board.to}`;
+  return board.kind;
 }
 
 function joinList(items: readonly string[]): string {
@@ -47,6 +71,8 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
   steps.push({
     title: "Drill the pocket holes",
     body: `${quantity > 1 ? `Build ${quantity} of these. The numbers in these steps are for one unit. ` : ""}Drill ${pocketHolesPerEnd(mm(geometry.panelDepth))} pocket holes in each end of ${drilled}${drilledShelves}, for ${show(thickness)} stock.${setting}`,
+    action: "drill",
+    boards: [LEFT, RIGHT, ...layout.dividers, ...layout.shelves],
   });
 
   if (geometry.combined) {
@@ -56,7 +82,12 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
     if (perColumn > 0) {
       const marks = [rows.at(-1)!];
       for (let row = rows.length - 2; row > 0; row--) marks.push(roundLength(marks.at(-1)! + thickness + rows[row]!));
-      steps.push({ title: "Mark the shelf positions", body: `Mark the underside of each shelf on ${uprights} at ${joinList(marks.map(show))} from the bottom end.` });
+      steps.push({
+        title: "Mark the shelf positions",
+        body: `Mark the underside of each shelf on ${uprights} at ${joinList(marks.map(show))} from the bottom end.`,
+        action: "mark",
+        boards: [LEFT, RIGHT, ...layout.dividers],
+      });
     }
 
     if (dividers > 0) {
@@ -66,12 +97,17 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
         x = roundLength(x + thickness + columns[column]!);
         marks.push(x);
       }
-      steps.push({ title: "Mark the divider positions", body: `Mark the left face of each divider on the top and the bottom at ${joinList(marks.map(show))} from the left end.` });
+      steps.push({
+        title: "Mark the divider positions",
+        body: `Mark the left face of each divider on the top and the bottom at ${joinList(marks.map(show))} from the left end.`,
+        action: "mark",
+        boards: [TOP, BOTTOM],
+      });
     }
 
     if (perColumn > 0) {
       const spacers = [...new Set(rows.slice(1))].map((opening) => `2 spacers to ${show(opening)}`);
-      steps.push({ title: "Cut spacers", body: `Cut ${joinList(spacers)} from an offcut. They hold each shelf on its mark while you drive the screws.` });
+      steps.push({ title: "Cut spacers", body: `Cut ${joinList(spacers)} from an offcut. They hold each shelf on its mark while you drive the screws.`, action: "spacers", boards: [] });
 
       columns.forEach((opening, index) => {
         const start = index === 0 ? "Lay the left side on its outside face, with the marks up." : `Use the divider on the right of column ${index} as the left panel.`;
@@ -83,6 +119,8 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
         steps.push({
           title: `Assemble column ${index + 1} of ${columns.length}`,
           body: `${start} ${put} Then put ${next} on the other ends of the ${perColumn === 1 ? "shelf" : "shelves"}, and screw it on.`,
+          action: "join",
+          boards: [...(index === 0 ? [LEFT] : []), ...layout.shelves.filter((board) => board.from === index), index === dividers ? RIGHT : layout.dividers[index]!],
         });
       });
     }
@@ -90,39 +128,58 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
 
   const reach = geometry.combined && layout.dividers.some((board) => board.from > 0 || board.to < rows.length - 1) ? " that reach it" : "";
   const onMark = dividers === 0 ? "" : ", with each divider on its mark";
+  const joined = new Set(steps.filter((step) => step.action === "join").flatMap((step) => step.boards!.map(assemblyBoardKey)));
   steps.push({
     title: "Fit the bottom and the top",
     body:
       shelves > 0
         ? `Lay the frame on its back. Put the bottom on the lower ends of ${uprights}${reach}${onMark}, and screw it on through the pocket holes in their ends. Then fit the top the same way.`
         : `Stand ${uprights} on the bottom${onMark}, and screw them to it through the pocket holes in their ends. Then fit the top the same way.`,
+    action: "join",
+    boards: [BOTTOM, TOP, ...[LEFT, RIGHT, ...layout.dividers, ...layout.shelves].filter((board) => !joined.has(assemblyBoardKey(board)))],
   });
 
   const diagonal = roundLength(Math.hypot(geometry.outsideWidth, geometry.outsideHeight));
-  steps.push({ title: "Check that it is square", body: `Measure the two diagonals of the front. Both must be ${show(diagonal)}. If they are not the same, push the long diagonal in until they are.` });
+  steps.push({
+    title: "Check that it is square",
+    body: `Measure the two diagonals of the front. Both must be ${show(diagonal)}. If they are not the same, push the long diagonal in until they are.`,
+    action: "square",
+    boards: [],
+  });
 
   if (design.back) {
     steps.push({
       title: "Fit the back",
       body: `Glue the back to the rear edges, then screw it on with ${backScrewCount(geometry, units)} ${backScrewName(mm(geometry.backThickness))}: ${show(fromMm(25))} from the ends of each edge, and at most ${show(fromMm(150))} apart.`,
+      action: "join",
+      boards: [{ kind: "back" }],
     });
   }
 
   if (!isDesignMount(mount)) return steps;
   if (mount === "legs") {
     const guides = IKEA_LEGS.filter((legs) => legs.guide !== undefined).map((legs) => `${legs.guide} (${legs.name})`);
-    steps.push({ title: "Fit the legs", body: `Screw the 4 EKET legs to the bottom panel, as the IKEA assembly guide of your legs shows: ${joinList(guides)}.` });
+    steps.push({ title: "Fit the legs", body: `Screw the 4 EKET legs to the bottom panel, as the IKEA assembly guide of your legs shows: ${joinList(guides)}.`, action: "mount", boards: [] });
   }
-  if (mount === "feet") steps.push({ title: "Fit the feet", body: `Screw the 4 EKET adjustable feet to the bottom panel, as IKEA assembly guide ${IKEA_FEET.guide} shows.` });
+  if (mount === "feet") {
+    steps.push({ title: "Fit the feet", body: `Screw the 4 EKET adjustable feet to the bottom panel, as IKEA assembly guide ${IKEA_FEET.guide} shows.`, action: "mount", boards: [] });
+  }
   if (mount === "wall-rail") {
     const rails = railsFor(mm(geometry.outsideWidth));
     const names = [...(rails.long > 0 ? [`${rails.long} × ${IKEA_RAIL_70.name}`] : []), ...(rails.short > 0 ? [`${rails.short} × ${IKEA_RAIL_35.name}`] : [])];
     steps.push({
       title: "Hang the unit",
       body: `Screw the rails (${joinList(names)}) to the wall with screws and plugs for your wall type, and hang the unit on them at its top back edge, as IKEA assembly guide ${IKEA_RAIL_70.guide} shows. Leave at least ${show(fromMm(RAIL_CLEARANCE_MM))} free above the unit.`,
+      action: "mount",
+      boards: [],
     });
   } else {
-    steps.push({ title: "Anchor the unit", body: "Fix the unit to the wall with the anti-tip fitting, as IKEA says to do for KALLAX and EKET units. Use screws and plugs for your wall type." });
+    steps.push({
+      title: "Anchor the unit",
+      body: "Fix the unit to the wall with the anti-tip fitting, as IKEA says to do for KALLAX and EKET units. Use screws and plugs for your wall type.",
+      action: "anchor",
+      boards: [],
+    });
   }
   return steps;
 }
@@ -175,17 +232,19 @@ function combinedSteps(geometry: DesignGeometry, layout: BoardLayout, show: (val
 
   if (layout.shelves.length > 0) {
     const uprights = [
-      { name: "the left side", line: 0, from: 0, to: m - 1 },
-      ...layout.dividers.map((board) => ({ name: dividerText(board), ...board })),
-      { name: "the right side", line: n, from: 0, to: m - 1 },
+      { name: "the left side", line: 0, from: 0, to: m - 1, board: LEFT },
+      ...layout.dividers.map((board) => ({ name: dividerText(board), ...board, board: board as AssemblyBoard })),
+      { name: "the right side", line: n, from: 0, to: m - 1, board: RIGHT },
     ];
     const groups = new Map<string, string[]>();
+    const marked: AssemblyBoard[] = [];
     for (const upright of uprights) {
       const marks: number[] = [];
       for (let line = upright.to; line > upright.from; line--) {
         if ((upright.line > 0 && has.shelf(line, upright.line - 1)) || (upright.line < n && has.shelf(line, upright.line))) marks.push(spanLength(rows, line, upright.to, t));
       }
       if (marks.length === 0) continue;
+      marked.push(upright.board);
       const key = joinList(marks.map(show));
       groups.set(key, [...(groups.get(key) ?? []), upright.name]);
     }
@@ -194,7 +253,7 @@ function combinedSteps(geometry: DesignGeometry, layout: BoardLayout, show: (val
       const named = sides ? ["the sides", ...names.filter((name) => !name.endsWith(" side"))] : names;
       return `on ${joinList(named)} at ${marks}`;
     });
-    steps.push({ title: "Mark the shelf positions", body: `Mark the underside of each shelf, from the bottom end of the panel: ${clauses.join("; ")}.` });
+    steps.push({ title: "Mark the shelf positions", body: `Mark the underside of each shelf, from the bottom end of the panel: ${clauses.join("; ")}.`, action: "mark", boards: marked });
   }
 
   if (layout.dividers.length > 0) {
@@ -203,6 +262,7 @@ function combinedSteps(geometry: DesignGeometry, layout: BoardLayout, show: (val
     const list = (marks: number[]) => joinList([...new Set(marks)].sort((a, b) => a - b).map(show));
     const clauses =
       list(top) === list(bottom) ? [`on the top and the bottom at ${list(top)}`] : [...(top.length > 0 ? [`on the top at ${list(top)}`] : []), ...(bottom.length > 0 ? [`on the bottom at ${list(bottom)}`] : [])];
+    const marked: AssemblyBoard[] = [...(top.length > 0 ? [TOP] : []), ...(bottom.length > 0 ? [BOTTOM] : [])];
     for (const shelf of layout.shelves.filter((board) => board.from !== board.to)) {
       const left = cellX[shelf.from]!;
       const above: number[] = [];
@@ -213,8 +273,9 @@ function combinedSteps(geometry: DesignGeometry, layout: BoardLayout, show: (val
       }
       if (above.length > 0) clauses.push(`on the top face of ${shelfText(shelf)} at ${list(above)}`);
       if (below.length > 0) clauses.push(`on the underside of ${shelfText(shelf)} at ${list(below)}`);
+      if (above.length > 0 || below.length > 0) marked.push(shelf);
     }
-    steps.push({ title: "Mark the divider positions", body: `Mark the left face of each divider, from the left end: ${clauses.join("; ")}.` });
+    steps.push({ title: "Mark the divider positions", body: `Mark the left face of each divider, from the left end: ${clauses.join("; ")}.`, action: "mark", boards: marked });
   }
 
   if (layout.shelves.length === 0) return steps;
@@ -224,7 +285,7 @@ function combinedSteps(geometry: DesignGeometry, layout: BoardLayout, show: (val
   };
   const heights = layout.shelves.flatMap((board) => [under(board.line, board.from), under(board.line, board.to)]);
   const spacers = [...new Set(heights)].map((height) => `2 spacers to ${show(height)}`);
-  steps.push({ title: "Cut spacers", body: `Cut ${joinList(spacers)} from an offcut. They hold each shelf on its mark while you drive the screws.` });
+  steps.push({ title: "Cut spacers", body: `Cut ${joinList(spacers)} from an offcut. They hold each shelf on its mark while you drive the screws.`, action: "spacers", boards: [] });
 
   const assemblies = shelfAssemblies(layout, m);
   const across = (line: number, column: number) => layout.shelves.find((board) => board.line === line && board.from < column && board.to >= column);
@@ -244,7 +305,14 @@ function combinedSteps(geometry: DesignGeometry, layout: BoardLayout, show: (val
       );
     }
   }
-  if (joins.length > 0) steps.push({ title: "Assemble the long shelves", body: `${joins.join(" ")} Hold each divider square to the shelf while you drive the screws.` });
+  if (joins.length > 0) {
+    steps.push({
+      title: "Assemble the long shelves",
+      body: `${joins.join(" ")} Hold each divider square to the shelf while you drive the screws.`,
+      action: "subassembly",
+      boards: [...assemblies].filter(([, stems]) => stems.length > 0).flatMap(([shelf, stems]) => [shelf, ...stems]),
+    });
+  }
 
   const placed = new Map<Board, number>();
   const plan = columnSteps(layout, n, m);
@@ -257,15 +325,21 @@ function combinedSteps(geometry: DesignGeometry, layout: BoardLayout, show: (val
     .map((stem) => ({ stem, shelf: across(stem.from, stem.line)! }))
     .map((joint) => ({ ...joint, step: Math.max(placed.get(joint.stem)!, placed.get(joint.shelf)!) }));
 
+  const joined = new Set<string>();
   for (const step of plan) {
     const c = step.column;
     const sentences: string[] = [];
+    const named: AssemblyBoard[] = [];
     if (step.shelves.length > 0) {
-      if (c === 0) sentences.push("Lay the left side on its outside face, with the marks up.");
-      else {
+      if (c === 0) {
+        sentences.push("Lay the left side on its outside face, with the marks up.");
+        named.push(LEFT);
+      } else {
         const left = layout.dividers.filter((board) => board.line === c);
         sentences.push(left.length === 1 ? `Use ${dividerText(left[0]!)} as the left panel.` : `Use the dividers on the right of column ${c} as the left panels.`);
+        named.push(...left);
       }
+      for (const board of step.shelves) named.push(board, ...(assemblies.get(board) ?? []));
       const short = step.shelves.filter((board) => board.from === board.to);
       const items = [
         ...(short.length === 0 ? [] : [`${its(short.length, "the shelf of this column", `the ${short.length} shelves of this column`)} (${shelfName(short[0]!, columns)}, ${show(columns[c]!)} long)`]),
@@ -292,6 +366,7 @@ function combinedSteps(geometry: DesignGeometry, layout: BoardLayout, show: (val
         ...longs.map((board) => `the right end of ${shelfText(board)}`),
       ];
       sentences.push(`${sentences.length === 0 ? "Put" : "Then put"} ${right} on ${joinList(ends)}, and screw it on.`);
+      named.push(c === n - 1 ? RIGHT : step.dividers[0]!);
     }
     for (const divider of new Set(intoStems.map(holdsEnd))) {
       const boards = intoStems.filter((board) => holdsEnd(board) === divider);
@@ -301,9 +376,21 @@ function combinedSteps(geometry: DesignGeometry, layout: BoardLayout, show: (val
         ...boards.filter((board) => board.from < c).map((board) => `the right end of ${shelfText(board)}`),
       ];
       sentences.push(`Screw ${joinList(ends)} to ${dividerText(divider)}.`);
+      named.push(divider);
     }
-    for (const joint of tops.filter((candidate) => candidate.step === c)) sentences.push(`Screw the top end of ${dividerText(joint.stem)} to ${shelfText(joint.shelf)}.`);
-    if (sentences.length > 0) steps.push({ title: `Assemble column ${c + 1} of ${n}`, body: sentences.join(" ") });
+    for (const joint of tops.filter((candidate) => candidate.step === c)) {
+      sentences.push(`Screw the top end of ${dividerText(joint.stem)} to ${shelfText(joint.shelf)}.`);
+      named.push(joint.stem, joint.shelf);
+    }
+    if (sentences.length === 0) continue;
+    const boards: AssemblyBoard[] = [];
+    for (const board of named) {
+      const key = assemblyBoardKey(board);
+      if (joined.has(key)) continue;
+      joined.add(key);
+      boards.push(board);
+    }
+    steps.push({ title: `Assemble column ${c + 1} of ${n}`, body: sentences.join(" "), action: "join", boards });
   }
   return steps;
 }
