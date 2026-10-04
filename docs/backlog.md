@@ -401,6 +401,8 @@ button is disabled for a material in use, with no reason.
 
 ## 18. Show the parts and a sheet estimate on the Design tab
 
+**Status:** Done.
+
 **Size:** S.
 
 **Problem:** The user must go to the Parts tab and the Layout tab to see what a design needs.
@@ -409,6 +411,23 @@ button is disabled for a material in use, with no reason.
 now** button. (The combined cubbies prototype already adds a Parts list under the front view.)
 
 **Files:** `apps/web/src/screens/DesignTab.tsx`, `packages/core/src/design/parts.ts`.
+
+**Chosen approach:**
+
+- `designSheetEstimate` (`packages/core/src/design/estimate.ts`) runs the optimizer for 8 iterations with seed 1 on
+  the parts of the design alone, for each material of the design. It uses each enabled sheet stock of the material
+  with no limit on the quantity, no offcuts, no pinned sheets, and the goal `cost` with no extra cost. A run takes
+  about 5 to 50 ms for designs up to 5 × 5 cells × 10 units, and gave the same count as a run of 400 iterations.
+- The **Sheets** section under the parts list says "About 2 sheets of Plywood (18 mm), 2440 mm × 1220 mm." and that
+  it is an estimate. It follows the text in a field before the field commits it, through `useDeferredValue`, so that
+  typing stays fast.
+- **Optimize now** runs **Optimize** of the Layout tab and opens the Layout tab. It is disabled while the optimizer
+  runs.
+- A material with no sheet stock gets a warning. For a catalogue material, a button adds its largest sheet. For a
+  material of its own, a button adds a 96" × 48" or 2440 mm × 1220 mm sheet, and a note points to the catalogue
+  materials in the Material list. When the Material list adds a catalogue material with its sheet, the estimate
+  shows at once.
+- `design get` in the CLI gives the same `estimate`.
 
 ## 19. Make the app work on a phone
 
@@ -452,6 +471,8 @@ columns.
 
 ## 21. Combined cubbies: the next phases
 
+**Status:** Done.
+
 **Size:** M.
 
 The prototype (spec: `docs/superpowers/specs/2026-10-04-combined-cubbies-design.md`) covers the core, the parts, the
@@ -463,3 +484,21 @@ checks, the front view, and the Design tab. Next:
   necessary. Decide the rule.
 - Check the assembly text in a real build.
 - The span check does not look at the bottom panel when the unit is on legs or on a wall rail.
+
+**Chosen approach:**
+
+- `design combine <file> <id> --cell <c>,<r> --to <c>,<r>` and `design split <file> <id> --cell <c>,<r>`, with the
+  output of `design set`. A command that changes nothing is refused with exit 2, so that it does not write the file.
+- A divider counts as a support when its load reaches a firm board: it holds up the board over it when the board
+  under it is firm at that point, and the reverse. A board is firm where it stands on the floor, hangs on the rail, or
+  spans 45 times the thickness or less. A back holds every divider. The warning names the board and gives its free
+  span. Spec §8.2 gives the full rule and the reasons.
+- The span check also looks at the bottom when the unit stands on legs or feet, or hangs on the wall rail, and at the
+  top when the unit does not hang on the rail.
+- The assembly steps join each short divider to the long shelf under it (or over it, when the divider stands on the
+  bottom) first, flat on the bench. The column steps then name each board, for example "the shelf under row 1 (Shelf,
+  columns 1–2)". A check in a real build is still to do.
+- The front view gives each board its part name as a title, and a label on the boards that a combined cell makes. It
+  marks the selected cells of the Cells grid in blue.
+- `apps/web/e2e/plan.e2e.ts` combines two cells, checks the parts list and the front view, and optimizes from
+  **Optimize now**.
