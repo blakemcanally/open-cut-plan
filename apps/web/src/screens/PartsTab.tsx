@@ -219,7 +219,6 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
             {groupColors.map((key) => (
               <li key={key.key}>
                 <ColorChoice label={key.label} color={key.color} chosen={key.chosen} onChange={(color) => edit((p) => setGroupColor(p, key.group!, color), `color:${key.key}`)} />
-                <span>{key.label}</span>
               </li>
             ))}
           </ul>

@@ -395,7 +395,6 @@ function DesignEditor({ store, design, issues }: EditorProps) {
                   chosen={entry.chosen}
                   onChange={(color) => edit((p) => setDesignColor(p, design.id, entry.unit, color), `color:${design.id}#${entry.unit}`)}
                 />
-                <span>{entry.label}</span>
               </li>
             ))}
           </ul>

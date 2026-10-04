@@ -143,6 +143,7 @@ export function ColorChoice({ label, color, chosen, disabled, onChange }: ColorC
   return (
     <span className="color-choice">
       <input type="color" aria-label={`Colour of ${label}`} value={color} disabled={disabled} onChange={(event) => onChange(event.target.value)} />
+      <span>{label}</span>
       <button type="button" aria-label={`Automatic colour for ${label}`} title="Use the automatic colour again." disabled={disabled || !chosen} onClick={() => onChange(null)}>
         Automatic
       </button>

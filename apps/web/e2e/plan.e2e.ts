@@ -198,6 +198,10 @@ test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware
   await page.getByLabel("Rows").fill("3");
   await page.getByLabel("Rows").press("Enter");
   await expect(page.getByRole("img", { name: 'Front view of KALLAX 2x2: 28 5/8" × 42 9/16" × 15 11/32"' })).toBeVisible();
+  await page.getByLabel("How many to build").fill("2");
+  await page.getByLabel("How many to build").press("Enter");
+  await page.getByLabel("Colour of KALLAX 2x2 2 of 2").fill("#123456");
+  await expect(page.getByRole("button", { name: "Automatic colour for KALLAX 2x2 2 of 2" })).toBeEnabled();
 
   await page.getByRole("tab", { name: "Parts" }).click();
   await expect(page.getByRole("row", { name: /^Side/ })).toContainText("From design: KALLAX 2x2");
@@ -207,6 +211,8 @@ test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware
   await page.getByLabel("Rows (paste from a spreadsheet, or edit)").fill(STOCK);
   await page.getByRole("button", { name: "Import 1 row" }).click();
   await optimize(page);
+  await expect(page.getByRole("list", { name: "Colours" }).getByRole("listitem")).toHaveText(["KALLAX 2x2 1 of 2", "KALLAX 2x2 2 of 2"]);
+  await expect(page.locator('[data-copy-key="kallax-2x2-top#1"] rect.fill')).toHaveAttribute("fill", "#123456");
 
   await page.getByRole("tab", { name: "Shop" }).click();
   const assembly = page.getByRole("region", { name: "Assembly" });
