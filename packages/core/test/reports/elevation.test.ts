@@ -24,6 +24,19 @@ describe("designElevationSvg", () => {
     expect(svg).toContain(">Depth 390 mm</text>");
   });
 
+  it("draws a combined cell as one opening with its size, and the boards around it", () => {
+    const combined = regenerateDesigns(
+      designProject([kallaxDesign({ width: { openings: [335, 335, 335, 335] }, height: { openings: [335, 335] }, combined: [{ column: 1, row: 1, columns: 2, rows: 1 }] })]),
+    );
+    const svg = designElevationSvg(combined, "kx")!;
+    expect(count(svg, />688 mm × 335 mm</g)).toBe(1);
+    expect(count(svg, />335 mm × 335 mm</g)).toBe(6);
+    expect(count(svg, /data-panel="divider"/g)).toBe(3);
+    expect(count(svg, /data-panel="shelf"/g)).toBe(3);
+    expect(svg).toContain('<rect data-panel="shelf" x="18" y="353" width="688" height="18"');
+    expect(svg).toContain('<rect data-panel="divider" x="353" y="371" width="18" height="335"');
+  });
+
   it("fills the panels with the colour of the first unit of the design", () => {
     expect(designElevationSvg(project, "kx")).toContain('fill="#9cc3e6"');
     expect(designElevationSvg(project, "ek")).toContain('fill="#f2c27b"');
