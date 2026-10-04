@@ -7,6 +7,7 @@ import {
   hardwareList,
   LABEL_LAYOUTS,
   labelPages,
+  totalCutLength,
   unsavedOffcuts,
   type HardwareLine,
   type Project,
@@ -83,7 +84,7 @@ const sequence: CommandSpec = {
     { command: `${PROGRAM} report sequence shelf.cutplan.json --sheet 1 --json`, description: "The steps of sheet 1 as JSON." },
   ],
   output:
-    "orderMode, steps [{ step, sheet, sheetNumber, kind (rip|crosscut|trim), axis, stage, at, from, to, tool (id or null), toolName, recommendedTool (id or null), chosen, overLimit (maxPiece|maxRip|maxCrosscut|maxCut|maxStages or null), side, setting, requires, releasedNext, remainderNext, piece, released, remainder { x, y, length, width }, title, headline, method, pickUp, actions [string], results [{ kind (part|next|offcut|waste), where, size, parts [string], next }], body }].",
+    "orderMode, cutLength (the total length of the cut lines of the steps, trims included), steps [{ step, sheet, sheetNumber, kind (rip|crosscut|trim), axis, stage, at, from, to, tool (id or null), toolName, recommendedTool (id or null), chosen, overLimit (maxPiece|maxRip|maxCrosscut|maxCut|maxStages or null), side, setting, requires, releasedNext, remainderNext, piece, released, remainder { x, y, length, width }, title, headline, method, pickUp, actions [string], results [{ kind (part|next|offcut|waste), where, size, parts [string], next }], body }].",
   async run({ args, options, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
@@ -104,8 +105,9 @@ const sequence: CommandSpec = {
         ...step.actions.map((action, index) => `  ${index + 1}. ${action}`),
         ...step.results.map((result) => `  ${resultSentence(result)}`),
       ].join("\n");
-    const text = steps.length === 0 ? "No cuts." : steps.map(lines).join("\n");
-    return { data: { orderMode: project.settings.orderMode, steps }, text, warnings: warningLines(loaded) };
+    const cutLength = totalCutLength(steps);
+    const text = steps.length === 0 ? "No cuts." : [...steps.map(lines), `${plural(steps.length, "cut step")}. The total cut length is ${len(project, cutLength)}.`].join("\n");
+    return { data: { orderMode: project.settings.orderMode, cutLength, steps }, text, warnings: warningLines(loaded) };
   },
 };
 

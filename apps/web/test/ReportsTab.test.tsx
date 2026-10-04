@@ -71,6 +71,16 @@ describe("ReportsTab", () => {
     expect(shopping.getByText("Total: $60.00")).toBeTruthy();
   });
 
+  it("shows the number of cut steps and the total cut length", () => {
+    renderReports();
+    expect(within(section("Shopping list")).getByText('7 cut steps. The total cut length is 394 1/2".')).toBeTruthy();
+  });
+
+  it("shows no cut length when the cut order is off", () => {
+    renderReports(withFeatures({ cutOrder: false }));
+    expect(within(section("Shopping list")).queryByText(/cut length/)).toBeNull();
+  });
+
   it("hides the costs when the cost feature is off", () => {
     renderReports(withFeatures({ cost: false }));
     const shopping = within(section("Shopping list"));

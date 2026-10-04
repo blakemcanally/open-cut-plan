@@ -45,6 +45,9 @@ describe("report", () => {
     const one = (await cli(["report", "sequence", SHELF, "--sheet", "s2", "--json"], withExamples())).json();
     expect(one.steps.length).toBeGreaterThan(0);
     expect(one.steps.every((s: { sheet: string }) => s.sheet === "s2")).toBe(true);
+    expect(one.cutLength).toBeCloseTo(one.steps.reduce((sum: number, s: { from: number; to: number }) => sum + s.to - s.from, 0), 9);
+    expect(all.cutLength).toBeGreaterThan(one.cutLength);
+    expect(text.split("\n").at(-2)).toMatch(/^\d+ cut steps\. The total cut length is \d[^.]*"\.$/);
     expect((await cli(["report", "sequence", BOOKCASE], withExamples())).stdout).toBe("No cuts.\n");
   });
 

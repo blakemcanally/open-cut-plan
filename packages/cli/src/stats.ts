@@ -1,4 +1,4 @@
-import { analyzeProject, unplacedCopies, type Project } from "@opencutplan/core";
+import { analyzeProject, totalCutLength, unplacedCopies, type Project } from "@opencutplan/core";
 
 export interface PlanStats {
   sheets: number;
@@ -7,6 +7,8 @@ export interface PlanStats {
   placedCopies: number;
   unplacedCopies: number;
   steps: number;
+  /** The total length of the cut lines of the steps, trims included. */
+  cutLength: number;
   errors: number;
   warnings: number;
   currency: string;
@@ -32,6 +34,7 @@ export function planStats(project: Project): PlanStats {
     placedCopies: copies - unplaced,
     unplacedCopies: unplaced,
     steps: analysis.steps.length,
+    cutLength: totalCutLength(analysis.steps),
     errors: analysis.issues.filter((issue) => issue.severity === "error").length,
     warnings: analysis.issues.filter((issue) => issue.severity === "warning").length,
     currency: shopping.currency,

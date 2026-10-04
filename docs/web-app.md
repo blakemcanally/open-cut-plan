@@ -177,7 +177,8 @@ list follows.
 - **Shopping list**: for each material, the stock, its size, the sheets in the plan, the count to buy (owned offcuts
   are not bought), the unit cost, the cost, and a subtotal; then the share of the stock that parts use, and the waste.
   The total follows, or a warning that names the stock with no price. The cost columns are hidden when the `cost`
-  feature is off. A second table gives the use of each sheet.
+  feature is off. A second table gives the use of each sheet. When the plan has cut steps, a line gives their count
+  and the total cut length.
 - **Hardware** (when there are designs): the screws, rails, legs, and glue to buy, with the IKEA article number and the
   design that needs each item. The article numbers are for IKEA in Great Britain.
 - **Front views**: the drawing of each design, and a **<name> as SVG** button that downloads `Shelf-<design id>.svg`.

@@ -3,6 +3,7 @@ import {
   exportPartsCsv,
   exportStockCsv,
   fileBase,
+  formatIn,
   formatSize,
   groupColors,
   hardwareList,
@@ -13,6 +14,7 @@ import {
   materialName,
   saveOffcutsToStock,
   sheetSvg,
+  totalCutLength,
   unsavedOffcuts,
   type LabelLayoutId,
   type ProjectAnalysis,
@@ -138,6 +140,11 @@ export function ReportsTab({ store, analysis, prefs, onPrefs, onPrint }: Reports
         <section aria-labelledby="reports-shopping">
           <h2 id="reports-shopping">Shopping list</h2>
           {planned && <ShoppingTables analysis={analysis} level={3} />}
+          {analysis.steps.length > 0 && (
+            <p>
+              {analysis.steps.length} {analysis.steps.length === 1 ? "cut step" : "cut steps"}. The total cut length is {formatIn(ctx, totalCutLength(analysis.steps))}.
+            </p>
+          )}
           {hardware.length > 0 && <HardwareTable project={project} lines={hardware} level={3} />}
         </section>
       )}

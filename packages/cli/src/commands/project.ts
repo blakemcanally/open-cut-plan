@@ -3,7 +3,7 @@ import { PROGRAM } from "../help.ts";
 import { FILE_ARG, issueText, loadProject, readSource, warningLines } from "../project.ts";
 import { CliError, EXIT, usageError, type CommandSpec } from "../spec.ts";
 import { planStats } from "../stats.ts";
-import { money, percent, plural } from "../text.ts";
+import { len, money, percent, plural } from "../text.ts";
 import { choiceValue, flag, str } from "../values.ts";
 
 const UNITS = UnitsSchema.options;
@@ -59,7 +59,7 @@ export const showCommand: CommandSpec = {
   name: "show",
   summary: "Summarize a project: counts, placed copies, issues, and totals.",
   description:
-    "Print a summary of the project: its name and units, the counts of materials, stock, parts, tools, and plan sheets, how many part copies the plan places, the issue counts, and the totals from the shopping list.",
+    "Print a summary of the project: its name and units, the counts of materials, stock, parts, tools, and plan sheets, how many part copies the plan places, the issue counts, the totals from the shopping list, and the total cut length.",
   args: [FILE_ARG],
   options: [],
   examples: [
@@ -67,7 +67,7 @@ export const showCommand: CommandSpec = {
     { command: `${PROGRAM} show shelf.cutplan.json --json`, description: "Get the summary as JSON." },
   ],
   output:
-    "name, units, notes (or null), version, counts { materials, stock, parts, copies, tools, enabledTools, sheets, pinnedSheets, steps }, copies { total, placed, unplaced }, issues { errors, warnings }, totals { currency, cost (null when unknown), sheetsToBuy, missingPrices (stock ids), utilization (0-1) }.",
+    "name, units, notes (or null), version, counts { materials, stock, parts, copies, tools, enabledTools, sheets, pinnedSheets, steps }, copies { total, placed, unplaced }, issues { errors, warnings }, totals { currency, cost (null when unknown), sheetsToBuy, missingPrices (stock ids), utilization (0-1), cutLength (the total length of the cut lines, trims included) }.",
   async run({ args, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
@@ -90,12 +90,12 @@ export const showCommand: CommandSpec = {
       },
       copies: { total: stats.copies, placed: stats.placedCopies, unplaced: stats.unplacedCopies },
       issues: { errors: stats.errors, warnings: stats.warnings },
-      totals: { currency: stats.currency, cost: stats.cost, sheetsToBuy: stats.sheetsToBuy, missingPrices: stats.missingPrices, utilization: stats.utilization },
+      totals: { currency: stats.currency, cost: stats.cost, sheetsToBuy: stats.sheetsToBuy, missingPrices: stats.missingPrices, utilization: stats.utilization, cutLength: stats.cutLength },
     };
     const text = [
       `${project.project.name} (${project.project.units})`,
       `Parts: ${plural(project.parts.length, "part")} (${plural(stats.copies, "copy", "copies")}). Materials: ${project.materials.length}. Stock: ${project.stock.length}. Tools: ${project.tools.length} (${data.counts.enabledTools} enabled).`,
-      `Plan: ${plural(stats.sheets, "sheet")} (${stats.pinnedSheets} pinned). ${stats.placedCopies} of ${stats.copies} copies placed. ${plural(stats.steps, "cut step")}.`,
+      `Plan: ${plural(stats.sheets, "sheet")} (${stats.pinnedSheets} pinned). ${stats.placedCopies} of ${stats.copies} copies placed. ${plural(stats.steps, "cut step")}. The total cut length is ${len(project, stats.cutLength)}.`,
       `Issues: ${plural(stats.errors, "error")}, ${plural(stats.warnings, "warning")}.`,
       `Totals: buy ${plural(stats.sheetsToBuy, "sheet")}, cost ${money(stats.cost, stats.currency)}${stats.missingPrices.length > 0 ? ` (no price: ${stats.missingPrices.join(", ")})` : ""}, parts use ${percent(stats.utilization)} of the stock.`,
     ].join("\n");

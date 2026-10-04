@@ -1,4 +1,4 @@
-import { buildJsonSchema, defaultTools, FORMAT_VERSION } from "@opencutplan/core";
+import { analyzeProject, buildJsonSchema, defaultTools, formatLength, FORMAT_VERSION, parseProject, totalCutLength, type Project } from "@opencutplan/core";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CLI_VERSION } from "../src/run.ts";
@@ -55,6 +55,12 @@ describe("new", () => {
   });
 });
 
+function shelfProject(): Project {
+  const parsed = parseProject(example(SHELF));
+  if (!parsed.ok) throw new Error("shelf");
+  return parsed.project;
+}
+
 describe("show", () => {
   it("summarizes the example project", async () => {
     const result = await cli(["show", "shelf.cutplan.json", "--json"], withExamples());
@@ -66,12 +72,16 @@ describe("show", () => {
     expect(data.copies.placed + data.copies.unplaced).toBe(data.copies.total);
     expect(data.issues).toEqual({ errors: 0, warnings: 0 });
     expect(data.totals).toMatchObject({ currency: "USD", sheetsToBuy: 7, cost: null, missingPrices: ["bb18-5x5", "bb6-5x5"] });
+    expect(data.totals.cutLength).toBeCloseTo(totalCutLength(analyzeProject(shelfProject()).steps), 9);
   });
 
   it("prints a short readable summary", async () => {
     const result = await cli(["show", "shelf.cutplan.json"], withExamples());
     expect(result.stdout).toMatch(/^Living room shelf \(in\)\n/);
     expect(result.stdout).toContain("Issues: 0 errors, 0 warnings.");
+    const project = shelfProject();
+    const { steps } = analyzeProject(project);
+    expect(result.stdout).toContain(`${steps.length} cut steps. The total cut length is ${formatLength(totalCutLength(steps), "in", project.settings.display)}.`);
     expect(result.stderr).toBe("");
   });
 

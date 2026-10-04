@@ -89,7 +89,7 @@ The examples use `shelf.cutplan.json`. Every command accepts `--json` and `--hel
 | Command | What it does | Example |
 | ------- | ------------ | ------- |
 | `new <file>` | Creates a project with a table saw and a track saw. `--force` replaces a file. | `opencutplan new desk.cutplan.json --name "Desk" --units in` |
-| `show <file>` | Shows the counts, the placed copies, the issues, and the totals. | `opencutplan show shelf.cutplan.json` |
+| `show <file>` | Shows the counts, the placed copies, the issues, the totals, and the total cut length. | `opencutplan show shelf.cutplan.json` |
 | `validate <file>` | Checks the file format and the plan. Exit 1 when there is an error. `--strict` also fails on warnings. | `opencutplan validate shelf.cutplan.json --json` |
 | `schema` | Prints the JSON Schema of the project file. | `opencutplan schema > cutplan.schema.json` |
 | `help [command]` | Shows the help. | `opencutplan help optimize` |
@@ -233,7 +233,7 @@ The reports do not change the file.
 | Command | What it does | Example |
 | ------- | ------------ | ------- |
 | `report shopping <file>` | What to buy, the cost, and the use of each sheet. | `opencutplan report shopping shelf.cutplan.json` |
-| `report sequence <file>` | The cut steps in shop order, with the text of the Shop mode. | `opencutplan report sequence shelf.cutplan.json --sheet 1` |
+| `report sequence <file>` | The cut steps in shop order, with the text of the Shop mode, and the total cut length. | `opencutplan report sequence shelf.cutplan.json --sheet 1` |
 | `report offcuts <file>` | The usable offcuts, and if the stock has them. | `opencutplan report offcuts shelf.cutplan.json --json` |
 | `report labels <file>` | One label for each copy. `--layout` splits them into pages. | `opencutplan report labels shelf.cutplan.json --layout avery-5160` |
 | `report cutlist <file>` | All parts with the size, count, and sheet numbers. | `opencutplan report cutlist shelf.cutplan.json` |
