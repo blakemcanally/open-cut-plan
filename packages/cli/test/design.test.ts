@@ -260,6 +260,26 @@ describe("design set", () => {
     expect(eket.json().design.width).toEqual({ outside: 41.338582677, cells: 3 });
   });
 
+  it("fits the combined cells to the new grid, and removes a span of one cell", async () => {
+    const io = withDesignExamples();
+    editFile(io, KALLAX, (file) => {
+      file.designs[0].combined = [
+        { column: 1, row: 1, columns: 2, rows: 1 },
+        { column: 2, row: 2, columns: 1, rows: 3 },
+      ];
+    });
+    const fewer = await cli(["design", "set", KALLAX, "kallax", "--rows", "3", "--json"], io);
+    expect(fewer.code).toBe(0);
+    expect(fewer.json().design.combined).toEqual([
+      { column: 1, row: 1, columns: 2, rows: 1 },
+      { column: 2, row: 2, columns: 1, rows: 2 },
+    ]);
+    const narrow = await cli(["design", "set", KALLAX, "kallax", "--cols", "1", "--json"], io);
+    expect(narrow.code).toBe(0);
+    expect(narrow.json().design).not.toHaveProperty("combined");
+    expect(narrow.file(KALLAX).designs?.[0]).not.toHaveProperty("combined");
+  });
+
   it("refuses a new id whose parts would take the id of another part", async () => {
     const io = withDesignExamples();
     await cli(["parts", "add", KALLAX, "--name", "Hall side", "--length", "500", "--width", "300"], io);

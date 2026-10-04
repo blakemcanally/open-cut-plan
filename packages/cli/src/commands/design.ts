@@ -10,6 +10,7 @@ import {
   designGeometry,
   detachDesign,
   EKET,
+  fitCombined,
   generatedParts,
   isDesignSystem,
   isHexColor,
@@ -326,9 +327,10 @@ const set: CommandSpec = {
     const systemText = str(options, "system");
     const system = systemText === undefined ? old.system : choiceValue(systemText, "system", DESIGN_SYSTEMS);
     const known = isDesignSystem(system) ? system : "custom";
-    const design: Design = { ...old, id, system };
-    design.width = axisValue(options, WIDTH, known, units, old.width)!;
-    design.height = axisValue(options, HEIGHT, known, units, old.height)!;
+    const fields: Design = { ...old, id, system };
+    fields.width = axisValue(options, WIDTH, known, units, old.width)!;
+    fields.height = axisValue(options, HEIGHT, known, units, old.height)!;
+    const design = fitCombined(fields);
     const depth = optionalLength(options, "depth", units);
     if (depth !== undefined) design.depth = depth;
     const name = nonEmpty(str(options, "name"), "name");
