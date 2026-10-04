@@ -175,7 +175,9 @@ projects and to 0.1 mm in mm projects.
   stripes and arrows, the trim zone, and numbered cut lines in stage colours. Options pick the part colours, the
   `width` and `height` attributes, a step to draw stronger, and the steps to draw as done. With the option
   `cutColors: "tool"`, the cut lines and their numbers have the colours of `toolColors`, and the number of a cut with
-  a warning has the fill `TOOL_WARNING_FILL`. The highlighted step and the steps that are done keep their colours. `sheetSvgExtent` gives the
+  a warning has the fill `TOOL_WARNING_FILL`. The highlighted step and the steps that are done keep their colours.
+  Under all the cut lines, a wider line in `CUT_HALO_COLOR` (white) runs along each cut, so that a cut shows on
+  every part colour. `sheetSvgExtent` gives the
   area it draws: the sheet and a margin on every side, so the numbers on edge cuts are not clipped. All text is
   escaped, so the result is safe to put in a page.
 - `partColors(project)` gives the colour of each part copy. Each unit of a design is one colour key, and each group of

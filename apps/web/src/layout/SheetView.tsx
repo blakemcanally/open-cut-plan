@@ -1,5 +1,6 @@
 import {
   copyLabel,
+  CUT_HALO_COLOR,
   factoryEdgeMarks,
   formatSize,
   grainOk,
@@ -76,6 +77,10 @@ export function cutName(step: Step): string {
   return `Step ${step.step}, ${what}${step.overLimit ? `, over its ${LIMIT_WORDS[step.overLimit]}` : ""}`;
 }
 
+function cutEnds(step: Step): [number, number, number, number] {
+  return step.axis === "x" ? [step.at, step.from, step.at, step.to] : [step.from, step.at, step.to, step.at];
+}
+
 export function SheetView(props: SheetViewProps) {
   const { ctx, sheet, number, scale, steps, colors, summary, currency, cutColors, tools, errors, selected, dragging, preview, showCuts, showKerf, grid, busy } = props;
   const uid = useId();
@@ -105,6 +110,7 @@ export function SheetView(props: SheetViewProps) {
     return part ? placedRect(part, placement) : null;
   });
   const overlap = overlaps(rects);
+  const cutWidth = showKerf ? Math.max(1, px(ctx.kerf)) : 1.5;
   return (
     <section className="sheet" aria-label={`Sheet ${number}: ${stockLabel(ctx, stock)}`}>
       <header className="sheet-head">
@@ -164,9 +170,9 @@ export function SheetView(props: SheetViewProps) {
             </pattern>
           )}
           {overlap.areas.length > 0 && (
-            <pattern id={`${uid}-overlap`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <rect width="6" height="6" fill="#c6282833" />
-              <line x1="0" y1="0" x2="0" y2="6" stroke="#c62828" strokeWidth="2" />
+            <pattern id={`${uid}-overlap`} width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <rect width="7" height="7" fill="#c628281f" />
+              <line x1="0" y1="0" x2="0" y2="7" stroke="#c62828" strokeOpacity="0.6" strokeWidth="1.5" />
             </pattern>
           )}
         </defs>
@@ -243,9 +249,17 @@ export function SheetView(props: SheetViewProps) {
           const rect = rects[index]!;
           return <rect key={index} className="overlap-outline" x={px(rect.x)} y={px(rect.y)} width={px(rect.length)} height={px(rect.width)} />;
         })}
+        {showCuts && steps.length > 0 && (
+          <g className="cut-halos">
+            {steps.map((step) => {
+              const [x1, y1, x2, y2] = cutEnds(step);
+              return <line key={step.step} x1={px(x1)} y1={px(y1)} x2={px(x2)} y2={px(y2)} stroke={CUT_HALO_COLOR} strokeOpacity={0.85} strokeWidth={cutWidth + 3} />;
+            })}
+          </g>
+        )}
         {showCuts &&
           steps.map((step) => {
-            const [x1, y1, x2, y2] = step.axis === "x" ? [step.at, step.from, step.at, step.to] : [step.from, step.at, step.to, step.at];
+            const [x1, y1, x2, y2] = cutEnds(step);
             const byTool = cutColors === "tool";
             const color = byTool ? tools.cutColor(step) : stageColor(step.stage);
             const name = cutName(step);
@@ -260,7 +274,7 @@ export function SheetView(props: SheetViewProps) {
                   x2={px(x2)}
                   y2={px(y2)}
                   stroke={color}
-                  strokeWidth={showKerf ? Math.max(1, px(ctx.kerf)) : 1.5}
+                  strokeWidth={cutWidth}
                   strokeOpacity={showKerf ? 0.55 : 0.9}
                   strokeDasharray={step.kind === "trim" ? "4 3" : undefined}
                 />

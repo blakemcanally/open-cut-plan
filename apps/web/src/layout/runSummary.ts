@@ -12,6 +12,6 @@ export function statsText(ctx: PlanContext, stats: PlanStats): string {
   ].join(", ");
 }
 
-export function comparisonText(ctx: PlanContext, before: PlanStats, after: PlanStats): string {
-  return `Before: ${statsText(ctx, before)}. After: ${statsText(ctx, after)}.`;
+export function comparisonLines(ctx: PlanContext, before: PlanStats, after: PlanStats): [string, string] {
+  return [`Before: ${statsText(ctx, before)}.`, `After: ${statsText(ctx, after)}.`];
 }

@@ -1,4 +1,4 @@
-import { analyzeProject, defaultTools, sequencePlan, setToolChoice, stageColor, stockLabel, TOOL_COLORS, TOOL_WARNING_COLOR, TOOL_WARNING_FILL, type Project } from "@opencutplan/core";
+import { analyzeProject, CUT_HALO_COLOR, defaultTools, sequencePlan, setToolChoice, stageColor, stockLabel, TOOL_COLORS, TOOL_WARNING_COLOR, TOOL_WARNING_FILL, type Project } from "@opencutplan/core";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo, useState } from "react";
@@ -39,6 +39,16 @@ const legend = () => within(screen.getByRole("list", { name: "Cut colours" }));
 const legendItems = () => legend().getAllByRole("listitem").map((item) => item.textContent);
 
 describe("LayoutTab cuts", () => {
+  it("draws a white halo under each cut line, below all the cut lines", () => {
+    renderLayout();
+    const { steps } = analyzeProject(sampleProject());
+    const halos = [...document.querySelectorAll(".cut-halos line")];
+    expect(halos).toHaveLength(steps.length);
+    expect(halos.every((line) => line.getAttribute("stroke") === CUT_HALO_COLOR)).toBe(true);
+    expect(Number(halos[0]!.getAttribute("stroke-width"))).toBeGreaterThan(Number(cutLine(1).getAttribute("stroke-width")));
+    expect(halos[0]!.compareDocumentPosition(cutLine(1)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("shows the full stock name and a summary of the cuts, the use, and the cost under each sheet title", () => {
     renderLayout();
     const analysis = analyzeProject(sampleProject());

@@ -41,7 +41,7 @@ import { CutLegend } from "./CutLegend.tsx";
 import { fitScale, WINDOW_ALLOWANCE } from "./fit.ts";
 import { Inspector } from "./Inspector.tsx";
 import { IssueList } from "./IssueList.tsx";
-import { comparisonText, statsText } from "./runSummary.ts";
+import { comparisonLines, statsText } from "./runSummary.ts";
 import { sheetSummary } from "./sheetSummary.ts";
 import { copyKey, SheetView, type DropPreview } from "./SheetView.tsx";
 import { snapPosition, type Snapped } from "./snap.ts";
@@ -325,9 +325,8 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
     ? `✖ The optimizer failed: ${runs.error}`
     : runs.undone
       ? "The plan from before the optimize run is back. Redo puts the new plan back."
-      : outcome?.changed
-        ? `${runs.notice} ${comparisonText(ctx, outcome.before, outcome.after)}`
-        : runs.notice;
+      : runs.notice;
+  const comparison = !runs.error && !runs.undone && outcome?.changed ? comparisonLines(ctx, outcome.before, outcome.after) : null;
 
   return (
     // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- layout shortcuts for the focused part or sheet bubble up to this element
@@ -342,19 +341,6 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
         <button type="button" disabled={busy || !runs.current} onClick={runs.keepSearching} title="Continue the last search from its best plan.">
           Keep searching
         </button>
-        <span className="run-status">
-          {busy && (
-            <>
-              <button type="button" onClick={runs.stop}>
-                Stop
-              </button>
-              <progress max={1} value={progress} aria-label="Optimizer progress" />
-              <span className="muted" aria-live="polite">
-                {runs.running?.best ? `${runs.running.best.iterations.toLocaleString()} plans tried` : "Starting…"}
-              </span>
-            </>
-          )}
-        </span>
         <span className="spacer" />
         <label className="inline">
           Stock
@@ -385,19 +371,37 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
           </button>
         </span>
       </div>
-      <p className="muted">
-        Goal: {goal}.{" "}
-        <button type="button" className="link" onClick={onShowSettings}>
-          Change
-        </button>
-        {extraCosts.map((m) => (
-          <span key={m.name}> {`${m.name}: ${m.percent} % more cost than the cheapest plan found.`}</span>
-        ))}
-        {groupText && <span> {groupText}</span>}
-      </p>
+      <div className="layout-status">
+        <p className="muted">
+          Goal: {goal}.{" "}
+          <button type="button" className="link" onClick={onShowSettings}>
+            Change
+          </button>
+          {extraCosts.map((m) => (
+            <span key={m.name}> {`${m.name}: ${m.percent} % more cost than the cheapest plan found.`}</span>
+          ))}
+          {groupText && <span> {groupText}</span>}
+        </p>
+        <span className="run-status">
+          {busy && (
+            <>
+              <button type="button" onClick={runs.stop}>
+                Stop
+              </button>
+              <progress max={1} value={progress} aria-label="Optimizer progress" />
+              <span className="muted" aria-live="polite">
+                {runs.running?.best ? `${runs.running.best.iterations.toLocaleString()} plans tried` : "Starting…"}
+              </span>
+            </>
+          )}
+        </span>
+      </div>
       {runText && (
         <div className={`banner run-result${runs.error ? " error" : ""}`}>
-          <p role="status">{runText}</p>
+          <div role="status">
+            <p>{runText}</p>
+            {comparison?.map((line) => <p key={line}>{line}</p>)}
+          </div>
           {outcome?.changed && (
             <button type="button" onClick={runs.undo} title={`Puts back the plan from before ${RUN_NAMES[outcome.kind]}: ${statsText(ctx, outcome.before)}. Undo does the same.`}>
               Undo optimize

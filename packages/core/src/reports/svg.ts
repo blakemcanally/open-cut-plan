@@ -2,7 +2,7 @@ import { copyLabel, formatSize, grainOk, stockLabel, usableRect, type PlanContex
 import { factoryEdgeMarks, sideLine } from "../plan/factoryEdges.ts";
 import type { SheetAnalysis } from "../plan/sheets.ts";
 import type { Step } from "../sequence/sequence.ts";
-import { NO_GROUP_COLOR, stageColor, TOOL_WARNING_FILL, toolColors, toolWarning, type CutColoring, type PartColors } from "./colors.ts";
+import { CUT_HALO_COLOR, NO_GROUP_COLOR, stageColor, TOOL_WARNING_FILL, toolColors, toolWarning, type CutColoring, type PartColors } from "./colors.ts";
 
 export interface SheetSvgOptions {
   /** The fill of each part copy; see `partColors`. Without it, every part is `NO_GROUP_COLOR`. */
@@ -130,9 +130,19 @@ export function sheetSvg(ctx: PlanContext, sheet: SheetAnalysis, steps: readonly
 
   if (options.showCuts ?? true) {
     const tools = options.cutColors === "tool" ? toolColors(ctx.tools) : null;
-    for (const step of steps) {
-      if (step.sheetNumber !== number) continue;
-      const [x1, y1, x2, y2] = step.axis === "x" ? [step.at, step.from, step.at, step.to] : [step.from, step.at, step.to, step.at];
+    const cuts = steps.filter((step) => step.sheetNumber === number);
+    const ends = (step: Step): [number, number, number, number] => (step.axis === "x" ? [step.at, step.from, step.at, step.to] : [step.from, step.at, step.to, step.at]);
+    const lineWidth = (step: Step) => base * (options.highlight === step.step ? 0.22 : 0.07);
+    if (cuts.length > 0) {
+      out.push('<g data-cut-halos="true">');
+      for (const step of cuts) {
+        const [x1, y1, x2, y2] = ends(step).map(num);
+        out.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${CUT_HALO_COLOR}" stroke-opacity="0.85" stroke-width="${num(lineWidth(step) + base * 0.12)}"/>`);
+      }
+      out.push("</g>");
+    }
+    for (const step of cuts) {
+      const [x1, y1, x2, y2] = ends(step);
       const current = options.highlight === step.step;
       const done = options.done?.has(step.step) === true && !current;
       const color = done ? DONE_COLOR : tools ? tools.cutColor(step) : stageColor(step.stage);
@@ -144,7 +154,7 @@ export function sheetSvg(ctx: PlanContext, sheet: SheetAnalysis, steps: readonly
       const my = (y1 + y2) / 2;
       out.push(
         `<g ${attributes}>`,
-        `<line x1="${num(x1)}" y1="${num(y1)}" x2="${num(x2)}" y2="${num(y2)}" stroke="${color}" stroke-width="${num(base * (current ? 0.22 : 0.07))}"${dash}/>`,
+        `<line x1="${num(x1)}" y1="${num(y1)}" x2="${num(x2)}" y2="${num(y2)}" stroke="${color}" stroke-width="${num(lineWidth(step))}"${dash}/>`,
         `<circle cx="${num(mx)}" cy="${num(my)}" r="${num(r)}" fill="${numberFill}" stroke="${color}" stroke-width="${num(base * 0.06)}"/>`,
         `<text x="${num(mx)}" y="${num(my)}" font-size="${num(r * 1.1)}" text-anchor="middle" dominant-baseline="central" fill="${current ? "#fff" : color}">${step.step}</text>`,
         "</g>",

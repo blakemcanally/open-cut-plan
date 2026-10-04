@@ -405,13 +405,16 @@ describe("LayoutTab", () => {
     expect(screen.getByRole("button", { name: "Keep searching" }).hasAttribute("disabled")).toBe(false);
   }, 15000);
 
-  it("keeps the room for the optimizer status in the toolbar while no search runs", async () => {
+  it("shows the optimizer status beside the goal, so that the toolbar does not change while a search runs", async () => {
     renderLayout();
     const toolbar = screen.getByRole("toolbar", { name: "Layout" });
-    const room = toolbar.querySelector<HTMLElement>(".run-status")!;
-    expect(room.children).toHaveLength(0);
+    const contents = () => [...toolbar.querySelectorAll("*")].map((element) => element.tagName);
+    const idle = contents();
     await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
-    expect(within(room).getByRole("button", { name: "Stop" })).toBeTruthy();
+    const status = screen.getByText(/^Goal:/).closest<HTMLElement>(".layout-status")!;
+    expect(within(status).getByRole("button", { name: "Stop" })).toBeTruthy();
+    expect(within(status).getByRole("progressbar", { name: "Optimizer progress" })).toBeTruthy();
+    expect(contents()).toEqual(idle);
     await screen.findByRole("button", { name: "Undo optimize" }, { timeout: 10000 });
   }, 15000);
 

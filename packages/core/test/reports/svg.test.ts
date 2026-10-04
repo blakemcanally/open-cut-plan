@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   analyzeProject,
+  CUT_HALO_COLOR,
   defaultTools,
   escapeXml,
   PART_PALETTE,
@@ -168,6 +169,19 @@ describe("sheetSvg", () => {
     expect(analysis.steps.length).toBeGreaterThan(0);
     expect(analysis.steps.every((step) => step.tool === null)).toBe(true);
     expect(svg.match(new RegExp(`<line [^>]*stroke="${TOOL_WARNING_COLOR}"`, "g"))).toHaveLength(analysis.steps.length);
+  });
+
+  it("draws a halo under every cut line, below all the cut lines, so that a cut shows on any part colour", () => {
+    const { analysis, svg } = drawn(sampleProject(), { highlight: 2 });
+    const halos = svg.slice(svg.indexOf('<g data-cut-halos="true"'), svg.indexOf("</g>", svg.indexOf('<g data-cut-halos="true"')));
+    expect(count(halos, new RegExp(`<line [^>]*stroke="${CUT_HALO_COLOR}"`, "g"))).toBe(analysis.steps.length);
+    expect(svg.indexOf("data-cut-halos")).toBeLessThan(svg.indexOf("<g data-step="));
+    const width = (text: string) => Number(/stroke-width="([\d.]+)"/.exec(text)![1]);
+    const line = (step: number) => /<g data-step="\d+"[^>]*>\n(<line [^>]*>)/.exec(svg.slice(svg.indexOf(`<g data-step="${step}"`)))![1]!;
+    const halo = (step: number) => halos.split("\n").filter((text) => text.startsWith("<line"))[step - 1]!;
+    expect(width(halo(1))).toBeGreaterThan(width(line(1)));
+    expect(width(halo(2))).toBeGreaterThan(width(line(2)));
+    expect(drawn(sampleProject(), { showCuts: false }).svg).not.toContain("data-cut-halos");
   });
 
   it("keeps the done and highlight colours when the cuts are coloured by tool", () => {

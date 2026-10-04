@@ -158,6 +158,8 @@ part that asks for a factory edge and does not get one.
   in profile order. A cut with no tool, or with a chosen tool that is over one of its limits, is red, and its number
   has a light red fill. The legend then has the item "No tool, or over a tool limit". The choice belongs to the
   browser, not to the project file. **Cut lines** shows only when the sheets show cut lines.
+- Each cut line has a white edge on each side, so that it shows on every part colour. The Shop tab, the printed
+  booklet, and the SVG files draw the cut lines in the same way.
 - A click on a cut number opens its step on the Shop tab. Tab moves the focus to the cut numbers after the parts of
   the sheet; Enter or Space opens the step. Each cut number has a name such as "Step 5, Table saw rip". The name of
   a cut with a problem adds "no tool" or the limit, for example "Step 1, Table saw trim, over its largest piece".

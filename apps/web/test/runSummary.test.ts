@@ -1,6 +1,6 @@
 import { analyzeProject, formatIn, planStats, type Project } from "@opencutplan/core";
 import { describe, expect, it } from "vitest";
-import { comparisonText, statsText } from "../src/layout/runSummary.ts";
+import { comparisonLines, statsText } from "../src/layout/runSummary.ts";
 import { formatMoney } from "../src/reports/money.ts";
 import { sampleProject } from "./helpers.ts";
 
@@ -30,6 +30,6 @@ describe("statsText", () => {
     const before = planStats(project, analysis);
     const after = { ...before, sheets: 2, cost: 120, unplacedCopies: 0 };
     const money = (value: number) => formatMoney(value, "USD");
-    expect(comparisonText(analysis.context, before, after)).toBe(`Before: 1 sheet, ${money(60)}, 1 part unplaced. After: 2 sheets, ${money(120)}, every part placed.`);
+    expect(comparisonLines(analysis.context, before, after)).toEqual([`Before: 1 sheet, ${money(60)}, 1 part unplaced.`, `After: 2 sheets, ${money(120)}, every part placed.`]);
   });
 });

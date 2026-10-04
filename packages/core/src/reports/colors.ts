@@ -25,6 +25,8 @@ export const TOOL_COLORS: readonly string[] = ["#1a5fd0", "#1e8449", "#a35c00", 
 export const TOOL_WARNING_COLOR = "#c62828";
 /** The fill of the number of a cut with `TOOL_WARNING_COLOR`. */
 export const TOOL_WARNING_FILL = "#fde2de";
+/** Drawn wider under each cut line, so that a cut shows on any part colour. */
+export const CUT_HALO_COLOR = "#ffffff";
 
 export function isHexColor(value: string): boolean {
   return HexColorSchema.safeParse(value).success;
