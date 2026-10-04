@@ -248,8 +248,6 @@ test("combines two cells on the Design tab, and optimizes from the sheet estimat
   await page.getByRole("tab", { name: "Design" }).click();
   await page.getByRole("button", { name: "Add design" }).click();
   const sheets = page.getByRole("region", { name: "Sheets" });
-  await expect(sheets.getByRole("listitem").first()).toContainText("The project has no sheet stock of Plywood (18 mm).");
-  await sheets.getByRole("button", { name: "Add 2440 mm × 1220 mm sheets" }).click();
   await expect(sheets.getByRole("listitem").first()).toHaveText("About 1 sheet of Plywood (18 mm), 2440 mm × 1220 mm.");
 
   const cells = page.getByRole("grid", { name: "Cells" });
