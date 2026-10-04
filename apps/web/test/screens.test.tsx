@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
+import { addCatalogStock, createProject } from "@opencutplan/core";
 import { describe, expect, it, vi } from "vitest";
 import { SettingsTab, type SettingsSectionId } from "../src/screens/SettingsTab.tsx";
 import { StockTab } from "../src/screens/StockTab.tsx";
@@ -73,6 +74,50 @@ describe("StockTab", () => {
     expect(current().project.materials.map((m) => m.id)).toEqual(["ply"]);
     await userEvent.click(screen.getByRole("button", { name: "Add stock" }));
     expect(current().project.stock).toHaveLength(2);
+  });
+
+  it("adds a catalogue material and two of its sheet sizes, with the typical prices", async () => {
+    const { current } = renderWithStore(createProject("New", "in"), (store) => <StockTab store={store} />);
+    await userEvent.click(screen.getByRole("button", { name: "Add from catalogue…" }));
+    const dialog = screen.getByRole("dialog", { name: "Add from catalogue" });
+    expect(dialog.textContent).toContain("Prices are typical");
+    await userEvent.selectOptions(within(dialog).getByLabelText("Family"), "MDF");
+    await userEvent.selectOptions(within(dialog).getByLabelText("Material"), 'MDF 3/4"');
+    expect(dialog.textContent).toContain('Actual thickness 0.75"');
+    const big = within(dialog).getByRole("row", { name: /4 × 8 ft/ });
+    expect(big.textContent).toContain("97\" × 49\"");
+    expect(big.textContent).toContain("$49.98");
+    expect(big.textContent).toContain("Home Depot, checked 2026-10-04");
+    expect(within(big).getByRole("link", { name: "Home Depot" }).getAttribute("href")).toMatch(/^https:\/\/www\.homedepot\.com\//);
+    const add = within(dialog).getByRole("button", { name: /^Add/ });
+    expect(add).toHaveProperty("disabled", true);
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: "4 × 8 ft" }));
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: "2 × 4 ft" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add 2 sizes" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(current().project.materials).toEqual([{ id: "mdf-3-4", name: 'MDF 3/4"', thickness: 0.75, grained: false }]);
+    expect(current().project.stock).toEqual([
+      { id: "mdf-3-4-4x8", material: "mdf-3-4", length: 97, width: 49, quantity: null, kind: "sheet", cost: 49.98 },
+      { id: "mdf-3-4-2x4", material: "mdf-3-4", length: 47.75, width: 23.75, quantity: null, kind: "sheet", cost: 32.44 },
+    ]);
+  });
+
+  it("marks a size that the project has, says when no price is known, and gives no cost in another currency", async () => {
+    const base = createProject("Metric", "mm");
+    const project = addCatalogStock({ ...base, settings: { ...base.settings, currency: "EUR" } }, "baltic-birch-18mm-5x5").project;
+    const { current } = renderWithStore(project, (store) => <StockTab store={store} />);
+    await userEvent.click(screen.getByRole("button", { name: "Add from catalogue…" }));
+    const dialog = screen.getByRole("dialog", { name: "Add from catalogue" });
+    await userEvent.selectOptions(within(dialog).getByLabelText("Family"), "Baltic birch plywood");
+    await userEvent.selectOptions(within(dialog).getByLabelText("Material"), 'Baltic birch 3/4" (18 mm)');
+    expect(within(dialog).getByRole("checkbox", { name: "5 × 5 ft" })).toHaveProperty("disabled", true);
+    expect(within(dialog).getByRole("row", { name: /5 × 5 ft/ }).textContent).toContain("In the project");
+    expect(within(dialog).getByRole("row", { name: /2 × 5 ft/ }).textContent).toContain("No price found");
+    expect(dialog.textContent).toContain("The project currency is EUR");
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: "2 × 5 ft" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add 1 size" }));
+    expect(current().project.materials).toHaveLength(1);
+    expect(current().project.stock[1]).toEqual({ id: "baltic-birch-18mm-2x5", material: "baltic-birch-18mm", length: 1524, width: 610, quantity: null, kind: "sheet" });
   });
 });
 

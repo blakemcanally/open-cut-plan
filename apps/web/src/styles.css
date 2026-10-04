@@ -85,6 +85,7 @@ table.grid td input.narrow { min-width: 60px; width: 80px; }
 .dialog-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .dialog textarea { width: 100%; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 .dialog fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; }
+table.grid.catalog-sizes th[scope="row"] { font-size: inherit; color: inherit; font-weight: 600; border-bottom: 1px solid #eee; }
 .mapping { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px 12px; }
 .mapping label { display: flex; flex-direction: column; font-size: 13px; }
 .switch { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }

@@ -14,6 +14,7 @@ import {
   type Units,
 } from "@opencutplan/core";
 import { useState } from "react";
+import { CatalogDialog } from "../components/CatalogDialog.tsx";
 import { CsvImportDialog } from "../components/CsvImportDialog.tsx";
 import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
@@ -37,6 +38,7 @@ export function StockTab({ store }: { store: ProjectStore }) {
   const { project, edit } = store;
   const [importing, setImporting] = useState<string | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
+  const [browsing, setBrowsing] = useState(false);
   const units = project.project.units;
   const display = project.settings.display;
   const currency = project.settings.currency;
@@ -143,6 +145,9 @@ export function StockTab({ store }: { store: ProjectStore }) {
           <button type="button" className="primary" onClick={() => edit(addStock)}>
             Add stock
           </button>
+          <button type="button" onClick={() => setBrowsing(true)}>
+            Add from catalogue…
+          </button>
           <button type="button" onClick={() => setImporting("")}>
             Paste rows…
           </button>
@@ -159,7 +164,7 @@ export function StockTab({ store }: { store: ProjectStore }) {
           </p>
         )}
         {project.stock.length === 0 ? (
-          <p className="muted">No stock yet. Add the sheets you can buy and the offcuts you own.</p>
+          <p className="muted">No stock yet. Add the sheets you can buy and the offcuts you own, or add common sheet goods from the catalogue.</p>
         ) : (
           <div className="table-wrap">
             <table className="grid">
@@ -271,6 +276,16 @@ export function StockTab({ store }: { store: ProjectStore }) {
           </div>
         )}
       </section>
+      {browsing && (
+        <CatalogDialog
+          project={project}
+          onAdd={(next) => {
+            edit(next);
+            setBrowsing(false);
+          }}
+          onClose={() => setBrowsing(false)}
+        />
+      )}
       {importing !== null && (
         <CsvImportDialog
           kind="stock"

@@ -124,6 +124,33 @@ describe("DesignTab", () => {
     expect(screen.getByRole("alert").textContent).toBe('✖ Design "Hall" is too small: the panels leave no room for the cells.');
   });
 
+  it("uses a catalogue material for the box, and adds it with its largest sheet", async () => {
+    const current = renderDesign();
+    const material = screen.getByLabelText("Material");
+    expect(within(material).getByRole("group", { name: "Catalogue: Baltic birch plywood" })).toBeTruthy();
+    await userEvent.selectOptions(material, 'Baltic birch 3/4" (18 mm)');
+    expect(design(current).material).toBe("baltic-birch-18mm");
+    expect(current().project.materials.at(-1)).toEqual({ id: "baltic-birch-18mm", name: 'Baltic birch 3/4" (18 mm)', thickness: 18, grained: true });
+    expect(current().project.stock.at(-1)).toEqual({ id: "baltic-birch-18mm-5x5", material: "baltic-birch-18mm", length: 1525, width: 1525, quantity: null, kind: "sheet" });
+    expect(material).toHaveProperty("value", "baltic-birch-18mm");
+    expect(within(material).queryByRole("option", { name: 'Baltic birch 3/4" (18 mm)' })).toBeNull();
+  });
+
+  it("uses a catalogue material for the back", async () => {
+    const current = renderDesign();
+    await userEvent.selectOptions(screen.getByLabelText("Back"), 'Birch plywood 1/4"');
+    expect(design(current).back).toEqual({ material: "birch-ply-1-4" });
+    expect(current().project.stock.at(-1)).toMatchObject({ id: "birch-ply-1-4-4x8", material: "birch-ply-1-4", length: 2438, width: 1219, cost: 46.74 });
+  });
+
+  it("adds no catalogue material that the design refuses", async () => {
+    const current = renderDesign();
+    const before = current().project;
+    await userEvent.selectOptions(screen.getByLabelText("Material"), 'Tempered hardboard 1/8"');
+    expect(current().project).toBe(before);
+    expect(screen.getByRole("alert").textContent).toContain("too thin for pocket screws");
+  });
+
   it("uses the EKET sizes when the system changes to EKET", async () => {
     const current = renderDesign();
     await userEvent.selectOptions(screen.getByLabelText("System"), "eket");

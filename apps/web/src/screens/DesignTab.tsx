@@ -1,5 +1,8 @@
 import {
   axisCells,
+  CATALOG_FAMILIES,
+  catalogFor,
+  projectMaterialFor,
   DESIGN_MOUNTS,
   DESIGN_SYSTEM_NAMES,
   DESIGN_SYSTEMS,
@@ -26,7 +29,7 @@ import {
 } from "@opencutplan/core";
 import { useState, type InputHTMLAttributes } from "react";
 import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
-import { addDesign, axisMode, openingsText, parseOpenings, tryDesign, withCells, withMode, withSystem, type AxisMode } from "../design/form.ts";
+import { addDesign, axisMode, CATALOG_VALUE, openingsText, parseOpenings, pickMaterial, tryDesign, withCells, withMode, withSystem, type AxisMode } from "../design/form.ts";
 import type { ProjectStore } from "../state/useProject.ts";
 
 const MOUNT_LABELS: Readonly<Record<DesignMount, string>> = { floor: "Floor", legs: "EKET legs", feet: "EKET feet", "wall-rail": "EKET wall rail" };
@@ -40,6 +43,23 @@ interface DesignTabProps {
 
 export function designIssues(issues: readonly PlanIssue[], id: string): PlanIssue[] {
   return issues.filter((issue) => issue.refs.some((ref) => ref.kind === "design" && ref.design === id));
+}
+
+function CatalogOptions({ project }: { project: Project }) {
+  const entries = catalogFor(project.project.units).filter((entry) => !projectMaterialFor(project, entry.id));
+  return CATALOG_FAMILIES.map((family) => {
+    const inFamily = entries.filter((entry) => entry.family === family);
+    if (inFamily.length === 0) return null;
+    return (
+      <optgroup key={family} label={`Catalogue: ${family}`}>
+        {inFamily.map((entry) => (
+          <option key={entry.id} value={`${CATALOG_VALUE}${entry.id}`}>
+            {entry.name}
+          </option>
+        ))}
+      </optgroup>
+    );
+  });
 }
 
 function outsideText(project: Project, design: Design): string {
@@ -134,8 +154,8 @@ function DesignEditor({ store, design, issues }: EditorProps) {
       : null;
   const system: DesignSystem = isDesignSystem(design.system) ? design.system : "custom";
 
-  const apply = (field: string, change: (design: Design) => Design): boolean => {
-    const result = tryDesign(project, change(design));
+  const apply = (field: string, change: (design: Design) => Design, base: Project = project): boolean => {
+    const result = tryDesign(base, change(design));
     if (!result.ok) {
       setRefused({ field, message: result.issues.map((issue) => issue.message).join(" ") });
       return false;
@@ -288,13 +308,21 @@ function DesignEditor({ store, design, issues }: EditorProps) {
           <div className="pair">
             <label className="stack">
               Material
-              <select aria-invalid={invalid("material")} value={design.material} onChange={(event) => apply("material", (d) => ({ ...d, material: event.target.value }))}>
+              <select
+                aria-invalid={invalid("material")}
+                value={design.material}
+                onChange={(event) => {
+                  const picked = pickMaterial(project, event.target.value);
+                  apply("material", (d) => ({ ...d, material: picked.material }), picked.project);
+                }}
+              >
                 {project.materials.map((material) => (
                   <option key={material.id} value={material.id}>
                     {material.name} ({formatLength(material.thickness, units, display)})
                   </option>
                 ))}
                 {!project.materials.some((material) => material.id === design.material) && <option value={design.material}>{design.material} (missing)</option>}
+                <CatalogOptions project={project} />
               </select>
             </label>
             <label className="stack">
@@ -302,12 +330,17 @@ function DesignEditor({ store, design, issues }: EditorProps) {
               <select
                 aria-invalid={invalid("back")}
                 value={design.back?.material ?? ""}
-                onChange={(event) =>
-                  apply("back", (d) => {
-                    const { back: _back, ...rest } = d;
-                    return event.target.value === "" ? rest : { ...rest, back: { material: event.target.value } };
-                  })
-                }
+                onChange={(event) => {
+                  const picked = pickMaterial(project, event.target.value);
+                  apply(
+                    "back",
+                    (d) => {
+                      const { back: _back, ...rest } = d;
+                      return picked.material === "" ? rest : { ...rest, back: { material: picked.material } };
+                    },
+                    picked.project,
+                  );
+                }}
               >
                 <option value="">No back</option>
                 {project.materials.map((material) => (
@@ -318,6 +351,7 @@ function DesignEditor({ store, design, issues }: EditorProps) {
                 {design.back && !project.materials.some((material) => material.id === design.back!.material) && (
                   <option value={design.back.material}>{design.back.material} (missing)</option>
                 )}
+                <CatalogOptions project={project} />
               </select>
             </label>
           </div>

@@ -1,4 +1,5 @@
 import {
+  addCatalogMaterial,
   axisCells,
   convertLength,
   defaultDesignName,
@@ -30,6 +31,15 @@ import {
 export type DesignEdit = { ok: true; project: Project } | { ok: false; issues: PlanIssue[] };
 
 export type AxisMode = "outside" | "openings";
+
+export const CATALOG_VALUE = "catalog:";
+
+/** A material from a design select: a project material id, or a catalogue material, which is added with its largest sheet when the project has no sheet of it. */
+export function pickMaterial(project: Project, value: string): { project: Project; material: string } {
+  if (!value.startsWith(CATALOG_VALUE) || project.materials.some((material) => material.id === value)) return { project, material: value };
+  const result = addCatalogMaterial(project, value.slice(CATALOG_VALUE.length), { sheet: true });
+  return { project: result.project, material: result.material };
+}
 
 function withDesign(project: Project, design: Design): Project {
   const designs = project.designs ?? [];
