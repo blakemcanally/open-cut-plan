@@ -1,4 +1,4 @@
-import type { Design, DesignAxis, Material, Project } from "../format/schema.ts";
+import type { CombinedCell, Design, DesignAxis, Material, Project } from "../format/schema.ts";
 
 export interface DesignGeometry {
   thickness: number;
@@ -12,6 +12,8 @@ export interface DesignGeometry {
   outsideHeight: number;
   depth: number;
   panelDepth: number;
+  /** Only present when the design has combined cells. */
+  combined?: readonly CombinedCell[];
 }
 
 export function roundLength(value: number): number {
@@ -56,5 +58,6 @@ export function designGeometry(design: Design, materials: ReadonlyMap<string, Ma
     outsideHeight: outsideSize(design.height, rows, thickness),
     depth: design.depth,
     panelDepth: roundLength(design.depth - backThickness),
+    ...(design.combined && design.combined.length > 0 ? { combined: design.combined } : {}),
   };
 }
