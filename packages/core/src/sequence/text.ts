@@ -158,15 +158,15 @@ export function describeStep(ctx: PlanContext, step: Step): StepText {
   return finish(headline, actions, results);
 }
 
-type Guide = "fence" | "stop" | "marks";
+export type Guide = "fence" | "stop" | "marks";
 
-function guideOf(step: Pick<Step, "tool" | "axis">): Guide {
+export function guideOf(step: Pick<Step, "tool" | "axis">): Guide {
   const type = step.tool?.type;
   if (type === "table-saw") return step.axis === "y" ? "fence" : "stop";
   return type === "panel-saw" || type === "miter-saw" ? "stop" : "marks";
 }
 
-function trimAmount(ctx: PlanContext, step: Step): string {
+export function trimAmount(ctx: PlanContext, step: Step): string {
   return formatIn(ctx, sizeAlong(step.piece, step.axis) - sizeAlong(step.remainder, step.axis));
 }
 

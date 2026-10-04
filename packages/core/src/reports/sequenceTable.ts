@@ -1,7 +1,7 @@
-import { EPSILON, sizeAlong, type Rect } from "../geometry/rect.ts";
+import { EPSILON, type Rect } from "../geometry/rect.ts";
 import { formatIn, type PlanContext } from "../plan/context.ts";
 import type { Step } from "../sequence/sequence.ts";
-import { describeStep } from "../sequence/text.ts";
+import { describeStep, guideOf, trimAmount } from "../sequence/text.ts";
 import { toolWarning } from "./colors.ts";
 
 export interface SequenceRow {
@@ -25,14 +25,11 @@ function edge(piece: Rect, side: Rect, axis: Step["axis"]): string {
 }
 
 function setting(ctx: PlanContext, step: Step): string {
-  if (step.kind === "trim") {
-    const amount = formatIn(ctx, sizeAlong(step.piece, step.axis) - sizeAlong(step.remainder, step.axis));
-    return `Trim ${amount} off the ${edge(step.piece, step.released, step.axis)}`;
-  }
+  if (step.kind === "trim") return `Trim ${trimAmount(ctx, step)} off the ${edge(step.piece, step.released, step.axis)}`;
   const value = formatIn(ctx, step.setting);
-  const type = step.tool?.type;
-  if (type === "table-saw" && step.axis === "y") return `Fence ${value}`;
-  if (type === "table-saw" || type === "panel-saw") return `Stop ${value}`;
+  const guide = guideOf(step);
+  if (guide === "fence") return `Fence ${value}`;
+  if (guide === "stop") return `Stop ${value}`;
   return `Mark ${value} from the ${edge(step.piece, step[step.side], step.axis)}`;
 }
 

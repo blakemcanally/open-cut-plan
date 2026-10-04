@@ -30,6 +30,13 @@ describe("sequenceRows", () => {
     ]);
   });
 
+  it("gives a stop for a mitre saw", () => {
+    const analysis = analyzeProject(sampleProject());
+    const miter = { id: "ms", name: "Mitre saw", type: "miter-saw" as const, kerf: 0.125, enabled: true };
+    const steps = analysis.steps.map((step) => ({ ...step, tool: miter }));
+    expect(sequenceRows(analysis.context, steps).slice(4).map((row) => row.setting)).toEqual(['Stop 30"', 'Stop 12"', 'Stop 12"']);
+  });
+
   it("says No tool and warns for a cut that no enabled tool can make", () => {
     const project = sampleProject();
     project.tools[0]!.enabled = false;
