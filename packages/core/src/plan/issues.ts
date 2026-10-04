@@ -13,6 +13,7 @@ export type PlanIssueCode =
   | "bad-copy"
   | "duplicate-placement"
   | "design-too-small"
+  | "design-combined"
   | "design-too-large"
   | "design-conflict"
   | "pocket-thickness"

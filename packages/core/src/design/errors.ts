@@ -2,6 +2,7 @@ import { MAX_PART_QUANTITY, type Design, type Project } from "../format/schema.t
 import { EPSILON } from "../geometry/rect.ts";
 import { convertLength } from "../geometry/units.ts";
 import { planError, type PlanIssue, type PlanRef } from "../plan/issues.ts";
+import { combinedErrors } from "./combined.ts";
 import { designGeometry, materialsById } from "./geometry.ts";
 import { buildDesignParts } from "./parts.ts";
 import { MIN_POCKET_THICKNESS_MM } from "./systems.ts";
@@ -30,6 +31,11 @@ export function designErrors(project: Project, design: Design): PlanIssue[] {
   }
   if ([...geometry.columns, ...geometry.rows].some((opening) => opening <= EPSILON) || geometry.panelDepth <= EPSILON) {
     issues.push(planError("design-too-small", `Design "${design.name}" is too small: the panels leave no room for the cells.`, ref));
+    return issues;
+  }
+  const combined = combinedErrors(design);
+  if (combined.length > 0) {
+    for (const message of combined) issues.push(planError("design-combined", `Design "${design.name}" has a bad combined cell. ${message}`, ref));
     return issues;
   }
 
