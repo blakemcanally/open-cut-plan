@@ -98,7 +98,7 @@ The examples use `shelf.cutplan.json`. Every command accepts `--json` and `--hel
 ### Parts, stock, materials, and tools
 
 Each group has `list`, `get`, `add`, `set`, and `remove`. `parts` and `stock` also have `import` and `export` for CSV
-files. `parts` also has `colors` and `group-color` for the colours of the layout.
+files. `parts` also has `colors` and `group-color` for the colours of the layout, and `rename-group`.
 
 | Command | What it does | Example |
 | ------- | ------------ | ------- |
@@ -110,6 +110,7 @@ files. `parts` also has `colors` and `group-color` for the colours of the layout
 | `parts remove <file> <id>...` | Removes parts and their placements. | `opencutplan parts remove shelf.cutplan.json a-back` |
 | `parts colors <file>` | Lists the colour of each design unit and each group, as the layout shows them. | `opencutplan parts colors shelf.cutplan.json` |
 | `parts group-color <file> <group> <#rrggbb\|auto>` | Chooses the colour of a group of parts without a design. `auto` gives the automatic colour again. | `opencutplan parts group-color shelf.cutplan.json "3x2 A" "#ff8800"` |
+| `parts rename-group <file> <group> <new name>` | Gives every part without a design in the group the new name. The chosen colour moves with the group. When parts already have the new name, the groups become one, and that group keeps its own colour when it has one. | `opencutplan parts rename-group shelf.cutplan.json "3x2 A" "Cabinet A"` |
 | `parts import <file> <csv>` | Adds the parts in a CSV file. `--map length=Len` reads the length from the column `Len`. | `opencutplan parts import shelf.cutplan.json parts.csv --dry-run` |
 | `parts export <file>` | Writes the parts as CSV. | `opencutplan parts export shelf.cutplan.json --out parts.csv` |
 | `stock list <file>` | Lists the stock and the sheets cut from each item. | `opencutplan stock list shelf.cutplan.json` |

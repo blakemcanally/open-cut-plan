@@ -23,6 +23,29 @@ describe("PartsTab", () => {
     expect(current().project).not.toHaveProperty("groups");
   });
 
+  it("renames a group on all its parts, and the colour moves with it", async () => {
+    const project = designProject();
+    const door = { material: "ply18", length: 300, width: 200, quantity: 1, grain: "length" as const, group: "Doors" };
+    project.parts.push({ id: "door", name: "Door", ...door }, { id: "glass", name: "Glass door", ...door });
+    project.groups = { Doors: { color: "#00aa00" } };
+    const { current } = renderWithStore(project, (store) => <PartsTab store={store} />);
+    await userEvent.click(screen.getByRole("button", { name: "Rename group Doors" }));
+    const name = screen.getByRole("textbox", { name: "New name of group Doors" });
+    expect(document.activeElement).toBe(name);
+    await userEvent.clear(name);
+    await userEvent.type(name, "Fronts{Escape}");
+    expect(screen.queryByRole("textbox", { name: "New name of group Doors" })).toBeNull();
+    expect(current().project.parts.filter((part) => part.group === "Doors")).toHaveLength(2);
+    await userEvent.click(screen.getByRole("button", { name: "Rename group Doors" }));
+    await userEvent.clear(screen.getByRole("textbox", { name: "New name of group Doors" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "New name of group Doors" }), "Fronts{Enter}");
+    expect(current().project.parts.filter((part) => part.group === "Fronts").map((part) => part.id)).toEqual(["door", "glass"]);
+    expect(current().project.groups).toEqual({ Fronts: { color: "#00aa00" } });
+    expect(screen.getByLabelText("Colour of Fronts")).toHaveProperty("value", "#00aa00");
+    expect(screen.getByLabelText("Group of Glass door")).toHaveProperty("value", "Fronts");
+    expect(screen.queryByRole("textbox", { name: /^New name of group/ })).toBeNull();
+  });
+
   it("commits an edited length and lowers the quantity, which takes the extra copy off the sheet", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <PartsTab store={store} />);
     const length = screen.getByLabelText("Length of Side");

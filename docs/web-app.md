@@ -119,6 +119,10 @@ value when the focus leaves; Escape restores it at once.
 - **Group colours in the layout** has a colour box for each group of parts without a design. Choose a colour to
   change it. **Automatic** gives the group its automatic colour again. The colours of the design units are on the
   Design tab.
+- **Rename** next to a group opens a field with the group name. Enter, or a click outside the field, gives the new
+  name to every part of the group, and the chosen colour moves with it. Escape closes the field and changes nothing.
+  When parts already have the new name, the two groups become one, and that group keeps its own colour when it has
+  one. The **Group** field of a part changes the group of that part only.
 
 ### Stock
 

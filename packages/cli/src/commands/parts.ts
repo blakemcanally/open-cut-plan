@@ -1,8 +1,8 @@
-import { FACTORY_EDGE_CHOICES, factoryEdgeRequest, GrainSchema, isHexColor, MAX_PART_QUANTITY, partColors, removePart, setGroupColor, updatePart, type Part, type Patch, type Project } from "@opencutplan/core";
+import { FACTORY_EDGE_CHOICES, factoryEdgeRequest, GrainSchema, isHexColor, MAX_PART_QUANTITY, partColors, removePart, renameGroup, setGroupColor, updatePart, type Part, type Patch, type Project } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines } from "../project.ts";
 import { usageError, type CommandSpec, type GroupSpec, type OptionValues } from "../spec.ts";
-import { len, size, table } from "../text.ts";
+import { len, plural, size, table } from "../text.ts";
 import { integerValue, optionalChoice, optionalLength, str } from "../values.ts";
 import { assertNoConflict, assertNotGenerated, findAll, findById, ID_OPTION, materialFor, newId, nonEmpty, resolveMaterial, unsetFields, unsetOption } from "./common.ts";
 import { CSV_ARGS, EXPORT_OUT, exportCsv, importCsv, importOptions } from "./csv.ts";
@@ -222,6 +222,19 @@ const colors: CommandSpec = {
   },
 };
 
+function looseGroups(project: Project): string[] {
+  const designs = new Set((project.designs ?? []).map((design) => design.id));
+  return [...new Set(project.parts.flatMap((part) => (part.group !== undefined && !(part.design !== undefined && designs.has(part.design)) ? [part.group] : [])))];
+}
+
+function knownGroup(project: Project, group: string, designOption: string, designUse: string): void {
+  const known = looseGroups(project);
+  if (known.includes(group)) return;
+  const design = (project.designs ?? []).find((candidate) => candidate.name === group);
+  const hint = design ? ` The parts of the design ${design.id} have this group. Use '${PROGRAM} design set ${designOption}' ${designUse}.` : "";
+  throw usageError(`No part without a design has the group "${group}".${hint} Known groups: ${known.length > 0 ? known.join(", ") : "none"}.`, "not-found", { group, known });
+}
+
 const groupColor: CommandSpec = {
   name: "parts group-color",
   summary: "Choose the colour of a group of parts.",
@@ -239,19 +252,41 @@ const groupColor: CommandSpec = {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const [, group, text] = args as [string, string, string];
-    const designs = new Set((project.designs ?? []).map((design) => design.id));
-    const known = [...new Set(project.parts.flatMap((part) => (part.group !== undefined && !(part.design !== undefined && designs.has(part.design)) ? [part.group] : [])))];
-    if (!known.includes(group)) {
-      const design = (project.designs ?? []).find((candidate) => candidate.name === group);
-      const hint = design ? ` The parts of the design ${design.id} have this group. Use 'opencutplan design set --color' for them.` : "";
-      throw usageError(`No part without a design has the group "${group}".${hint} Known groups: ${known.length > 0 ? known.join(", ") : "none"}.`, "not-found", { group, known });
-    }
+    knownGroup(project, group, "--color", "for them");
     const color = text.trim().toLowerCase();
     if (color !== "auto" && !isHexColor(color)) throw usageError(`"${text}" is not #rrggbb or auto.`, "invalid-value", { value: text });
     const chosen = color === "auto" ? null : color;
     return finishMutation(invocation, loaded, setGroupColor(project, group, chosen), {
       summary: chosen === null ? `The group ${group} uses its automatic colour.` : `The group ${group} is ${chosen}.`,
       data: { group, color: chosen },
+    });
+  },
+};
+
+const renameGroupCommand: CommandSpec = {
+  name: "parts rename-group",
+  summary: "Rename a group of parts.",
+  description:
+    "Give every part without a design that has the group the new name. The chosen colour of the group moves with it. When parts already have the new name, the two groups become one, and that group keeps its own colour when it has one. For the parts of a design, the group is the design name: use design set --name.",
+  args: [FILE_ARG, { name: "group", description: "The group name." }, { name: "new name", description: "The new group name." }],
+  options: [...OUTPUT_OPTIONS],
+  examples: [{ command: `${PROGRAM} parts rename-group shelf.cutplan.json "3x2 A" "Cabinet A"`, description: "Rename the group 3x2 A, and keep its colour." }],
+  output: "from, to, parts (the ids of the renamed parts), merged (true when parts already had the new name), changes, validation, written, dryRun.",
+  async run(invocation) {
+    const { args, io } = invocation;
+    const loaded = await loadProject(io, args[0]!);
+    const { project } = loaded;
+    const [, from, text] = args as [string, string, string];
+    knownGroup(project, from, "--name", "to rename the design");
+    const to = text.trim();
+    if (to === "") throw usageError("The new group name is empty.", "invalid-value", { value: text });
+    const merged = to !== from && looseGroups(project).includes(to);
+    const next = renameGroup(project, from, to);
+    const parts = next.parts.flatMap((part, i) => (part !== project.parts[i] ? [part.id] : []));
+    const count = plural(parts.length, "part");
+    return finishMutation(invocation, loaded, next, {
+      summary: to === from ? `The group ${from} keeps its name.` : merged ? `The group ${from} is now part of the group ${to} (${count}).` : `The group ${from} is now ${to} (${count}).`,
+      data: { from, to, parts, merged },
     });
   },
 };
@@ -283,4 +318,4 @@ const exportParts: CommandSpec = {
   run: (invocation) => exportCsv(invocation, "parts"),
 };
 
-export const partsGroup: GroupSpec = { name: "parts", summary: "Parts to cut", commands: [list, get, add, set, remove, colors, groupColor, importParts, exportParts] };
+export const partsGroup: GroupSpec = { name: "parts", summary: "Parts to cut", commands: [list, get, add, set, remove, colors, groupColor, renameGroupCommand, importParts, exportParts] };

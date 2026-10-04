@@ -9,13 +9,14 @@ import {
   MAX_PART_QUANTITY,
   partColors,
   removePart,
+  renameGroup,
   setGroupColor,
   updatePart,
   type Grain,
   type Part,
   type Project,
 } from "@opencutplan/core";
-import { useState, type ClipboardEvent } from "react";
+import { useRef, useState, type ClipboardEvent } from "react";
 import { CsvImportDialog } from "../components/CsvImportDialog.tsx";
 import { ColorChoice, LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
 import { StocklessNotes } from "../components/StockNote.tsx";
@@ -37,6 +38,44 @@ function ruleText(project: Project, part: Part): string {
 /** Text with a tab or a line break came from a spreadsheet, not from typing in one cell. */
 export function isTableText(text: string): boolean {
   return /[\t\n]/.test(text.trim());
+}
+
+function GroupRename({ group, onRename }: { group: string; onRename(name: string): void }) {
+  const [open, setOpen] = useState(false);
+  const cancelled = useRef(false);
+  if (!open) {
+    return (
+      <button
+        type="button"
+        aria-label={`Rename group ${group}`}
+        onClick={() => {
+          cancelled.current = false;
+          setOpen(true);
+        }}
+      >
+        Rename
+      </button>
+    );
+  }
+  return (
+    <TextInput
+      aria-label={`New name of group ${group}`}
+      value={group}
+      required
+      // oxlint-disable-next-line jsx-a11y/no-autofocus -- the field opens only when the user asks to rename the group
+      autoFocus
+      onChange={(name) => {
+        if (cancelled.current) return;
+        onRename(name);
+        setOpen(false);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") cancelled.current = true;
+        if (event.key === "Escape" || (event.key === "Enter" && event.currentTarget.value.trim() !== "")) setOpen(false);
+      }}
+      onBlur={() => setOpen(false)}
+    />
+  );
 }
 
 interface PartsTabProps {
@@ -243,6 +282,7 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
             {groupColors.map((key) => (
               <li key={key.key}>
                 <ColorChoice label={key.label} color={key.color} chosen={key.chosen} onChange={(color) => edit((p) => setGroupColor(p, key.group!, color), `color:${key.key}`)} />
+                <GroupRename group={key.group!} onRename={(name) => edit((p) => renameGroup(p, key.group!, name))} />
               </li>
             ))}
           </ul>

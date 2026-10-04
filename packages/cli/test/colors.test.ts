@@ -62,6 +62,35 @@ describe("parts group-color", () => {
   });
 });
 
+describe("parts rename-group", () => {
+  it("renames a group on all its parts and moves its colour", async () => {
+    const io = withExamples();
+    await cli(["parts", "group-color", SHELF, "3x2 A", "#00aa00"], io);
+    const result = await cli(["parts", "rename-group", SHELF, "3x2 A", "Cabinet A", "--json"], io);
+    expect(result.code).toBe(0);
+    expect(result.json()).toMatchObject({ from: "3x2 A", to: "Cabinet A", parts: ["a-top", "a-bottom", "a-side", "a-vdiv", "a-shelf", "a-back"], merged: false });
+    const file = result.file(SHELF);
+    expect(file.groups).toEqual({ "Cabinet A": { color: "#00aa00" } });
+    expect(file.parts.filter((part) => part.group === "Cabinet A")).toHaveLength(6);
+    expect(file.parts.some((part) => part.group === "3x2 A")).toBe(false);
+    const text = await cli(["parts", "rename-group", SHELF, "Cabinet A", "3x2 C"], io);
+    expect(text.stdout).toContain("The group Cabinet A is now part of the group 3x2 C (6 parts).");
+    expect(text.file(SHELF).groups).toEqual({ "3x2 C": { color: "#00aa00" } });
+  });
+
+  it("refuses a group that no part without a design has, and an empty name", async () => {
+    const unknown = await cli(["parts", "rename-group", SHELF, "Nope", "Other", "--json"], withExamples());
+    expect(unknown.code).toBe(2);
+    expect(unknown.json().error).toMatchObject({ code: "not-found", group: "Nope", known: ["3x2 A", "3x2 C", "4x2 B"] });
+    const design = await cli(["parts", "rename-group", EKET, "Wall EKET", "Wall", "--json"], withDesignExamples());
+    expect(design.code).toBe(2);
+    expect(design.json().error.message).toContain("design set");
+    const empty = await cli(["parts", "rename-group", SHELF, "3x2 A", " ", "--json"], withExamples());
+    expect(empty.code).toBe(2);
+    expect(empty.json().error).toMatchObject({ code: "invalid-value" });
+  });
+});
+
 describe("parts colors", () => {
   it("lists the colour of each group and of each unit of a design", async () => {
     const io = withDesignExamples();
