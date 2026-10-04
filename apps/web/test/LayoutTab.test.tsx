@@ -256,6 +256,29 @@ describe("LayoutTab", () => {
     expect(screen.getByRole("button", { name: "Keep searching" }).hasAttribute("disabled")).toBe(true);
   }, 15000);
 
+  it("says after a run whether each unit and group is on one sheet, when the groups stay together", async () => {
+    const base = createProject("Groups", "in");
+    const project: Project = {
+      ...base,
+      settings: { ...base.settings, optimizer: { ...base.settings.optimizer, timeLimitMs: 300 } },
+      materials: [{ id: "m", name: "Plywood", thickness: 0.75, grained: false }],
+      stock: [{ id: "s", material: "m", length: 96, width: 48, quantity: null, cost: 60, kind: "sheet" }],
+      parts: [
+        { id: "a", name: "A side", material: "m", length: 40, width: 20, quantity: 2, grain: "none", group: "Cabinet A" },
+        { id: "b", name: "B side", material: "m", length: 40, width: 20, quantity: 2, grain: "none", group: "Cabinet B" },
+      ],
+      tools: [{ id: "t", name: "Saw", type: "table-saw", kerf: 0.125, enabled: true }],
+    };
+    const current = renderLayout(project);
+    expect(screen.queryByText(/is on one sheet/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    expect(await screen.findByText("Each group is on one sheet.", {}, { timeout: 10000 })).toBeTruthy();
+    act(() => current().edit((p) => ({ ...p, settings: { ...p.settings, optimizer: { ...p.settings.optimizer, keepGroupsTogether: false } } })));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Keep searching" }).hasAttribute("disabled")).toBe(false), { timeout: 10000 });
+    expect(screen.queryByText(/is on one sheet/)).toBeNull();
+  }, 20000);
+
   it("offers Keep searching only while the layout is the one the search produced", async () => {
     renderLayout();
     await userEvent.click(screen.getByRole("button", { name: "Optimize" }));

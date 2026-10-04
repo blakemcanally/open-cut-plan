@@ -312,6 +312,16 @@ describe("SettingsTab", () => {
     expect(current().project.settings.optimizer.extraCostPercent).toBe(25);
   });
 
+  it("keeps the parts of each design unit and group together by default, and turns it off", async () => {
+    const { current } = renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
+    await showSection("Optimizer");
+    const together = screen.getByRole("checkbox", { name: /^Keep each unit and group together/ });
+    expect(together).toHaveProperty("checked", true);
+    await userEvent.click(together);
+    expect(current().project.settings.optimizer.keepGroupsTogether).toBe(false);
+    expect(together).toHaveProperty("checked", false);
+  });
+
   it("says when the goal of best offcuts cannot work, and keeps a goal that the app does not know", async () => {
     const project = sampleProject();
     const { current } = renderWithStore(

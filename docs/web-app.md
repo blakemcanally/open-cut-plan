@@ -135,7 +135,9 @@ turns red and has a ⚠ mark; the **Problems** list names each problem, and **Sh
 - **Stop** ends a search and uses the best plan so far.
 - A line under the buttons names the optimizer goal, for example "Goal: best offcuts, up to 10 % extra cost.", and
   **Change** opens the Optimizer section of the Settings tab. After a search, the line names each material whose plan
-  costs more than the cheapest plan found, for example "Plywood: 4 % more cost than the cheapest plan found."
+  costs more than the cheapest plan found, for example "Plywood: 4 % more cost than the cheapest plan found." When
+  the optimizer keeps each unit and group together, the line also tells which units and groups are on more than one
+  sheet, for example "Calyx cabinet 1 of 2 is on 2 sheets.", or "Each unit is on one sheet."
 - The optimizer runs in a Web Worker, so the page stays responsive. A progress bar shows the part of the time limit
   that is used. When the project changes during a search, the result is not used.
 - **Pin** on a sheet keeps it through **Optimize**. **Remove** puts its parts in the tray.
@@ -259,9 +261,12 @@ The sections put the common settings first:
   25 mm.
 - **Plan**: the cut order and the smallest useful offcut.
 - **Optimizer**: the **Goal** ("Lowest cost", "Best offcuts", or "Fewest cuts"), **Extra cost allowed (%)** (0 to
-  100; off for "Lowest cost"), the search time (up to 3600 seconds), and the seed. A goal from a newer version of the
-  app shows as "<value> (unknown)", and the optimizer uses the lowest cost. When the Offcuts feature is off, a note
-  says that "Best offcuts" gives the same plan as "Lowest cost". See [`optimizer.md`](optimizer.md#objective).
+  100; off for "Lowest cost"), **Keep each unit and group together** (on by default), the search time (up to 3600
+  seconds), and the seed. A goal from a newer version of the app shows as "<value> (unknown)", and the optimizer uses
+  the lowest cost. When the Offcuts feature is off, a note says that "Best offcuts" gives the same plan as "Lowest
+  cost". **Keep each unit and group together** puts the parts of each design unit and each part group (one colour
+  in the layout) on as few sheets as possible. It never makes the plan cost more. See
+  [`optimizer.md`](optimizer.md#objective).
 - **Money**: the currency.
 - **View**: **Show cut lines** and **Draw cut lines at kerf width**.
 - **Features**: the other feature switches.

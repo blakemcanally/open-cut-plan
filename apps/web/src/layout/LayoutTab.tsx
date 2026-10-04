@@ -4,6 +4,7 @@ import {
   contains,
   copyLabel,
   describeGoal,
+  describeGroupSpread,
   extraCostPercent,
   findCopy,
   findFreeSpot,
@@ -308,6 +309,7 @@ export function LayoutTab({ store, analysis, prefs, runs, onShowSettings }: Layo
   const extraCosts = (runs.current?.result.materials ?? [])
     .map((m) => ({ name: project.materials.find((material) => material.id === m.material)?.name ?? m.material, percent: extraCostPercent(m.score.cost, m.cheapestCost) }))
     .filter((m) => m.percent > 0);
+  const groupText = runs.current && project.settings.optimizer.keepGroupsTogether ? describeGroupSpread(project) : null;
 
   return (
     // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- layout shortcuts for the focused part or sheet bubble up to this element
@@ -371,6 +373,7 @@ export function LayoutTab({ store, analysis, prefs, runs, onShowSettings }: Layo
         {extraCosts.map((m) => (
           <span key={m.name}> {`${m.name}: ${m.percent} % more cost than the cheapest plan found.`}</span>
         ))}
+        {groupText && <span> {groupText}</span>}
       </p>
       {(runs.error || runs.notice) && (
         <p role="status" className={runs.error ? "banner error" : "banner"}>

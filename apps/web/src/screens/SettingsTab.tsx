@@ -293,6 +293,22 @@ export function SettingsTab({ store, prefs, onPrefs, section: current, onSection
           ),
         },
         {
+          names: ["Keep each unit and group together"],
+          node: (
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={settings.optimizer.keepGroupsTogether}
+                onChange={(event) => set((s) => ({ ...s, optimizer: { ...s.optimizer, keepGroupsTogether: event.target.checked } }))}
+              />
+              <span>
+                <b>Keep each unit and group together</b>
+                <small>Put the parts of each design unit and each part group on as few sheets as possible. The cost does not go up.</small>
+              </span>
+            </label>
+          ),
+        },
+        {
           names: ["Search time (seconds)"],
           node: (
             <label className="stack">
