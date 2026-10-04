@@ -249,13 +249,19 @@ list follows.
   stay on their cuts.
 - A colour box beside **Tool** shows the colour of the tool, as on the Layout tab. The box is red when the cut has
   no tool, or when the tool is over one of its limits.
-- The list shows each step as its number and what it does. When all the steps of a sheet use one tool, the sheet
-  heading names the tool; otherwise each step names its tool. Each tool name has the colour box of the tool.
+- **Order** above the list is **By sheet** or **By saw setting**. It sets `settings.orderMode`, the same setting as
+  **Cut order** in Settings → Plan. The ticks and the current step stay on their cuts.
+- **By sheet**: the list shows each step as its number and what it does, under a heading for each sheet. When all
+  the steps of a sheet use one tool, the sheet heading names the tool; otherwise each step names its tool. Each tool
+  name has the colour box of the tool.
+- **By saw setting**: the list has a heading for each setup, for example "Table saw · fence at 15 3/8" · 4 cuts".
+  Each step shows its sheet. When the setup of the current step is not the setup of the step before, a note above
+  the **Tool** list says "New setup: …".
 - The drawing colours the cuts as the **Colour cuts by** choice on the Layout tab does.
 - A cut number on the Layout tab opens the Shop tab at its step, and puts the focus on the step title. A later
   visit to the Shop tab starts at the first step that is not done again.
 - **Mark done** ticks the current step and goes to the next step that is not done. **← Previous** and **Next →** move
-  without a tick. The list groups the steps by sheet; a click on a step makes it current, and its box ticks it.
+  without a tick. A click on a step in the list makes it current, and its box ticks it.
 - The ticks are saved in the project (`extensions["opencutplan.app"].progress`), so they stay after a reload and go
   with the file. A tick is an edit, so **Undo** removes it.
 - The saved ticks belong to one cut sequence. When an edit changes the sequence, the ticks no longer show, and a
@@ -345,7 +351,8 @@ The sections put the common settings first:
   that length then asks for a factory edge. The rule can change only while the plan uses the factory edges.
 - **Snapping**: the snapping switch and the grid size. A grid of 0 turns the grid off. The default grid is 1" or
   25 mm.
-- **Plan**: the cut order and the smallest useful offcut.
+- **Plan**: the cut order (**By sheet** or **By saw setting**, the same choice as **Order** on the Shop tab) and the
+  smallest useful offcut.
 - **Optimizer**: the **Goal** ("Lowest cost", "Best offcuts", or "Fewest cuts"), **Extra cost allowed (%)** (0 to
   100; off for "Lowest cost"), **Keep each unit and group together** (on by default), the search time (up to 3600
   seconds), and the seed. A goal from a newer version of the app shows as "<value> (unknown)", and the optimizer uses

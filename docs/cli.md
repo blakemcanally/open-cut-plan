@@ -290,7 +290,7 @@ The reports do not change the file.
 | Command | What it does | Example |
 | ------- | ------------ | ------- |
 | `report shopping <file>` | What to buy, the cost, and the use of each sheet. | `opencutplan report shopping shelf.cutplan.json` |
-| `report sequence <file>` | The cut steps in shop order, with the text of the Shop mode, and the total cut length. | `opencutplan report sequence shelf.cutplan.json --sheet 1` |
+| `report sequence <file>` | The cut steps in shop order, with the text of the Shop mode, and the total cut length. Each step has its `setup`. With `orderMode setup`, a "Setup: …" line starts each group of steps with the same setup. | `opencutplan report sequence shelf.cutplan.json --sheet 1` |
 | `report offcuts <file>` | The usable offcuts, and if the stock has them. | `opencutplan report offcuts shelf.cutplan.json --json` |
 | `report labels <file>` | One label for each copy, with `factoryEdge` (true when the copy asks for a factory edge). `--layout` splits them into pages. | `opencutplan report labels shelf.cutplan.json --layout avery-5160` |
 | `report cutlist <file>` | All parts with the size, count, factory edge request (`long` or `null`), and sheet numbers. | `opencutplan report cutlist shelf.cutplan.json` |

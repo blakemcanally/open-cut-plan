@@ -139,9 +139,12 @@ stop, or mark), and links: `requires` (the step that makes the piece), `released
 step that cuts each side).
 
 - `orderMode: "sheet"`: sheets in plan order; on each sheet the trims, then each piece's cuts, then its pieces in order.
-- `orderMode: "setup"`: the same cuts, grouped by tool, cut kind, and displayed setting. The current setup continues
-  while any of its cuts is ready (the step that makes its piece is done); then the first ready cut in sheet order starts
-  the next setup.
+- `orderMode: "setup"`: the same cuts, grouped by setup: the tool, the cut kind, and the displayed setting
+  (`setupKey`). The current setup continues while any of its cuts is ready (the step that makes its piece is done).
+  Then the next setup starts. It is the first setup, in sheet order, that can finish in one run: each of its remaining
+  cuts waits only for cuts that are done or that have the same setup. When no setup can finish in one run, the first
+  ready cut in sheet order starts the next setup. For example, a 13 1/4" stop setting whose last cuts wait for a
+  27 7/32" crosscut comes after all the 27 7/32" cuts, and not in two runs.
 - With `cutOrder` off there are no steps.
 
 `describeStep(context, step)` gives the shop text in parts: a `title` and a `headline` that say what the cut does, a
@@ -161,6 +164,10 @@ comes first and says where it is at the saw. Trims name the edge ("Trim 1/4" off
 the fence; a table saw crosscut and a panel saw set the stop; a track saw, a circular saw, and a step with no tool
 mark the cut. A step with no tool starts with a warning. `resultSentence(result)` gives one result as a sentence;
 `body` joins the pick-up line, the actions, and the result sentences.
+
+`setupLabel(context, step)` names the setup of a step: the tool and what the user sets, for example
+`Table saw · fence at 15 3/8"`, `Table saw · stop at 30"`, `Track saw · marks at 30"`, or `Track saw · trim 1/4"`.
+`setupRuns(context, steps)` puts consecutive steps with the same setup into one run.
 
 ## Offcuts
 
