@@ -167,6 +167,8 @@ the shelves between the sides and the dividers, all joined with pocket screws. T
 | `design get <file> <id>` | Shows one design, its parts, and its checks. | `opencutplan design get hall.cutplan.json kallax-2x4 --json` |
 | `design add <file>` | Adds a design and makes its parts. | `opencutplan design add hall.cutplan.json --system kallax --cols 2 --rows 4` |
 | `design set <file> <id>` | Changes a design and makes its parts again. | `opencutplan design set hall.cutplan.json kallax-2x4 --rows 5` |
+| `design combine <file> <id>` | Combines a rectangle of cells into one cell. | `opencutplan design combine hall.cutplan.json kallax-4x2 --cell 1,1 --to 2,1` |
+| `design split <file> <id>` | Splits combined cells into single cells again. | `opencutplan design split hall.cutplan.json kallax-4x2 --cell 1,1` |
 | `design remove <file> <id>...` | Removes designs, their parts, and the copies on the sheets. | `opencutplan design remove hall.cutplan.json kallax-2x4` |
 | `design detach <file> <id>` | Keeps the parts as normal parts, and removes the design. | `opencutplan design detach hall.cutplan.json kallax-2x4` |
 | `design drawing <file> <id>` | Draws the front view as SVG, to `--out` or to stdout. | `opencutplan design drawing hall.cutplan.json kallax-2x4 --out hall.svg` |
@@ -192,9 +194,22 @@ The IKEA numbers are in millimetres. The CLI converts them to the project units,
 exit 1 and `invalid-value`, and `error.issues` lists the checks. `design set` gives `partChanges` (the parts that were
 added, removed, or resized) and `removedPlacements` (the copies that went to the tray).
 
-The CLI has no command to combine cells yet. To combine cells, edit `combined` in the file
-([format.md](format.md)), or use the Design tab of the web app. When `design set` changes the columns or the rows, it
-fits each combined cell to the new grid, and removes a combined cell that has only one cell left.
+`design combine` and `design split` change the combined cells (`combined` in [format.md](format.md)):
+
+- `--cell <column>,<row>` gives a cell, for example `--cell 2,1` for column 2, row 1. The columns count from the left
+  and the rows from the top, from 1, as in the web app.
+- `--to <column>,<row>` gives the cell at the other corner of a rectangle. Without `--to`, the rectangle is the one
+  cell.
+- When the rectangle touches a combined cell, it becomes larger to hold all of it. The result gives the rectangle
+  after it grew in `cell`.
+- `design combine` makes the rectangle into one cell. The combined cells inside it become part of the new cell. A
+  rectangle of 1 cell is refused with exit 2 and `invalid-value`.
+- `design split` makes each combined cell in the rectangle into single cells again. A rectangle with no combined cell
+  is refused with exit 2 and `invalid-value`.
+- Both commands give `design`, `parts`, `partChanges`, and `removedPlacements`, as `design set` does.
+
+When `design set` changes the columns or the rows, it fits each combined cell to the new grid, and removes a combined
+cell that has only one cell left.
 
 When the material or the back material of `design add` has no enabled stock, the command adds its
 [suggested sheet](catalog.md#suggested-sheet), as the app does. `design set` does the same for a `--material` or a
@@ -349,6 +364,7 @@ opencutplan tools add $F --type track-saw --max-cut 2800 --position 1 --json
 opencutplan materials add $F --name "Birch ply 18" --thickness 18 --json
 opencutplan stock add $F --length 2440 --width 1220 --cost 80 --json
 opencutplan design add $F --system kallax --cols 2 --rows 4 --json      # .design.id is kallax-2x4
+opencutplan design combine $F kallax-2x4 --cell 1,1 --to 2,1 --json     # one wide cell at the top
 opencutplan optimize $F --iterations 200 --seed 1 --strict --json
 opencutplan report assembly $F --json                                   # .designs[].steps[]
 opencutplan report shopping $F --json                                   # .hardware[]

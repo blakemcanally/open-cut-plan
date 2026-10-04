@@ -1,6 +1,7 @@
 import {
   axisCells,
   checkDesigns,
+  combineCells,
   defaultDesignName,
   DESIGN_MOUNTS,
   DESIGN_SYSTEM_NAMES,
@@ -23,9 +24,12 @@ import {
   presetAxis,
   presetDepth,
   regenerateDesigns,
+  expandSelection,
   removeDesign,
   renameDesign,
   setDesignColor,
+  splitCells,
+  type CombinedCell,
   withStockFor,
   type Design,
   type DesignAxis,
@@ -37,7 +41,7 @@ import {
 } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines, writeOutput, type Loaded } from "../project.ts";
-import { CliError, EXIT, usageError, type CommandSpec, type GroupSpec, type OptionSpec, type OptionValues } from "../spec.ts";
+import { CliError, EXIT, usageError, type CommandSpec, type GroupSpec, type Invocation, type OptionSpec, type OptionValues, type Outcome } from "../spec.ts";
 import { len, plural, table } from "../text.ts";
 import { choiceValue, integerValue, lengthValue, list as listValues, optionalChoice, optionalLength, str } from "../values.ts";
 import { findAll, findById, ID_OPTION, materialFor, newId, nonEmpty, resolveMaterial } from "./common.ts";
@@ -375,6 +379,95 @@ const set: CommandSpec = {
   },
 };
 
+const CELL_OPTIONS: OptionSpec[] = [
+  { name: "cell", type: "string", value: "<column>,<row>", required: true, description: "A cell, for example 1,2 for column 1, row 2. The columns count from the left and the rows from the top, from 1." },
+  { name: "to", type: "string", value: "<column>,<row>", description: "The cell at the other corner of the rectangle. Default: the cell of --cell." },
+];
+
+function cellValue(options: OptionValues, name: "cell" | "to", columns: number, rows: number): { column: number; row: number } | undefined {
+  const text = str(options, name);
+  if (text === undefined) return undefined;
+  const match = /^\s*(\d+)\s*,\s*(\d+)\s*$/.exec(text);
+  if (!match) throw usageError(`--${name} "${text}" is not <column>,<row>, for example 1,2.`, "invalid-value", { option: name, value: text });
+  const column = Number(match[1]);
+  const row = Number(match[2]);
+  if (column < 1 || column > columns || row < 1 || row > rows) {
+    throw usageError(`--${name} ${column},${row} is not in the grid of ${columns} columns and ${rows} rows.`, "invalid-value", { option: name, value: text });
+  }
+  return { column, row };
+}
+
+function cellText(span: CombinedCell): string {
+  const columns = span.columns > 1 ? `columns ${span.column}–${span.column + span.columns - 1}` : `column ${span.column}`;
+  const rows = span.rows > 1 ? `rows ${span.row}–${span.row + span.rows - 1}` : `row ${span.row}`;
+  return `${columns}, ${rows}`;
+}
+
+/** The rectangle between --cell and --to, made larger to hold each combined cell that it touches. */
+function selection(options: OptionValues, design: Design): CombinedCell {
+  const columns = axisCells(design.width);
+  const rows = axisCells(design.height);
+  const a = cellValue(options, "cell", columns, rows)!;
+  const b = cellValue(options, "to", columns, rows) ?? a;
+  const column = Math.min(a.column, b.column);
+  const row = Math.min(a.row, b.row);
+  return expandSelection(design, { column, row, columns: Math.abs(a.column - b.column) + 1, rows: Math.abs(a.row - b.row) + 1 });
+}
+
+async function changeCells(invocation: Invocation, verb: "combine" | "split"): Promise<Outcome> {
+  const { args, options, io } = invocation;
+  const loaded = await loadProject(io, args[0]!);
+  assertCanGenerate(loaded);
+  const { project } = loaded;
+  const old = findById(project.designs ?? [], args[1]!, "design");
+  assertValid(project, old);
+  const cell = selection(options, old);
+  const where = `${cellText(cell)[0]!.toUpperCase()}${cellText(cell).slice(1)}`;
+  const design = verb === "combine" ? combineCells(old, cell) : splitCells(old, cell);
+  if (!design) throw usageError(`${where} is 1 cell. Give --to to combine 2 cells or more.`, "invalid-value", { option: "to" });
+  if (design === old && verb === "split") throw usageError(`${where} of design ${old.id} is not in a combined cell.`, "invalid-value", { option: "cell" });
+  const changed = { ...project, designs: (project.designs ?? []).map((item) => (item.id === old.id ? design : item)) };
+  assertValid(changed, design);
+  const next = regenerateDesigns(changed);
+  const parts = generatedParts(next, old.id);
+  const removedPlacements = droppedCopies(project, next);
+  return finishMutation(invocation, loaded, next, {
+    summary: verb === "combine" ? `Combined ${cellText(cell)} of design ${old.id} into one cell.` : `Split the combined cells in ${cellText(cell)} of design ${old.id}.`,
+    data: { design: findById(next.designs ?? [], old.id, "design"), cell, parts, partChanges: partChanges(generatedParts(project, old.id), parts), removedPlacements },
+    ...(removedPlacements.length > 0 ? { details: [`Took ${plural(removedPlacements.length, "copy", "copies")} off the sheets.`] } : {}),
+  });
+}
+
+const CELL_OUTPUT =
+  "design (after the change), cell { column, row, columns, rows } (the rectangle after it grew), parts (the generated parts), partChanges { added, removed, resized } (part ids), removedPlacements [{ part, copy }], changes, validation, written, dryRun.";
+
+const combine: CommandSpec = {
+  name: "design combine",
+  summary: "Combine a rectangle of cells into one cell.",
+  description:
+    "Combine the cells in the rectangle from --cell to --to into one larger cell, and make the parts again. The boards inside the rectangle go, and the shelf over and under it becomes one long board. When the rectangle touches a combined cell, it becomes larger to hold all of it, and the combined cells inside it become part of the new cell. A rectangle of 1 cell is refused (exit 2, invalid-value). The copies of parts that go or change size leave the sheets.",
+  args: [FILE_ARG, DESIGN_ARG],
+  options: [...CELL_OPTIONS, ...OUTPUT_OPTIONS],
+  examples: [
+    { command: `${PROGRAM} design combine hall.cutplan.json kallax-4x2 --cell 1,1 --to 2,1`, description: "Combine the first two cells of the top row." },
+    { command: `${PROGRAM} design combine hall.cutplan.json kallax-4x4 --cell 2,2 --to 3,3 --dry-run --json`, description: "See what a 2x2 cell in the middle changes." },
+  ],
+  output: CELL_OUTPUT,
+  run: (invocation) => changeCells(invocation, "combine"),
+};
+
+const split: CommandSpec = {
+  name: "design split",
+  summary: "Split combined cells into single cells again.",
+  description:
+    "Split the combined cell that holds --cell into single cells, and make the parts again. With --to, split each combined cell in the rectangle from --cell to --to. A rectangle with no combined cell is refused (exit 2, invalid-value).",
+  args: [FILE_ARG, DESIGN_ARG],
+  options: [...CELL_OPTIONS, ...OUTPUT_OPTIONS],
+  examples: [{ command: `${PROGRAM} design split hall.cutplan.json kallax-4x2 --cell 1,1`, description: "Split the combined cell at column 1, row 1." }],
+  output: CELL_OUTPUT,
+  run: (invocation) => changeCells(invocation, "split"),
+};
+
 const remove: CommandSpec = {
   name: "design remove",
   summary: "Remove designs and their parts.",
@@ -456,4 +549,4 @@ export function invalidDesign(project: Project, design: Design): CliError {
   return new CliError(EXIT.failed, "design-invalid", `The design ${design.id} makes no parts: ${reason}`, { id: design.id, issues });
 }
 
-export const designGroup: GroupSpec = { name: "design", summary: "Cabinet designs (KALLAX, EKET, custom)", commands: [systems, list, get, add, set, remove, detach, drawing] };
+export const designGroup: GroupSpec = { name: "design", summary: "Cabinet designs (KALLAX, EKET, custom)", commands: [systems, list, get, add, set, combine, split, remove, detach, drawing] };

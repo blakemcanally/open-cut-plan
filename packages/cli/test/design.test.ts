@@ -357,3 +357,75 @@ describe("design drawing", () => {
     expect(result.json().error.issues.map((issue: { code: string }) => issue.code)).toEqual(["bad-ref"]);
   });
 });
+
+describe("design combine and design split", () => {
+  it("combines the rectangle between two cells, and makes the parts again", async () => {
+    const io = withDesignExamples();
+    const result = await cli(["design", "combine", KALLAX, "kallax", "--cell", "1,1", "--to", "2,1", "--json"], io);
+    expect(result.code).toBe(0);
+    expect(result.json().design.combined).toEqual([{ column: 1, row: 1, columns: 2, rows: 1 }]);
+    expect(result.json().partChanges).toEqual({ added: ["kallax-divider-rows-2-4", "kallax-shelf-cols-1-2"], removed: ["kallax-divider"], resized: [] });
+    expect(result.json().cell).toEqual({ column: 1, row: 1, columns: 2, rows: 1 });
+    expect(sizes(result.file(KALLAX).parts)).toContainEqual(["kallax-shelf-cols-1-2", 688, 390, 1]);
+    const text = await cli(["design", "combine", KALLAX, "kallax", "--cell", "1,3", "--to", "1,4"], io);
+    expect(text.stdout).toContain("Combined column 1, rows 3–4 of design kallax into one cell.");
+  });
+
+  it("makes the selection larger to hold each combined cell that it touches", async () => {
+    const io = withDesignExamples();
+    await cli(["design", "combine", KALLAX, "kallax", "--cell", "1,1", "--to", "1,2"], io);
+    const result = await cli(["design", "combine", KALLAX, "kallax", "--cell", "2,2", "--to", "1,2", "--json"], io);
+    expect(result.json().design.combined).toEqual([{ column: 1, row: 1, columns: 2, rows: 2 }]);
+  });
+
+  it("refuses one cell, a cell outside the grid, and a bad cell", async () => {
+    const io = withDesignExamples();
+    const before = io.files.get(KALLAX);
+    const one = await cli(["design", "combine", KALLAX, "kallax", "--cell", "1,1", "--json"], io);
+    expect(one.code).toBe(2);
+    expect(one.json().error).toMatchObject({ code: "invalid-value", option: "to" });
+    const outside = await cli(["design", "combine", KALLAX, "kallax", "--cell", "1,1", "--to", "3,1", "--json"], io);
+    expect(outside.code).toBe(2);
+    expect(outside.json().error).toMatchObject({ code: "invalid-value", option: "to" });
+    expect(outside.json().error.message).toContain("2 columns and 4 rows");
+    const bad = await cli(["design", "combine", KALLAX, "kallax", "--cell", "a", "--to", "1,2", "--json"], io);
+    expect(bad.json().error).toMatchObject({ code: "invalid-value", option: "cell" });
+    const missing = await cli(["design", "combine", KALLAX, "kallax", "--json"], io);
+    expect(missing.json().error).toMatchObject({ code: "missing-option", option: "cell" });
+    expect(io.files.get(KALLAX)).toBe(before);
+  });
+
+  it("splits the combined cell that holds a cell, and takes the copies of the long shelf off the sheets", async () => {
+    const io = withDesignExamples();
+    await cli(["design", "combine", KALLAX, "kallax", "--cell", "1,1", "--to", "2,1"], io);
+    await cli(["optimize", KALLAX, "--iterations", "20", "--seed", "1"], io);
+    const result = await cli(["design", "split", KALLAX, "kallax", "--cell", "2,1", "--json"], io);
+    expect(result.code).toBe(0);
+    expect(result.json().design).not.toHaveProperty("combined");
+    expect(result.json().partChanges).toEqual({ added: ["kallax-divider"], removed: ["kallax-divider-rows-2-4", "kallax-shelf-cols-1-2"], resized: [] });
+    expect(result.json().removedPlacements).toContainEqual({ part: "kallax-shelf-cols-1-2", copy: 0 });
+    expect(result.file(KALLAX).designs?.[0]).not.toHaveProperty("combined");
+  });
+
+  it("splits each combined cell in a rectangle, and refuses a cell that is not combined", async () => {
+    const io = withDesignExamples();
+    await cli(["design", "combine", KALLAX, "kallax", "--cell", "1,1", "--to", "2,1"], io);
+    await cli(["design", "combine", KALLAX, "kallax", "--cell", "1,3", "--to", "2,3"], io);
+    const result = await cli(["design", "split", KALLAX, "kallax", "--cell", "1,1", "--to", "1,4", "--json"], io);
+    expect(result.json().design).not.toHaveProperty("combined");
+    const none = await cli(["design", "split", KALLAX, "kallax", "--cell", "1,1", "--json"], io);
+    expect(none.code).toBe(2);
+    expect(none.json().error).toMatchObject({ code: "invalid-value", option: "cell" });
+    expect(none.json().error.message).toBe("Column 1, row 1 of design kallax is not in a combined cell.");
+  });
+
+  it("refuses a file from a newer minor version", async () => {
+    const io = withDesignExamples();
+    editFile(io, KALLAX, (file) => {
+      file.version = "1.99";
+    });
+    const result = await cli(["design", "combine", KALLAX, "kallax", "--cell", "1,1", "--to", "2,1", "--json"], io);
+    expect(result.code).toBe(1);
+    expect(result.json().error.code).toBe("newer-version");
+  });
+});

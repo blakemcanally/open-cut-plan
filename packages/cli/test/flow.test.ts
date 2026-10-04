@@ -87,13 +87,15 @@ describe("an agent flow in a real directory", () => {
     expect((await real(["stock", "add", file, "--length", "2440", "--width", "1220", "--cost", "80", "--json"])).code).toBe(0);
     const added = await real(["design", "add", file, "--system", "kallax", "--cols", "2", "--rows", "4", "--json"]);
     expect(added.json().design.id).toBe("kallax-2x4");
+    const combined = await real(["design", "combine", file, "kallax-2x4", "--cell", "1,1", "--to", "2,1", "--json"]);
+    expect(combined.json().design.combined).toEqual([{ column: 1, row: 1, columns: 2, rows: 1 }]);
     const optimized = await real(["optimize", file, "--iterations", "200", "--seed", "1", "--strict", "--json"]);
     expect(optimized.code).toBe(0);
-    expect(optimized.json().after).toMatchObject({ placedCopies: 11, unplacedCopies: 0, errors: 0 });
+    expect(optimized.json().after).toMatchObject({ placedCopies: 10, unplacedCopies: 0, errors: 0 });
     const assembly = await real(["report", "assembly", file, "--json"]);
-    expect(assembly.json().designs[0].steps.length).toBe(9);
+    expect(assembly.json().designs[0].steps.length).toBe(10);
     const shopping = await real(["report", "shopping", file, "--json"]);
-    expect(shopping.json().hardware[0]).toMatchObject({ item: "pocket-screws", quantity: 60, design: "kallax-2x4" });
+    expect(shopping.json().hardware[0]).toMatchObject({ item: "pocket-screws", quantity: 53, design: "kallax-2x4" });
     const drawing = await real(["design", "drawing", file, "kallax-2x4", "--out", join(dir, "hall.svg"), "--json"]);
     expect(drawing.code).toBe(0);
     expect(await readFile(join(dir, "hall.svg"), "utf8")).toMatch(/^<svg /);
