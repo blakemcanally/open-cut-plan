@@ -143,6 +143,11 @@ for a factory edge has a thick black line on each long edge that is on a factory
 booklet, and the SVG files show the same lines. The Problems list names each
 part that asks for a factory edge and does not get one.
 
+- When two parts overlap, both parts are see-through and have a red dashed outline, so the lower part stays visible.
+  The area that they share has red hatching.
+- The label of a part is as large as the part allows, up to the name and the size. A smaller part shows a smaller
+  label, the name only, or the size only. A tall narrow part has its label turned a quarter turn. A part that is too
+  small for a label has none. The pointer on a part shows its name and size as a tooltip.
 - Under the title of each sheet, the app shows the full stock name. The name wraps, so it is never cut off.
 - Under the stock name, a summary line gives the cuts of each tool, the part of the sheet that parts use, and the
   cost of the sheet, for example "Track saw 3 cuts · Table saw 9 cuts · 72% used · $65.00". The tools are in profile

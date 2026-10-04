@@ -24,6 +24,7 @@ import {
   type ToolColors,
 } from "@opencutplan/core";
 import { Fragment, useId, type PointerEvent } from "react";
+import { fitPartLabel, overlaps } from "./partDrawing.ts";
 import { summaryItems, type SheetSummary } from "./sheetSummary.ts";
 import type { Snapped } from "./snap.ts";
 
@@ -99,6 +100,11 @@ export function SheetView(props: SheetViewProps) {
   const trim = usable.x;
   const gridPx = px(grid);
   const showGrid = gridPx >= GRID_MIN_PX;
+  const rects = sheet.placements.map((placement) => {
+    const part = ctx.parts.get(placement.part);
+    return part ? placedRect(part, placement) : null;
+  });
+  const overlap = overlaps(rects);
   return (
     <section className="sheet" aria-label={`Sheet ${number}: ${stockLabel(ctx, stock)}`}>
       <header className="sheet-head">
@@ -157,6 +163,12 @@ export function SheetView(props: SheetViewProps) {
               <path d={`M ${gridPx} 0 L 0 0 0 ${gridPx}`} fill="none" stroke="#0000001a" />
             </pattern>
           )}
+          {overlap.areas.length > 0 && (
+            <pattern id={`${uid}-overlap`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <rect width="6" height="6" fill="#c6282833" />
+              <line x1="0" y1="0" x2="0" y2="6" stroke="#c62828" strokeWidth="2" />
+            </pattern>
+          )}
         </defs>
         <rect className="wood" x={0} y={0} width={px(stock.length)} height={px(stock.width)} />
         {grained && <rect x={0} y={0} width={px(stock.length)} height={px(stock.width)} fill={`url(#${uid}-h)`} />}
@@ -166,7 +178,7 @@ export function SheetView(props: SheetViewProps) {
           const part = ctx.parts.get(placement.part);
           if (!part) return null;
           const ref = { part: placement.part, copy: placement.copy };
-          const rect = placedRect(part, placement);
+          const rect = rects[index]!;
           const label = copyLabel(part, placement.copy);
           const colorKey = colors.keyOf(part, placement.copy);
           const bad = errors.has(index);
@@ -177,12 +189,12 @@ export function SheetView(props: SheetViewProps) {
           const size = formatSize(ctx, rect);
           const w = px(rect.length);
           const h = px(rect.width);
-          const font = Math.max(8, Math.min(12, h / 3));
+          const fitted = fitPartLabel(w, h, `${bad ? "⚠ " : ""}${label}${cross ? " ⟂" : ""}`, size);
           const marks = factoryEdgeMarks(ctx, stock, part, placement);
           return (
             <g
               key={`${copyKey(ref)}@${index}`}
-              className={`part${bad ? " bad" : ""}${isSelected ? " selected" : ""}${sameCopy(dragging, ref) ? " dragging" : ""}`}
+              className={`part${bad ? " bad" : ""}${overlap.parts.has(index) ? " overlapping" : ""}${isSelected ? " selected" : ""}${sameCopy(dragging, ref) ? " dragging" : ""}`}
               data-copy-key={copyKey(ref)}
               transform={`translate(${px(rect.x)} ${px(rect.y)})`}
               tabIndex={0}
@@ -192,6 +204,7 @@ export function SheetView(props: SheetViewProps) {
               onPointerDown={(event) => props.onPartPointerDown(event, ref)}
               onFocus={() => props.onSelect(ref)}
             >
+              <title>{`${label}, ${size}`}</title>
               <rect className="fill" width={w} height={h} fill={colorKey?.color ?? NO_GROUP_COLOR} />
               {striped && <rect width={w} height={h} fill={`url(#${uid}-${horizontal ? "h" : "v"})`} />}
               <rect className="outline" width={w} height={h} />
@@ -199,22 +212,36 @@ export function SheetView(props: SheetViewProps) {
                 const [x1, y1, x2, y2] = sideLine(side, { length: w, width: h });
                 return <line key={side} className="factory-edge" data-factory-edge={side} x1={x1} y1={y1} x2={x2} y2={y2} />;
               })}
-              {w > 28 && h > 14 && (
-                <text x={w / 2} y={h / 2} fontSize={font} textAnchor="middle" dominantBaseline="middle">
-                  <tspan x={w / 2} dy={h > 3 * font ? -font / 2 : 0}>
-                    {bad ? "⚠ " : ""}
-                    {label}
-                    {cross ? " ⟂" : ""}
-                  </tspan>
-                  {h > 3 * font && (
-                    <tspan x={w / 2} dy={font * 1.1} fontSize={font * 0.85}>
-                      {size}
+              {fitted && (
+                <text
+                  x={w / 2}
+                  y={h / 2}
+                  fontSize={fitted.font}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  transform={fitted.vertical ? `rotate(-90 ${w / 2} ${h / 2})` : undefined}
+                >
+                  {fitted.name !== null && (
+                    <tspan x={w / 2} dy={fitted.size !== null ? -fitted.font / 2 : 0}>
+                      {fitted.name}
+                    </tspan>
+                  )}
+                  {fitted.size !== null && (
+                    <tspan x={w / 2} dy={fitted.name !== null ? fitted.font * 1.1 : 0} fontSize={fitted.name !== null ? fitted.font * 0.85 : undefined}>
+                      {fitted.size}
                     </tspan>
                   )}
                 </text>
               )}
             </g>
           );
+        })}
+        {overlap.areas.map((area, index) => (
+          <rect key={index} className="overlap" data-overlap="true" x={px(area.x)} y={px(area.y)} width={px(area.length)} height={px(area.width)} fill={`url(#${uid}-overlap)`} />
+        ))}
+        {[...overlap.parts].map((index) => {
+          const rect = rects[index]!;
+          return <rect key={index} className="overlap-outline" x={px(rect.x)} y={px(rect.y)} width={px(rect.length)} height={px(rect.width)} />;
         })}
         {showCuts &&
           steps.map((step) => {

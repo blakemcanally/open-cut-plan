@@ -142,6 +142,9 @@ fieldset.choice label { display: inline-flex; align-items: center; gap: 4px; }
 .sheet-area .part.selected .outline { stroke: var(--focus); stroke-width: 3; }
 .sheet-area .part:focus-visible .outline { stroke: var(--focus); stroke-width: 4; }
 .sheet-area .part.dragging { opacity: 0.3; }
+.sheet-area .part.overlapping .fill { fill-opacity: 0.55; }
+.sheet-area .overlap { stroke: var(--bad); stroke-width: 1.5; pointer-events: none; }
+.sheet-area .overlap-outline { fill: none; stroke: var(--bad); stroke-width: 1.5; stroke-dasharray: 5 2; pointer-events: none; }
 .sheet-area .cut { pointer-events: none; }
 .sheet-area .cut-number { pointer-events: auto; cursor: pointer; outline: none; }
 .sheet-area .cut-number:hover circle { stroke-width: 2; }

@@ -30,8 +30,7 @@ const part = (name: string) => screen.getByRole("button", { name: new RegExp(`^$
 const tray = () => screen.getByRole("region", { name: /Unplaced parts/ });
 
 describe("SheetView", () => {
-  const draw = (preview: Parameters<typeof SheetView>[0]["preview"], grid = 0) => {
-    const project = sampleProject();
+  const draw = (preview: Parameters<typeof SheetView>[0]["preview"], grid = 0, project = sampleProject(), errors = new Set<number>()) => {
     const { container } = render(
       <SheetView
         ctx={analyzeProject(project).context}
@@ -44,7 +43,7 @@ describe("SheetView", () => {
         currency="USD"
         cutColors="stage"
         tools={toolColors(project.tools)}
-        errors={new Set()}
+        errors={errors}
         selected={null}
         dragging={null}
         preview={preview}
@@ -85,6 +84,36 @@ describe("SheetView", () => {
     expect(draw(null, 2).querySelector("rect.grid")).not.toBeNull();
     expect(draw(null, 1).querySelector("rect.grid")).toBeNull();
     expect(draw(null, 0).querySelector("rect.grid")).toBeNull();
+  });
+
+  it("draws overlapping parts see-through, with the shared area marked, so that the lower part stays visible", () => {
+    const project = sampleProject();
+    project.plan!.sheets[0]!.placements[1]!.y = 6;
+    const container = draw(null, 0, project, new Set([0, 1]));
+    const parts = [...container.querySelectorAll("g.part")];
+    expect(parts.map((g) => g.classList.contains("overlapping"))).toEqual([true, true]);
+    const areas = [...container.querySelectorAll("rect[data-overlap]")];
+    expect(areas.map((rect) => ["x", "y", "width", "height"].map((name) => rect.getAttribute(name)))).toEqual([["1", "24", "120", "25"]]);
+    expect(container.querySelectorAll("rect.overlap-outline")).toHaveLength(2);
+    expect(draw(null).querySelector("g.part.overlapping, rect[data-overlap]")).toBeNull();
+  });
+
+  it("fits the label to a small part, turns it on a tall narrow part, and names the part in a tooltip", () => {
+    const project = sampleProject();
+    project.parts = [
+      { id: "stile", name: "Stile", material: "ply", length: 30, width: 3, quantity: 1, grain: "none" },
+      { id: "block", name: "Corner block", material: "ply", length: 3, width: 2, quantity: 1, grain: "none" },
+    ];
+    project.plan!.sheets[0]!.placements = [
+      { part: "stile", copy: 0, x: 1, y: 1, rotated: true },
+      { part: "block", copy: 0, x: 10, y: 1, rotated: false },
+    ];
+    const container = draw(null, 0, project);
+    const [stile, block] = [...container.querySelectorAll("g.part")];
+    expect(stile!.querySelector("title")!.textContent).toBe('Stile, 3" × 30"');
+    expect(stile!.querySelector("text")!.getAttribute("transform")).toMatch(/^rotate\(-90 /);
+    expect(block!.querySelector("title")!.textContent).toBe('Corner block, 3" × 2"');
+    expect(block!.querySelector("text")).toBeNull();
   });
 });
 
