@@ -1,6 +1,6 @@
 import type { Part, PlanSheet, Project, Stock } from "../format/schema.ts";
 import { uniqueId } from "../format/ids.ts";
-import { pushToFactoryEdges } from "../plan/factoryEdges.ts";
+import { pushToFactoryEdges, sheetFactoryEdgeMisses } from "../plan/factoryEdges.ts";
 import { compareScores, evaluate, type Evaluated, type Score } from "./evaluate.ts";
 import { projectGoal, type OptimizerGoal } from "./goal-setting.ts";
 import { costLimit, createTradeOffs, withinLimit, type TradeOffs } from "./goal.ts";
@@ -82,6 +82,15 @@ interface MaterialSearch {
   groups: boolean;
   /** True when the groups stay together and the copies form at least two blocks (each group, and the copies with no group). */
   grouping: boolean;
+  /** The pushed copy of each packing pushed so far, by `packingKey`; null when the push changes nothing. */
+  pushes: Map<string, Pushed | null>;
+}
+
+interface Pushed {
+  packing: Packing;
+  /** The copies that get a factory edge from the push. */
+  gained: number;
+  result?: Evaluated;
 }
 
 interface Planned {
@@ -119,7 +128,7 @@ export function createSearch(project: Project, options: OptimizeOptions = {}): S
   const searches = problem.materials.map((m): MaterialSearch => {
     const grouping = groups && blocks(m.copies).length >= 2;
     const blind = m.factoryEdgeParts.size > 0 ? { best: null, trade: tradeOffs() } : null;
-    return { problem: m, base: baseCandidates(m, grouping), next: 0, evaluated: 0, rerun: 0, best: null, trade: tradeOffs(), blind, groups, grouping };
+    return { problem: m, base: baseCandidates(m, grouping), next: 0, evaluated: 0, rerun: 0, best: null, trade: tradeOffs(), blind, groups, grouping, pushes: new Map() };
   });
   if (options.start) seedFrom(problem, searches, options.start, tradeOffs);
   let iterations = options.start?.iterations ?? 0;
@@ -146,8 +155,15 @@ export function createSearch(project: Project, options: OptimizeOptions = {}): S
     iterations++;
     record(search, { candidate, result });
     if (result.score.factoryEdgeMisses === 0 || !contends(search, result.score, extra)) return;
-    const pushed = pushPacking(problem, search.problem, packing);
-    if (pushed) record(search, { candidate, result: evaluate(problem, search.problem, pushed, prefix) }, false);
+    const whole = result.sheets.length === packing.sheets.length;
+    if (whole && !canWin(search, optimistic(result.score, 0))) return;
+    const pushed = pushedCopy(problem, search, packing);
+    if (!pushed) return;
+    if (!pushed.result) {
+      if (whole && !canWin(search, optimistic(result.score, result.score.factoryEdgeMisses - pushed.gained))) return;
+      pushed.result = evaluate(problem, search.problem, pushed.packing, prefix);
+    }
+    record(search, { candidate, result: pushed.result }, false);
   };
 
   return {
@@ -203,17 +219,50 @@ function contends(search: MaterialSearch, score: Score, extra: number): boolean 
   return withinLimit(score.cost, search.trade ? costLimit(search.trade.cheapest, extra) : best.cost);
 }
 
-/** The packing with the pieces of each sheet pushed against the factory edges, or null when no sheet changes. */
-function pushPacking(problem: Problem, material: MaterialProblem, packing: Packing): Packing | null {
+/**
+ * The best score that a pushed copy of a plan with this score can have: the same unplaced copies, cost, and group
+ * spread when no sheet is dropped, the given misses, and offcuts and cuts that no plan beats.
+ */
+function optimistic(score: Score, misses: number): Score {
+  return { ...score, factoryEdgeMisses: misses, largestOffcut: Number.MAX_VALUE, offcuts: [Number.MAX_VALUE], cuts: 0, cutLength: 0 };
+}
+
+/** False when a plan with this score cannot enter the result. */
+function canWin(search: MaterialSearch, score: Score): boolean {
+  if (search.trade) return search.trade.admits(score);
+  return compareScores(score, search.best!.result.score, search.groups) < 0;
+}
+
+const MAX_PUSHES = 4096;
+
+function packingKey(packing: Packing): string {
+  const sheets = packing.sheets.map((sheet) => `${sheet.stock.id}:${sheet.placements.map((p) => `${p.part}#${p.copy}@${p.x},${p.y}${p.rotated ? "r" : ""}`).join(";")}`);
+  return `${sheets.join("|")}/${packing.unplaced.map((u) => `${u.part}#${u.copy}:${u.reason}`).join(";")}`;
+}
+
+/** The pushed copy of the packing, from the earlier push of the same packing when there is one. */
+function pushedCopy(problem: Problem, search: MaterialSearch, packing: Packing): Pushed | null {
+  const key = packingKey(packing);
+  const known = search.pushes.get(key);
+  if (known !== undefined) return known;
+  if (search.pushes.size >= MAX_PUSHES) search.pushes.clear();
+  const pushed = pushPacking(problem, search.problem, packing);
+  search.pushes.set(key, pushed);
+  return pushed;
+}
+
+/** The packing with the pieces of each sheet pushed against the factory edges, and the copies that gain a factory edge; null when no sheet changes. */
+function pushPacking(problem: Problem, material: MaterialProblem, packing: Packing): Pushed | null {
   const requested = (part: Part) => material.factoryEdgeParts.has(part.id);
-  let changed = false;
+  let gained = 0;
   const sheets = packing.sheets.map((sheet, i) => {
-    const pushed = pushToFactoryEdges(problem.ctx, { id: `${i}`, stock: sheet.stock.id, placements: sheet.placements }, requested);
+    const plan = { id: `${i}`, stock: sheet.stock.id, placements: sheet.placements };
+    const pushed = pushToFactoryEdges(problem.ctx, plan, requested);
     if (!pushed) return sheet;
-    changed = true;
+    gained += sheetFactoryEdgeMisses(problem.ctx, plan, requested) - pushed.misses;
     return { ...sheet, placements: pushed.placements };
   });
-  return changed ? { ...packing, sheets } : null;
+  return gained > 0 ? { packing: { ...packing, sheets }, gained } : null;
 }
 
 function pack(problem: Problem, material: MaterialProblem, candidate: Candidate): Packing {

@@ -58,6 +58,8 @@ export interface TradeOffs<T> {
   /** The lowest cost of the plans with the fewest unplaced copies so far. */
   readonly cheapest: number;
   add(score: Score, item: T): void;
+  /** False when `add` would leave out a plan with this score. */
+  admits(score: Score): boolean;
   chosen(): TradeOff<T> | null;
 }
 
@@ -90,6 +92,10 @@ export function createTradeOffs<T>(goal: OptimizerGoal, extra: number, cheapest 
       const kept = entries.filter((e) => withinLimit(e.score.cost, limit));
       // A start cost that no plan reaches again would otherwise leave the material with no plan.
       if (kept.length > 0) entries = kept;
+    },
+    admits(score) {
+      if (score.unplaced !== unplaced) return score.unplaced < unplaced;
+      return !entries.some((e) => beats(e.score, score));
     },
     chosen() {
       let best: TradeOff<T> | null = null;

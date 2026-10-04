@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { analyzeProject } from "../../src/analysis.ts";
 import type { Score } from "../../src/optimize/evaluate.ts";
@@ -79,6 +80,41 @@ describe("createTradeOffs", () => {
     list.add(score({ cost: 109, offcuts: [5] }), "within");
     expect(list.chosen()?.item).toBe("within");
     expect(list.cheapest).toBe(100);
+  });
+});
+
+describe("admits", () => {
+  it("is false for a plan with more unplaced copies, or a plan that a kept plan beats on cost and on the choice", () => {
+    const list = createTradeOffs<string>("offcuts", 10);
+    expect(list.admits(score({ unplaced: 5 }))).toBe(true);
+    list.add(score({ unplaced: 1, cost: 100, offcuts: [50] }), "kept");
+    expect(list.admits(score({ unplaced: 2, cost: 1, offcuts: [99] }))).toBe(false);
+    expect(list.admits(score({ unplaced: 0, cost: 900 }))).toBe(true);
+    expect(list.admits(score({ unplaced: 1, cost: 100, offcuts: [50] }))).toBe(false);
+    expect(list.admits(score({ unplaced: 1, cost: 101, offcuts: [40] }))).toBe(false);
+    expect(list.admits(score({ unplaced: 1, cost: 101, offcuts: [60] }))).toBe(true);
+    expect(list.admits(score({ unplaced: 1, cost: 99, offcuts: [40] }))).toBe(true);
+  });
+
+  it("is false only when add leaves the plan out and keeps the choice", () => {
+    const arbScore = fc.record({
+      unplaced: fc.integer({ min: 0, max: 2 }),
+      cost: fc.integer({ min: 90, max: 120 }),
+      offcuts: fc.array(fc.integer({ min: 0, max: 5 }), { maxLength: 2 }),
+      cuts: fc.integer({ min: 1, max: 4 }),
+      factoryEdgeMisses: fc.integer({ min: 0, max: 2 }),
+      groupSpread: fc.integer({ min: 0, max: 2 }),
+    });
+    fc.assert(
+      fc.property(fc.constantFrom("offcuts" as const, "cuts" as const), fc.boolean(), fc.array(arbScore, { maxLength: 8 }), arbScore, (goal, groups, before, next) => {
+        const list = createTradeOffs<number>(goal, 10, Number.POSITIVE_INFINITY, groups);
+        before.forEach((s, i) => list.add(score(s), i));
+        if (list.admits(score(next))) return;
+        const chosen = list.chosen();
+        list.add(score(next), -1);
+        expect(list.chosen()).toBe(chosen);
+      }),
+    );
   });
 });
 

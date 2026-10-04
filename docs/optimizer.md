@@ -61,6 +61,13 @@ candidates that keep the groups together use group affinity.
    edges with `pushToFactoryEdges` (see [Factory edges](cut-analysis.md#factory-edges)). The cuts stay the same, and
    no part turns. The pushed copy goes through the validator and the objective like any candidate, but it does not
    count against `iterations`.
+   - The search pushes each different packing one time only. It keeps the pushed copy of the last 4096 packings, so
+     that a candidate that gives the same packing again uses the kept copy.
+   - The search skips the pushed copy when the copy cannot go into the result. To find this, it uses the best
+     score that the copy can get: the same unplaced copies, cost, and group spread as the candidate, the misses
+     after the push, the largest offcuts, and no cuts. It first does this check with 0 misses, before the push.
+     When the validator keeps all the sheets of the candidate, the push cannot change the unplaced copies or the
+     cost. So the check gives the same plans as a search that evaluates each pushed copy.
    - The random changes start from the chosen candidate when the misses do not count. So the search tries the same
      candidates as for the same project with no requests, and the misses never make a plan cost more or leave more
      copies unplaced.
