@@ -1,6 +1,7 @@
 import {
   addCatalogMaterial,
   axisCells,
+  axisOpenings,
   convertLength,
   defaultDesignName,
   designErrors,
@@ -16,6 +17,7 @@ import {
   presetAxis,
   presetDepth,
   presetDesign,
+  roundLength,
   slugify,
   uniqueId,
   withStockFor,
@@ -111,9 +113,17 @@ export function axisMode(axis: DesignAxis): AxisMode {
   return "openings" in axis ? "openings" : "outside";
 }
 
-/** A new cell count: IKEA cells for kallax and eket; otherwise the same outside size, or the last opening repeated. */
-export function withCells(system: string, axis: DesignAxis, cells: number, units: Units): DesignAxis {
-  if (isPresetSystem(system)) return presetAxis(system, cells, units);
+/**
+ * A new cell count: IKEA cells for kallax and eket, given the same way as before when the panel thickness is known;
+ * otherwise the same outside size, or the last opening repeated.
+ */
+export function withCells(system: string, axis: DesignAxis, cells: number, units: Units, thickness?: number): DesignAxis {
+  if (isPresetSystem(system)) {
+    const preset = presetAxis(system, cells, units);
+    if (thickness === undefined) return preset;
+    const openings = axisOpenings(preset, thickness);
+    return withMode(preset, axisMode(axis), openings, roundLength(openings.reduce((sum, opening) => sum + opening, 0) + (cells + 1) * thickness));
+  }
   if (!("openings" in axis)) return { ...axis, cells };
   const last = axis.openings.at(-1)!;
   return { ...axis, openings: Array.from({ length: cells }, (_, index) => axis.openings[index] ?? last) };

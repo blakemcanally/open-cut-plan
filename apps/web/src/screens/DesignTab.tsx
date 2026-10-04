@@ -224,7 +224,7 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
     const openings = geometry ? (which === "width" ? geometry.columns : geometry.rows) : [];
     const outside = geometry ? (which === "width" ? geometry.outsideWidth : geometry.outsideHeight) : 0;
     const put = (next: DesignAxis) => (d: Design) => ({ ...d, [which]: next });
-    const cells = (d: Design, value: number) => ({ ...d, [which]: withCells(system, d[which], value, units) });
+    const cells = (d: Design, value: number) => ({ ...d, [which]: withCells(system, d[which], value, units, geometry?.thickness) });
     return (
       <fieldset key={which} disabled={locked !== null}>
         <legend>{which === "width" ? "Width" : "Height"}</legend>

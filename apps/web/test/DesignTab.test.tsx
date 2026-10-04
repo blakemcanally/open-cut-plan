@@ -174,6 +174,20 @@ describe("DesignTab", () => {
     expect(screen.getByRole("alert").textContent).toBe('✖ Design "Hall" is too small: the panels leave no room for the cells.');
   });
 
+  it("keeps the Size by choice when the number of cells changes", async () => {
+    const current = renderDesign();
+    await userEvent.selectOptions(screen.getAllByLabelText("Size by")[0]!, "outside");
+    const columns = screen.getByLabelText("Columns");
+    await userEvent.clear(columns);
+    await userEvent.type(columns, "3{Enter}");
+    expect(design(current).width).toEqual({ outside: 1077, cells: 3 });
+    expect(screen.getAllByLabelText("Size by")[0]).toHaveProperty("value", "outside");
+    const rows = screen.getByLabelText("Rows");
+    await userEvent.clear(rows);
+    await userEvent.type(rows, "3{Enter}");
+    expect(design(current).height).toEqual({ openings: [335, 335, 335] });
+  });
+
   it("uses a catalogue material for the box, and adds it with its largest sheet", async () => {
     const current = renderDesign();
     const material = screen.getByLabelText("Material");
