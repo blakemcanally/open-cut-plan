@@ -1,5 +1,5 @@
 import { analyzeProject, errorMessage, planAlert, projectFileName, serializeProjectChecked, withCuts, type Project } from "@opencutplan/core";
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { TextInput } from "../components/fields.tsx";
 import { PlanAlertBanner } from "../components/PlanAlertBanner.tsx";
 import { ShowTab } from "../components/TabLink.tsx";
@@ -44,6 +44,15 @@ interface WorkspaceProps {
   onHome(): void;
 }
 
+/** Scrolls the tab bar sideways, and not the page, so that the tab shows with some room beside it. */
+function revealTab(list: HTMLElement, tab: HTMLElement) {
+  const room = 32;
+  const outer = list.getBoundingClientRect();
+  const inner = tab.getBoundingClientRect();
+  if (inner.left < outer.left) list.scrollLeft -= outer.left - inner.left + room;
+  else if (inner.right > outer.right) list.scrollLeft += inner.right - outer.right + room;
+}
+
 function isEditable(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName));
 }
@@ -67,6 +76,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
   const [shopStep, setShopStep] = useState<number | null>(null);
   const endPrint = useCallback(() => setPrintJob(null), []);
   const saveError = useAutosave(storage, id, project, stored);
+  const tabList = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -80,6 +90,11 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [store]);
+
+  useEffect(() => {
+    const button = document.getElementById(`tab-${tab}`);
+    if (tabList.current && button) revealTab(tabList.current, button);
+  }, [tab]);
 
   useEffect(() => {
     if (!focusProblems || tab !== "layout") return;
@@ -175,7 +190,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
         </div>
       )}
       {/* oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- focus goes to the tabs; the tablist handles their arrow keys */}
-      <div role="tablist" aria-label="Project" className="tabs" onKeyDown={onTabKey}>
+      <div ref={tabList} role="tablist" aria-label="Project" className="tabs" onKeyDown={onTabKey}>
         {TABS.map((t) => (
           <button
             key={t.id}

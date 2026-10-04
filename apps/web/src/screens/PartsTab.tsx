@@ -161,7 +161,7 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
         </p>
       ) : (
         <div className="table-wrap">
-          <table className="grid">
+          <table className="grid cards" aria-labelledby="parts-title">
             <thead>
               <tr>
                 <th scope="col">Name</th>
@@ -184,15 +184,15 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
                 if (design) {
                   return (
                     <tr key={part.id} className="generated">
-                      <td>{part.name}</td>
-                      <td>{formatLength(part.length, units, display)}</td>
-                      <td>{formatLength(part.width, units, display)}</td>
-                      <td>{part.quantity}</td>
-                      <td>{project.materials.find((material) => material.id === part.material)?.name ?? part.material}</td>
-                      <td>{GRAINS.find((grain) => grain.value === part.grain)?.label}</td>
-                      <td>{ruleText(project, part)}</td>
-                      <td>{part.group}</td>
-                      <td colSpan={2}>
+                      <td data-label="Name" className="wide">{part.name}</td>
+                      <td data-label="Length">{formatLength(part.length, units, display)}</td>
+                      <td data-label="Width">{formatLength(part.width, units, display)}</td>
+                      <td data-label="Qty">{part.quantity}</td>
+                      <td data-label="Material">{project.materials.find((material) => material.id === part.material)?.name ?? part.material}</td>
+                      <td data-label="Grain">{GRAINS.find((grain) => grain.value === part.grain)?.label}</td>
+                      <td data-label="Factory edge">{ruleText(project, part)}</td>
+                      <td data-label="Group">{part.group}</td>
+                      <td colSpan={2} className="wide">
                         From design:{" "}
                         <button type="button" className="link" onClick={() => onShowDesign?.(design.id)}>
                           {design.name}
@@ -204,24 +204,24 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
                 const change = (patch: Parameters<typeof updatePart>[2]) => edit((p: Project) => updatePart(p, part.id, patch));
                 return (
                   <tr key={part.id}>
-                    <td>
-                      {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- only the row that "Add part" just created gets focus */}
+                    <td data-label="Name" className="wide">
                       <TextInput
                         aria-label={`Name of ${part.name}`}
                         value={part.name}
                         required
+                        // oxlint-disable-next-line jsx-a11y/no-autofocus -- only the row that "Add part" just created gets focus
                         autoFocus={focusId === part.id}
                         onFocus={focusId === part.id ? selectAdded : undefined}
                         onChange={(name) => change({ name })}
                       />
                     </td>
-                    <td>
+                    <td data-label="Length">
                       <LengthInput aria-label={`Length of ${part.name}`} value={part.length} units={units} display={display} onChange={(length) => length !== undefined && change({ length })} />
                     </td>
-                    <td>
+                    <td data-label="Width">
                       <LengthInput aria-label={`Width of ${part.name}`} value={part.width} units={units} display={display} onChange={(width) => width !== undefined && change({ width })} />
                     </td>
-                    <td>
+                    <td data-label="Qty">
                       <NumberInput
                         aria-label={`Quantity of ${part.name}`}
                         className="narrow"
@@ -232,7 +232,7 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
                         onChange={(quantity) => quantity !== undefined && change({ quantity })}
                       />
                     </td>
-                    <td>
+                    <td data-label="Material">
                       <select aria-label={`Material of ${part.name}`} value={part.material} onChange={(event) => change({ material: event.target.value })}>
                         {project.materials.map((material) => (
                           <option key={material.id} value={material.id}>
@@ -242,7 +242,7 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
                         {!project.materials.some((material) => material.id === part.material) && <option value={part.material}>{part.material} (missing)</option>}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="Grain">
                       <select aria-label={`Grain of ${part.name}`} value={part.grain} onChange={(event) => change({ grain: event.target.value as Grain })}>
                         {GRAINS.map((grain) => (
                           <option key={grain.value} value={grain.value}>
@@ -251,7 +251,7 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
                         ))}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="Factory edge">
                       <select aria-label={`Factory edge of ${part.name}`} value={part.factoryEdge ?? ""} onChange={(event) => change({ factoryEdge: event.target.value || undefined })}>
                         <option value="">{ruleText(project, part)}</option>
                         <option value="long">Long edge</option>
@@ -259,13 +259,13 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
                         {part.factoryEdge !== undefined && !isFactoryEdgeChoice(part.factoryEdge) && <option value={part.factoryEdge}>{part.factoryEdge} (not known)</option>}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="Group">
                       <TextInput aria-label={`Group of ${part.name}`} value={part.group ?? ""} onChange={(group) => change({ group: group || undefined })} />
                     </td>
-                    <td>
+                    <td data-label="Notes" className="wide">
                       <TextInput aria-label={`Notes for ${part.name}`} value={part.notes ?? ""} onChange={(notes) => change({ notes: notes || undefined })} />
                     </td>
-                    <td>
+                    <td className="actions">
                       <button type="button" aria-label={`Delete ${part.name}`} onClick={() => edit((p) => removePart(p, part.id))}>
                         Delete
                       </button>

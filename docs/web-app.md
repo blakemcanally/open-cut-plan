@@ -43,6 +43,11 @@ is `#/project/<id>`, so a reload opens the same project.
 The tabs are **Design**, **Parts**, **Stock**, **Tools**, **Layout**, **Shop**, **Reports**, and **Settings**. The
 left and right arrow keys move between tabs.
 
+- On a narrow screen, such as a phone, the tab bar scrolls sideways. A shadow at the left or right end shows that
+  more tabs are there. The tab bar scrolls to show the chosen tab, also when a link opens a tab.
+- On a screen less than 640 px wide, each row of the Parts table, the Materials table, and the Stock table shows as a
+  card. Each field in the card has its column name above it.
+
 - When the plan has errors, the **Layout** tab shows the number of errors in a red badge.
 - An empty tab tells the user what to do, with a link to the tab that does it. For example, the Layout tab with no
   parts links to the Design tab and the Parts tab, and with no stock it links to the Stock tab. The Shop tab and the

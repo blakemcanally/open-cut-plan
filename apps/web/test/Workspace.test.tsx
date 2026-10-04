@@ -36,6 +36,20 @@ describe("Workspace", () => {
     expect(screen.getByRole("tab", { name: TABS.at(-1)!.label }).getAttribute("aria-selected")).toBe("true");
   });
 
+  it("scrolls a narrow tab bar so that the chosen tab shows", async () => {
+    await renderWorkspace();
+    const list = screen.getByRole("tablist", { name: "Project" });
+    const box = (left: number, right: number) => () => ({ left, right, top: 0, bottom: 30, width: right - left, height: 30, x: left, y: 0, toJSON: () => ({}) });
+    list.getBoundingClientRect = box(0, 400);
+    screen.getByRole("tab", { name: "Settings" }).getBoundingClientRect = box(600, 680);
+    screen.getByRole("tab", { name: "Design" }).getBoundingClientRect = box(-300, -220);
+    await userEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(list.scrollLeft).toBe(680 - 400 + 32);
+    list.scrollLeft = 400;
+    await userEvent.click(screen.getByRole("tab", { name: "Design" }));
+    expect(list.scrollLeft).toBe(400 - 300 - 32);
+  });
+
   it("opens the step of a cut number on the Shop tab, and a later visit to the Shop tab starts at the first open step", async () => {
     await renderWorkspace();
     await userEvent.click(screen.getByRole("button", { name: /^Step 3, / }));
