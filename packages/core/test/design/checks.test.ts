@@ -74,11 +74,30 @@ describe("checkDesigns", () => {
     expect(codes(current(kallax4x2([{ column: 1, row: 2, columns: 2, rows: 1 }])))).toEqual([]);
     expect(codes(current(kallax4x2([{ column: 1, row: 1, columns: 3, rows: 1 }])))).toEqual(["warning:shelf-span"]);
     expect(checkDesigns(current(kallax4x2([{ column: 1, row: 2, columns: 3, rows: 1 }])))[0]!.message).toBe(
-      'Design "Hall KALLAX" has a shelf (Shelf, columns 1–3) that spans 1041 mm with no divider under it. A shelf longer than 810 mm in this stock can sag.',
+      'Design "Hall KALLAX" has a shelf (Shelf, columns 1–3) that spans 1041 mm with no support under it. A shelf longer than 810 mm in this stock can sag.',
     );
     expect(checkDesigns(current(kallax4x2([{ column: 2, row: 1, columns: 3, rows: 2 }])))[0]!.message).toBe(
-      'Design "Hall KALLAX" has a top that spans 1041 mm with no divider under it. A shelf longer than 810 mm in this stock can sag.',
+      'Design "Hall KALLAX" has a top that spans 1041 mm with no support under it. A shelf longer than 810 mm in this stock can sag.',
     );
+  });
+
+  it("lets a back or the wall rail hold the dividers that stand on a long shelf", () => {
+    const bottomRow = (patch: Partial<Design>) => kallaxDesign({ width: { openings: [335, 335, 335, 335] }, height: { openings: [335, 335] }, combined: [{ column: 1, row: 2, columns: 3, rows: 1 }], ...patch });
+    expect(codes(current(bottomRow({ back: { material: "ply6" } })))).toEqual([]);
+    expect(checkDesigns(current(bottomRow({ system: "eket", width: { outside: 1400, cells: 4 }, height: { outside: 700, cells: 2 }, depth: 350, mount: "wall-rail" })))[0]!.message).toBe(
+      'Design "Hall KALLAX" hangs on the wall rail, so the floor does not hold the bottom. The bottom spans 1018.5 mm between two supports. A board longer than 810 mm in this stock can sag.',
+    );
+  });
+
+  it("checks the bottom of a unit on legs or feet", () => {
+    const wide = (patch: Partial<Design>) => kallaxDesign({ width: { openings: [335, 335, 335] }, height: { openings: [335] }, ...patch });
+    expect(checkDesigns(current(wide({ mount: "legs" })))[0]!.message).toBe(
+      'Design "Hall KALLAX" stands on legs, so the floor does not hold the bottom. The bottom spans 1041 mm between two supports. A board longer than 810 mm in this stock can sag. A back holds each divider in place, so that the dividers can hold up the bottom.',
+    );
+    expect(checkDesigns(current(wide({ mount: "feet" })))[0]!.message).toMatch(/^Design "Hall KALLAX" stands on feet, so the floor does not hold the bottom\./);
+    expect(codes(current(wide({ mount: "legs", back: { material: "ply6" } })))).toEqual([]);
+    expect(codes(current(wide({ mount: "floor" })))).toEqual([]);
+    expect(codes(current(wide({ mount: "legs", width: { openings: [335, 335] } })))).toEqual([]);
   });
 
   it("warns when a design other than EKET uses the EKET wall rail", () => {

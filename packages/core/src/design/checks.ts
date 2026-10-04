@@ -19,6 +19,8 @@ import {
   SHELF_SPAN_RATIO,
 } from "./systems.ts";
 
+const LIFTED = { legs: "stands on legs", feet: "stands on feet", "wall-rail": "hangs on the wall rail" } as const;
+
 export function checkDesigns(project: Project): PlanIssue[] {
   const units = project.project.units;
   const mm = (value: number) => convertLength(value, "mm", units);
@@ -71,12 +73,25 @@ export function checkDesigns(project: Project): PlanIssue[] {
       }
     }
     const span = SHELF_SPAN_RATIO * geometry.thickness;
-    const longest = freeSpans(geometry).reduce((worst, next) => (next.span > worst.span ? next : worst));
+    const longest = freeSpans(geometry, { mount: design.mount }).reduce((worst, next) => (next.span > worst.span + EPSILON ? next : worst));
     if (longest.span > span + EPSILON) {
-      const what = !geometry.combined
-        ? `a shelf of ${show(longest.span)}.`
-        : `${longest.board === "top" ? "a top" : `a shelf (${shelfName(longest.board, geometry.columns)})`} that spans ${show(longest.span)} with no divider under it.`;
-      issues.push(planWarning("shelf-span", `${name} has ${what} A shelf longer than ${show(span)} in this stock can sag.`, ref));
+      if (longest.board === "bottom") {
+        const back = !design.back && freeSpans(geometry, { mount: design.mount, back: true }).every((free) => free.board !== "bottom" || free.span <= span + EPSILON);
+        issues.push(
+          planWarning(
+            "shelf-span",
+            `${name} ${LIFTED[design.mount as keyof typeof LIFTED]}, so the floor does not hold the bottom. The bottom spans ${show(longest.span)} between two supports. A board longer than ${show(span)} in this stock can sag.${
+              back ? " A back holds each divider in place, so that the dividers can hold up the bottom." : ""
+            }`,
+            ref,
+          ),
+        );
+      } else {
+        const what = !geometry.combined
+          ? `a shelf of ${show(longest.span)}.`
+          : `${longest.board === "top" ? "a top" : `a shelf (${shelfName(longest.board, geometry.columns)})`} that spans ${show(longest.span)} with no support under it.`;
+        issues.push(planWarning("shelf-span", `${name} has ${what} A shelf longer than ${show(span)} in this stock can sag.`, ref));
+      }
     }
     if (design.mount === "wall-rail" && design.system !== "eket") {
       issues.push(planWarning("mount-system", `${name} uses the EKET wall rail, which is made for EKET units.`, ref));

@@ -285,27 +285,60 @@ There is no new check for the box.
 
 ### 8.2 Shelf span (`shelf-span`, changed)
 
-Today the check uses the longest column opening. It now uses the longest **free span**: the longest length of the top or
-of a shelf board between two supports.
+Today the check uses the longest column opening. It now uses the longest **free span**: the longest length of a
+horizontal board (the top, a shelf board, or the bottom) between two supports.
 
-- The supports of a board are its two ends, and each junction along it where a divider continues **below** it.
-- A divider that stands **on** the board (the stem of a T is above) is not a support. It ties the board to the boards
-  above it, and it puts their weight on the board.
-- The bottom is not in the check: it stands on the floor, the legs, or the feet.
+**Which boards.** The check looks at each shelf board. It looks at the top, except when the unit hangs on the wall rail:
+the rail holds the top along its full length. It looks at the bottom only when the floor does not hold it: on the
+legs and on the feet, which are at the four corners under the sides, and on the wall rail, where the bottom hangs from
+the sides and the dividers. A mount that the app does not know counts as the floor.
+
+**Supports.** The supports of a board are its two ends, and each junction along it where a **held** divider meets it,
+above or below:
+
+- A divider that **stands on** a board carries its load down into that board. It holds up the board at its upper end
+  when the board under it is firm at that point.
+- A divider that **hangs from** a board carries its load up into that board. It holds up the board at its lower end
+  when the board over it is firm at that point.
+- A board is **firm** at a point when the floor or the wall rail holds it along its length, or when its free span
+  around that point, without the divider at that point, is not more than the limit.
+- With a back, every divider is held. The back is glued and screwed along the rear edge of each divider, and a divider
+  is stiff in its own plane, so the back holds the full depth of the divider. The back also has screws in the rear edge
+  of each shelf, but the check does not count them: the front edge of a shelf can still sag.
+
+The app finds the held dividers by repetition: it starts with no held divider (or all of them, with a back), adds each
+divider that the rules above hold, and stops when no divider is added. A board can only hold a divider when its own span
+is within the limit, so a divider never holds up a board through a board that can sag.
+
+**Why this rule.** A divider that stands on a shelf puts a point load on that shelf, which spans to its own supports.
+The divider holds up the board above it only when the shelf under it does not sag at that point. In a unit on the
+floor, load goes down, so a divider that stands on a long shelf with a free span over the limit holds up nothing: the
+long shelf gets the warning, and the warning names it. When that shelf is within the limit, the divider holds up the
+board above it, as in §14.2. On the wall rail, load goes up into the top, so a divider that hangs from the top holds up
+the long shelf that it stands on (§14.5 gets no warning on the wall rail). The rule is a rule of thumb, as the limit
+is: it does not add the point load of a divider to the load of the shelf under it.
+
 - The limit stays `SHELF_SPAN_RATIO` × *t* (45 × *t*, 810 mm for 18 mm stock).
+- The check reports one board: the board with the longest free span. Of two equal spans, it reports the shelf board
+  nearest the bottom, then the bottom, then the top. So a long shelf that cannot hold a divider is named before the
+  board above it.
 
-With no combined cells, the free spans are the column openings, so the result and the message are the same as today.
-With combined cells, the message names the board: `Design "Hall" has a shelf (Shelf, columns 1–3) that spans 1041 mm
-with no divider under it. A shelf longer than 810 mm in this stock can sag.` For the top, it says "the top".
+With no combined cells, on the floor, the free spans are the column openings, so the result and the message are the
+same as today. With combined cells, the message names the board: `Design "Hall" has a shelf (Shelf, columns 1–3) that
+spans 1041 mm with no support under it. A shelf longer than 810 mm in this stock can sag.` For the top, it says "a
+top". For the bottom, it names the mount: `Design "Hall" stands on legs, so the floor does not hold the bottom. The
+bottom spans 1041 mm between two supports. A board longer than 810 mm in this stock can sag.` When the design has no
+back, and a back makes the bottom span short enough, the message adds: `A back holds each divider in place, so that the
+dividers can hold up the bottom.`
 
 This check is the check for "a long shelf whose middle loses its divider support" (§14.5).
 
 ### 8.3 Dividers
 
 - **A divider that hangs free** cannot occur: each board end butts into a member that runs through (§5.4, consequence 4).
-- **A divider that stands on a span** puts a point load on the shelf. §8.2 does not count it as a support, so a long
-  span with a divider on it gets `shelf-span`. A short span with a divider on it is a normal bookcase detail and gets no
-  warning.
+- **A divider that stands on a span** puts a point load on the shelf. It holds up the board above it only when the
+  shelf is firm at that point (§8.2). A long span with a divider on it gets `shelf-span`. A short span with a divider
+  on it is a normal bookcase detail and gets no warning.
 - **A very short divider**: a divider board is at least one row opening long, and a row opening is never less than the
   smallest cell that the user asked for. There is no new check. The `kallax-opening` check does not change, because a
   combined cell is larger than its cells.
@@ -315,7 +348,7 @@ This check is the check for "a long shelf whose middle loses its divider support
 | Code | Severity | Condition |
 |---|---|---|
 | `design-combined` | error | a span is not in the grid, has fewer than 2 cells, or overlaps another span (§4.2) |
-| `shelf-span` | warning | changed: the longest free span of the top or a shelf board is more than 45 × *t* (§8.2) |
+| `shelf-span` | warning | changed: the longest free span of the top, a shelf board, or a bottom that the floor does not hold is more than 45 × *t* (§8.2) |
 
 ## 9. Hardware
 
@@ -469,8 +502,10 @@ shelf runs through and the divider stops at it.
 - The dividers on column lines 1 and 3 run the full height. On row line 2, the shelf segment on the side of the
   combined cell is missing, so each junction is a T with the divider on both sides. The shelves in column 1 and column
   4 stop at the dividers.
-- "Divider, row 1" stands on the long shelf on row line 1. That shelf has no divider under it, so its free span is
-  688 mm. "Divider, row 4" holds up the long shelf on row line 3, so that shelf has spans of 335 mm.
+- "Divider, row 1" stands on the long shelf on row line 1. That shelf has no divider under it, but its span of 688 mm
+  is within the limit, so it is firm and "Divider, row 1" holds up the top: the top has spans of 335 mm. The top is
+  also firm at that point without the divider, so the divider ties the two boards together. "Divider, row 4" holds up
+  the long shelf on row line 3, so that shelf has spans of 335 mm.
 
 ### 14.3 KALLAX 3 × 4, three cells combined in a column
 
@@ -561,10 +596,15 @@ shelf; column 3 puts the right side on.
 ```
 
 - "Shelf, columns 1–3" is one board of 1041 mm. The dividers on column lines 1 and 2 stand on it ("Divider, row 1",
-  335 mm, quantity 2). They are not supports (§8.2), so the free span is 1041 mm.
-- 1041 mm is more than 810 mm, so the design gets `shelf-span`: `Design "…" has a shelf (Shelf, columns 1–3) that spans
-  1041 mm with no divider under it. A shelf longer than 810 mm in this stock can sag.`
+  335 mm, quantity 2). The shelf is not firm under them, and on the floor the top is not firm over them, so they hold
+  up neither board (§8.2). The free span of the shelf is 1041 mm, and the free span of the top is 1041 mm too.
+- 1041 mm is more than 810 mm, so the design gets `shelf-span`. The shelf is lower than the top, so the message names
+  it: `Design "…" has a shelf (Shelf, columns 1–3) that spans 1041 mm with no support under it. A shelf longer than
+  810 mm in this stock can sag.`
 - With 2 cells combined in place of 3, the span is 688 mm and there is no warning.
+- With a back, the back holds the two dividers, so the shelf has spans of 335 mm and there is no warning. On the wall
+  rail, the dividers hang from the top, with the same result for the shelf; the bottom then spans 1041 mm and gets
+  the warning.
 
 ## 15. Testing
 
@@ -574,7 +614,9 @@ shelf; column 3 puts the right side on.
 - **Validation.** Each rule of §4.2, and `fitCombined` for a smaller grid, a larger grid, and a span that gets too small.
 - **Combine and split.** `expandSelection` with a selection that touches a combined cell; `combineCells` that absorbs
   the spans inside it; `splitCells`.
-- **Worked examples.** The parts of §14.1, §14.2, §14.3, §14.4, and §14.5, and the `shelf-span` result of §14.5.
+- **Worked examples.** The parts of §14.1, §14.2, §14.3, §14.4, and §14.5, and the `shelf-span` result of §14.5, with
+  no back, with a back, and on the wall rail.
+- **Span check.** The free spans with each mount, with and without a back, and the bottom of a unit on legs or feet.
 - **Properties** (fast-check; random openings, thickness, and random spans that do not overlap):
   - every board has a positive length;
   - each board length is the sum of its openings plus the thicknesses between them (§5.5);
@@ -602,5 +644,7 @@ shelf; column 3 puts the right side on.
 - Should a span that crosses the edge after a smaller grid go away in place of getting shorter? This spec makes it
   shorter, because that keeps more of what the user did.
 - Should the span check also look at the bottom of a unit on legs or on the wall rail, where the bottom does not stand
-  on the floor? Today it does not, and this spec does not change that.
+  on the floor? Decided: yes (§8.2).
+- Should a divider that stands on a shelf hold up the board above it? Decided: yes, when the shelf is firm at that
+  point (§8.2).
 - The format version was 1.4 at first. Other work took 1.4, 1.5, and 1.6 first, so combined cells use 1.7.

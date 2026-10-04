@@ -92,6 +92,9 @@ parts from the design, and the Parts tab lists them. The file format is in [form
   it. **Automatic** gives the unit its automatic colour again. The front view uses the colour of the first unit.
   These controls also work for a design that the user cannot change.
 - **Checks** lists the problems and warnings for the design, for example a cell that is too wide for a shelf.
+  A board that spans more than 45 times the stock thickness between two supports gets a warning. A divider holds up a
+  board when the board at its other end does not sag at that point. A back holds every divider. The bottom gets this
+  check when the unit stands on legs or feet, or hangs on the wall rail.
 - **Detach** turns the parts into normal parts and removes the design. **Delete design** removes the design and its
   parts. **Undo** brings back either one.
 - A file from a newer version, or with a system that this app does not know, shows the design but does not let the
