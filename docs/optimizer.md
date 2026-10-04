@@ -23,7 +23,8 @@ The optimizer always builds guillotine layouts, even when the `cutOrder` feature
 
 ## Constructors
 
-Each candidate plan comes from one constructor, a part order, a stock order, and a rotation policy.
+Each candidate plan comes from one constructor, a part order, a stock order, a rotation policy, and group affinity
+(on or off).
 
 - **Strip**: rips a strip along the stock length at the width of its first part, crosscuts the strip into segments,
   and re-rips narrower parts out of the rest of each segment. This is the common shop practice.
@@ -37,12 +38,24 @@ constructor opens the first stock in the stock order that has pieces left and th
 The **rotation policy** decides which orientation a part that may rotate tries first: `keep` (as defined), `long`
 (long side along the stock length), or `short`.
 
+**Group affinity** puts a copy on a sheet that holds its [group](#objective) before it mixes groups. The guillotine
+constructor first tries the open sheets that hold the group of the copy, then the other open sheets. The strip
+constructor first takes the parts of the groups that the sheet holds, then the next part in the order that fits. Only
+candidates that keep the groups together use group affinity.
+
 ## Search
 
 1. The optimizer first tries every combination of four part orders (area, longest side, length, and width, each
    largest first), the five constructors, up to six sheet stock orders, and the rotation policies.
+   - When the groups stay together and the copies make two or more runs, it then tries one more part order with
+     each constructor, stock order, and rotation policy, with group affinity on. In this order, the copies of each
+     group are together. The group with the largest total area is first, and the copies with no group are last.
+     Each run is in order of area. The copies of each group make one run, and the copies with no group make one run.
 2. It then tries random changes to the chosen candidate so far (see [Objective](#objective)): swaps in the part order, a new order by area with
    random noise, another constructor, another stock order, or another rotation policy.
+   - When the groups stay together and the copies make two or more runs, some changes move whole groups. Such a
+     change puts the copies of each group together, and then moves one group to the start, swaps two groups, or
+     gives one group a new order by area with random noise. A change can also turn group affinity on or off.
 3. It stops at `timeLimitMs` (default `settings.optimizer.timeLimitMs`), but only after every material has at least
    one candidate. With `iterations`, it runs exactly that many candidates per material and ignores the time.
 

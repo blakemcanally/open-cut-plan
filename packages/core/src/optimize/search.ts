@@ -59,6 +59,7 @@ interface Candidate {
   constructor: Constructor;
   stockOrder: Stock[];
   rotation: RotationPolicy;
+  affinity: boolean;
 }
 
 interface MaterialSearch {
@@ -72,6 +73,8 @@ interface MaterialSearch {
   /** Null for the goal `cost`, which keeps only the best plan. */
   trade: TradeOffs<Planned> | null;
   groups: boolean;
+  /** True when the groups stay together and the copies form at least two blocks (each group, and the copies with no group). */
+  grouping: boolean;
 }
 
 interface Planned {
@@ -87,6 +90,7 @@ const ORDERS: readonly ((a: Copy, b: Copy) => number)[] = [
 ];
 
 const MAX_STOCK_ORDERS = 6;
+const GROUP_MOVE = 0.3;
 
 export function createSearch(project: Project, options: OptimizeOptions = {}): Search {
   const problem = buildProblem(project);
@@ -100,7 +104,10 @@ export function createSearch(project: Project, options: OptimizeOptions = {}): S
   const groups = options.keepGroupsTogether ?? settings.keepGroupsTogether;
   const random = seededRandom(seed + (options.start?.iterations ?? 0));
   const tradeOffs = (cheapest?: number) => (goal === "cost" ? null : createTradeOffs<Planned>(goal, extra, cheapest, groups));
-  const searches = problem.materials.map((m): MaterialSearch => ({ problem: m, base: baseCandidates(m), next: 0, evaluated: 0, rerun: 0, best: null, trade: tradeOffs(), groups }));
+  const searches = problem.materials.map((m): MaterialSearch => {
+    const grouping = groups && blocks(m.copies).length >= 2;
+    return { problem: m, base: baseCandidates(m, grouping), next: 0, evaluated: 0, rerun: 0, best: null, trade: tradeOffs(), groups, grouping };
+  });
   if (options.start) seedFrom(problem, searches, options.start, tradeOffs);
   let iterations = options.start?.iterations ?? 0;
   let elapsed = 0;
@@ -165,7 +172,7 @@ function record(search: MaterialSearch, planned: Planned) {
 }
 
 function pack(problem: Problem, material: MaterialProblem, candidate: Candidate): Packing {
-  const input = { ctx: problem.ctx, problem: material, order: candidate.order, stockOrder: candidate.stockOrder, rotation: candidate.rotation };
+  const input = { ctx: problem.ctx, problem: material, order: candidate.order, stockOrder: candidate.stockOrder, rotation: candidate.rotation, affinity: candidate.affinity };
   return candidate.constructor === "strip" ? stripPack(input) : guillotinePack(input, candidate.constructor);
 }
 
@@ -189,24 +196,64 @@ function rotations(material: MaterialProblem): RotationPolicy[] {
   return material.copies.some((c) => c.orientations.length > 1) ? ["keep", "long", "short"] : ["keep"];
 }
 
-function baseCandidates(material: MaterialProblem): Candidate[] {
+function baseCandidates(material: MaterialProblem, grouping: boolean): Candidate[] {
   const out: Candidate[] = [];
-  for (const compare of ORDERS) {
-    const order = [...material.copies].sort(compare);
+  const add = (order: Copy[], affinity: boolean) => {
     for (const constructor of CONSTRUCTORS) {
       for (const stockOrder of stockOrders(material)) {
-        for (const rotation of rotations(material)) out.push({ order, constructor, stockOrder, rotation });
+        for (const rotation of rotations(material)) out.push({ order, constructor, stockOrder, rotation, affinity });
       }
     }
-  }
+  };
+  for (const compare of ORDERS) add([...material.copies].sort(compare), false);
+  if (grouping) add(groupOrder(material.copies), true);
   return out;
+}
+
+/** The copies of each group in a run, in the order that the groups first occur; the copies with no group are one run. */
+function blocks(order: readonly Copy[]): Copy[][] {
+  const runs = new Map<string | null, Copy[]>();
+  for (const copy of order) {
+    const run = runs.get(copy.group);
+    if (run) run.push(copy);
+    else runs.set(copy.group, [copy]);
+  }
+  return [...runs.values()];
+}
+
+/** The groups in runs, the largest total area first, and the copies with no group last; each run by area. */
+function groupOrder(copies: readonly Copy[]): Copy[] {
+  const area = (copy: Copy) => copy.part.length * copy.part.width;
+  const total = (run: Copy[]) => run.reduce((sum, copy) => sum + area(copy), 0);
+  const runs = blocks(copies);
+  const grouped = runs.filter((run) => run[0]!.group !== null).sort((a, b) => total(b) - total(a));
+  const loose = runs.filter((run) => run[0]!.group === null);
+  return [...grouped, ...loose].flatMap((run) => [...run].sort(ORDERS[0]));
+}
+
+/** Puts the copies of each group in a run, then moves a run to the front, swaps two runs, or shuffles one run by size. */
+function groupMove(random: Random, order: readonly Copy[]): Copy[] {
+  const runs = blocks(order);
+  const i = randomInt(random, runs.length);
+  const kind = randomInt(random, 4);
+  if (kind === 1) runs.unshift(...runs.splice(i, 1));
+  else if (kind === 2) {
+    const j = randomInt(random, runs.length);
+    [runs[i], runs[j]] = [runs[j]!, runs[i]!];
+  } else if (kind === 3) {
+    const noise = new Map(runs[i]!.map((c) => [c, c.part.length * c.part.width * (0.7 + 0.6 * random())]));
+    runs[i]!.sort((a, b) => noise.get(b)! - noise.get(a)!);
+  }
+  return runs.flat();
 }
 
 function randomCandidate(random: Random, search: MaterialSearch): Candidate {
   const material = search.problem;
   const from = search.best?.candidate ?? search.base[0]!;
-  const order = [...from.order];
-  if (random() < 0.3 || order.length < 2) {
+  let order = [...from.order];
+  if (search.grouping && random() < GROUP_MOVE) {
+    order = groupMove(random, order);
+  } else if (random() < 0.3 || order.length < 2) {
     const noise = new Map(order.map((c) => [c, c.part.length * c.part.width * (0.7 + 0.6 * random())]));
     order.sort((a, b) => noise.get(b)! - noise.get(a)!);
   } else {
@@ -226,6 +273,7 @@ function randomCandidate(random: Random, search: MaterialSearch): Candidate {
     constructor: random() < 0.5 ? from.constructor : CONSTRUCTORS[randomInt(random, CONSTRUCTORS.length)]!,
     stockOrder,
     rotation: random() < 0.5 ? from.rotation : rotationList[randomInt(random, rotationList.length)]!,
+    affinity: search.grouping && random() < 0.5 ? !from.affinity : from.affinity,
   };
 }
 

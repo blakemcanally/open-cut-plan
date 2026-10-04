@@ -13,6 +13,8 @@ export interface PackInput {
   /** Stock in the order new sheets are opened; offcuts come first. */
   stockOrder: Stock[];
   rotation: RotationPolicy;
+  /** Prefer to put a copy with a group on a sheet that already holds that group. */
+  affinity?: boolean;
 }
 
 export interface PackedSheet {

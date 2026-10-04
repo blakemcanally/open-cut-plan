@@ -371,6 +371,57 @@ describe("keeping groups together", () => {
     project.parts = sizes.map((width, i) => ({ id: `p${i}`, name: `P${i}`, material: "ply", length: 47, width, quantity: 1, grain: "length" as const, group: i % 2 === 0 ? "A" : "B" }));
     return project;
   }
+  const groupsOn = (result: OptimizeResult, project: Project) =>
+    result.sheets.map((sheet) => [...new Set(sheet.placements.map((p) => project.parts.find((part) => part.id === p.part)!.group ?? ""))].toSorted((a, b) => a.localeCompare(b)).join(""));
+
+  it("separates two groups that fit on two sheets mixed or separated at the same cost", () => {
+    const project = twoGroups();
+    const mixed = optimize(project, { iterations: 100, seed: 3, keepGroupsTogether: false });
+    expect(mixed.sheets).toHaveLength(2);
+    expect(groupsOn(mixed, project)).toContain("AB");
+    const together = optimize(project, { iterations: 100, seed: 3 });
+    expect(together.materials.map((m) => [m.score.cost, m.score.groupSpread])).toEqual([[120, 0]]);
+    expect(groupsOn(together, project).toSorted((a, b) => a.localeCompare(b))).toEqual(["A", "B"]);
+    expect(errors(applyOptimizeResult(project, together))).toEqual([]);
+  });
+
+  it("takes the setting from the project, and the option overrides it", () => {
+    const project = twoGroups();
+    const off: Project = { ...project, settings: { ...project.settings, optimizer: { ...project.settings.optimizer, keepGroupsTogether: false } } };
+    expect(optimize(off, { iterations: 100, seed: 3 })).toEqual(optimize(project, { iterations: 100, seed: 3, keepGroupsTogether: false }));
+    expect(optimize(off, { iterations: 100, seed: 3, keepGroupsTogether: true }).materials[0]!.score.groupSpread).toBe(0);
+  });
+
+  it("returns valid plans of grouped parts that account for every copy, the same for the same seed", () => {
+    const arb = fc.record({
+      kerf: fc.constantFrom(0, 0.125, 0.25),
+      stock: fc.array(fc.record({ length: fc.integer({ min: 30, max: 120 }), width: fc.integer({ min: 20, max: 60 }), cost: fc.integer({ min: 5, max: 60 }), quantity: fc.option(fc.integer({ min: 1, max: 3 })) }), { minLength: 1, maxLength: 3 }),
+      parts: fc.array(
+        fc.record({ length: fc.integer({ min: 2, max: 60 }), width: fc.integer({ min: 2, max: 40 }), quantity: fc.integer({ min: 1, max: 4 }), grain: fc.constantFrom("length" as const, "none" as const), group: fc.option(fc.constantFrom("A", "B", "C")) }),
+        { minLength: 1, maxLength: 8 },
+      ),
+      seed: fc.integer(),
+    });
+    fc.assert(
+      fc.property(arb, (a) => {
+        const base = createProject("Random", "in");
+        const project: Project = {
+          ...base,
+          materials: [{ id: "m", name: "M", thickness: 0.75, grained: true }],
+          stock: a.stock.map((s, i) => ({ id: `st${i}`, material: "m", ...s, kind: "sheet" as const })),
+          parts: a.parts.map(({ group, ...p }, i) => ({ id: `p${i}`, name: `P${i}`, material: "m", ...p, ...(group === null ? {} : { group }) })),
+          tools: [{ id: "t", name: "T", type: "table-saw", kerf: a.kerf, enabled: true }],
+        };
+        const result = optimize(project, { iterations: 40, seed: a.seed });
+        expect(errors(applyOptimizeResult(project, result))).toEqual([]);
+        const placed = result.sheets.reduce((n, s) => n + s.placements.length, 0);
+        expect(placed + result.unplaced.length).toBe(a.parts.reduce((n, p) => n + p.quantity, 0));
+        expect(optimize(project, { iterations: 40, seed: a.seed })).toEqual(result);
+      }),
+      { numRuns: 80 },
+    );
+  });
+
   it("gives the group spread of the chosen plan with the setting on or off", () => {
     const project = twoGroups();
     expect(optimize(project, { iterations: 100, seed: 3, keepGroupsTogether: false }).materials[0]!.score.groupSpread).toBe(2);

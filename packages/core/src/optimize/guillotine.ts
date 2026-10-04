@@ -10,6 +10,7 @@ export const SPLIT_RULES: readonly SplitRule[] = ["short-axis", "long-axis", "mi
 interface OpenSheet {
   sheet: PackedSheet;
   free: Rect[];
+  groups: Set<string>;
 }
 
 /**
@@ -40,7 +41,9 @@ export function guillotinePack(input: PackInput, rule: SplitRule): Packing {
         }
       });
     };
-    for (const target of open) consider(target);
+    const group = input.affinity ? copy.group : null;
+    if (group !== null) for (const target of open) if (target.groups.has(group)) consider(target);
+    if (!best) for (const target of open) if (group === null || !target.groups.has(group)) consider(target);
     if (!best) {
       const stock = pool.take(copy);
       if (stock === "no-stock") {
@@ -51,6 +54,7 @@ export function guillotinePack(input: PackInput, rule: SplitRule): Packing {
       const target: OpenSheet = {
         sheet: { stock, placements: [] },
         free: [{ ...usable, length: usable.length + kerf, width: usable.width + kerf }],
+        groups: new Set(),
       };
       open.push(target);
       consider(target);
@@ -63,6 +67,7 @@ export function guillotinePack(input: PackInput, rule: SplitRule): Packing {
     const free = chosen.target.free[chosen.index]!;
     const size = sizeOf(copy, chosen.rotated);
     chosen.target.sheet.placements.push(placement(copy, free.x, free.y, chosen.rotated));
+    if (copy.group !== null) chosen.target.groups.add(copy.group);
     chosen.target.free.splice(chosen.index, 1, ...split(free, size.length + kerf, size.width + kerf, rule));
   }
   return { sheets: open.map((o) => o.sheet), unplaced };

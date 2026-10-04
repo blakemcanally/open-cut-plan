@@ -87,3 +87,41 @@ describe("stripPack", () => {
     expect(errors(project, packing)).toEqual([]);
   });
 });
+
+describe("affinity for groups", () => {
+  function grouped(parts: [id: string, length: number, width: number, group: string][]): Project {
+    const project = sampleProject();
+    project.parts = parts.map(([id, length, width, group]) => ({ id, name: id, material: "ply", length, width, quantity: 1, grain: "length", group }));
+    return project;
+  }
+  const inOrder = (project: Project, affinity: boolean): PackInput => {
+    const input = inputs(project);
+    return { ...input, order: [...input.problem.copies], affinity };
+  };
+  const sheetsOf = (packing: Packing) => packing.sheets.map((s) => s.placements.map((p) => p.part).join(","));
+
+  it("puts a guillotine part on an open sheet that holds its group before a sheet that it fills better", () => {
+    const project = grouped([
+      ["a1", 95.5, 30, "A"],
+      ["b1", 95.5, 40, "B"],
+      ["a2", 20, 7, "A"],
+    ]);
+    expect(sheetsOf(guillotinePack(inOrder(project, false), "short-axis"))).toEqual(["a1", "b1,a2"]);
+    const packing = guillotinePack(inOrder(project, true), "short-axis");
+    expect(sheetsOf(packing)).toEqual(["a1,a2", "b1"]);
+    expect(errors(project, packing)).toEqual([]);
+  });
+
+  it("takes a strip part of a group that the sheet holds before the next part in the order", () => {
+    const project = grouped([
+      ["a1", 95.5, 30, "A"],
+      ["b1", 95.5, 30, "B"],
+      ["b2", 60, 15, "B"],
+      ["a2", 60, 15, "A"],
+    ]);
+    expect(sheetsOf(stripPack(inOrder(project, false)))).toEqual(["a1,b2", "b1,a2"]);
+    const packing = stripPack(inOrder(project, true));
+    expect(sheetsOf(packing)).toEqual(["a1,a2", "b1,b2"]);
+    expect(errors(project, packing)).toEqual([]);
+  });
+});

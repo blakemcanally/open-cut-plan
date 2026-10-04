@@ -14,20 +14,25 @@ export function stripPack(input: PackInput): Packing {
   const pending = [...input.order];
   const sheets: PackedSheet[] = [];
   const unplaced: Packing["unplaced"] = [];
+  const held = new Set<string>();
 
-  const take = (fits: (length: number, width: number) => boolean): { copy: Copy; rotated: boolean } | null => {
+  const find = (fits: (length: number, width: number) => boolean, wanted: (copy: Copy) => boolean): { copy: Copy; rotated: boolean } | null => {
     for (let i = 0; i < pending.length; i++) {
       const copy = pending[i]!;
+      if (!wanted(copy)) continue;
       for (const rotated of orientations(copy, input.rotation)) {
         const size = sizeOf(copy, rotated);
         if (fits(size.length, size.width)) {
           pending.splice(i, 1);
+          if (copy.group !== null) held.add(copy.group);
           return { copy, rotated };
         }
       }
     }
     return null;
   };
+  const take = (fits: (length: number, width: number) => boolean) =>
+    (input.affinity && held.size > 0 ? find(fits, (copy) => copy.group !== null && held.has(copy.group)) : null) ?? find(fits, () => true);
 
   while (pending.length > 0) {
     const stock = pool.take(pending[0]!);
@@ -40,6 +45,7 @@ export function stripPack(input: PackInput): Packing {
     const right = usable.x + usable.length + EPSILON;
     const bottom = usable.y + usable.width + EPSILON;
     const sheet: PackedSheet = { stock, placements: [] };
+    held.clear();
     let y = usable.y;
     for (;;) {
       const starter = take((length, width) => usable.x + length <= right && y + width <= bottom);
