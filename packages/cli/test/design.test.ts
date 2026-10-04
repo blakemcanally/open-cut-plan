@@ -187,9 +187,23 @@ describe("design list and get", () => {
     expect(result.json().outside).toEqual({ width: 724, height: 1430, depth: 340 });
     expect(result.json().parts.map((part: { id: string }) => part.id)).toEqual(["kallax-top", "kallax-bottom", "kallax-side", "kallax-divider", "kallax-shelf"]);
     expect(result.json().issues.map((issue: { code: string }) => issue.code)).toEqual(expect.arrayContaining(["design-stale"]));
+    expect(result.json().estimate).toEqual([{ material: expect.any(String), sheets: 2, sizes: [expect.objectContaining({ count: 2 })], unplaced: 0, noStock: false }]);
     const missing = await cli(["design", "get", KALLAX, "nope", "--json"], io);
     expect(missing.code).toBe(2);
     expect(missing.json().error).toMatchObject({ code: "not-found", id: "nope", known: ["kallax"] });
+  });
+});
+
+describe("design get estimate", () => {
+  it("says when the material of a design has no sheet stock", async () => {
+    const io = withDesignExamples();
+    editFile(io, KALLAX, (file) => {
+      file.stock = [];
+    });
+    const result = await cli(["design", "get", KALLAX, "kallax", "--json"], io);
+    expect(result.json().estimate).toEqual([{ material: expect.any(String), sheets: 0, sizes: [], unplaced: 11, noStock: true }]);
+    const text = await cli(["design", "get", KALLAX, "kallax"], io);
+    expect(text.stdout).toMatch(/^estimate: the project has no sheet stock of \S+$/m);
   });
 });
 

@@ -1,19 +1,19 @@
 import { analyzeProject, createProject, PART_PALETTE, regenerateDesigns, type CombinedCell, type Project } from "@opencutplan/core";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DesignTab } from "../src/screens/DesignTab.tsx";
 import { useProject, type ProjectStore } from "../src/state/useProject.ts";
 import { designProject } from "./helpers.ts";
 
-function renderDesign(initial: Project = designProject(), focus: string | null = null) {
+function renderDesign(initial: Project = designProject(), focus: string | null = null, onOptimize?: () => void) {
   let latest: ProjectStore | null = null;
   function Harness() {
     const store = useProject(initial);
     latest = store;
     const analysis = useMemo(() => analyzeProject(store.project), [store.project]);
-    return <DesignTab store={store} analysis={analysis} focus={focus} />;
+    return <DesignTab store={store} analysis={analysis} focus={focus} onOptimize={onOptimize} />;
   }
   render(<Harness />);
   return () => latest!;
@@ -370,5 +370,55 @@ describe("DesignTab cells", () => {
     await user.click(cell("Columns 1–2, row 1"));
     expect(button("Combine").matches(":disabled")).toBe(true);
     expect(button("Split").matches(":disabled")).toBe(true);
+  });
+
+  describe("sheet estimate", () => {
+    const sheets = () => within(screen.getByRole("region", { name: "Sheets" }));
+    const lines = () => sheets().getAllByRole("listitem").map((item) => item.textContent);
+
+    it("estimates the sheets of each material, and updates while the user types", async () => {
+      renderDesign();
+      expect(lines()).toEqual(["About 1 sheet of Plywood 18 (18 mm), 2440 mm × 1220 mm."]);
+      expect(sheets().getByText(/^An estimate from a short optimizer run/)).toBeTruthy();
+      const columns = screen.getByLabelText("Columns");
+      await userEvent.clear(columns);
+      await userEvent.type(columns, "5");
+      await waitFor(() => expect(lines()).toEqual(["About 2 sheets of Plywood 18 (18 mm), 2440 mm × 1220 mm."]));
+    });
+
+    it("runs the optimizer from the Optimize now button", async () => {
+      const onOptimize = vi.fn();
+      renderDesign(designProject(), null, onOptimize);
+      await userEvent.click(sheets().getByRole("button", { name: "Optimize now" }));
+      expect(onOptimize).toHaveBeenCalledTimes(1);
+    });
+
+    it("has no Optimize now button when the app gives no way to optimize", () => {
+      renderDesign();
+      expect(sheets().queryByRole("button", { name: "Optimize now" })).toBeNull();
+    });
+
+    it("offers the catalogue sheet when a catalogue material has no stock", async () => {
+      const base = designProject();
+      const birch = { id: "birch", name: 'Birch plywood 3/4"', thickness: 17.9, grained: true };
+      const current = renderDesign(
+        regenerateDesigns({ ...base, materials: [...base.materials, birch], stock: [], designs: [{ ...base.designs![0]!, material: "birch" }] }),
+      );
+      expect(lines()).toEqual(['⚠ The project has no sheet stock of Birch plywood 3/4" (18 mm). Add 4 × 8 ft sheets from the catalogue']);
+      await userEvent.click(sheets().getByRole("button", { name: "Add 4 × 8 ft sheets from the catalogue" }));
+      expect(current().project.stock).toMatchObject([{ material: "birch", length: 2438, width: 1219, kind: "sheet" }]);
+      expect(lines()).toEqual(['About 1 sheet of Birch plywood 3/4" (18 mm), 2438 mm × 1219 mm.']);
+    });
+
+    it("opens the catalogue when a material of its own has no stock", async () => {
+      const current = renderDesign({ ...designProject(), stock: [] });
+      expect(lines()).toEqual(["⚠ The project has no sheet stock of Plywood 18 (18 mm). Add from catalogue…"]);
+      await userEvent.click(sheets().getByRole("button", { name: "Add from catalogue…" }));
+      const dialog = screen.getByRole("dialog", { name: "Add from catalogue" });
+      await userEvent.click(within(dialog).getByRole("checkbox", { name: "4 × 8 ft" }));
+      await userEvent.click(within(dialog).getByRole("button", { name: "Add 1 size" }));
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(current().project.stock).toHaveLength(1);
+    });
   });
 });

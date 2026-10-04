@@ -9,6 +9,7 @@ import {
   designElevationSvg,
   designErrors,
   designGeometry,
+  designSheetEstimate,
   detachDesign,
   EKET,
   fitCombined,
@@ -244,23 +245,31 @@ const list: CommandSpec = {
 const get: CommandSpec = {
   name: "design get",
   summary: "Show one design, its parts, and its checks.",
-  description: "Show one design by id, the parts it makes, its outside size, and the design checks (errors and warnings) for it.",
+  description:
+    "Show one design by id, the parts it makes, its outside size, an estimate of the sheets it needs, and the design checks (errors and warnings) for it. The estimate is a short optimizer run on the parts of this design alone, with no limit on the sheet quantities and no offcuts; run optimize for the plan.",
   args: [FILE_ARG, DESIGN_ARG],
   options: [],
   examples: [{ command: `${PROGRAM} design get hall.cutplan.json kallax-2x4 --json`, description: "Show the design kallax-2x4." }],
-  output: "units, design (the file object), outside { width, height, depth } or null, parts [the generated parts], issues [{ severity, code, message, refs }].",
+  output:
+    "units, design (the file object), outside { width, height, depth } or null, parts [the generated parts], estimate [{ material, sheets, sizes [{ stock, length, width, count }], unplaced, noStock }] or null, issues [{ severity, code, message, refs }].",
   async run({ args, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const design = findById(project.designs ?? [], args[1]!, "design");
     const parts = generatedParts(project, design.id);
+    const estimate = designSheetEstimate(project, design);
     const issues = designIssues(project, design.id);
     const text = [
       line(project, design),
       ...parts.map((part) => `  ${part.id}: ${part.name}, ${len(project, part.length)} × ${len(project, part.width)}, ×${part.quantity}`),
+      ...(estimate ?? []).map((entry) =>
+        entry.noStock
+          ? `estimate: the project has no sheet stock of ${entry.material}`
+          : `estimate: about ${plural(entry.sheets, "sheet")} of ${entry.material}${entry.unplaced > 0 ? `, and ${entry.unplaced} unplaced` : ""}`,
+      ),
       ...issues.map((issue) => `${issue.severity} ${issue.code}: ${issue.message}`),
     ].join("\n");
-    return { data: { units: project.project.units, design, outside: outsideSize(project, design), parts, issues }, text, warnings: warningLines(loaded) };
+    return { data: { units: project.project.units, design, outside: outsideSize(project, design), parts, estimate, issues }, text, warnings: warningLines(loaded) };
   },
 };
 

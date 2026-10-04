@@ -82,7 +82,13 @@ parts from the design, and the Parts tab lists them. The file format is in [form
   step. When the columns or rows change, a combined cell that is now outside the grid gets smaller, and a combined cell
   of one cell goes.
 - **Parts** under the front view lists the parts of the design, with their sizes and quantities.
-- The front view updates while the user types. Enter or leaving the field applies the value; Escape goes back.
+- **Sheets** under the parts gives an estimate of the sheets for each material of the design, for example "About 2
+  sheets of Plywood (18 mm), 2440 mm × 1220 mm." The estimate is a short optimizer run on the parts of this design
+  alone, with no limit on the sheet quantities and no offcuts. The full plan can use a different number of sheets.
+- When the project has no sheet stock of a material of the design, **Sheets** says so. For a catalogue material, a
+  button adds its largest sheet size. For a different material, **Add from catalogue…** opens the catalogue.
+- **Optimize now** plans every part of the project, as **Optimize** on the Layout tab does, and opens the Layout tab.
+- The front view, the parts, and the sheets update while the user types. Enter or leaving the field applies the value; Escape goes back.
 - A value that makes the design impossible (for example, a material too thin for pocket screws) is not applied. The
   field stays marked and a message gives the reason. It adds no undo step.
 - Each change makes the design's parts again. The copies of those parts leave the sheets when their size changes, and

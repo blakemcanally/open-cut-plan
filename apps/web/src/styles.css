@@ -198,6 +198,7 @@ fieldset.choice label { display: inline-flex; align-items: center; gap: 4px; }
 .design-editor { display: grid; grid-template-columns: minmax(280px, 400px) minmax(0, 1fr); gap: 16px; align-items: start; }
 .design-form fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 10px; }
 .design-side { display: flex; flex-direction: column; gap: 14px; }
+.sheet-estimate { margin: 0 0 6px; padding-left: 18px; }
 .design-preview svg { display: block; width: 100%; height: auto; max-height: 60vh; }
 .cell-grid { display: grid; gap: 4px; max-width: 320px; max-height: 320px; padding: 4px; background: #d8cfbf; border-radius: 4px; touch-action: none; user-select: none; }
 .cell-row { display: contents; }

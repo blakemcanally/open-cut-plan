@@ -37,6 +37,7 @@ import {
 import { useState, type InputHTMLAttributes } from "react";
 import { ColorChoice, LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
 import { CellGrid } from "../design/CellGrid.tsx";
+import { SheetEstimate } from "../design/SheetEstimate.tsx";
 import { addDesign, axisMode, CATALOG_VALUE, openingsText, parseOpenings, pickMaterial, tryDesign, withCells, withMode, withSystem, type AxisMode } from "../design/form.ts";
 import type { ProjectStore } from "../state/useProject.ts";
 
@@ -47,6 +48,8 @@ interface DesignTabProps {
   analysis: ProjectAnalysis;
   /** The design to show first, from a link on the Parts tab. */
   focus?: string | null;
+  onOptimize?: (() => void) | undefined;
+  optimizing?: boolean;
 }
 
 export function designIssues(issues: readonly PlanIssue[], id: string): PlanIssue[] {
@@ -77,7 +80,7 @@ function outsideText(project: Project, design: Design): string {
   return `${show(geometry.outsideWidth)} × ${show(geometry.outsideHeight)} × ${show(geometry.depth)}`;
 }
 
-export function DesignTab({ store, analysis, focus = null }: DesignTabProps) {
+export function DesignTab({ store, analysis, focus = null, onOptimize, optimizing = false }: DesignTabProps) {
   const { project, edit } = store;
   const designs = project.designs ?? [];
   const [chosen, setChosen] = useState<string | null>(focus);
@@ -128,7 +131,14 @@ export function DesignTab({ store, analysis, focus = null }: DesignTabProps) {
               </li>
             ))}
           </ul>
-          <DesignEditor key={selected.id} store={store} design={selected} issues={designIssues(analysis.issues, selected.id)} />
+          <DesignEditor
+            key={selected.id}
+            store={store}
+            design={selected}
+            issues={designIssues(analysis.issues, selected.id)}
+            onOptimize={onOptimize}
+            optimizing={optimizing}
+          />
         </div>
       )}
     </div>
@@ -139,6 +149,8 @@ interface EditorProps {
   store: ProjectStore;
   design: Design;
   issues: PlanIssue[];
+  onOptimize: (() => void) | undefined;
+  optimizing: boolean;
 }
 
 type Which = "width" | "height";
@@ -148,7 +160,7 @@ const AXIS_TEXT: Readonly<Record<Which, { cells: string; outside: string; openin
   height: { cells: "Rows", outside: "Outside height", openings: "Row openings, top to bottom" },
 };
 
-function DesignEditor({ store, design, issues }: EditorProps) {
+function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorProps) {
   const { project, edit } = store;
   const units = project.project.units;
   const display = project.settings.display;
@@ -455,6 +467,7 @@ function DesignEditor({ store, design, issues }: EditorProps) {
             </div>
           </section>
         )}
+        <SheetEstimate project={project} design={typing ?? design} disabled={locked !== null} onEdit={(next) => edit(next)} onOptimize={onOptimize} optimizing={optimizing} />
         <section aria-labelledby="design-checks-title">
           <h3 id="design-checks-title">Checks</h3>
           {issues.length === 0 ? (

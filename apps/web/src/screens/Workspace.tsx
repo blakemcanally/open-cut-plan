@@ -205,7 +205,18 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
       <ShowTab.Provider value={showLinked}>
         <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="panel">
           {(tab === "shop" || tab === "reports") && alert && <PlanAlertBanner alert={alert} onShow={showProblems} />}
-          {tab === "design" && <DesignTab store={store} analysis={analysis} focus={designFocus} />}
+          {tab === "design" && (
+            <DesignTab
+              store={store}
+              analysis={analysis}
+              focus={designFocus}
+              optimizing={runs.running !== null}
+              onOptimize={() => {
+                runs.optimize("all");
+                showTab("layout");
+              }}
+            />
+          )}
           {tab === "parts" && (
             <PartsTab
               store={store}

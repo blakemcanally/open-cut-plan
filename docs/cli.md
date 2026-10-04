@@ -164,7 +164,7 @@ the shelves between the sides and the dividers, all joined with pocket screws. T
 | ------- | ------------ | ------- |
 | `design systems` | Lists `kallax`, `eket`, and `custom`, with the IKEA numbers and their sources. It needs no file. | `opencutplan design systems --json` |
 | `design list <file>` | Lists the designs with the outside size and the part counts. | `opencutplan design list hall.cutplan.json` |
-| `design get <file> <id>` | Shows one design, its parts, and its checks. | `opencutplan design get hall.cutplan.json kallax-2x4 --json` |
+| `design get <file> <id>` | Shows one design, its parts, an estimate of its sheets, and its checks. | `opencutplan design get hall.cutplan.json kallax-2x4 --json` |
 | `design add <file>` | Adds a design and makes its parts. | `opencutplan design add hall.cutplan.json --system kallax --cols 2 --rows 4` |
 | `design set <file> <id>` | Changes a design and makes its parts again. | `opencutplan design set hall.cutplan.json kallax-2x4 --rows 5` |
 | `design combine <file> <id>` | Combines a rectangle of cells into one cell. | `opencutplan design combine hall.cutplan.json kallax-4x2 --cell 1,1 --to 2,1` |
@@ -193,6 +193,11 @@ The IKEA numbers are in millimetres. The CLI converts them to the project units,
 `kallax-2x4`. A change that gives a design error, such as stock that is too thin for pocket screws, is refused with
 exit 1 and `invalid-value`, and `error.issues` lists the checks. `design set` gives `partChanges` (the parts that were
 added, removed, or resized) and `removedPlacements` (the copies that went to the tray).
+
+`design get` gives `estimate`: for each material of the design, the number of sheets that its parts need. The
+estimate is a short optimizer run on the parts of this design alone. It uses each enabled sheet stock of the material
+with no limit on the quantity, and no offcuts. `noStock` is true when the project has no sheet stock of the material.
+`unplaced` counts the copies that do not fit on the sheets. Run `optimize` for the plan of the whole project.
 
 `design combine` and `design split` change the combined cells (`combined` in [format.md](format.md)):
 

@@ -235,4 +235,13 @@ describe("Workspace", () => {
     expect(root.querySelectorAll(".print-assembly .print-steps li")).toHaveLength(9);
     print.mockRestore();
   });
+
+  it("optimizes from the Design tab and opens the Layout tab", async () => {
+    const project = designProject();
+    await renderWorkspace({ ...project, settings: { ...project.settings, optimizer: { ...project.settings.optimizer, timeLimitMs: 200 } } });
+    await userEvent.click(screen.getByRole("tab", { name: "Design" }));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize now" }));
+    expect(screen.getByRole("tab", { name: "Layout" }).getAttribute("aria-selected")).toBe("true");
+    expect(await screen.findByText(/^Tried [\d,]+ plans\. The best uses 1 sheet\.$/, {}, { timeout: 10000 })).toBeTruthy();
+  });
 });

@@ -67,6 +67,7 @@ export * from "./design/edit.ts";
 export * from "./design/ikea.ts";
 export * from "./design/hardware.ts";
 export * from "./design/assembly.ts";
+export * from "./design/estimate.ts";
 export * from "./reports/elevation.ts";
 export * from "./catalog/types.ts";
 export * from "./catalog/data.ts";
