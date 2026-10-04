@@ -1,8 +1,8 @@
 import {
   analyzeProject,
   assemblySteps,
+  cutList,
   describeStep,
-  factoryEdgeRequest,
   resultSentence,
   setupLabel,
   setupRuns,
@@ -14,7 +14,6 @@ import {
   totalCutLength,
   unsavedOffcuts,
   type HardwareLine,
-  type Project,
   type ProjectAnalysis,
 } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
@@ -202,46 +201,6 @@ const labels: CommandSpec = {
     return { data, text: lines.join("\n"), warnings: planWarnings(loaded, analysis, args[0]!) };
   },
 };
-
-function cutList(project: Project, analysis: ProjectAnalysis) {
-  const where = new Map<string, number[]>();
-  (project.plan?.sheets ?? []).forEach((sheet, index) => {
-    for (const placement of sheet.placements) {
-      const numbers = where.get(placement.part) ?? [];
-      if (!numbers.includes(index + 1)) numbers.push(index + 1);
-      where.set(placement.part, numbers);
-    }
-  });
-  const placed = new Map<string, number>();
-  for (const sheet of project.plan?.sheets ?? []) for (const p of sheet.placements) placed.set(p.part, (placed.get(p.part) ?? 0) + 1);
-  const parts = project.parts.map((part) => ({
-    id: part.id,
-    name: part.name,
-    material: part.material,
-    length: part.length,
-    width: part.width,
-    thickness: analysis.context.materials.get(part.material)?.thickness ?? null,
-    quantity: part.quantity,
-    grain: part.grain,
-    factoryEdge: factoryEdgeRequest(project, part),
-    group: part.group ?? null,
-    placed: Math.min(placed.get(part.id) ?? 0, part.quantity),
-    sheets: where.get(part.id) ?? [],
-  }));
-  const materials = project.materials
-    .map((material) => {
-      const mine = parts.filter((part) => part.material === material.id);
-      return {
-        material: material.id,
-        name: material.name,
-        parts: mine.length,
-        copies: mine.reduce((sum, part) => sum + part.quantity, 0),
-        partArea: mine.reduce((sum, part) => sum + part.length * part.width * part.quantity, 0),
-      };
-    })
-    .filter((material) => material.parts > 0);
-  return { parts, materials };
-}
 
 const cutlist: CommandSpec = {
   name: "report cutlist",

@@ -36,6 +36,8 @@ export * from "./reports/labels.ts";
 export * from "./reports/labelSheets.ts";
 export * from "./reports/colors.ts";
 export * from "./reports/svg.ts";
+export * from "./reports/cutList.ts";
+export * from "./reports/sequenceTable.ts";
 export * from "./analysis.ts";
 export * from "./reports/stats.ts";
 export * from "./errors.ts";

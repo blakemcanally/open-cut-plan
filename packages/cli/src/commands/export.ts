@@ -1,11 +1,13 @@
 import { join } from "node:path";
-import { analyzeProject, fileBase, partColors, serializeProject, sheetSvg, withCuts } from "@opencutplan/core";
+import { analyzeProject, fileBase, partColors, serializeProject, sheetSvg, withCuts, type CutColoring } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, loadProject, warningLines, writeOutput } from "../project.ts";
 import { CliError, EXIT, usageError, type CommandSpec, type GroupSpec } from "../spec.ts";
-import { flag, str } from "../values.ts";
+import { flag, optionalChoice, str } from "../values.ts";
 import { EXPORT_OUT, exportCsv } from "./csv.ts";
 import { findSheet } from "./layout.ts";
+
+const CUT_COLORINGS: readonly CutColoring[] = ["stage", "tool"];
 
 const svg: CommandSpec = {
   name: "export svg",
@@ -17,10 +19,12 @@ const svg: CommandSpec = {
     { name: "sheet", type: "string", value: "<ref>", description: "Draw only this sheet: a sheet id, or its 1-based number in the plan." },
     { name: "out", type: "string", value: "<path|dir|->", description: "The target: a directory for one file per sheet, a file (with --sheet), or - for standard output (with --sheet). Required without --sheet." },
     { name: "no-cuts", type: "boolean", description: "Leave out the cut lines." },
+    { name: "cut-colors", type: "string", value: "<stage|tool>", description: "Colour each cut line and its number by its stage or by its tool, as the Colour cuts by choice on the app's Layout tab. Default: stage." },
   ],
   examples: [
     { command: `${PROGRAM} export svg shelf.cutplan.json --out svg/`, description: "Write one SVG file per sheet into svg/." },
     { command: `${PROGRAM} export svg shelf.cutplan.json --sheet 2 > sheet-2.svg`, description: "Print sheet 2." },
+    { command: `${PROGRAM} export svg shelf.cutplan.json --out svg/ --cut-colors tool`, description: "Colour the cuts by tool." },
   ],
   output: "files [{ sheet, sheetNumber, path }] when written to files; svg, sheet, sheetNumber on standard output.",
   async run({ args, options, io }) {
@@ -36,7 +40,8 @@ const svg: CommandSpec = {
     if (chosen && sheets.length === 0) throw new CliError(EXIT.failed, "missing-stock", `Sheet ${chosen.number} uses the unknown stock ${chosen.sheet.stock}, so it cannot be drawn.`, { sheet: chosen.sheet.id });
     if (sheets.length === 0) throw new CliError(EXIT.failed, "no-sheets", "The plan has no sheets to draw. Run optimize first.");
     const colors = partColors(project);
-    const draw = (sheet: (typeof sheets)[number]) => sheetSvg(analysis.context, sheet, analysis.steps, { colors, showCuts: !flag(options, "no-cuts") });
+    const cutColors = optionalChoice(options, "cut-colors", CUT_COLORINGS) ?? "stage";
+    const draw = (sheet: (typeof sheets)[number]) => sheetSvg(analysis.context, sheet, analysis.steps, { colors, cutColors, showCuts: !flag(options, "no-cuts") });
     if (out === "-") {
       if (sheets.length > 1) throw usageError("--out - needs --sheet: standard output takes one sheet.", "invalid-option", { option: "out" });
       const text = draw(sheets[0]!);

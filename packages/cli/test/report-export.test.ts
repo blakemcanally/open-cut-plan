@@ -1,3 +1,4 @@
+import { stageColor, TOOL_COLORS } from "@opencutplan/core";
 import { describe, expect, it } from "vitest";
 import { cli, withExamples } from "./helpers.ts";
 
@@ -139,6 +140,17 @@ describe("export", () => {
     const file = await cli(["export", "svg", SHELF, "--sheet", "s3", "--out", "three.svg", "--no-cuts"], io);
     expect(file.code).toBe(0);
     expect(io.files.get("three.svg")).not.toContain("Step");
+  });
+
+  it("colours the cuts by stage, or by tool with --cut-colors tool", async () => {
+    const io = withExamples();
+    const stage = (await cli(["export", "svg", SHELF, "--sheet", "1"], io)).stdout;
+    expect(stage).toContain(`stroke="${stageColor(1)}"`);
+    const tool = (await cli(["export", "svg", SHELF, "--sheet", "1", "--cut-colors", "tool"], io)).stdout;
+    expect(tool).toContain(`stroke="${TOOL_COLORS[0]}"`);
+    expect(tool).not.toContain(`stroke="${stageColor(1)}"`);
+    const wrong = await cli(["export", "svg", SHELF, "--sheet", "1", "--cut-colors", "group"], io);
+    expect(wrong.code).toBe(2);
   });
 
   it("refuses an unclear SVG target", async () => {
