@@ -75,6 +75,7 @@ table.grid td input.narrow { min-width: 60px; width: 80px; }
 .tool-list fieldset { border: 1px solid var(--line); border-radius: 8px; }
 .tool-list li.disabled fieldset { opacity: 0.7; border-style: dashed; }
 .tool-fields { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: flex-end; }
+.tool-help { margin: 0 0 6px; font-size: 13px; max-width: 80ch; }
 .tools-tab section + section { margin-top: 24px; }
 .settings-tab { display: grid; grid-template-columns: 220px minmax(0, 640px); gap: 16px; align-items: start; }
 .settings-side { display: flex; flex-direction: column; gap: 8px; }

@@ -139,6 +139,38 @@ describe("ToolsTab", () => {
     await waitFor(async () => expect((await storage.listProfiles()).map((p) => [p.name, p.units, p.tools.length])).toEqual([["Garage", "in", 2]]));
   });
 
+  it("adds a typical saw from a preset, in the units of the project, with help for its limits", async () => {
+    const storage = await openStorage(indexedDB);
+    const { current } = renderWithStore(sampleProject(), (store) => <ToolsTab store={store} storage={storage} />);
+    expect(screen.getByText(/typical values/i)).toBeTruthy();
+    await userEvent.selectOptions(screen.getByLabelText("Typical saw"), '12" sliding mitre saw');
+    await userEvent.click(screen.getByRole("button", { name: "Add typical saw" }));
+    expect(current().project.tools[1]).toEqual({ id: "mitre-saw", name: '12" sliding mitre saw', type: "miter-saw", kerf: 0.125, enabled: true, maxCut: 14 });
+    const miter = screen.getByRole("group", { name: "2. Mitre saw" });
+    expect(within(miter).getByText(/makes crosscuts only/)).toBeTruthy();
+    expect(within(miter).getByLabelText<HTMLInputElement>("Widest crosscut").value).toBe('14"');
+    await userEvent.selectOptions(screen.getByLabelText("Type"), "miter-saw");
+    await userEvent.click(screen.getByRole("button", { name: "Add tool" }));
+    expect(current().project.tools[2]).toMatchObject({ id: "mitre-saw-2", type: "miter-saw", maxCut: 14 });
+  });
+
+  it("sets the largest piece for a crosscut apart from the largest piece for a rip", async () => {
+    const storage = await openStorage(indexedDB);
+    const { current } = renderWithStore(sampleProject(), (store) => <ToolsTab store={store} storage={storage} />);
+    const table = screen.getByRole("group", { name: "1. Table saw" });
+    expect(within(table).getByText(/A blank crosscut piece uses the piece for a rip/)).toBeTruthy();
+    const length = within(table).getByLabelText<HTMLInputElement>("Largest piece for a crosscut, length");
+    expect(length.placeholder).toBe("As for a rip");
+    await userEvent.type(length, "48{Enter}");
+    expect(current().project.tools[0]).toMatchObject({ maxCrosscutPiece: { length: 48, width: 48 } });
+    await userEvent.clear(within(table).getByLabelText("Largest piece for a crosscut, width"));
+    await userEvent.type(within(table).getByLabelText("Largest piece for a crosscut, width"), "24{Enter}");
+    expect(current().project.tools[0]).toMatchObject({ maxCrosscutPiece: { length: 48, width: 24 } });
+    expect(current().project.tools[0]).not.toHaveProperty("maxPiece");
+    await userEvent.type(within(table).getByLabelText("Largest piece for a rip, length"), "96{Enter}");
+    expect(current().project.tools[0]).toMatchObject({ maxPiece: { length: 96, width: 96 }, maxCrosscutPiece: { length: 48, width: 24 } });
+  });
+
   it("uses a millimetre profile in an inch project and converts the kerf", async () => {
     const storage = await openStorage(indexedDB);
     await storage.saveProfile({ name: "Metric", units: "mm", tools: [{ id: "t", name: "Track", type: "track-saw", kerf: 2.54, enabled: true }] });

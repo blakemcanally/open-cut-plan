@@ -1,23 +1,42 @@
-import { addTool, convertTool, errorMessage, moveTool, removeTool, TOOL_TYPE_NAMES, TOOL_TYPES, updateTool, type Tool, type ToolType } from "@opencutplan/core";
-import { useCallback, useEffect, useState } from "react";
+import { addPresetTool, addTool, convertTool, errorMessage, moveTool, removeTool, TOOL_PRESETS, TOOL_TYPE_NAMES, TOOL_TYPES, updateTool, type Tool, type ToolType, type Units } from "@opencutplan/core";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
 import type { Storage, ToolProfile } from "../storage/db.ts";
 
 type Limit = "maxRip" | "maxCrosscut" | "maxCut";
+type PieceLimit = "maxPiece" | "maxCrosscutPiece";
 
-const LIMIT_LABELS: Readonly<Record<Limit, string>> = {
-  maxRip: "Widest rip",
-  maxCrosscut: "Longest crosscut",
-  maxCut: "Longest cut",
+const TYPE_LIMITS: Readonly<Record<ToolType, readonly { key: Limit; label: string }[]>> = {
+  "table-saw": [
+    { key: "maxRip", label: "Widest rip" },
+    { key: "maxCrosscut", label: "Longest crosscut" },
+  ],
+  "track-saw": [{ key: "maxCut", label: "Longest cut" }],
+  "circular-saw": [{ key: "maxCut", label: "Longest cut" }],
+  "panel-saw": [{ key: "maxCut", label: "Longest cut" }],
+  "miter-saw": [{ key: "maxCut", label: "Widest crosscut" }],
 };
 
-const TYPE_LIMITS: Readonly<Record<ToolType, readonly Limit[]>> = {
-  "table-saw": ["maxRip", "maxCrosscut"],
-  "track-saw": ["maxCut"],
-  "circular-saw": ["maxCut"],
-  "panel-saw": ["maxCut"],
-};
+const PIECES: readonly { key: PieceLimit; label: string; placeholder: string }[] = [
+  { key: "maxPiece", label: "Largest piece for a rip", placeholder: "No limit" },
+  { key: "maxCrosscutPiece", label: "Largest piece for a crosscut", placeholder: "As for a rip" },
+];
+
+function toolHelp(type: ToolType, units: Units): string {
+  switch (type) {
+    case "table-saw":
+      return "Widest rip: from the fence to the blade. Longest crosscut: the longest cut on the sled or the mitre gauge. Largest piece: the largest piece that you can control on the saw. A blank crosscut piece uses the piece for a rip.";
+    case "track-saw":
+      return `Longest cut: the rail length less about ${units === "in" ? '8"' : "200 mm"}, for the start and the end of the cut.`;
+    case "circular-saw":
+      return "Longest cut: the length of your straightedge.";
+    case "panel-saw":
+      return "Longest cut: the cut capacity of the saw. Most cut stages: the deepest cut stage that the saw can make.";
+    case "miter-saw":
+      return "A mitre saw makes crosscuts only. Widest crosscut: the widest piece that the saw can cut across. The piece can have any length.";
+  }
+}
 
 function setLimit(tool: Tool, key: string, value: number | undefined): Tool {
   const next: Record<string, unknown> = { ...tool };
@@ -27,8 +46,8 @@ function setLimit(tool: Tool, key: string, value: number | undefined): Tool {
 }
 
 /** A largest piece needs both sizes: setting one fills the other with the same value, and clearing one clears both. */
-function setMaxPiece(tool: Tool, length: number | undefined, width: number | undefined): Tool {
-  return length === undefined || width === undefined ? setLimit(tool, "maxPiece", undefined) : ({ ...tool, maxPiece: { length, width } } as Tool);
+function setPiece(tool: Tool, key: PieceLimit, length: number | undefined, width: number | undefined): Tool {
+  return length === undefined || width === undefined ? setLimit(tool, key, undefined) : { ...tool, [key]: { length, width } };
 }
 
 interface ToolsTabProps {
@@ -41,6 +60,7 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
   const units = project.project.units;
   const display = project.settings.display;
   const [type, setType] = useState<ToolType>("table-saw");
+  const [preset, setPreset] = useState(TOOL_PRESETS[0]!.id);
   const [profiles, setProfiles] = useState<ToolProfile[]>([]);
   const [profileName, setProfileName] = useState("");
   const [chosen, setChosen] = useState("");
@@ -103,7 +123,25 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
             Add tool
           </button>
         </div>
-        <p className="muted">Each cut goes to the first enabled tool in this list that can make it. Leave a limit blank for no limit.</p>
+        <div className="toolbar">
+          <label className="inline">
+            Typical saw
+            <select value={preset} onChange={(event) => setPreset(event.target.value)}>
+              {TOOL_PRESETS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.values[units].name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" onClick={() => edit((p) => addPresetTool(p, preset))}>
+            Add typical saw
+          </button>
+        </div>
+        <p className="muted">
+          Each cut goes to the first enabled tool in this list that can make it. Leave a limit blank for no limit. A typical saw has typical values for
+          its type: measure your saw and change them.
+        </p>
         {project.tools.length === 0 && <p className="error">✖ No tools yet. Add a tool so the plan can be cut.</p>}
         <ol className="tool-list">
           {project.tools.map((tool, index) => {
@@ -114,6 +152,7 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
                   <legend>
                     {index + 1}. {TOOL_TYPE_NAMES[tool.type]}
                   </legend>
+                  <p className="muted tool-help">{toolHelp(tool.type, units)}</p>
                   <div className="tool-fields">
                     <label className="stack">
                       Name
@@ -123,9 +162,9 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
                       Kerf
                       <LengthInput value={tool.kerf} units={units} display={display} allowZero onChange={(kerf) => kerf !== undefined && change((t) => ({ ...t, kerf }))} />
                     </label>
-                    {TYPE_LIMITS[tool.type].map((key) => (
+                    {TYPE_LIMITS[tool.type].map(({ key, label }) => (
                       <label className="stack" key={key}>
-                        {LIMIT_LABELS[key]}
+                        {label}
                         <LengthInput
                           value={(tool as Partial<Record<Limit, number>>)[key]}
                           units={units}
@@ -136,32 +175,36 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
                         />
                       </label>
                     ))}
-                    {tool.type === "table-saw" && (
-                      <>
-                        <label className="stack">
-                          Largest piece, length
-                          <LengthInput
-                            value={tool.maxPiece?.length}
-                            units={units}
-                            display={display}
-                            optional
-                            placeholder="No limit"
-                            onChange={(length) => change((t) => setMaxPiece(t, length, length === undefined ? undefined : (tool.maxPiece?.width ?? length)))}
-                          />
-                        </label>
-                        <label className="stack">
-                          Largest piece, width
-                          <LengthInput
-                            value={tool.maxPiece?.width}
-                            units={units}
-                            display={display}
-                            optional
-                            placeholder="No limit"
-                            onChange={(width) => change((t) => setMaxPiece(t, width === undefined ? undefined : (tool.maxPiece?.length ?? width), width))}
-                          />
-                        </label>
-                      </>
-                    )}
+                    {tool.type === "table-saw" &&
+                      PIECES.map(({ key, label, placeholder }) => {
+                        const piece = tool[key];
+                        return (
+                          <Fragment key={key}>
+                            <label className="stack">
+                              {label}, length
+                              <LengthInput
+                                value={piece?.length}
+                                units={units}
+                                display={display}
+                                optional
+                                placeholder={placeholder}
+                                onChange={(length) => change((t) => setPiece(t, key, length, length === undefined ? undefined : (piece?.width ?? length)))}
+                              />
+                            </label>
+                            <label className="stack">
+                              {label}, width
+                              <LengthInput
+                                value={piece?.width}
+                                units={units}
+                                display={display}
+                                optional
+                                placeholder={placeholder}
+                                onChange={(width) => change((t) => setPiece(t, key, width === undefined ? undefined : (piece?.length ?? width), width))}
+                              />
+                            </label>
+                          </Fragment>
+                        );
+                      })}
                     {tool.type === "panel-saw" && (
                       <label className="stack">
                         Most cut stages

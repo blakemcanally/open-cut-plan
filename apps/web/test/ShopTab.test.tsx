@@ -371,6 +371,14 @@ describe("ShopTab", () => {
     expect((heading4.querySelector(".swatch") as HTMLElement).style.background).toBe("rgb(26, 95, 208)");
   });
 
+  it("says in the Tool list that a mitre saw makes crosscuts only", () => {
+    const project = sampleProject();
+    project.tools.push({ id: "miter", name: "Mitre saw", type: "miter-saw", kerf: 0.125, enabled: true });
+    renderShop(project, undefined, { openStep: 6 });
+    const select = screen.getByLabelText<HTMLSelectElement>("Tool");
+    expect([...select.options].map((option) => option.textContent)).toEqual(["Table saw (recommended)", "Mitre saw (crosscuts only)"]);
+  });
+
   it("shows No tool in the Tool list when no tool can make the cut", () => {
     const project = sampleProject();
     project.tools[0] = { id: "ts", name: "Table saw", type: "table-saw", kerf: 0.125, enabled: true, maxPiece: { length: 10, width: 10 } };
