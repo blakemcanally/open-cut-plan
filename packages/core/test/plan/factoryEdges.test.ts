@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
+  analyzeProject,
   createProject,
   factoryEdgeRequest,
   factoryEdgeSides,
@@ -180,5 +181,61 @@ describe("pushToFactoryEdges", () => {
       ),
       { numRuns: 300 },
     );
+  });
+});
+
+describe("the factory-edge warning", () => {
+  const edgeIssues = (project: Project) => validatePlan(project).filter((issue) => issue.code === "factory-edge" || issue.code === "unknown-factory-edge");
+
+  it("warns once for each copy that asks for a factory edge and does not get one", () => {
+    expect(edgeIssues(edgeProject([at(10, 6), at(10, 36, 1)]))).toEqual([
+      {
+        severity: "warning",
+        code: "factory-edge",
+        message: "Sheet 1: Long 1 asks for a factory edge on a long edge, but no long edge is on the edge of the sheet.",
+        refs: [{ kind: "placement", sheet: "s1", index: 0 }],
+      },
+    ]);
+    expect(edgeIssues(edgeProject([at(10, 0), at(0, 36, 1)]))).toEqual([]);
+  });
+
+  it("says when the stock has no factory edges", () => {
+    const trimmed = edgeProject([at(0.25, 0.25)]);
+    trimmed.settings.trim = 0.25;
+    expect(edgeIssues(trimmed).map((issue) => issue.message)).toEqual(["Sheet 1: Long 1 asks for a factory edge, but the trim cuts off the factory edges of this sheet."]);
+    const offcut = edgeProject([at(0, 0)]);
+    offcut.stock[0] = { ...offcut.stock[0]!, kind: "offcut" };
+    expect(edgeIssues(offcut).map((issue) => issue.message)).toEqual(["Sheet 1: Long 1 asks for a factory edge, but this sheet is an offcut, which has no factory edges."]);
+  });
+
+  it("follows the rule of the settings, and does not warn for copies that are not placed", () => {
+    const project = edgeProject([at(10, 6)]);
+    project.parts[0] = { ...project.parts[0]!, factoryEdge: undefined };
+    expect(edgeIssues(project)).toEqual([]);
+    project.settings.factoryEdge = { minLength: 36 };
+    expect(edgeIssues(project).map((issue) => issue.refs)).toEqual([[{ kind: "placement", sheet: "s1", index: 0 }]]);
+    project.settings.factoryEdge = { minLength: 48 };
+    expect(edgeIssues(project)).toEqual([]);
+  });
+
+  it("warns about a request that this app does not know, and uses the rule", () => {
+    const project = edgeProject([at(10, 6)]);
+    project.parts[0] = { ...project.parts[0]!, factoryEdge: "both" };
+    expect(edgeIssues(project)).toEqual([
+      {
+        severity: "warning",
+        code: "unknown-factory-edge",
+        message: 'The factory edge request "both" of Long is not known to this app. The part uses the rule for long parts in the settings.',
+        refs: [{ kind: "part", part: "long", copy: 0 }],
+      },
+    ]);
+  });
+});
+
+describe("analyzeProject", () => {
+  it("gives the factory-edge warnings of the validator", () => {
+    const project = edgeProject([at(10, 6)]);
+    expect(analyzeProject(project).issues.filter((issue) => issue.code === "factory-edge")).toEqual(validatePlan(project).filter((issue) => issue.code === "factory-edge"));
+    expect(analyzeProject(project).issues.some((issue) => issue.code === "factory-edge")).toBe(true);
   });
 });

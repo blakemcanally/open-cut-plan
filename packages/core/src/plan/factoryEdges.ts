@@ -1,7 +1,8 @@
 import type { Part, Placement, PlanSheet, Project, Stock } from "../format/schema.ts";
 import { EPSILON, span, type Rect, type Size } from "../geometry/rect.ts";
-import { placedRect, stockRect, trimFor, type PlanContext } from "./context.ts";
+import { copyLabel, placedRect, stockRect, trimFor, type PlanContext } from "./context.ts";
 import { buildCutTree, type CutNode, type TreeItem } from "./cutTree.ts";
+import { planWarning, type PlanIssue } from "./issues.ts";
 
 /** The values of `parts[].factoryEdge` that this app knows. Later minor versions can add values. */
 export const FACTORY_EDGE_CHOICES = ["long", "none"] as const;
@@ -83,6 +84,40 @@ export function sheetFactoryEdgeMisses(ctx: PlanContext, sheet: PlanSheet, reque
     if (part && placement.copy < part.quantity && requested(part) && !getsFactoryEdge(ctx, stock, part, placement)) misses++;
   }
   return misses;
+}
+
+/** A `factory-edge` warning for each placed copy that asks for a factory edge and does not get one, and an `unknown-factory-edge` warning for each request that this app does not know. */
+export function checkFactoryEdges(ctx: PlanContext): PlanIssue[] {
+  const issues: PlanIssue[] = [];
+  for (const part of ctx.project.parts) {
+    if (part.factoryEdge === undefined || isFactoryEdgeChoice(part.factoryEdge)) continue;
+    issues.push(
+      planWarning("unknown-factory-edge", `The factory edge request "${part.factoryEdge}" of ${part.name} is not known to this app. The part uses the rule for long parts in the settings.`, [
+        { kind: "part", part: part.id, copy: 0 },
+      ]),
+    );
+  }
+  const seen = new Set<string>();
+  (ctx.project.plan?.sheets ?? []).forEach((sheet, sheetIndex) => {
+    const stock = ctx.stock.get(sheet.stock);
+    if (!stock) return;
+    sheet.placements.forEach((placement, index) => {
+      const part = ctx.parts.get(placement.part);
+      const key = `${placement.part}#${placement.copy}`;
+      if (!part || placement.copy >= part.quantity || seen.has(key)) return;
+      seen.add(key);
+      if (factoryEdgeRequest(ctx.project, part) === null || getsFactoryEdge(ctx, stock, part, placement)) return;
+      const label = `Sheet ${sheetIndex + 1}: ${copyLabel(part, placement.copy)} asks for a factory edge`;
+      const reason =
+        stock.kind === "offcut"
+          ? "this sheet is an offcut, which has no factory edges"
+          : hasFactoryEdges(ctx, stock)
+            ? "no long edge is on the edge of the sheet"
+            : "the trim cuts off the factory edges of this sheet";
+      issues.push(planWarning("factory-edge", `${label}${hasFactoryEdges(ctx, stock) ? " on a long edge" : ""}, but ${reason}.`, [{ kind: "placement", sheet: sheet.id, index }]));
+    });
+  });
+  return issues;
 }
 
 export interface PushedSheet {

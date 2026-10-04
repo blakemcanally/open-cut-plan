@@ -25,7 +25,9 @@ export type PlanIssueCode =
   | "design-stale"
   | "design-unknown-system"
   | "design-unknown-mount"
-  | "unknown-goal";
+  | "unknown-goal"
+  | "factory-edge"
+  | "unknown-factory-edge";
 
 /** `placement.index` is the placement's index in `plan.sheets[].placements`; `cut.step` is a sequence step number. */
 export type PlanRef =

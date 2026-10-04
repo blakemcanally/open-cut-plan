@@ -31,6 +31,28 @@ index in the sheet's `placements`), part copies, stock, or cut steps. Issues nev
 | `unplaced` | warning | one issue per part with copies on no sheet |
 | `not-guillotine` | error | `cutOrder` on: one issue per group of parts that no order of through-cuts separates; parts that already have `off-sheet` or `overlap` are left out |
 | `no-tool` | error | `cutOrder` on: no tool is enabled (one issue), or `toolLimits` on and no enabled tool can make a cut (one issue per cut) |
+| `factory-edge` | warning | one issue per placed copy that asks for a factory edge and does not get one (see [Factory edges](#factory-edges)). The message says when the sheet has no factory edges: an owned offcut, or a trimmed sheet |
+| `unknown-factory-edge` | warning | one issue per part whose `factoryEdge` this app does not know; the part uses the rule of the settings |
+
+## Factory edges
+
+A part asks for a factory edge on a long edge when its `factoryEdge` is `"long"`, or when it has no `factoryEdge` and
+its long side is at least `settings.factoryEdge.minLength` (see [format.md](format.md#factory-edges-added-in-16)).
+
+- A sheet has factory edges when its stock `kind` is `"sheet"` and its [trim](#terms) is 0. Then all four edges are
+  factory edges. An owned offcut and a trimmed sheet have none.
+- A copy gets its factory edge when one of its long edges lies on an edge of such a sheet, to within a small
+  tolerance. The long edges are the edges along the long side of the part, also when the part is turned. A square part
+  has four long edges.
+- `factoryEdgeRequest(project, part)` gives the request of a part, `getsFactoryEdge` tells if a placed copy gets its
+  factory edge, `factoryEdgeSides` gives the edges of a placed copy that lie on a factory edge, and
+  `sheetFactoryEdgeMisses` counts the copies of a sheet that ask for a factory edge and do not get one.
+- `pushToFactoryEdges(ctx, sheet)` moves pieces of the sheet so that more copies get their factory edge. It builds the
+  cut tree of the sheet. At each split, the pieces with parts can change order: one piece goes against each end of the
+  split, and the other pieces follow the first piece, one kerf apart. The waste moves to the gap that is left. It
+  chooses the order with the most copies on a factory edge, and keeps a split as it is when no order is better. Parts
+  do not turn. It gives null when no copy gains, when the sheet has no factory edges, or when the sheet has parts that
+  no cut separates.
 
 ## Cut tree
 

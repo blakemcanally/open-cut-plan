@@ -2,6 +2,7 @@ import { checkDesigns } from "./design/checks.ts";
 import type { Project } from "./format/schema.ts";
 import { checkGoal } from "./optimize/goal-setting.ts";
 import { planContext, type PlanContext } from "./plan/context.ts";
+import { checkFactoryEdges } from "./plan/factoryEdges.ts";
 import type { PlanIssue } from "./plan/issues.ts";
 import { checkLayout } from "./plan/layout.ts";
 import { analyzeSheets, type SheetAnalysis } from "./plan/sheets.ts";
@@ -30,7 +31,7 @@ export function analyzeProject(project: Project): ProjectAnalysis {
   const layout = checkLayout(context);
   return {
     context,
-    issues: [...layout, ...checkCuts(context, layout, sheets, steps), ...checkDesigns(project), ...checkGoal(project)],
+    issues: [...layout, ...checkCuts(context, layout, sheets, steps), ...checkFactoryEdges(context), ...checkDesigns(project), ...checkGoal(project)],
     sheets,
     steps,
     offcuts: listOffcuts(context, sheets),
