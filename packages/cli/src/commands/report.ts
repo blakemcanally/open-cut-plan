@@ -8,13 +8,15 @@ import {
   hardwareList,
   LABEL_LAYOUTS,
   labelPages,
+  planAlert,
   totalCutLength,
   unsavedOffcuts,
   type HardwareLine,
   type Project,
+  type ProjectAnalysis,
 } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
-import { FILE_ARG, loadProject, warningLines } from "../project.ts";
+import { FILE_ARG, loadProject, warningLines, type Loaded } from "../project.ts";
 import type { CommandSpec, GroupSpec } from "../spec.ts";
 import { len, money, percent, plural, size, table } from "../text.ts";
 import { integerValue, optionalChoice, str } from "../values.ts";
@@ -23,6 +25,12 @@ import { invalidDesign } from "./design.ts";
 import { findSheet } from "./layout.ts";
 
 const SHEET_OPTION = { name: "sheet", type: "string", value: "<ref>", description: "Only this sheet: a sheet id, or its 1-based number in the plan." } as const;
+
+function planWarnings(loaded: Loaded, analysis: ProjectAnalysis, file: string): string[] {
+  const alert = planAlert(analysis.context, analysis.issues);
+  const lines = warningLines(loaded);
+  return alert ? [...lines, `warning: ${alert.text} Run '${PROGRAM} validate ${file}' to list the problems.`] : lines;
+}
 
 function hardwareText(line: HardwareLine): string {
   const count = line.quantity === null ? "as needed" : line.unit === "pack" ? `${line.quantity} ×` : String(line.quantity);
@@ -44,7 +52,8 @@ const shopping: CommandSpec = {
   async run({ args, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
-    const list = analyzeProject(project).shopping;
+    const analysis = analyzeProject(project);
+    const list = analysis.shopping;
     const hardware = hardwareList(project);
     const sheetsToBuy = list.materials.flatMap((m) => m.lines).reduce((sum, line) => sum + line.buy, 0);
     const lines: string[] = [];
@@ -69,7 +78,7 @@ const shopping: CommandSpec = {
     lines.push(`Buy ${plural(sheetsToBuy, "piece")}. Total: ${money(list.total, list.currency)}.`);
     if (list.missingPrices.length > 0) lines.push(`No price: ${list.missingPrices.join(", ")}.`);
     if (hardware.length > 0) lines.push("Hardware:", ...hardware.map(hardwareText));
-    return { data: { ...list, sheetsToBuy, hardware }, text: lines.join("\n"), warnings: warningLines(loaded) };
+    return { data: { ...list, sheetsToBuy, hardware }, text: lines.join("\n"), warnings: planWarnings(loaded, analysis, args[0]!) };
   },
 };
 
@@ -108,7 +117,7 @@ const sequence: CommandSpec = {
       ].join("\n");
     const cutLength = totalCutLength(steps);
     const text = steps.length === 0 ? "No cuts." : [...steps.map(lines), `${plural(steps.length, "cut step")}. The total cut length is ${len(project, cutLength)}.`].join("\n");
-    return { data: { orderMode: project.settings.orderMode, cutLength, steps }, text, warnings: warningLines(loaded) };
+    return { data: { orderMode: project.settings.orderMode, cutLength, steps }, text, warnings: planWarnings(loaded, analysis, args[0]!) };
   },
 };
 
@@ -141,7 +150,7 @@ const offcuts: CommandSpec = {
             ["sheet", "material", "size", "at", "saved"],
             list.map((o) => [String(o.sheetNumber), analysis.context.materials.get(o.material)?.name ?? o.material, size(project, o), `${len(project, o.x)}, ${len(project, o.y)}`, o.saved ? "yes" : "no"]),
           );
-    return { data: { minOffcut: analysis.context.minOffcut, offcuts: list }, text, warnings: warningLines(loaded) };
+    return { data: { minOffcut: analysis.context.minOffcut, offcuts: list }, text, warnings: planWarnings(loaded, analysis, args[0]!) };
   },
 };
 
@@ -181,12 +190,11 @@ const labels: CommandSpec = {
       data.pages = pages;
       lines.push(`${plural(pages.length, "page")} of ${layout.name}.`);
     }
-    return { data, text: lines.join("\n"), warnings: warningLines(loaded) };
+    return { data, text: lines.join("\n"), warnings: planWarnings(loaded, analysis, args[0]!) };
   },
 };
 
-function cutList(project: Project) {
-  const analysis = analyzeProject(project);
+function cutList(project: Project, analysis: ProjectAnalysis) {
   const where = new Map<string, number[]>();
   (project.plan?.sheets ?? []).forEach((sheet, index) => {
     for (const placement of sheet.placements) {
@@ -238,7 +246,8 @@ const cutlist: CommandSpec = {
   async run({ args, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
-    const { parts, materials } = cutList(project);
+    const analysis = analyzeProject(project);
+    const { parts, materials } = cutList(project, analysis);
     const units = project.project.units;
     const text = [
       table(
@@ -247,7 +256,7 @@ const cutlist: CommandSpec = {
       ),
       ...materials.map((m) => `${m.name}: ${plural(m.parts, "part")}, ${plural(m.copies, "copy", "copies")}, ${formatArea(m.partArea, units)}.`),
     ].join("\n");
-    return { data: { units, parts, materials }, text, warnings: warningLines(loaded) };
+    return { data: { units, parts, materials }, text, warnings: planWarnings(loaded, analysis, args[0]!) };
   },
 };
 

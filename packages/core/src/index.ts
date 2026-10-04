@@ -26,6 +26,7 @@ export * from "./plan/cutTree.ts";
 export * from "./plan/sheets.ts";
 export * from "./plan/validate.ts";
 export * from "./plan/factoryEdges.ts";
+export * from "./plan/alert.ts";
 export * from "./sequence/tools.ts";
 export * from "./sequence/sequence.ts";
 export * from "./sequence/text.ts";

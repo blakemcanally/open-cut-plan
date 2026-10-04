@@ -297,6 +297,11 @@ The reports do not change the file.
 `report shopping` also lists the hardware for the designs in `hardware`: the pocket screws, the back screws, the
 glue, and the IKEA legs, feet, or rails, with the IKEA article numbers. The hardware has no prices.
 
+When the plan has an error, or a part is not on a sheet, `report shopping`, `report sequence`, `report offcuts`,
+`report labels`, and `report cutlist` give a warning, as the Shop and Reports tabs do. The warning names the parts,
+for example `warning: The plan is not ready to cut. 1 part is not on a sheet: Door. Run 'opencutplan validate
+shelf.cutplan.json' to list the problems.` The report is still complete.
+
 Money in the readable output is `12.00 USD`. In `--json`, money is a number, and `null` means that a price is not
 known.
 

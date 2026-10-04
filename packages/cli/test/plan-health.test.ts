@@ -66,3 +66,19 @@ describe("optimize with a material that has no stock", () => {
     expect(text.stdout).toContain(`  Ply 3/4 has no enabled stock. Add a sheet with: opencutplan stock add ${F} --suggested --material p34`);
   });
 });
+
+describe("the reports of a plan with problems", () => {
+  it("warn that the plan is not ready to cut, as the Shop and Reports tabs do", async () => {
+    const io = await bare();
+    await cli(["stock", "add", F, "--suggested", "--material", "p34"], io);
+    await cli(["parts", "add", F, "--name", "Side", "--length", "30", "--width", "12", "--material", "p34"], io);
+    await cli(["optimize", F, "--iterations", "5"], io);
+    const reports = ["shopping", "sequence", "offcuts", "labels", "cutlist"];
+    for (const report of reports) expect((await cli(["report", report, F], io)).stderr).toBe("");
+    await cli(["parts", "add", F, "--name", "Door", "--length", "20", "--width", "10", "--material", "p34"], io);
+    const warning = `warning: The plan is not ready to cut. 1 part is not on a sheet: Door. Run 'opencutplan validate ${F}' to list the problems.`;
+    for (const report of reports) expect((await cli(["report", report, F], io)).stderr).toBe(`${warning}\n`);
+    expect((await cli(["report", "cutlist", F, "--json"], io)).json().warnings).toEqual([warning]);
+    expect((await cli(["report", "assembly", F], io)).stderr).toBe("");
+  });
+});
