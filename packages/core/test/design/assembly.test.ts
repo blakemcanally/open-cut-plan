@@ -1,5 +1,6 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { assemblySteps, convertProjectUnits, regenerateDesigns } from "../../src/index.ts";
+import { assemblySteps, boardLayout, columnSteps, combineCells, convertProjectUnits, regenerateDesigns, type Board, type BoardLayout, type CombinedCell, type Design } from "../../src/index.ts";
 import { designProject, eketDesign, kallaxDesign } from "../helpers.ts";
 
 const project = regenerateDesigns(designProject([kallaxDesign(), eketDesign(), kallaxDesign({ id: "c", name: "Mixed", system: "custom", width: { openings: [335, 400, 335] }, height: { openings: [400, 300, 335] } })]));
@@ -109,3 +110,94 @@ describe("assemblySteps", () => {
     expect(assemblySteps(designProject([kallaxDesign({ material: "missing" })]), "kx")).toBeNull();
   });
 });
+
+const span = (column: number, row: number, columns: number, rows: number): CombinedCell => ({ column, row, columns, rows });
+const grid = (id: string, columns: number, rows: number, combined: CombinedCell[]): Design =>
+  kallaxDesign({ id, width: { openings: Array.from({ length: columns }, () => 335) }, height: { openings: Array.from({ length: rows }, () => 335) }, combined });
+
+describe("assemblySteps with combined cells", () => {
+  const grids = regenerateDesigns(
+    designProject([grid("a", 4, 2, [span(1, 1, 2, 1)]), grid("p", 3, 3, [span(1, 1, 2, 1), span(3, 1, 1, 2), span(2, 3, 2, 1), span(1, 2, 1, 2)])]),
+  );
+
+  it("counts the boards, marks each panel, and puts the long shelf and the divider under it in column 1 (spec 14.1)", () => {
+    const steps = assemblySteps(grids, "a")!;
+    const body = (title: string) => steps.find((step) => step.title === title)!.body;
+    expect(steps.map((step) => step.title).slice(4, 8)).toEqual(["Assemble column 1 of 4", "Assemble column 2 of 4", "Assemble column 3 of 4", "Assemble column 4 of 4"]);
+    expect(body("Drill the pocket holes")).toContain("each end of the 2 sides and the 3 dividers, on the inside face of each side and on one face of each divider, and in each end of the 3 shelves");
+    expect(body("Mark the shelf positions")).toBe(
+      "Mark the underside of each shelf, from the bottom end of the panel: on the sides, the divider on the right of column 2 and the divider on the right of column 3 at 335 mm.",
+    );
+    expect(body("Mark the divider positions")).toBe(
+      "Mark the left face of each divider, from the left end: on the top at 706 mm and 1059 mm; on the bottom at 353 mm, 706 mm and 1059 mm; on the underside of the shelf under row 1 (Shelf, columns 1–2) at 335 mm.",
+    );
+    expect(body("Assemble column 1 of 4")).toBe(
+      'Lay the left side on its outside face, with the marks up. Put the shelf under row 1 (Shelf, columns 1–2, 688 mm long) on its mark, with the pocket holes down, and screw it to the panel with 1 1/4" (32 mm) coarse-thread pocket screws. Then put the divider in row 2 on its mark. Screw the top end of the divider in row 2 to the shelf above it.',
+    );
+    expect(body("Assemble column 2 of 4")).toBe("Put the next divider on its mark, and screw the other end of the shelf that stops there to it.");
+    expect(body("Fit the bottom and the top")).toContain("the sides and the dividers that reach it");
+  });
+
+  it("assembles the pinwheel of spec 14.4 in three column steps", () => {
+    const steps = assemblySteps(grids, "p")!.filter((step) => step.title.startsWith("Assemble"));
+    expect(steps.map((step) => step.title)).toEqual(["Assemble column 1 of 3", "Assemble column 2 of 3", "Assemble column 3 of 3"]);
+    expect(steps[1]!.body).toMatch(/^Use the divider on the right of column 1, rows 2–3, as the left panel\. Put the shelf under row 2 \(Shelf, columns 2–3, 688 mm long\)/);
+  });
+
+  it("only screws a board to a board that the same step or an earlier step put in place, for random layouts", () => {
+    const arb = fc
+      .record({
+        columns: fc.integer({ min: 1, max: 6 }),
+        rows: fc.integer({ min: 1, max: 6 }),
+        picks: fc.array(fc.record({ column: fc.nat(5), row: fc.nat(5), columns: fc.integer({ min: 1, max: 4 }), rows: fc.integer({ min: 1, max: 4 }) }), { maxLength: 8 }),
+      })
+      .map(({ columns, rows, picks }) => {
+        let design = grid("r", columns, rows, []);
+        for (const pick of picks) design = combineCells(design, { ...pick, column: (pick.column % columns) + 1, row: (pick.row % rows) + 1 }) ?? design;
+        return { columns, rows, combined: design.combined ?? [] };
+      });
+    fc.assert(
+      fc.property(arb, ({ columns, rows, combined }) => {
+        const layout = boardLayout(columns, rows, combined);
+        const placed = new Map<Board | string, number>([["left", -1], ["top", Infinity], ["bottom", Infinity]]);
+        const steps = columnSteps(layout, columns);
+        steps.forEach((step) => {
+          for (const board of step.shelves) placed.set(board, step.column);
+          for (const board of step.dividers) placed.set(board, step.column);
+        });
+        placed.set("right", columns - 1);
+        for (const step of steps) {
+          for (const board of step.shelves) {
+            expect(placed.get(member(layout, board, "start", columns, rows))).toBeLessThan(step.column);
+            expect(placed.get(member(layout, board, "end", columns, rows))).toBe(board.to);
+          }
+          for (const board of step.dividers) {
+            for (const end of ["start", "end"] as const) {
+              const at = placed.get(member(layout, board, end, columns, rows));
+              expect(at === Infinity || at! <= step.column).toBe(true);
+            }
+          }
+        }
+      }),
+      { numRuns: 300 },
+    );
+  });
+});
+
+/** The board or the box panel that the start (left or top) or the end (right or bottom) of a board butts into. */
+function member(layout: BoardLayout, board: Board, end: "start" | "end", columns: number, rows: number): Board | string {
+  if (board.kind === "shelf") {
+    const line = end === "start" ? board.from : board.to + 1;
+    if (line === 0) return "left";
+    if (line === columns) return "right";
+    const found = layout.dividers.find((other) => other.line === line && other.from <= board.line - 1 && other.to >= board.line);
+    if (!found) throw new Error(`No divider holds the ${end} of the shelf ${JSON.stringify(board)}.`);
+    return found;
+  }
+  const line = end === "start" ? board.from : board.to + 1;
+  if (line === 0) return "top";
+  if (line === rows) return "bottom";
+  const found = layout.shelves.find((other) => other.line === line && other.from <= board.line - 1 && other.to >= board.line);
+  if (!found) throw new Error(`No shelf holds the ${end} of the divider ${JSON.stringify(board)}.`);
+  return found;
+}

@@ -2,6 +2,7 @@ import type { Project } from "../format/schema.ts";
 import { convertLength, type Units } from "../geometry/units.ts";
 import { designParts } from "./generate.ts";
 import { designGeometry, materialsById, type DesignGeometry } from "./geometry.ts";
+import { boardLength, designLayout } from "./layout.ts";
 import { IKEA_FEET, IKEA_LEGS, IKEA_RAIL_35, IKEA_RAIL_70 } from "./ikea.ts";
 import { DEFAULT_DESIGN_MOUNT, DEFAULT_DESIGN_QUANTITY, EKET, EKET_TOLERANCE_MM, isDesignMount, MAX_POCKET_CHART_MM, MIN_POCKET_THICKNESS_MM } from "./systems.ts";
 
@@ -51,19 +52,20 @@ function edgeScrews(lengthMm: number): number {
   return Math.max(2, Math.ceil((lengthMm - 50) / 150 - COUNT_EPSILON) + 1);
 }
 
-/** The screws for one back: along the perimeter and each interior panel edge, 25 mm from the ends and at most 150 mm apart. */
+/** The screws for one back: along the perimeter and each divider and shelf board, 25 mm from the ends and at most 150 mm apart. */
 export function backScrewCount(geometry: DesignGeometry, units: Units): number {
   const edges = [geometry.outsideHeight, geometry.outsideHeight, geometry.outsideWidth, geometry.outsideWidth];
   const upright = geometry.outsideHeight - 2 * geometry.thickness;
-  for (let column = 1; column < geometry.columns.length; column++) edges.push(upright);
-  for (let line = 1; line < geometry.rows.length; line++) edges.push(...geometry.columns);
+  const { dividers, shelves } = designLayout(geometry);
+  for (const board of dividers) edges.push(board.from === 0 && board.to === geometry.rows.length - 1 ? upright : boardLength(board, geometry));
+  for (const board of shelves) edges.push(board.from === board.to ? geometry.columns[board.from]! : boardLength(board, geometry));
   return edges.reduce((sum, edge) => sum + edgeScrews(convertLength(edge, units, "mm")), 0);
 }
 
-/** The panel ends with pocket holes in one unit: both ends of each side, divider, and shelf. */
+/** The panel ends with pocket holes in one unit: both ends of each side, divider board, and shelf board. */
 export function pocketHoleEnds(geometry: DesignGeometry): number {
-  const columns = geometry.columns.length;
-  return 2 * (columns + 1) + 2 * columns * (geometry.rows.length - 1);
+  const { dividers, shelves } = designLayout(geometry);
+  return 2 * (2 + dividers.length + shelves.length);
 }
 
 export interface Rails {

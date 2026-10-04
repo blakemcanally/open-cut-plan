@@ -100,6 +100,16 @@ describe("hardwareList", () => {
     expect(backScrewCount(geometryOf(kallaxDesign({ back: { material: "ply6" }, width: { openings: [335] }, height: { openings: [335] } })), "mm")).toBe(16);
   });
 
+  it("counts the divider and shelf boards of a design with combined cells", () => {
+    const kallax4x2 = kallaxDesign({ width: { openings: [335, 335, 335, 335] }, height: { openings: [335, 335] }, back: { material: "ply6" } });
+    const combined = { ...kallax4x2, combined: [{ column: 1, row: 1, columns: 2, rows: 1 }] };
+    expect(pocketHoleEnds(geometryOf(kallax4x2))).toBe(18);
+    expect(pocketHoleEnds(geometryOf(combined))).toBe(16);
+    expect(hardwareList(regenerateDesigns(designProject([combined])))[0]!.quantity).toBe(53);
+    expect(backScrewCount(geometryOf(kallax4x2), "mm")).toBe(64);
+    expect(backScrewCount(geometryOf(combined), "mm")).toBe(61);
+  });
+
   it("leaves out a design with an error and gives no glue line without designs", () => {
     expect(hardwareList(designProject([kallaxDesign({ material: "missing" })]))).toEqual([]);
     expect(hardwareList(designProject([]))).toEqual([]);

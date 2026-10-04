@@ -2,8 +2,10 @@ import { formatLength } from "../geometry/format.ts";
 import { convertLength } from "../geometry/units.ts";
 import type { Project } from "../format/schema.ts";
 import { designParts } from "./generate.ts";
-import { designGeometry, materialsById, roundLength } from "./geometry.ts";
+import { designGeometry, materialsById, roundLength, type DesignGeometry } from "./geometry.ts";
 import { backScrewCount, backScrewName, pocketHolesPerEnd, pocketScrew, railsFor } from "./hardware.ts";
+import { boardLength, cellStarts, designLayout, segments, spanLength, type Board, type BoardLayout } from "./layout.ts";
+import { shelfName } from "./parts.ts";
 import { IKEA_FEET, IKEA_LEGS, IKEA_RAIL_35, IKEA_RAIL_70, RAIL_CLEARANCE_MM } from "./ikea.ts";
 import { DEFAULT_DESIGN_MOUNT, DEFAULT_DESIGN_QUANTITY, isDesignMount } from "./systems.ts";
 
@@ -28,9 +30,9 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
   const quantity = design.quantity ?? DEFAULT_DESIGN_QUANTITY;
   const mount = design.mount ?? DEFAULT_DESIGN_MOUNT;
   const { thickness, columns, rows } = geometry;
-  const dividers = columns.length - 1;
-  const perColumn = rows.length - 1;
-  const shelves = columns.length * perColumn;
+  const layout = designLayout(geometry);
+  const dividers = layout.dividers.length;
+  const shelves = layout.shelves.length;
   const screw = pocketScrew(mm(thickness));
   const screws = screw ? `${screw.screw} coarse-thread pocket screws` : "pocket screws (the chart has no length for this stock)";
   const uprights = dividers === 0 ? "the sides" : "the sides and the dividers";
@@ -47,46 +49,52 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
     body: `${quantity > 1 ? `Build ${quantity} of these. The numbers in these steps are for one unit. ` : ""}Drill ${pocketHolesPerEnd(mm(geometry.panelDepth))} pocket holes in each end of ${drilled}${drilledShelves}, for ${show(thickness)} stock.${setting}`,
   });
 
-  if (perColumn > 0) {
-    const marks = [rows.at(-1)!];
-    for (let row = rows.length - 2; row > 0; row--) marks.push(roundLength(marks.at(-1)! + thickness + rows[row]!));
-    steps.push({ title: "Mark the shelf positions", body: `Mark the underside of each shelf on ${uprights} at ${joinList(marks.map(show))} from the bottom end.` });
-  }
-
-  if (dividers > 0) {
-    const marks: number[] = [];
-    let x = 0;
-    for (let column = 0; column < dividers; column++) {
-      x = roundLength(x + thickness + columns[column]!);
-      marks.push(x);
+  if (geometry.combined) {
+    steps.push(...combinedSteps(geometry, layout, show, screws));
+  } else {
+    const perColumn = rows.length - 1;
+    if (perColumn > 0) {
+      const marks = [rows.at(-1)!];
+      for (let row = rows.length - 2; row > 0; row--) marks.push(roundLength(marks.at(-1)! + thickness + rows[row]!));
+      steps.push({ title: "Mark the shelf positions", body: `Mark the underside of each shelf on ${uprights} at ${joinList(marks.map(show))} from the bottom end.` });
     }
-    steps.push({ title: "Mark the divider positions", body: `Mark the left face of each divider on the top and the bottom at ${joinList(marks.map(show))} from the left end.` });
-  }
 
-  if (perColumn > 0) {
-    const spacers = [...new Set(rows.slice(1))].map((opening) => `2 spacers to ${show(opening)}`);
-    steps.push({ title: "Cut spacers", body: `Cut ${joinList(spacers)} from an offcut. They hold each shelf on its mark while you drive the screws.` });
+    if (dividers > 0) {
+      const marks: number[] = [];
+      let x = 0;
+      for (let column = 0; column < dividers; column++) {
+        x = roundLength(x + thickness + columns[column]!);
+        marks.push(x);
+      }
+      steps.push({ title: "Mark the divider positions", body: `Mark the left face of each divider on the top and the bottom at ${joinList(marks.map(show))} from the left end.` });
+    }
 
-    columns.forEach((opening, index) => {
-      const start = index === 0 ? "Lay the left side on its outside face, with the marks up." : `Use the divider on the right of column ${index} as the left panel.`;
-      const put =
-        perColumn === 1
-          ? `Put the shelf of this column (${show(opening)} long) on its mark, with the pocket holes down, and screw it to the panel with ${screws}.`
-          : `Put the ${perColumn} shelves of this column (${show(opening)} long) on their marks, with the pocket holes down, and screw them to the panel with ${screws}.`;
-      const next = index === dividers ? "the right side" : "the next divider";
-      steps.push({
-        title: `Assemble column ${index + 1} of ${columns.length}`,
-        body: `${start} ${put} Then put ${next} on the other ends of the ${perColumn === 1 ? "shelf" : "shelves"}, and screw it on.`,
+    if (perColumn > 0) {
+      const spacers = [...new Set(rows.slice(1))].map((opening) => `2 spacers to ${show(opening)}`);
+      steps.push({ title: "Cut spacers", body: `Cut ${joinList(spacers)} from an offcut. They hold each shelf on its mark while you drive the screws.` });
+
+      columns.forEach((opening, index) => {
+        const start = index === 0 ? "Lay the left side on its outside face, with the marks up." : `Use the divider on the right of column ${index} as the left panel.`;
+        const put =
+          perColumn === 1
+            ? `Put the shelf of this column (${show(opening)} long) on its mark, with the pocket holes down, and screw it to the panel with ${screws}.`
+            : `Put the ${perColumn} shelves of this column (${show(opening)} long) on their marks, with the pocket holes down, and screw them to the panel with ${screws}.`;
+        const next = index === dividers ? "the right side" : "the next divider";
+        steps.push({
+          title: `Assemble column ${index + 1} of ${columns.length}`,
+          body: `${start} ${put} Then put ${next} on the other ends of the ${perColumn === 1 ? "shelf" : "shelves"}, and screw it on.`,
+        });
       });
-    });
+    }
   }
 
+  const reach = geometry.combined && layout.dividers.some((board) => board.from > 0 || board.to < rows.length - 1) ? " that reach it" : "";
   const onMark = dividers === 0 ? "" : ", with each divider on its mark";
   steps.push({
     title: "Fit the bottom and the top",
     body:
-      perColumn > 0
-        ? `Lay the frame on its back. Put the bottom on the lower ends of ${uprights}${onMark}, and screw it on through the pocket holes in their ends. Then fit the top the same way.`
+      shelves > 0
+        ? `Lay the frame on its back. Put the bottom on the lower ends of ${uprights}${reach}${onMark}, and screw it on through the pocket holes in their ends. Then fit the top the same way.`
         : `Stand ${uprights} on the bottom${onMark}, and screw them to it through the pocket holes in their ends. Then fit the top the same way.`,
   });
 
@@ -115,6 +123,138 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
     });
   } else {
     steps.push({ title: "Anchor the unit", body: "Fix the unit to the wall with the anti-tip fitting, as IKEA says to do for KALLAX and EKET units. Use screws and plugs for your wall type." });
+  }
+  return steps;
+}
+
+export interface ColumnStep {
+  /** 0-based. */
+  column: number;
+  /** The shelf boards that start in the column. */
+  shelves: Board[];
+  /** The divider boards on the right of the column; none for the last column. */
+  dividers: Board[];
+}
+
+/** For each column from the left: the shelf boards that start in it, then the divider boards on its right. Each step only screws a board to a board that this step or an earlier one put in place. */
+export function columnSteps(layout: BoardLayout, columns: number): ColumnStep[] {
+  return Array.from({ length: columns }, (_, column) => ({
+    column,
+    shelves: layout.shelves.filter((board) => board.from === column),
+    dividers: layout.dividers.filter((board) => board.line === column + 1),
+  }));
+}
+
+function rowsText(board: Board): string {
+  return board.from === board.to ? `row ${board.from + 1}` : `rows ${board.from + 1}–${board.to + 1}`;
+}
+
+function combinedSteps(geometry: DesignGeometry, layout: BoardLayout, show: (value: number) => string, screws: string): AssemblyStep[] {
+  const { thickness: t, columns, rows } = geometry;
+  const n = columns.length;
+  const m = rows.length;
+  const has = segments(n, m, geometry.combined ?? []);
+  const lineX = [0, ...cellStarts(columns, t).map((start, column) => roundLength(start + columns[column]!))];
+  const cellX = cellStarts(columns, t);
+  const full = (board: Board) => board.from === 0 && board.to === m - 1;
+  const steps: AssemblyStep[] = [];
+
+  if (layout.shelves.length > 0) {
+    const uprights = [
+      { name: "the left side", line: 0, from: 0, to: m - 1 },
+      ...layout.dividers.map((board) => ({ name: `the divider on the right of column ${board.line}${full(board) ? "" : `, ${rowsText(board)}`}`, ...board })),
+      { name: "the right side", line: n, from: 0, to: m - 1 },
+    ];
+    const groups = new Map<string, string[]>();
+    for (const upright of uprights) {
+      const marks: number[] = [];
+      for (let line = upright.to; line > upright.from; line--) {
+        if ((upright.line > 0 && has.shelf(line, upright.line - 1)) || (upright.line < n && has.shelf(line, upright.line))) marks.push(spanLength(rows, line, upright.to, t));
+      }
+      if (marks.length === 0) continue;
+      const key = joinList(marks.map(show));
+      groups.set(key, [...(groups.get(key) ?? []), upright.name]);
+    }
+    const clauses = [...groups].map(([marks, names]) => {
+      const sides = names.includes("the left side") && names.includes("the right side");
+      const named = sides ? ["the sides", ...names.filter((name) => !name.endsWith(" side"))] : names;
+      return `on ${joinList(named)} at ${marks}`;
+    });
+    steps.push({ title: "Mark the shelf positions", body: `Mark the underside of each shelf, from the bottom end of the panel: ${clauses.join("; ")}.` });
+  }
+
+  if (layout.dividers.length > 0) {
+    const top = layout.dividers.filter((board) => board.from === 0).map((board) => lineX[board.line]!);
+    const bottom = layout.dividers.filter((board) => board.to === m - 1).map((board) => lineX[board.line]!);
+    const list = (marks: number[]) => joinList([...new Set(marks)].sort((a, b) => a - b).map(show));
+    const clauses =
+      list(top) === list(bottom) ? [`on the top and the bottom at ${list(top)}`] : [...(top.length > 0 ? [`on the top at ${list(top)}`] : []), ...(bottom.length > 0 ? [`on the bottom at ${list(bottom)}`] : [])];
+    for (const shelf of layout.shelves.filter((board) => board.from !== board.to)) {
+      const left = cellX[shelf.from]!;
+      const above: number[] = [];
+      const below: number[] = [];
+      for (let line = shelf.from + 1; line <= shelf.to; line++) {
+        if (has.divider(line, shelf.line - 1)) above.push(roundLength(lineX[line]! - left));
+        if (has.divider(line, shelf.line)) below.push(roundLength(lineX[line]! - left));
+      }
+      const name = `the shelf under row ${shelf.line} (${shelfName(shelf, columns)})`;
+      if (above.length > 0) clauses.push(`on the top face of ${name} at ${list(above)}`);
+      if (below.length > 0) clauses.push(`on the underside of ${name} at ${list(below)}`);
+    }
+    steps.push({ title: "Mark the divider positions", body: `Mark the left face of each divider, from the left end: ${clauses.join("; ")}.` });
+  }
+
+  if (layout.shelves.length > 0) {
+    const under = (line: number, column: number) => {
+      const span = geometry.combined!.find((cell) => column + 1 >= cell.column && column < cell.column - 1 + cell.columns && cell.row === line + 1);
+      return span ? spanLength(rows, line, line + span.rows - 1, t) : rows[line]!;
+    };
+    const heights = layout.shelves.flatMap((board) => [under(board.line, board.from), under(board.line, board.to)]);
+    const spacers = [...new Set(heights)].map((height) => `2 spacers to ${show(height)}`);
+    steps.push({ title: "Cut spacers", body: `Cut ${joinList(spacers)} from an offcut. They hold each shelf on its mark while you drive the screws.` });
+
+    for (const step of columnSteps(layout, n)) {
+      const c = step.column;
+      const ending = layout.shelves.filter((board) => board.to === c);
+      const stems = step.dividers.filter((board) => !full(board));
+      if (step.shelves.length === 0 && ending.length === 0 && stems.length === 0) continue;
+      const sentences: string[] = [];
+      if (c === 0) sentences.push("Lay the left side on its outside face, with the marks up.");
+      else if (step.shelves.length > 0) {
+        const left = layout.dividers.filter((board) => board.line === c);
+        sentences.push(
+          left.length === 1
+            ? `Use the divider on the right of column ${c}${full(left[0]!) ? "" : `, ${rowsText(left[0]!)},`} as the left panel.`
+            : `Use the dividers on the right of column ${c} as the left panels.`,
+        );
+      }
+      if (step.shelves.length > 0) {
+        const short = step.shelves.filter((board) => board.from === board.to);
+        const items = [
+          ...(short.length === 0 ? [] : [short.length === 1 ? `the shelf of this column (${show(columns[c]!)} long)` : `the ${short.length} shelves of this column (${show(columns[c]!)} long)`]),
+          ...step.shelves.filter((board) => board.from !== board.to).map((board) => `the shelf under row ${board.line} (${shelfName(board, columns)}, ${show(boardLength(board, geometry))} long)`),
+        ];
+        const one = step.shelves.length === 1;
+        sentences.push(`Put ${joinList(items)} on ${one ? "its mark" : "their marks"}, with the pocket holes down, and screw ${one ? "it" : "them"} to the panel with ${screws}.`);
+      }
+      const right = c === n - 1 ? ["the right side"] : step.dividers.map((board) => (full(board) ? "the next divider" : `the divider in ${rowsText(board)}`));
+      if (ending.length > 0 || stems.length > 0) {
+        const one = right.length === 1;
+        const place = c === n - 1 ? "in place" : `on ${one ? "its mark" : "their marks"}`;
+        const screw =
+          ending.length === 0
+            ? ""
+            : ending.length === 1
+              ? `, and screw the other end of the shelf that stops there to ${one ? "it" : "them"}`
+              : `, and screw the other ends of the ${ending.length} shelves that stop there to ${one ? "it" : "them"}`;
+        sentences.push(`${sentences.length === 0 ? "Put" : "Then put"} ${joinList(right)} ${place}${screw}.`);
+      }
+      for (const stem of stems) {
+        const ends = [...(stem.from > 0 ? ["top"] : []), ...(stem.to < m - 1 ? ["bottom"] : [])];
+        sentences.push(`Screw the ${joinList(ends)} ${ends.length === 1 ? "end" : "ends"} of the divider in ${rowsText(stem)} to the shelf ${ends.length === 2 ? "above it and the shelf below it" : ends[0] === "top" ? "above it" : "below it"}.`);
+      }
+      steps.push({ title: `Assemble column ${c + 1} of ${n}`, body: sentences.join(" ") });
+    }
   }
   return steps;
 }
