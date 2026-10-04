@@ -32,6 +32,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerE
 import type { OptimizeRuns } from "../optimizer/useOptimizeRuns.ts";
 import type { ViewPrefs } from "../state/prefs.ts";
 import type { ProjectStore } from "../state/useProject.ts";
+import { ColorLegend } from "./ColorLegend.tsx";
 import { fitScale, WINDOW_ALLOWANCE } from "./fit.ts";
 import { Inspector } from "./Inspector.tsx";
 import { IssueList } from "./IssueList.tsx";
@@ -425,6 +426,7 @@ export function LayoutTab({ store, analysis, prefs, runs, onShowSettings }: Layo
           </div>
         </div>
         <aside className="layout-side">
+          <ColorLegend colors={colors} />
           <Inspector
             ctx={ctx}
             project={project}

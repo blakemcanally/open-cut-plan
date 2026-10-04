@@ -97,6 +97,9 @@ describe("LayoutTab", () => {
     const swatch = (key: string) => (document.querySelector(`.tray [data-copy-key="${key}"] .swatch`) as HTMLElement).style.background;
     expect(swatch("hall-side#1")).toBe("rgb(156, 195, 230)");
     expect(swatch("hall-side#2")).toBe("rgb(18, 52, 86)");
+    const legend = screen.getByRole("list", { name: "Colours" });
+    expect(within(legend).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Hall 1 of 2", "Hall 2 of 2"]);
+    expect(screen.getByRole("button", { name: /^Top 2, .*, Hall 2 of 2$/ })).toBeTruthy();
   });
 
   it("fits the sheets in the window height at 100 % and follows a resize of the window", () => {

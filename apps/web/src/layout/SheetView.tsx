@@ -2,6 +2,7 @@ import {
   copyLabel,
   formatSize,
   grainOk,
+  NO_GROUP_COLOR,
   placedRect,
   sameCopy,
   stageColor,
@@ -121,6 +122,7 @@ export function SheetView(props: SheetViewProps) {
           const ref = { part: placement.part, copy: placement.copy };
           const rect = placedRect(part, placement);
           const label = copyLabel(part, placement.copy);
+          const colorKey = colors.keyOf(part, placement.copy);
           const bad = errors.has(index);
           const striped = grained && part.grain !== "none";
           const horizontal = (part.grain === "length") !== placement.rotated;
@@ -139,11 +141,11 @@ export function SheetView(props: SheetViewProps) {
               tabIndex={0}
               role="button"
               aria-pressed={isSelected}
-              aria-label={`${label}, ${size}${placement.rotated ? ", turned" : ""}${cross ? ", across the grain" : ""}${bad ? ", has a problem" : ""}`}
+              aria-label={`${label}, ${size}${placement.rotated ? ", turned" : ""}${cross ? ", across the grain" : ""}${bad ? ", has a problem" : ""}${colorKey ? `, ${colorKey.label}` : ""}`}
               onPointerDown={(event) => props.onPartPointerDown(event, ref)}
               onFocus={() => props.onSelect(ref)}
             >
-              <rect className="fill" width={w} height={h} fill={colors.colorOf(part, placement.copy)} />
+              <rect className="fill" width={w} height={h} fill={colorKey?.color ?? NO_GROUP_COLOR} />
               {striped && <rect width={w} height={h} fill={`url(#${uid}-${horizontal ? "h" : "v"})`} />}
               <rect className="outline" width={w} height={h} />
               {w > 28 && h > 14 && (

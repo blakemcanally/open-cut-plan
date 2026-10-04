@@ -43,6 +43,12 @@ function unitOf(design: Design, part: Part, copy: number): DesignUnit {
   return { design, unit: Math.min(units, Math.floor(copy / perUnit) + 1), units };
 }
 
+/** The design name, with "2 of 3" when the design has more than one unit. */
+export function designUnitLabel(design: Design, unit: number): string {
+  const units = design.quantity ?? DEFAULT_DESIGN_QUANTITY;
+  return units > 1 ? `${design.name} ${unit} of ${units}` : design.name;
+}
+
 export function designColorKey(design: string, unit: number): string {
   return `design:${design}#${unit}`;
 }
@@ -53,7 +59,7 @@ export function groupColorKey(group: string): string {
 
 export interface ColorKey {
   key: string;
-  /** The design name with "2 of 3" when the design has more than one unit, or the group name. */
+  /** `designUnitLabel`, or the group name. */
   label: string;
   color: string;
   chosen: boolean;
@@ -83,9 +89,9 @@ export function partColors(project: Project): PartColors {
   const keyName = (part: Part, copy: number): string | null => {
     const design = part.design === undefined ? undefined : designs.get(part.design);
     if (design) {
-      const { unit, units } = unitOf(design, part, copy);
+      const { unit } = unitOf(design, part, copy);
       const key = designColorKey(design.id, unit);
-      add(key, (auto) => ({ key, label: units > 1 ? `${design.name} ${unit} of ${units}` : design.name, ...chosen(design.colors?.[unit - 1], auto), design: design.id, unit }));
+      add(key, (auto) => ({ key, label: designUnitLabel(design, unit), ...chosen(design.colors?.[unit - 1], auto), design: design.id, unit }));
       return key;
     }
     if (part.group === undefined) return null;

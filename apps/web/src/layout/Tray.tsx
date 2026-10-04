@@ -59,7 +59,7 @@ export function Tray({ ctx, copies, colors, reasons, selected, dropping, onPoint
                     onClick={() => onSelect(ref)}
                     onFocus={() => onSelect(ref)}
                   >
-                    <span className="swatch" style={{ background: colors.colorOf(part, ref.copy) }} />
+                    <span className="swatch" title={colors.keyOf(part, ref.copy)?.label} style={{ background: colors.colorOf(part, ref.copy) }} />
                     <b>{copyLabel(part, ref.copy)}</b> <span>{formatSize(ctx, part)}</span>
                     {reason && <span className="reason"> ⚠ {REASON_TEXT[reason]}</span>}
                   </button>

@@ -128,3 +128,24 @@ export function NumberInput({ value, onChange, optional, integer, minimum = 0, m
     />
   );
 }
+
+interface ColorChoiceProps {
+  /** What the colour is for, such as "Hall KALLAX 2 of 3". */
+  label: string;
+  color: string;
+  chosen: boolean;
+  disabled?: boolean;
+  /** null makes the colour automatic again. */
+  onChange(color: string | null): void;
+}
+
+export function ColorChoice({ label, color, chosen, disabled, onChange }: ColorChoiceProps) {
+  return (
+    <span className="color-choice">
+      <input type="color" aria-label={`Colour of ${label}`} value={color} disabled={disabled} onChange={(event) => onChange(event.target.value)} />
+      <button type="button" aria-label={`Automatic colour for ${label}`} title="Use the automatic colour again." disabled={disabled || !chosen} onClick={() => onChange(null)}>
+        Automatic
+      </button>
+    </span>
+  );
+}

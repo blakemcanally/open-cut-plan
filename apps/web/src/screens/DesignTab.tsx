@@ -6,7 +6,9 @@ import {
   DESIGN_MOUNTS,
   DESIGN_SYSTEM_NAMES,
   DESIGN_SYSTEMS,
+  designColorKey,
   designElevationSvg,
+  designUnitLabel,
   designGeometry,
   detachDesign,
   formatLength,
@@ -16,9 +18,12 @@ import {
   materialsById,
   MAX_DESIGN_CELLS,
   MAX_DESIGN_QUANTITY,
+  NO_GROUP_COLOR,
   parseLength,
   parsePlainNumber,
+  partColors,
   removeDesign,
+  setDesignColor,
   type Design,
   type DesignAxis,
   type DesignMount,
@@ -28,7 +33,7 @@ import {
   type ProjectAnalysis,
 } from "@opencutplan/core";
 import { useState, type InputHTMLAttributes } from "react";
-import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
+import { ColorChoice, LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
 import { addDesign, axisMode, CATALOG_VALUE, openingsText, parseOpenings, pickMaterial, tryDesign, withCells, withMode, withSystem, type AxisMode } from "../design/form.ts";
 import type { ProjectStore } from "../state/useProject.ts";
 
@@ -178,6 +183,18 @@ function DesignEditor({ store, design, issues }: EditorProps) {
     },
   });
   const invalid = (field: string) => (refused?.field === field ? true : undefined);
+
+  const colors = partColors(project);
+  const unitColors = Array.from({ length: design.quantity ?? 1 }, (_, index) => {
+    const key = colors.get(designColorKey(design.id, index + 1));
+    const chosen = design.colors?.[index]?.toLowerCase() || null;
+    return {
+      unit: index + 1,
+      label: designUnitLabel(design, index + 1),
+      color: key?.color ?? chosen ?? NO_GROUP_COLOR,
+      chosen: chosen !== null,
+    };
+  });
 
   const shown = typing ? { ...project, designs: (project.designs ?? []).map((item) => (item.id === design.id ? typing : item)) } : project;
   const svg = designElevationSvg(shown, design.id);
@@ -366,6 +383,22 @@ function DesignEditor({ store, design, issues }: EditorProps) {
               {design.mount !== undefined && !isDesignMount(design.mount) && <option value={design.mount}>{design.mount} (unknown)</option>}
             </select>
           </label>
+        </fieldset>
+        <fieldset>
+          <legend>Colours in the layout</legend>
+          <ul className="color-list">
+            {unitColors.map((entry) => (
+              <li key={entry.unit}>
+                <ColorChoice
+                  label={entry.label}
+                  color={entry.color}
+                  chosen={entry.chosen}
+                  onChange={(color) => edit((p) => setDesignColor(p, design.id, entry.unit, color), `color:${design.id}#${entry.unit}`)}
+                />
+                <span>{entry.label}</span>
+              </li>
+            ))}
+          </ul>
         </fieldset>
         {refused && (
           <p role="alert" className="error">

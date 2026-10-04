@@ -1,5 +1,5 @@
-import { analyzeProject, createProject, regenerateDesigns, type Project } from "@opencutplan/core";
-import { act, render, screen, within } from "@testing-library/react";
+import { analyzeProject, createProject, PART_PALETTE, regenerateDesigns, type Project } from "@opencutplan/core";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
 import { describe, expect, it } from "vitest";
@@ -23,6 +23,26 @@ const preview = () => screen.getByRole("img", { name: /^Front view of / }).getAt
 const design = (current: () => ProjectStore) => current().project.designs![0]!;
 
 describe("DesignTab", () => {
+  it("chooses the colour of each unit, and makes it automatic again", async () => {
+    const base = designProject();
+    const current = renderDesign(regenerateDesigns({ ...base, designs: [{ ...base.designs![0]!, quantity: 2 }] }));
+    const first = screen.getByLabelText("Colour of Hall 1 of 2");
+    const second = screen.getByLabelText("Colour of Hall 2 of 2");
+    expect([first, second].map((input) => (input as HTMLInputElement).value)).toEqual([PART_PALETTE[0], PART_PALETTE[1]]);
+    expect(screen.getByRole("button", { name: "Automatic colour for Hall 2 of 2" })).toHaveProperty("disabled", true);
+    fireEvent.change(second, { target: { value: "#123456" } });
+    expect(design(current).colors).toEqual(["", "#123456"]);
+    expect(screen.getByLabelText("Colour of Hall 2 of 2")).toHaveProperty("value", "#123456");
+    await userEvent.click(screen.getByRole("button", { name: "Automatic colour for Hall 2 of 2" }));
+    expect(design(current)).not.toHaveProperty("colors");
+  });
+
+  it("shows the front view in the colour of the first unit", () => {
+    const base = designProject();
+    renderDesign({ ...base, designs: [{ ...base.designs![0]!, colors: ["#abcdef"] }] });
+    expect(screen.getByRole("img", { name: /^Front view of / }).innerHTML).toContain('fill="#abcdef"');
+  });
+
   it("adds a KALLAX 2x2 and its parts, and a material when the project has none", async () => {
     const current = renderDesign(createProject("New", "mm"));
     expect(screen.getByText(/^No designs yet\./)).toBeTruthy();

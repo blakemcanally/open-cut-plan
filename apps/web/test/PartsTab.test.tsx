@@ -10,6 +10,19 @@ vi.mock("../src/storage/files.ts", () => ({
 }));
 
 describe("PartsTab", () => {
+  it("chooses the colour of each group of parts without a design, and makes it automatic again", async () => {
+    const project = designProject();
+    project.parts.push({ id: "door", name: "Door", material: "ply18", length: 300, width: 200, quantity: 2, grain: "length", group: "Doors" });
+    const { current } = renderWithStore(project, (store) => <PartsTab store={store} />);
+    expect(screen.queryByLabelText("Colour of Hall")).toBeNull();
+    const doors = screen.getByLabelText("Colour of Doors") as HTMLInputElement;
+    expect(doors.value).toBe("#f2c27b");
+    fireEvent.change(doors, { target: { value: "#00aa00" } });
+    expect(current().project.groups).toEqual({ Doors: { color: "#00aa00" } });
+    await userEvent.click(screen.getByRole("button", { name: "Automatic colour for Doors" }));
+    expect(current().project).not.toHaveProperty("groups");
+  });
+
   it("commits an edited length and lowers the quantity, which takes the extra copy off the sheet", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <PartsTab store={store} />);
     const length = screen.getByLabelText("Length of Side");

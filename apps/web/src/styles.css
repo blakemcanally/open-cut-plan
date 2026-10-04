@@ -104,6 +104,12 @@ table.grid.catalog-sizes th[scope="row"] { font-size: inherit; color: inherit; f
 .tray-part[aria-pressed="true"] { outline: 2px solid var(--focus); }
 .tray-part .reason { color: var(--warn); font-size: 12px; }
 .swatch { width: 12px; height: 12px; border-radius: 2px; border: 1px solid #0003; display: inline-block; }
+.legend { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 14px; }
+.legend li { display: inline-flex; align-items: center; gap: 6px; }
+.color-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.color-list li { display: flex; align-items: center; gap: 8px; }
+.color-choice { display: inline-flex; align-items: center; gap: 6px; }
+.color-choice input[type="color"] { width: 36px; height: 24px; padding: 0; border: 1px solid #0003; }
 .sheets { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
 .sheet { background: #fff; border-radius: 8px; padding: 8px 10px 10px; box-shadow: 0 1px 3px #0002; }
 .sheet-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }

@@ -1,7 +1,19 @@
-import { addPart, errorMessage, formatArea, formatLength, MAX_PART_QUANTITY, removePart, updatePart, type Grain, type Project } from "@opencutplan/core";
+import {
+  addPart,
+  errorMessage,
+  formatArea,
+  formatLength,
+  MAX_PART_QUANTITY,
+  partColors,
+  removePart,
+  setGroupColor,
+  updatePart,
+  type Grain,
+  type Project,
+} from "@opencutplan/core";
 import { useState, type ClipboardEvent } from "react";
 import { CsvImportDialog } from "../components/CsvImportDialog.tsx";
-import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
+import { ColorChoice, LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
 import { chooseFile } from "../storage/files.ts";
 
@@ -54,6 +66,8 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
     total.area += part.quantity * part.length * part.width;
     totals.set(part.material, total);
   }
+
+  const groupColors = partColors(project).legend.filter((key) => key.group !== undefined);
 
   return (
     <section aria-labelledby="parts-title" onPaste={onPaste}>
@@ -197,6 +211,19 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
             </li>
           ))}
         </ul>
+      )}
+      {groupColors.length > 0 && (
+        <section aria-labelledby="group-colors-title">
+          <h3 id="group-colors-title">Group colours in the layout</h3>
+          <ul className="color-list">
+            {groupColors.map((key) => (
+              <li key={key.key}>
+                <ColorChoice label={key.label} color={key.color} chosen={key.chosen} onChange={(color) => edit((p) => setGroupColor(p, key.group!, color), `color:${key.key}`)} />
+                <span>{key.label}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       {importing !== null && (
         <CsvImportDialog

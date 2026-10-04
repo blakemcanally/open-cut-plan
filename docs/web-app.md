@@ -65,6 +65,10 @@ parts from the design, and the Parts tab lists them. The file format is in [form
   field stays marked and a message gives the reason. It adds no undo step.
 - Each change makes the design's parts again. The copies of those parts leave the sheets when their size changes, and
   stay when it does not. One **Undo** restores the design, its parts, and the sheets.
+- **Colours in the layout** has a colour box for each unit. With "How many to build" at 2 or more, each unit has its
+  own automatic colour, for example "Hall KALLAX 1 of 2" and "Hall KALLAX 2 of 2". Choose a colour in the box to change
+  it. **Automatic** gives the unit its automatic colour again. The front view uses the colour of the first unit.
+  These controls also work for a design that the user cannot change.
 - **Checks** lists the problems and warnings for the design, for example a cell that is too wide for a shelf.
 - **Detach** turns the parts into normal parts and removes the design. **Delete design** removes the design and its
   parts. **Undo** brings back either one.
@@ -84,6 +88,9 @@ value when the focus leaves; Escape restores it at once.
 - Lowering a quantity takes the extra copies off the sheets. Deleting a part removes its copies from the plan.
 - The totals give the number of pieces and the area for each material.
 - A part that a design makes cannot be changed on this tab. Its row says **From design:** with a link to the design.
+- **Group colours in the layout** has a colour box for each group of parts without a design. Choose a colour to
+  change it. **Automatic** gives the group its automatic colour again. The colours of the design units are on the
+  Design tab.
 
 ### Stock
 
@@ -114,8 +121,11 @@ millimetre profile in an inch project converts the kerf and limits.
 
 ### Layout
 
-Sheets are drawn to scale. Parts have the colour of their group, grain stripes, and a ⟂ mark when they lie across the
-grain. The trim zone is dashed. Cut lines are numbered in sequence order and coloured by stage. A part with a problem
+Sheets are drawn to scale. Parts have their colour, grain stripes, and a ⟂ mark when they lie across the grain. Each
+unit of a design has its own colour, and each group of parts without a design has one colour. A part without a design
+or a group is grey. The **Colours** list beside the sheets names each colour, for example "Hall KALLAX 2 of 2". The
+user chooses the colours on the Design tab and the Parts tab. The Shop tab, the Reports tab, the printed booklet, and
+the SVG files use the same colours. See [format.md](format.md#colours-added-in-14). The trim zone is dashed. Cut lines are numbered in sequence order and coloured by stage. A part with a problem
 turns red and has a ⚠ mark; the **Problems** list names each problem, and **Show** selects the part.
 
 - **Optimize** plans every part again. Pinned sheets stay as they are.
@@ -200,7 +210,8 @@ list follows.
   already in stock from the same sheet number, with the same material and size (to within 1/64" or 0.1 mm), is not
   added again. This also holds after a unit change or a project rename.
 - **Labels** (when the `labels` feature is on): pick the label sheet and the first free label on it, then **Print
-  labels**. Each label has the part name, size, material, group, grain arrow (↔ along the length, ↕ along the width),
+  labels**. Each label has the part name, size, material, group (with the unit of a design that has more than one,
+  for example "Hall KALLAX 2 of 2"), grain arrow (↔ along the length, ↕ along the width),
   and the sheet and step that cut it, or "Not placed".
 
 With no plan, the tab says so. It keeps the CSV exports and the labels, and each label says "Not placed".
