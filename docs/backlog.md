@@ -87,6 +87,8 @@ length of the two directions. The optimizer score counts cut steps, not cut leng
 
 ## 6. Make the Settings tab easier to use
 
+**Status:** Done.
+
 **Request:** The Settings tab has eight sections. It works, but it is hard to find a setting.
 
 **Now:** The sections are Units and precision, Factory edges, Snapping, Plan, Optimizer, Money, View, and Features

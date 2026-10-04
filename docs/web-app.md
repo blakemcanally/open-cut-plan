@@ -111,8 +111,8 @@ turns red and has a ⚠ mark; the **Problems** list names each problem, and **Sh
   the last search produced.
 - **Stop** ends a search and uses the best plan so far.
 - A line under the buttons names the optimizer goal, for example "Goal: best offcuts, up to 10 % extra cost.", and
-  **Change** opens the Settings tab. After a search, the line names each material whose plan costs more than the
-  cheapest plan found, for example "Plywood: 4 % more cost than the cheapest plan found."
+  **Change** opens the Optimizer section of the Settings tab. After a search, the line names each material whose plan
+  costs more than the cheapest plan found, for example "Plywood: 4 % more cost than the cheapest plan found."
 - The optimizer runs in a Web Worker, so the page stays responsive. A progress bar shows the part of the time limit
   that is used. When the project changes during a search, the result is not used.
 - **Pin** on a sheet keeps it through **Optimize**. **Remove** puts its parts in the tray.
@@ -216,7 +216,16 @@ size"), not "Fit to page".
 
 ### Settings
 
-The Settings tab puts the common settings first:
+The Settings tab has a list of its sections at the side. A click on a section shows that section only. The list marks
+the section that shows. The tab opens on the first section. After a visit to another tab, the tab shows the last
+section again. On a narrow window, the list is above the settings.
+
+The search box is above the list. When the box has text, the tab shows each setting whose name contains the text,
+from all sections, under the name of its section. The search ignores case. When the text is in the name of a section,
+the tab shows all of that section. When no setting matches, the tab says so. An empty search box, or a click on a
+section, shows the section from the list again.
+
+The sections put the common settings first:
 
 - **Units and precision**. Changing units converts every length in the project and removes the stored cut sequence.
 - **Factory edges**: **Use the factory edges** (no trim) or **Trim each edge** with a trim width. A stock item on the
