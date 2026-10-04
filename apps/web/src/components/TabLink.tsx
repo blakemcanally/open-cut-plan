@@ -9,7 +9,7 @@ export function TabLink({ tab, section, children }: { tab: TabId; section?: Sett
   const show = useContext(ShowTab);
   if (!show) return <>{children}</>;
   return (
-    <button type="button" className="link" onClick={() => show(tab, section)}>
+    <button type="button" className="link tab-link" onClick={() => show(tab, section)}>
       {children}
     </button>
   );
