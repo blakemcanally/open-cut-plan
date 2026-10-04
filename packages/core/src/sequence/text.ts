@@ -126,7 +126,7 @@ export function describeStep(ctx: PlanContext, step: Step): StepText {
 
   if (step.kind === "trim") {
     const edge = edgeOf(step.piece, step.released, step.axis);
-    const amount = formatIn(ctx, sizeAlong(step.piece, step.axis) - sizeAlong(step.remainder, step.axis));
+    const amount = trimAmount(ctx, step);
     return finish(`Trim ${amount} off the ${edge} edge`, [`Cut ${amount} off the ${edge} edge.`], [released(null), remainder(null)]);
   }
 
@@ -134,22 +134,41 @@ export function describeStep(ctx: PlanContext, step: Step): StepText {
   const length = formatIn(ctx, step.to - step.from);
   const edge = edgeOf(step.piece, step[step.side], step.axis);
   const headline = step.side === "released" ? `Cut ${setting} off the ${pieceWord}` : `Cut the ${pieceWord} to ${setting}`;
-  const type = step.tool?.type;
+  const guide = guideOf(step);
   let actions: string[];
   let where: string;
-  if (type === "table-saw" && step.axis === "y") {
+  if (guide === "fence") {
     actions = [`Set the fence ${setting} from the blade.`, `Put a ${length} edge of the ${pieceWord} against the fence.`, "Make the cut."];
     where = "between the fence and the blade";
-  } else if (type === "table-saw" || type === "panel-saw") {
+  } else if (guide === "stop") {
     actions = [`Set the stop ${setting} from the blade.`, `Put a ${length} edge of the ${pieceWord} against the stop.`, "Make the cut."];
     where = "at the stop";
   } else {
-    const guide = type === "track-saw" ? "Put the edge of the track on the marks." : "Clamp a straightedge so that the blade cuts next to the marks.";
-    actions = [`Mark ${setting} from the ${edge} edge, at the two ends of the cut.`, guide, `Cut with the blade ${AWAY[edge]} the marks.`];
+    const line = step.tool?.type === "track-saw" ? "Put the edge of the track on the marks." : "Clamp a straightedge so that the blade cuts next to the marks.";
+    actions = [`Mark ${setting} from the ${edge} edge, at the two ends of the cut.`, line, `Cut with the blade ${AWAY[edge]} the marks.`];
     where = `the ${edge} piece`;
   }
   const results = step.side === "released" ? [released(where), remainder(null)] : [remainder(where), released(null)];
   return finish(headline, actions, results);
+}
+
+type Guide = "fence" | "stop" | "marks";
+
+function guideOf(step: Pick<Step, "tool" | "axis">): Guide {
+  const type = step.tool?.type;
+  if (type === "table-saw") return step.axis === "y" ? "fence" : "stop";
+  return type === "panel-saw" ? "stop" : "marks";
+}
+
+function trimAmount(ctx: PlanContext, step: Step): string {
+  return formatIn(ctx, sizeAlong(step.piece, step.axis) - sizeAlong(step.remainder, step.axis));
+}
+
+/** What the user sets on the saw for the step, for example `Table saw · fence at 15 3/8"`. */
+export function setupLabel(ctx: PlanContext, step: Step): string {
+  const tool = step.tool?.name ?? "No tool";
+  if (step.kind === "trim") return `${tool} · trim ${trimAmount(ctx, step)}`;
+  return `${tool} · ${guideOf(step)} at ${formatIn(ctx, step.setting)}`;
 }
 
 function list(names: readonly string[]): string[] {

@@ -1,6 +1,22 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../../../examples/builders/index.ts";
-import { defaultTools, describeStep, EPSILON, formatLength, parseProject, planContext, sequencePlan, totalCutLength, withCuts, type Project, type Step } from "../../src/index.ts";
+import {
+  defaultTools,
+  describeStep,
+  EPSILON,
+  formatLength,
+  parseProject,
+  planContext,
+  sequencePlan,
+  setupKey,
+  setupRuns,
+  totalCutLength,
+  withCuts,
+  type Placement,
+  type Project,
+  type Step,
+} from "../../src/index.ts";
 import { sampleProject, stripProject } from "../helpers.ts";
 
 function shelf(): Project {
@@ -98,6 +114,55 @@ describe("sequencePlan", () => {
     expect(setupChanges(bySetup)).toBeLessThan(setupChanges(bySheet));
     const cutsOf = (steps: Step[]) => steps.map((step) => `${step.sheetNumber}|${step.axis}|${step.at}`).sort();
     expect(cutsOf(bySetup)).toEqual(cutsOf(bySheet));
+  });
+
+  it("finishes a saw setting before it starts a setting that a later cut of the first setting waits for", () => {
+    const project = shelf();
+    project.tools = defaultTools("in");
+    project.settings.orderMode = "setup";
+    const ctx = planContext(project);
+    const keys = setupRuns(ctx, sequencePlan(project))
+      .filter((run) => run[0]!.tool?.id === "table-saw")
+      .map((run) => setupKey(ctx, run[0]!));
+    expect(keys).toEqual(['table-saw|crosscut|56 17/32"', 'table-saw|crosscut|42 19/32"', 'table-saw|crosscut|27 7/32"', 'table-saw|crosscut|13 1/4"']);
+  });
+
+  it("keeps every cut in setup order, after the cut that makes its piece, with no more setup changes than sheet order", () => {
+    const sizes = [
+      [20, 10],
+      [23, 11],
+      [15, 8],
+    ] as const;
+    const cell = fc.record({ sheet: fc.integer({ min: 0, max: 2 }), x: fc.integer({ min: 0, max: 3 }), y: fc.integer({ min: 0, max: 3 }), size: fc.integer({ min: 0, max: 2 }) });
+    fc.assert(
+      fc.property(fc.array(cell, { maxLength: 18 }), fc.boolean(), (cells, defaults) => {
+        const project = sampleProject();
+        if (defaults) project.tools = defaultTools("in");
+        project.parts = sizes.map(([length, width], i) => ({ id: `p${i}`, name: `P${i}`, material: "ply", length, width, quantity: 50, grain: "none" }));
+        const used = new Set<string>();
+        const sheets = [0, 1, 2].map((i) => ({ id: `s${i + 1}`, stock: "ply-4x8", placements: [] as Placement[] }));
+        cells.forEach((c, copy) => {
+          const key = `${c.sheet},${c.x},${c.y}`;
+          if (used.has(key)) return;
+          used.add(key);
+          sheets[c.sheet]!.placements.push({ part: `p${c.size}`, copy, x: 0.25 + c.x * 24, y: 0.25 + c.y * 12, rotated: false });
+        });
+        project.plan = { sheets };
+        const bySheet = sequencePlan(project);
+        project.settings.orderMode = "setup";
+        const bySetup = sequencePlan(project);
+        const cut = (step: Step | undefined) => (step ? `${step.sheet}|${step.axis}|${step.at}|${step.from}|${step.to}` : null);
+        const links = (steps: Step[]) => steps.map((step) => [cut(step), cut(steps[(step.requires ?? 0) - 1]), cut(steps[(step.releasedNext ?? 0) - 1]), cut(steps[(step.remainderNext ?? 0) - 1])].join(" "));
+        expect(bySetup.map((step) => step.step)).toEqual(bySetup.map((_, i) => i + 1));
+        for (const step of bySetup) {
+          expect(step.requires ?? 0).toBeLessThan(step.step);
+          expect(Math.min(step.releasedNext ?? Infinity, step.remainderNext ?? Infinity)).toBeGreaterThan(step.step);
+        }
+        expect(links(bySetup).sort()).toEqual(links(bySheet).sort());
+        expect(setupChanges(bySetup)).toBeLessThanOrEqual(setupChanges(bySheet));
+      }),
+      { numRuns: 200 },
+    );
   });
 
   it("puts the remainder at the fence when the released side is wider than the rip capacity", () => {

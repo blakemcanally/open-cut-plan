@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../../../examples/builders/index.ts";
-import { convertProjectUnits, describeStep, formatSize, parseProject, planContext, sequencePlan, type Project, type Tool } from "../../src/index.ts";
+import { convertProjectUnits, describeStep, formatSize, parseProject, planContext, sequencePlan, setupLabel, type Project, type Tool } from "../../src/index.ts";
 import { sampleProject, stripProject } from "../helpers.ts";
 
 function texts(project: Project) {
@@ -142,5 +142,29 @@ describe("describeStep", () => {
     expect(mm.length).toBeGreaterThan(0);
     expect(mm.every((text) => !text.body.includes("?") && !text.body.includes('"'))).toBe(true);
     expect(mm.find((text) => !text.headline.startsWith("Trim"))!.headline).toMatch(/^Cut (the (sheet|panel) to )?\d+(\.\d+)? mm( off the (sheet|panel))?$/);
+  });
+});
+
+describe("setupLabel", () => {
+  const labels = (project: Project) => {
+    const ctx = planContext(project);
+    return sequencePlan(project).map((step) => setupLabel(ctx, step));
+  };
+
+  it("names the tool and what the user sets: the trim, the fence, the stop, or the marks", () => {
+    expect(labels(sampleProject())).toEqual([
+      'Table saw · trim 1/4"',
+      'Table saw · trim 1/4"',
+      'Table saw · trim 1/4"',
+      'Table saw · trim 1/4"',
+      'Table saw · stop at 30"',
+      'Table saw · fence at 12"',
+      'Table saw · fence at 12"',
+    ]);
+    expect(labels(withTool({ id: "ps", name: "Panel saw", type: "panel-saw", kerf: 0.125, enabled: true }))[4]).toBe('Panel saw · stop at 12"');
+    expect(labels(withTool({ id: "track", name: "Track saw", type: "track-saw", kerf: 0.125, enabled: true }))[6]).toBe('Track saw · marks at 90"');
+    const none = sampleProject();
+    none.tools[0]!.enabled = false;
+    expect(labels(none)[4]).toBe('No tool · marks at 30"');
   });
 });

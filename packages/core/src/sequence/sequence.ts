@@ -181,21 +181,54 @@ function collectSheet(ctx: PlanContext, analysis: SheetAnalysis, cuts: RawCut[])
   walk(analysis.tree.root, last, "remainder");
 }
 
+/** Cuts with the same key share a tool, a cut kind, and a displayed setting, so the saw does not change between them. */
+export function setupKey(ctx: PlanContext, cut: Pick<Step, "tool" | "kind" | "setting">): string {
+  return `${cut.tool?.id ?? ""}|${cut.kind}|${formatIn(ctx, cut.setting)}`;
+}
+
+/** Consecutive steps with the same setup. */
+export function setupRuns(ctx: PlanContext, steps: readonly Step[]): Step[][] {
+  const runs: Step[][] = [];
+  for (const step of steps) {
+    const last = runs.at(-1);
+    if (last && setupKey(ctx, last[0]!) === setupKey(ctx, step)) last.push(step);
+    else runs.push([step]);
+  }
+  return runs;
+}
+
 /**
- * Groups cuts that share a tool, cut kind, and displayed setting, taking any ready cut of the current setup before
- * switching. A cut is ready once the cut that makes its piece is done.
+ * Groups cuts that share a setup, taking any ready cut of the current setup before switching. A cut is ready once the
+ * cut that makes its piece is done. The next setup is the first, in sheet order, whose remaining cuts wait only for
+ * cuts that are done or of the same setup, so that it can finish in one run; when no setup can, the first ready cut
+ * starts the next setup.
  */
 function setupOrder(ctx: PlanContext, cuts: readonly RawCut[]): RawCut[] {
-  const key = (cut: RawCut) => `${cut.tool?.id ?? ""}|${cut.kind}|${formatIn(ctx, cut.setting)}`;
+  const keys = cuts.map((cut) => setupKey(ctx, cut));
   const done = new Set<number>();
   const ready = (cut: RawCut) => !done.has(cut.id) && (cut.requires === null || done.has(cut.requires));
+  const blocked = () => {
+    const out = new Set<string>();
+    for (const cut of cuts) {
+      if (done.has(cut.id)) continue;
+      for (let r = cut.requires; r !== null && !done.has(r); r = cuts[r]!.requires) {
+        if (keys[r] !== keys[cut.id]) {
+          out.add(keys[cut.id]!);
+          break;
+        }
+      }
+    }
+    return out;
+  };
   const order: RawCut[] = [];
   let current: string | null = null;
   while (order.length < cuts.length) {
-    let next = current === null ? undefined : cuts.find((cut) => ready(cut) && key(cut) === current);
+    let next: RawCut | undefined = current === null ? undefined : cuts.find((cut) => ready(cut) && keys[cut.id] === current);
     if (!next) {
-      next = cuts.find(ready)!;
-      current = key(next);
+      const waiting = blocked();
+      const candidates = cuts.filter(ready);
+      next = candidates.find((cut) => !waiting.has(keys[cut.id]!)) ?? candidates[0]!;
+      current = keys[next.id]!;
     }
     done.add(next.id);
     order.push(next);
