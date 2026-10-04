@@ -121,7 +121,7 @@ files. `parts` also has `colors` and `group-color` for the colours of the layout
 | `stock import <file> <csv>` | Adds the stock in a CSV file. | `opencutplan stock import shelf.cutplan.json stock.csv` |
 | `stock export <file>` | Writes the stock as CSV. | `opencutplan stock export shelf.cutplan.json` |
 | `stock save-offcuts <file>` | Adds the usable offcuts of the plan to the stock. | `opencutplan stock save-offcuts shelf.cutplan.json` |
-| `materials list <file>` | Lists the materials and the parts and stock that use them. | `opencutplan materials list shelf.cutplan.json` |
+| `materials list <file>` | Lists the materials and the parts and stock that use them, with a status, for example "Used by 13 parts · 1 size · no price". | `opencutplan materials list shelf.cutplan.json` |
 | `materials get <file> <id>` | Shows one material. | `opencutplan materials get shelf.cutplan.json bb18` |
 | `materials add <file>` | Adds a material. `--catalog <id>` adds a catalogue material. | `opencutplan materials add shelf.cutplan.json --name "MDF 3/4" --thickness 3/4 --grained false` |
 | `materials set <file> <id>` | Changes a material. | `opencutplan materials set shelf.cutplan.json bb18 --color "#d9b98c"` |

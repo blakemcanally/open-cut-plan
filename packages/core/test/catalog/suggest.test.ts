@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addSuggestedStock, catalogSize, createProject, hasEnabledStock, stocklessMaterials, suggestedStock, typicalPrice, withStockFor, type Project } from "../../src/index.ts";
+import { addSuggestedStock, catalogSize, createProject, hasEnabledStock, materialStatus, materialStatusText, stocklessMaterials, suggestedStock, typicalPrice, withStockFor, type Project } from "../../src/index.ts";
 
 function project(units: "in" | "mm" = "in", currency = "USD"): Project {
   const base = createProject("Test", units);
@@ -73,5 +73,35 @@ describe("addSuggestedStock and withStockFor", () => {
     const next = withStockFor(stocked, ["plywood", "birch", "plywood", undefined]);
     expect(next.stock.map((stock) => stock.id)).toEqual(["mine", "plywood-96x48"]);
     expect(withStockFor(next, ["plywood", "birch"])).toBe(next);
+  });
+});
+
+describe("materialStatus and materialStatusText", () => {
+  const part = (id: string, material: string) => ({ id, name: id, material, length: 10, width: 10, quantity: 3, grain: "none" as const });
+  const sheet = (id: string, material: string, extra: Partial<Project["stock"][number]> = {}) => ({ id, material, length: 96, width: 48, quantity: null, kind: "sheet" as const, ...extra });
+
+  it("counts the parts, the enabled stock sizes, and the enabled sheets with no price", () => {
+    const base = project();
+    const next: Project = {
+      ...base,
+      parts: [part("a", "birch"), part("b", "birch"), part("c", "plywood")],
+      stock: [sheet("s1", "birch"), sheet("s2", "birch", { cost: 50 }), sheet("off", "birch", { kind: "offcut" }), sheet("old", "birch", { enabled: false })],
+    };
+    expect(materialStatus(next, "birch")).toEqual({ parts: 2, designs: 0, stock: 4, sizes: 3, sheets: 2, unpriced: 1 });
+    expect(materialStatusText(materialStatus(next, "birch"))).toBe("Used by 2 parts · 3 sizes · 1 with no price");
+    expect(materialStatusText(materialStatus(next, "plywood"))).toBe("Used by 1 part · no stock");
+  });
+
+  it("says no price when no enabled sheet has a price, and names a material that nothing uses", () => {
+    const base = project();
+    const next: Project = { ...base, parts: [part("a", "birch")], stock: [sheet("s1", "birch"), sheet("s2", "plywood", { cost: 10 })] };
+    expect(materialStatusText(materialStatus(next, "birch"))).toBe("Used by 1 part · 1 size · no price");
+    expect(materialStatusText(materialStatus(next, "plywood"))).toBe("Used by no parts · 1 size");
+  });
+
+  it("counts the designs that use the material for the box or the back", () => {
+    const base = project();
+    const design = { id: "d", name: "D", system: "custom", material: "plywood", width: { outside: 30, cells: 1 }, height: { outside: 30, cells: 1 }, depth: 12, back: { material: "birch" } };
+    expect(materialStatus({ ...base, designs: [design] }, "birch").designs).toBe(1);
   });
 });

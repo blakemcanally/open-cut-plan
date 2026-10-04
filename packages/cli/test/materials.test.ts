@@ -9,8 +9,9 @@ describe("materials", () => {
     expect(result.code).toBe(0);
     expect(result.json().units).toBe("in");
     expect(result.json().materials[0]).toMatchObject({ id: "bb18", name: "Baltic birch 18mm", grained: true, usedBy: { parts: 17, stock: 1 } });
+    expect(result.json().materials.map((m: { status: string }) => m.status)).toEqual(["Used by 17 parts · 1 size · no price", "Used by 3 parts · 1 size · no price"]);
     const text = await cli(["materials", "list", SHELF], withExamples());
-    expect(text.stdout.split("\n")[0]).toMatch(/^id\s+name\s+thickness\s+grained/);
+    expect(text.stdout.split("\n")[0]).toMatch(/^id\s+name\s+thickness\s+grained.*\sstatus$/);
   });
 
   it("gets one material and exits 2 for an unknown id", async () => {

@@ -15,6 +15,43 @@ export function stocklessMaterials(project: Project): Material[] {
   return project.materials.filter((material) => used.has(material.id) && !hasEnabledStock(project, material.id));
 }
 
+export interface MaterialStatus {
+  /** The parts in the material. */
+  parts: number;
+  /** The designs that use the material for the box or the back. */
+  designs: number;
+  /** All the stock in the material, also stock that is not in use. */
+  stock: number;
+  /** The enabled stock in the material. */
+  sizes: number;
+  /** The enabled sheets to buy in the material. */
+  sheets: number;
+  /** The enabled sheets to buy that have no cost. */
+  unpriced: number;
+}
+
+export function materialStatus(project: Project, material: string): MaterialStatus {
+  const stock = project.stock.filter((item) => item.material === material);
+  const enabled = stock.filter((item) => item.enabled !== false);
+  const sheets = enabled.filter((item) => item.kind === "sheet");
+  return {
+    parts: project.parts.filter((part) => part.material === material).length,
+    designs: (project.designs ?? []).filter((design) => design.material === material || design.back?.material === material).length,
+    stock: stock.length,
+    sizes: enabled.length,
+    sheets: sheets.length,
+    unpriced: sheets.filter((item) => item.cost === undefined).length,
+  };
+}
+
+/** For example "Used by 13 parts · 1 size · no price". */
+export function materialStatusText(status: MaterialStatus): string {
+  const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
+  const items = [status.parts === 0 ? "Used by no parts" : `Used by ${plural(status.parts, "part")}`, status.sizes === 0 ? "no stock" : plural(status.sizes, "size")];
+  if (status.unpriced > 0) items.push(status.unpriced === status.sheets ? "no price" : `${status.unpriced} with no price`);
+  return items.join(" · ");
+}
+
 /**
  * A new sheet for the material: the largest size of the catalogue material with the same id or name (without case),
  * with the typical price when the project currency is USD; otherwise a 96 × 48 in (2440 × 1220 mm) sheet with no cost.

@@ -1,4 +1,4 @@
-import { addCatalogMaterial, materialInUse, removeMaterial, updateMaterial, type Material, type Patch, type Project } from "@opencutplan/core";
+import { addCatalogMaterial, materialInUse, materialStatus, materialStatusText, removeMaterial, updateMaterial, type Material, type Patch, type Project } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines, type Loaded } from "../project.ts";
 import { CliError, EXIT, type CommandSpec, type GroupSpec, type Invocation, type Outcome } from "../spec.ts";
@@ -17,7 +17,7 @@ function usedBy(project: Project, id: string) {
 
 function listed(project: Project, material: Material) {
   const users = usedBy(project, material.id);
-  return { ...material, usedBy: { parts: users.parts.length, stock: users.stock.length, designs: users.designs.length } };
+  return { ...material, usedBy: { parts: users.parts.length, stock: users.stock.length, designs: users.designs.length }, status: materialStatusText(materialStatus(project, material.id)) };
 }
 
 function line(project: Project, material: Material): string {
@@ -34,18 +34,19 @@ const FIELD_OPTIONS = {
 const list: CommandSpec = {
   name: "materials list",
   summary: "List the materials.",
-  description: "List the materials with the number of parts, stock items, and designs that use each one.",
+  description:
+    "List the materials with the number of parts, stock items, and designs that use each one, and a status line, for example \"Used by 13 parts · 1 size · no price\". The status counts the enabled stock sizes, and the enabled sheets to buy that have no cost.",
   args: [FILE_ARG],
   options: [],
   examples: [{ command: `${PROGRAM} materials list shelf.cutplan.json --json`, description: "List the materials as JSON." }],
-  output: "units, materials [{ id, name, thickness, grained, color?, usedBy { parts, stock, designs } }]. usedBy is derived; it is not a file field.",
+  output: "units, materials [{ id, name, thickness, grained, color?, usedBy { parts, stock, designs }, status }]. usedBy and status are derived; they are not file fields.",
   async run({ args, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const materials = project.materials.map((material) => listed(project, material));
     const text = table(
-      ["id", "name", "thickness", "grained", "color", "parts", "stock", "designs"],
-      materials.map((m) => [m.id, m.name, len(project, m.thickness), String(m.grained), m.color ?? "", String(m.usedBy.parts), String(m.usedBy.stock), String(m.usedBy.designs)]),
+      ["id", "name", "thickness", "grained", "color", "parts", "stock", "designs", "status"],
+      materials.map((m) => [m.id, m.name, len(project, m.thickness), String(m.grained), m.color ?? "", String(m.usedBy.parts), String(m.usedBy.stock), String(m.usedBy.designs), m.status]),
     );
     return { data: { units: project.project.units, materials }, text, warnings: warningLines(loaded) };
   },
