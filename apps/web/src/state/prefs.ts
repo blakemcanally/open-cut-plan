@@ -1,10 +1,11 @@
-import type { Units } from "@opencutplan/core";
+import type { CutColoring, Units } from "@opencutplan/core";
 import { useCallback, useState } from "react";
 import { BOOKLET_SECTIONS, type BookletSection } from "../print/booklet.ts";
 
 export interface ViewPrefs {
   showCuts: boolean;
   showKerf: boolean;
+  cutColors: CutColoring;
   /** The snap grid for each unit system, in that unit. 0 turns the grid off. */
   grid: Readonly<Record<Units, number>>;
   booklet: Readonly<Record<BookletSection, boolean>>;
@@ -13,6 +14,7 @@ export interface ViewPrefs {
 export const DEFAULT_PREFS: ViewPrefs = {
   showCuts: true,
   showKerf: false,
+  cutColors: "stage",
   grid: { in: 1, mm: 25 },
   booklet: { title: true, shopping: true, sheets: true, sequence: true, assembly: true },
 };
@@ -30,6 +32,7 @@ export function loadPrefs(storage: globalThis.Storage = localStorage): ViewPrefs
     return {
       showCuts: typeof saved.showCuts === "boolean" ? saved.showCuts : DEFAULT_PREFS.showCuts,
       showKerf: typeof saved.showKerf === "boolean" ? saved.showKerf : DEFAULT_PREFS.showKerf,
+      cutColors: saved.cutColors === "tool" || saved.cutColors === "stage" ? saved.cutColors : DEFAULT_PREFS.cutColors,
       grid: { in: gridSize(grid.in, DEFAULT_PREFS.grid.in), mm: gridSize(grid.mm, DEFAULT_PREFS.grid.mm) },
       booklet: Object.fromEntries(BOOKLET_SECTIONS.map((section) => [section, typeof booklet[section] === "boolean" ? booklet[section] : DEFAULT_PREFS.booklet[section]])) as Record<BookletSection, boolean>,
     };
