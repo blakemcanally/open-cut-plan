@@ -5,20 +5,25 @@ import {
   addSuggestedStock,
   DEFAULT_TRIM,
   formatLength,
-  materialInUse,
+  materialColor,
+  materialStatus,
+  materialStatusText,
+  planContext,
   removeMaterial,
   removeStock,
   updateMaterial,
+  stockLabel,
   updateStock,
+  type MaterialStatus,
   type Stock,
   type StockKind,
   type Units,
 } from "@opencutplan/core";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { CatalogDialog } from "../components/CatalogDialog.tsx";
 import { CsvImportDialog } from "../components/CsvImportDialog.tsx";
 import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
-import { StocklessNotes } from "../components/StockNote.tsx";
+import { AddStock } from "../components/StockNote.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
 import { chooseFile } from "../storage/files.ts";
 import { isTableText } from "./PartsTab.tsx";
@@ -36,8 +41,39 @@ function trimForChoice(choice: EdgeChoice, stock: Stock, projectTrim: number, un
   return projectTrim > 0 ? projectTrim : DEFAULT_TRIM[units];
 }
 
+/** Why a material cannot be deleted, for example "Parts and stock use this material. Change them first." */
+function inUseText(status: MaterialStatus): string {
+  const users = [status.parts > 0 && "parts", status.stock > 0 && "stock", status.designs === 1 ? "a design" : status.designs > 1 && "designs"].filter((user) => user !== false);
+  const single = users.length === 1 && (users[0] === "stock" || users[0] === "a design");
+  const list = users.length > 2 ? `${users.slice(0, -1).join(", ")}, and ${users.at(-1)}` : users.join(" and ");
+  return `${list.charAt(0).toUpperCase()}${list.slice(1)} ${single ? "uses" : "use"} this material. Change ${single ? "it" : "them"} first.`;
+}
+
+function DeleteMaterial({ name, status, onDelete }: { name: string; status: MaterialStatus; onDelete(): void }) {
+  const id = useId();
+  const used = status.parts > 0 || status.stock > 0 || status.designs > 0;
+  if (!used) {
+    return (
+      <button type="button" aria-label={`Delete material ${name}`} onClick={onDelete}>
+        Delete
+      </button>
+    );
+  }
+  return (
+    <span className="has-tip">
+      <button type="button" aria-label={`Delete material ${name}`} aria-disabled="true" aria-describedby={id}>
+        Delete
+      </button>
+      <span id={id} role="tooltip" className="tip">
+        {inUseText(status)}
+      </span>
+    </span>
+  );
+}
+
 export function StockTab({ store }: { store: ProjectStore }) {
   const { project, edit } = store;
+  const ctx = planContext(project);
   const [importing, setImporting] = useState<string | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
   const [browsing, setBrowsing] = useState(false);
@@ -77,13 +113,14 @@ export function StockTab({ store }: { store: ProjectStore }) {
         {project.materials.length === 0 ? (
           <p className="muted">No materials yet. Adding stock or parts adds one.</p>
         ) : (
-          <table className="grid">
+          <table className="grid cards" aria-labelledby="materials-title">
             <thead>
               <tr>
                 <th scope="col">Name</th>
                 <th scope="col">Thickness</th>
                 <th scope="col">Grained</th>
                 <th scope="col">Colour</th>
+                <th scope="col">Status</th>
                 <th scope="col">
                   <span className="visually-hidden">Actions</span>
                 </th>
@@ -91,13 +128,15 @@ export function StockTab({ store }: { store: ProjectStore }) {
             </thead>
             <tbody>
               {project.materials.map((material) => {
-                const used = materialInUse(project, material.id);
+                const status = materialStatus(project, material.id);
+                const stockless = status.parts > 0 && status.sizes === 0;
+                const warn = stockless || status.unpriced > 0;
                 return (
                   <tr key={material.id}>
-                    <td>
+                    <td data-label="Name" className="wide">
                       <TextInput aria-label={`Name of material ${material.name}`} value={material.name} required onChange={(name) => edit((p) => updateMaterial(p, material.id, { name }))} />
                     </td>
-                    <td>
+                    <td data-label="Thickness">
                       <LengthInput
                         aria-label={`Thickness of ${material.name}`}
                         value={material.thickness}
@@ -106,7 +145,7 @@ export function StockTab({ store }: { store: ProjectStore }) {
                         onChange={(thickness) => thickness !== undefined && edit((p) => updateMaterial(p, material.id, { thickness }))}
                       />
                     </td>
-                    <td>
+                    <td data-label="Grained">
                       <input
                         type="checkbox"
                         aria-label={`${material.name} has grain`}
@@ -114,24 +153,26 @@ export function StockTab({ store }: { store: ProjectStore }) {
                         onChange={(event) => edit((p) => updateMaterial(p, material.id, { grained: event.target.checked }))}
                       />
                     </td>
-                    <td>
+                    <td data-label="Colour">
                       <input
                         type="color"
                         aria-label={`Colour of ${material.name}`}
-                        value={material.color ?? "#d9c9a3"}
+                        value={materialColor(project, material.id)}
                         onChange={(event) => edit((p) => updateMaterial(p, material.id, { color: event.target.value }), `material-color:${material.id}`)}
                       />
                     </td>
-                    <td>
-                      <button
-                        type="button"
-                        aria-label={`Delete material ${material.name}`}
-                        disabled={used}
-                        title={used ? "Parts, stock, or designs use this material." : undefined}
-                        onClick={() => edit((p) => removeMaterial(p, material.id))}
-                      >
-                        Delete
-                      </button>
+                    <td data-label="Status" className={`material-status wide${warn ? " warning" : ""}`}>
+                      {warn && "⚠ "}
+                      {materialStatusText(status)}
+                      {stockless && (
+                        <>
+                          {" "}
+                          <AddStock project={project} material={material.id} onAdd={(id) => edit((p) => addSuggestedStock(p, id).project)} />
+                        </>
+                      )}
+                    </td>
+                    <td className="actions">
+                      <DeleteMaterial name={material.name} status={status} onDelete={() => edit((p) => removeMaterial(p, material.id))} />
                     </td>
                   </tr>
                 );
@@ -165,12 +206,11 @@ export function StockTab({ store }: { store: ProjectStore }) {
             ✖ {readError}
           </p>
         )}
-        <StocklessNotes project={project} onAdd={(material) => edit((p) => addSuggestedStock(p, material).project)} />
         {project.stock.length === 0 ? (
           <p className="muted">No stock yet. Add the sheets you can buy and the offcuts you own, or add common sheet goods from the catalogue.</p>
         ) : (
           <div className="table-wrap">
-            <table className="grid">
+            <table className="grid cards" aria-labelledby="stock-title">
               <thead>
                 <tr>
                   <th scope="col">Name</th>
@@ -189,14 +229,14 @@ export function StockTab({ store }: { store: ProjectStore }) {
               </thead>
               <tbody>
                 {project.stock.map((stock) => {
-                  const label = stock.name ?? stock.id;
+                  const label = stockLabel(ctx, stock);
                   const change = (patch: Parameters<typeof updateStock>[2]) => edit((p) => updateStock(p, stock.id, patch));
                   return (
                     <tr key={stock.id}>
-                      <td>
-                        <TextInput aria-label={`Name of stock ${label}`} placeholder={stock.id} value={stock.name ?? ""} onChange={(name) => change({ name: name || undefined })} />
+                      <td data-label="Name" className="wide">
+                        <TextInput aria-label={`Name of stock ${label}`} className="stock-name" placeholder={label} value={stock.name ?? ""} onChange={(name) => change({ name: name || undefined })} />
                       </td>
-                      <td>
+                      <td data-label="Material">
                         <select aria-label={`Material of stock ${label}`} value={stock.material} onChange={(event) => change({ material: event.target.value })}>
                           {project.materials.map((material) => (
                             <option key={material.id} value={material.id}>
@@ -205,13 +245,13 @@ export function StockTab({ store }: { store: ProjectStore }) {
                           ))}
                         </select>
                       </td>
-                      <td>
+                      <td data-label="Length">
                         <LengthInput aria-label={`Length of stock ${label}`} value={stock.length} units={units} display={display} onChange={(length) => length !== undefined && change({ length })} />
                       </td>
-                      <td>
+                      <td data-label="Width">
                         <LengthInput aria-label={`Width of stock ${label}`} value={stock.width} units={units} display={display} onChange={(width) => width !== undefined && change({ width })} />
                       </td>
-                      <td>
+                      <td data-label="Qty">
                         <NumberInput
                           aria-label={`Quantity of stock ${label}`}
                           className="narrow"
@@ -223,16 +263,16 @@ export function StockTab({ store }: { store: ProjectStore }) {
                           onChange={(quantity) => change({ quantity: quantity ?? null })}
                         />
                       </td>
-                      <td>
+                      <td data-label={`Cost (${currency})`}>
                         <NumberInput aria-label={`Cost of stock ${label}`} className="narrow" value={stock.cost} optional onChange={(cost) => change({ cost })} />
                       </td>
-                      <td>
+                      <td data-label="Kind">
                         <select aria-label={`Kind of stock ${label}`} value={stock.kind} onChange={(event) => change({ kind: event.target.value as StockKind })}>
                           <option value="sheet">Sheet to buy</option>
                           <option value="offcut">Offcut I own</option>
                         </select>
                       </td>
-                      <td>
+                      <td data-label="Edges" className="wide">
                         <span className="inline">
                           <select
                             aria-label={`Edges of stock ${label}`}
@@ -258,7 +298,7 @@ export function StockTab({ store }: { store: ProjectStore }) {
                           )}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="Use">
                         <input
                           type="checkbox"
                           aria-label={`Use stock ${label}`}
@@ -266,7 +306,7 @@ export function StockTab({ store }: { store: ProjectStore }) {
                           onChange={(event) => change({ enabled: event.target.checked ? undefined : false })}
                         />
                       </td>
-                      <td>
+                      <td className="actions">
                         <button type="button" aria-label={`Delete stock ${label}`} onClick={() => edit((p) => removeStock(p, stock.id))}>
                           Delete
                         </button>

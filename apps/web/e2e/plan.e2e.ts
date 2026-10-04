@@ -209,7 +209,7 @@ test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware
   await expect(page.getByRole("row", { name: /^Side/ })).toContainText("From design: KALLAX 2x2");
 
   await page.getByRole("tab", { name: "Stock" }).click();
-  await expect(page.getByLabel("Length of stock plywood-96x48")).toBeVisible();
+  await expect(page.getByLabel('Length of stock Plywood 96" × 48"')).toBeVisible();
   await expect(page.getByText(/has no stock\./)).toHaveCount(0);
   await optimize(page);
   await expect(page.getByRole("list", { name: "Colours", exact: true }).getByRole("listitem")).toHaveText(["KALLAX 2x2 1 of 2", "KALLAX 2x2 2 of 2"]);

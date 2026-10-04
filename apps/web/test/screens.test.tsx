@@ -1,14 +1,14 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { addCatalogStock, createProject } from "@opencutplan/core";
+import { addCatalogStock, createProject, MATERIAL_PALETTE } from "@opencutplan/core";
 import { describe, expect, it, vi } from "vitest";
 import { SettingsTab, type SettingsSectionId } from "../src/screens/SettingsTab.tsx";
 import { StockTab } from "../src/screens/StockTab.tsx";
 import { ToolsTab } from "../src/screens/ToolsTab.tsx";
 import { DEFAULT_PREFS, type ViewPrefs } from "../src/state/prefs.ts";
 import { openStorage } from "../src/storage/db.ts";
-import { designProject, sampleProject } from "./helpers.ts";
+import { description, designProject, sampleProject } from "./helpers.ts";
 import { renderWithStore } from "./render.tsx";
 
 vi.mock("../src/storage/files.ts", () => ({
@@ -16,33 +16,71 @@ vi.mock("../src/storage/files.ts", () => ({
 }));
 
 describe("StockTab", () => {
-  it("keeps a material that parts use, and deleting stock removes its sheets", async () => {
+  it("keeps a material that parts use and says why, and deleting stock removes its sheets", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <StockTab store={store} />);
-    expect(screen.getByRole("button", { name: "Delete material Plywood" })).toHaveProperty("disabled", true);
-    await userEvent.click(screen.getByRole("button", { name: "Delete stock ply-4x8" }));
+    const remove = screen.getByRole("button", { name: "Delete material Plywood" });
+    expect(remove.getAttribute("aria-disabled")).toBe("true");
+    expect(description(remove)).toBe("Parts and stock use this material. Change them first.");
+    expect(screen.getByRole("tooltip").textContent).toBe("Parts and stock use this material. Change them first.");
+    await userEvent.click(remove);
+    expect(current().project.materials).toHaveLength(1);
+    await userEvent.click(screen.getByRole("button", { name: 'Delete stock Plywood 96" × 48"' }));
     expect(current().project.stock).toEqual([]);
     expect(current().project.plan!.sheets).toEqual([]);
+    expect(description(screen.getByRole("button", { name: "Delete material Plywood" }))).toBe("Parts use this material. Change them first.");
   });
 
   it("keeps a material that only a design uses as its back", () => {
     const project = designProject();
     renderWithStore({ ...project, designs: [{ ...project.designs![0]!, back: { material: "ply6" } }] }, (store) => <StockTab store={store} />);
     const back = screen.getByRole("button", { name: "Delete material Plywood 6" });
-    expect(back).toHaveProperty("disabled", true);
-    expect(back).toHaveProperty("title", "Parts, stock, or designs use this material.");
+    expect(back.getAttribute("aria-disabled")).toBe("true");
+    expect(description(back)).toBe("A design uses this material. Change it first.");
+  });
+
+  it("shows one status line for each material, with Add stock for a material that parts use and that has no stock", async () => {
+    const project = sampleProject();
+    project.materials.push({ id: "mdf", name: "MDF", thickness: 0.75, grained: false }, { id: "oak", name: "Oak", thickness: 0.75, grained: true });
+    project.parts.push({ id: "door", name: "Door", material: "mdf", length: 20, width: 10, quantity: 2, grain: "none" });
+    project.stock.push({ id: "oak-sheet", material: "oak", length: 96, width: 48, quantity: null, kind: "sheet" });
+    const { current } = renderWithStore(project, (store) => <StockTab store={store} />);
+    const status = () => [...screen.getByRole("table", { name: "Materials" }).querySelectorAll(".material-status")].map((cell) => cell.textContent);
+    expect(status()).toEqual(["Used by 2 parts · 1 size", "⚠ Used by 1 part · no stock Add stock Adds unlimited 96\" × 48\" sheets with no price.", "⚠ Used by no parts · 1 size · no price"]);
+    expect(screen.queryByText(/MDF has no stock\./)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Add stock for MDF" }));
+    expect(current().project.stock.map((stock) => stock.material)).toEqual(["ply", "oak", "mdf"]);
+    expect(status()[1]).toBe("⚠ Used by 1 part · 1 size · no price");
+  });
+
+  it("names stock that has no name by its material and size", async () => {
+    const { current } = renderWithStore(sampleProject(), (store) => <StockTab store={store} />);
+    const name = screen.getByRole("textbox", { name: 'Name of stock Plywood 96" × 48"' });
+    expect(name).toHaveProperty("placeholder", 'Plywood 96" × 48"');
+    await userEvent.type(name, "Shop sheet{Enter}");
+    expect(current().project.stock[0]!.name).toBe("Shop sheet");
+    expect(screen.getByRole("textbox", { name: "Name of stock Shop sheet" })).toBeTruthy();
+  });
+
+  it("gives each material its own automatic colour", async () => {
+    const { current } = renderWithStore(sampleProject(), (store) => <StockTab store={store} />);
+    await userEvent.click(screen.getByRole("button", { name: "Add material" }));
+    const added = current().project.materials[1]!;
+    expect(added).not.toHaveProperty("color");
+    expect(screen.getByLabelText("Colour of Plywood")).toHaveProperty("value", MATERIAL_PALETTE[0]);
+    expect(screen.getByLabelText(`Colour of ${added.name}`)).toHaveProperty("value", MATERIAL_PALETTE[1]);
   });
 
   it("lets a sheet use its factory edges or its own trim", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <StockTab store={store} />);
-    const edges = screen.getByRole("combobox", { name: "Edges of stock ply-4x8" });
+    const edges = screen.getByRole("combobox", { name: 'Edges of stock Plywood 96" × 48"' });
     expect(edges).toHaveProperty("value", "project");
     expect(within(edges).getByRole("option", { name: 'Project: trim 1/4"' })).toBeTruthy();
     await userEvent.selectOptions(edges, "use");
     expect(current().project.stock[0]!.trim).toBe(0);
-    expect(screen.queryByLabelText("Trim of stock ply-4x8")).toBeNull();
+    expect(screen.queryByLabelText('Trim of stock Plywood 96" × 48"')).toBeNull();
     await userEvent.selectOptions(edges, "trim");
     expect(current().project.stock[0]!.trim).toBe(0.25);
-    const width = screen.getByLabelText("Trim of stock ply-4x8");
+    const width = screen.getByLabelText('Trim of stock Plywood 96" × 48"');
     await userEvent.clear(width);
     await userEvent.type(width, "1/2{Enter}");
     expect(current().project.stock[0]!.trim).toBe(0.5);
@@ -54,7 +92,7 @@ describe("StockTab", () => {
     const project = sampleProject();
     project.settings.features.trim = false;
     renderWithStore(project, (store) => <StockTab store={store} />);
-    const edges = screen.getByRole("combobox", { name: "Edges of stock ply-4x8" });
+    const edges = screen.getByRole("combobox", { name: 'Edges of stock Plywood 96" × 48"' });
     expect(edges).toHaveProperty("disabled", true);
     expect(edges).toHaveProperty("title", "Choose Trim each edge on the Settings tab to use this.");
   });

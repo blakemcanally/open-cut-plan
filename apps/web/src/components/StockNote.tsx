@@ -8,21 +8,29 @@ interface StockNoteProps {
   onAdd(material: string): void;
 }
 
-/** Says that the material has no stock, and offers its suggested sheet. */
-export function StockNote({ project, material, onAdd }: StockNoteProps) {
+/** The Add stock button for a material, and the sheet that it adds. */
+export function AddStock({ project, material, onAdd }: StockNoteProps) {
   const id = useId();
   const ctx = planContext(project);
   const name = materialName(ctx, material);
   const stock = suggestedStock(project, material);
   return (
-    <p className="warning stock-note">
-      ⚠ {name} has no stock.{" "}
+    <>
       <button type="button" aria-label={`Add stock for ${name}`} aria-describedby={id} onClick={() => onAdd(material)}>
         Add stock
       </button>{" "}
       <span id={id} className="muted">
         Adds unlimited {formatSize(ctx, stock)} sheets {stock.cost === undefined ? "with no price" : `at ${formatMoney(stock.cost, project.settings.currency)} each`}.
       </span>
+    </>
+  );
+}
+
+/** Says that the material has no stock, and offers its suggested sheet. */
+export function StockNote({ project, material, onAdd }: StockNoteProps) {
+  return (
+    <p className="warning stock-note">
+      ⚠ {materialName(planContext(project), material)} has no stock. <AddStock project={project} material={material} onAdd={onAdd} />
     </p>
   );
 }

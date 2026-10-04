@@ -149,6 +149,6 @@ describe("the materials with no stock on the Parts tab and the Stock tab", () =>
     await userEvent.click(tab("Stock"));
     await userEvent.click(screen.getByRole("button", { name: "Add stock for MDF" }));
     expect(screen.queryByText(/MDF has no stock\./)).toBeNull();
-    expect(screen.getByLabelText("Length of stock mdf-96x48")).toBeTruthy();
+    expect(screen.getByLabelText('Length of stock MDF 96" × 48"')).toBeTruthy();
   });
 });

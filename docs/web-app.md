@@ -142,11 +142,21 @@ the message as the description of the field.
 
 ### Stock
 
-A materials table (name, thickness, grain, colour) and a stock table (name, material, size, quantity or unlimited,
-cost, kind, edges, and whether to use it). Stock also has a CSV import. **Edges** is the project choice, **Use factory
-edges**, or **Trim** with a width for that stock. A material that parts, stock, or designs use cannot
-be deleted. Deleting stock also removes its sheets from the plan. As on the Parts tab, each material that parts use and
-that has no enabled stock gets a line with **Add stock**.
+A materials table (name, thickness, grain, colour, and status) and a stock table (name, material, size, quantity or
+unlimited, cost, kind, edges, and whether to use it). Stock also has a CSV import. **Edges** is the project choice,
+**Use factory edges**, or **Trim** with a width for that stock. Deleting stock also removes its sheets from the plan.
+
+- Each material has its own colour. A material with no chosen colour gets the colour of its place in the list, from a
+  set of wood and board colours that are not part colours. Choose a colour in the box to keep it in the file.
+- **Status** gives one line for each material, for example "Used by 13 parts · 1 size · no price". "1 size" counts
+  the enabled stock of the material. "no price" means that no enabled sheet to buy has a cost; "1 with no price" means
+  that some sheets have a cost and one does not. A line with a problem starts with ⚠.
+- A material that parts use and that has no enabled stock says "no stock" and has **Add stock**, as on the Parts tab.
+  **Add stock** adds the suggested sheet of the material.
+- A material that parts, stock, or designs use cannot be deleted. Its **Delete** button stays in the Tab order. On
+  hover or focus, a tip says why, for example "Parts and stock use this material. Change them first." Screen readers
+  read the tip as the description of the button.
+- A stock with no name shows its material and size, for example "Birch plywood 3/4" 96" × 48"", in place of its id.
 
 **Add from catalogue…** opens the [catalogue of sheet goods](catalog.md).
 
