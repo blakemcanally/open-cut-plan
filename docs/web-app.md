@@ -86,7 +86,8 @@ parts from the design, and the Parts tab lists them. The file format is in [form
   sheets of Plywood (18 mm), 2440 mm × 1220 mm." The estimate is a short optimizer run on the parts of this design
   alone, with no limit on the sheet quantities and no offcuts. The full plan can use a different number of sheets.
 - When the project has no sheet stock of a material of the design, **Sheets** says so. For a catalogue material, a
-  button adds its largest sheet size. For a different material, **Add from catalogue…** opens the catalogue.
+  button adds its largest sheet size. For a different material, a button adds a 96" × 48" (2440 mm × 1220 mm) sheet
+  with no cost, and a note tells the user to choose a catalogue material in the **Material** list.
 - **Optimize now** plans every part of the project, as **Optimize** on the Layout tab does, and opens the Layout tab.
 - The front view, the parts, and the sheets update while the user types. Enter or leaving the field applies the value; Escape goes back.
 - A value that makes the design impossible (for example, a material too thin for pocket screws) is not applied. The

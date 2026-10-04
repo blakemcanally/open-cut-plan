@@ -410,15 +410,14 @@ describe("DesignTab cells", () => {
       expect(lines()).toEqual(['About 1 sheet of Birch plywood 3/4" (18 mm), 2438 mm × 1219 mm.']);
     });
 
-    it("opens the catalogue when a material of its own has no stock", async () => {
+    it("adds a sheet of a material of its own, and points to the catalogue materials", async () => {
       const current = renderDesign({ ...designProject(), stock: [] });
-      expect(lines()).toEqual(["⚠ The project has no sheet stock of Plywood 18 (18 mm). Add from catalogue…"]);
-      await userEvent.click(sheets().getByRole("button", { name: "Add from catalogue…" }));
-      const dialog = screen.getByRole("dialog", { name: "Add from catalogue" });
-      await userEvent.click(within(dialog).getByRole("checkbox", { name: "4 × 8 ft" }));
-      await userEvent.click(within(dialog).getByRole("button", { name: "Add 1 size" }));
-      expect(screen.queryByRole("dialog")).toBeNull();
-      expect(current().project.stock).toHaveLength(1);
+      expect(lines()).toEqual([
+        "⚠ The project has no sheet stock of Plywood 18 (18 mm). Add 2440 mm × 1220 mm sheets Or choose a catalogue material in the Material list.",
+      ]);
+      await userEvent.click(sheets().getByRole("button", { name: "Add 2440 mm × 1220 mm sheets" }));
+      expect(current().project.stock).toEqual([{ id: "ply18-2440x1220", material: "ply18", length: 2440, width: 1220, quantity: null, kind: "sheet" }]);
+      expect(lines()).toEqual(["About 1 sheet of Plywood 18 (18 mm), 2440 mm × 1220 mm."]);
     });
   });
 });

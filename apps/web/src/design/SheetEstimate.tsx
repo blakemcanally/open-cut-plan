@@ -1,6 +1,17 @@
-import { addCatalogStock, catalogFor, designSheetEstimate, formatLength, projectMaterialFor, type Design, type Project, type SheetEstimate as Estimate } from "@opencutplan/core";
-import { useDeferredValue, useMemo, useState } from "react";
-import { CatalogDialog } from "../components/CatalogDialog.tsx";
+import {
+  addCatalogStock,
+  catalogFor,
+  designSheetEstimate,
+  formatLength,
+  NEW_SHEET_SIZE,
+  projectMaterialFor,
+  slugify,
+  uniqueId,
+  type Design,
+  type Project,
+  type SheetEstimate as Estimate,
+} from "@opencutplan/core";
+import { useDeferredValue, useMemo } from "react";
 
 interface SheetEstimateProps {
   project: Project;
@@ -21,7 +32,6 @@ export function SheetEstimate({ project, design, disabled, onEdit, onOptimize, o
     const designs = (deferredProject.designs ?? []).map((item) => (item.id === deferredDesign.id ? deferredDesign : item));
     return designSheetEstimate({ ...deferredProject, designs }, deferredDesign);
   }, [deferredProject, deferredDesign]);
-  const [catalog, setCatalog] = useState(false);
   if (!estimate) return null;
 
   const units = project.project.units;
@@ -30,6 +40,11 @@ export function SheetEstimate({ project, design, disabled, onEdit, onOptimize, o
   const materialText = (id: string) => {
     const material = project.materials.find((item) => item.id === id);
     return material ? `${material.name} (${show(material.thickness)})` : id;
+  };
+  const sheet = NEW_SHEET_SIZE[units];
+  const addSheet = (material: string) => {
+    const id = uniqueId(slugify(`${material} ${sheet.length}x${sheet.width}`), new Set(project.stock.map((stock) => stock.id)));
+    onEdit({ ...project, stock: [...project.stock, { id, material, ...sheet, quantity: null, kind: "sheet" }] });
   };
   const sizesText = (entry: Estimate) =>
     entry.sizes.length === 1
@@ -52,9 +67,12 @@ export function SheetEstimate({ project, design, disabled, onEdit, onOptimize, o
                     Add {size.label} sheets from the catalogue
                   </button>
                 ) : (
-                  <button type="button" disabled={disabled} onClick={() => setCatalog(true)}>
-                    Add from catalogue…
-                  </button>
+                  <>
+                    <button type="button" disabled={disabled} onClick={() => addSheet(entry.material)}>
+                      Add {show(sheet.length)} × {show(sheet.width)} sheets
+                    </button>{" "}
+                    Or choose a catalogue material in the Material list.
+                  </>
                 )}
               </li>
             );
@@ -73,16 +91,6 @@ export function SheetEstimate({ project, design, disabled, onEdit, onOptimize, o
         <button type="button" className="primary" disabled={disabled || optimizing} title="Plan every part of the project, then show the Layout tab." onClick={onOptimize}>
           Optimize now
         </button>
-      )}
-      {catalog && (
-        <CatalogDialog
-          project={project}
-          onAdd={(next) => {
-            onEdit(next);
-            setCatalog(false);
-          }}
-          onClose={() => setCatalog(false)}
-        />
       )}
     </section>
   );
