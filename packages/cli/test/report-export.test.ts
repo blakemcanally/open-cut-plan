@@ -51,6 +51,18 @@ describe("report", () => {
     expect((await cli(["report", "sequence", BOOKCASE], withExamples())).stdout).toBe("No cuts.\n");
   });
 
+  it("names the setup of each step, and groups the text by setup in the order by saw setting", async () => {
+    const io = withExamples();
+    const bySheet = (await cli(["report", "sequence", SHELF, "--json"], io)).json();
+    expect(bySheet.steps[0].setup).toBe('Table saw · trim 1/4"');
+    expect((await cli(["report", "sequence", SHELF], io)).stdout).not.toContain("Setup: ");
+    await cli(["settings", "set", SHELF, "orderMode", "setup"], io);
+    const lines = (await cli(["report", "sequence", SHELF], io)).stdout.split("\n");
+    expect(lines[0]).toBe('Setup: Table saw · trim 1/4" · 28 cuts');
+    expect(lines[1]).toBe('Step 1 · Trim 1/4" off the top edge');
+    expect(lines).toContain('Setup: Table saw · fence at 15 3/8" · 14 cuts');
+  });
+
   it("lists the offcuts and marks the saved ones", async () => {
     const io = withExamples();
     const before = (await cli(["report", "offcuts", SHELF, "--json"], io)).json();

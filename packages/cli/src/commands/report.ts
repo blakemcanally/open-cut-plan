@@ -4,6 +4,8 @@ import {
   describeStep,
   factoryEdgeRequest,
   resultSentence,
+  setupLabel,
+  setupRuns,
   formatArea,
   hardwareList,
   LABEL_LAYOUTS,
@@ -94,19 +96,18 @@ const sequence: CommandSpec = {
     { command: `${PROGRAM} report sequence shelf.cutplan.json --sheet 1 --json`, description: "The steps of sheet 1 as JSON." },
   ],
   output:
-    "orderMode, cutLength (the total length of the cut lines of the steps, trims included), steps [{ step, sheet, sheetNumber, kind (rip|crosscut|trim), axis, stage, at, from, to, tool (id or null), toolName, recommendedTool (id or null), chosen, overLimit (maxPiece|maxRip|maxCrosscut|maxCut|maxStages or null), side, setting, requires, releasedNext, remainderNext, piece, released, remainder { x, y, length, width }, title, headline, method, pickUp, actions [string], results [{ kind (part|next|offcut|waste), where, size, parts [string], next }], body }].",
+    "orderMode, cutLength (the total length of the cut lines of the steps, trims included), steps [{ step, sheet, sheetNumber, kind (rip|crosscut|trim), axis, stage, at, from, to, tool (id or null), toolName, recommendedTool (id or null), setup (the tool and what the user sets, such as Table saw · fence at 15 3/8\"), chosen, overLimit (maxPiece|maxRip|maxCrosscut|maxCut|maxStages or null), side, setting, requires, releasedNext, remainderNext, piece, released, remainder { x, y, length, width }, title, headline, method, pickUp, actions [string], results [{ kind (part|next|offcut|waste), where, size, parts [string], next }], body }].",
   async run({ args, options, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const analysis = analyzeProject(project);
     const ref = str(options, "sheet");
     const only = ref === undefined ? null : findSheet(project, ref).sheet.id;
-    const steps = analysis.steps
-      .filter((step) => only === null || step.sheet === only)
-      .map((step) => {
-        const { tool, recommended, releasedPlacements: _released, remainderPlacements: _remainder, ...rest } = step;
-        return { ...rest, tool: tool?.id ?? null, toolName: tool?.name ?? null, recommendedTool: recommended?.id ?? null, ...describeStep(analysis.context, step) };
-      });
+    const shown = analysis.steps.filter((step) => only === null || step.sheet === only);
+    const steps = shown.map((step) => {
+      const { tool, recommended, releasedPlacements: _released, remainderPlacements: _remainder, ...rest } = step;
+      return { ...rest, tool: tool?.id ?? null, toolName: tool?.name ?? null, recommendedTool: recommended?.id ?? null, setup: setupLabel(analysis.context, step), ...describeStep(analysis.context, step) };
+    });
     const lines = (step: (typeof steps)[number]) =>
       [
         step.title,
@@ -116,7 +117,15 @@ const sequence: CommandSpec = {
         ...step.results.map((result) => `  ${resultSentence(result)}`),
       ].join("\n");
     const cutLength = totalCutLength(steps);
-    const text = steps.length === 0 ? "No cuts." : [...steps.map(lines), `${plural(steps.length, "cut step")}. The total cut length is ${len(project, cutLength)}.`].join("\n");
+    let start = 0;
+    const blocks =
+      project.settings.orderMode === "setup"
+        ? setupRuns(analysis.context, shown).flatMap((run) => {
+            const block = steps.slice(start, (start += run.length));
+            return [`Setup: ${block[0]!.setup} · ${plural(run.length, "cut")}`, ...block.map(lines)];
+          })
+        : steps.map(lines);
+    const text = steps.length === 0 ? "No cuts." : [...blocks, `${plural(steps.length, "cut step")}. The total cut length is ${len(project, cutLength)}.`].join("\n");
     return { data: { orderMode: project.settings.orderMode, cutLength, steps }, text, warnings: planWarnings(loaded, analysis, args[0]!) };
   },
 };
