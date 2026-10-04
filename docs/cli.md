@@ -199,7 +199,7 @@ apply in order, so a length after `units` is in the new units. `opencutplan help
 The keys are `name`, `notes`, `units`, `trim` (a length, or `factory`), `orderMode`, `minOffcut.length`,
 `minOffcut.width`, `minOffcut` (`default`), `display.inch`, `display.mm`, `optimizer.timeLimitMs`, `optimizer.seed`
 (a number, or `none`), `optimizer.goal` (`cost`, `offcuts`, or `cuts`), `optimizer.extraCostPercent` (0 to 100),
-`currency`, and `features.<name>` for each feature switch. A change of `units` converts all
+`optimizer.keepGroupsTogether` (`true` or `false`), `currency`, and `features.<name>` for each feature switch. A change of `units` converts all
 lengths in the project. `--factory-edges` is the same as `trim factory`.
 
 ### Optimize
@@ -214,14 +214,22 @@ lengths in the project. `--factory-edges` is the same as `trim factory`.
 - `--time <seconds>` sets the search time. `--seed <n>` sets the random seed.
 - `--goal <goal>` and `--extra-cost <percent>` set the goal and the extra cost for this run only. The stored settings
   do not change. See [`optimizer.md`](optimizer.md#objective).
+- `--keep-groups <true|false>` sets for this run only whether the optimizer keeps the groups together. When it does,
+  it puts the parts of each design unit and each part group on as few sheets as it can, but never at a higher cost.
+  The default is the `optimizer.keepGroupsTogether` setting.
 - `--iterations <n>` tries a fixed number of candidates and ignores the time. Use it when you need the same result
   each time. A timed run can stop at a different candidate on a different computer, even with the same seed.
 
 The text output names the goal. For each material whose plan costs more than the cheapest plan found, it adds a line:
-`Plywood: 3 sheets, 4 % more cost than the cheapest plan found.` The `--json` output has `goal` and
-`extraCostPercent` (the limit of the run), and `materials`: `{ material, score, cheapestCost, extraCostPercent }` for
-each material, where `extraCostPercent` is the extra cost that the plan uses, rounded to one decimal (0 when
-`cheapestCost` is 0).
+`Plywood: 3 sheets, 4 % more cost than the cheapest plan found.` When the groups stay together, a `Groups:` line tells
+which units and groups are on more than one sheet, for example `Groups: Hall KALLAX is on 2 sheets.`, or
+`Groups: Each unit is on one sheet.`
+
+The `--json` output has `goal`, `extraCostPercent` (the limit of the run), `keepGroupsTogether`, and `materials`:
+`{ material, score, cheapestCost, extraCostPercent }` for each material, where `extraCostPercent` is the extra cost
+that the plan uses, rounded to one decimal (0 when `cheapestCost` is 0). The `score` has `groupSpread`: for each unit
+or group, the sheets of the material that hold it minus 1, summed. `groups` lists `{ key, label, material, sheets }`
+for each unit or group that is on more than one sheet of a material.
 
 ```bash
 opencutplan optimize shelf.cutplan.json --iterations 200 --seed 1 --strict

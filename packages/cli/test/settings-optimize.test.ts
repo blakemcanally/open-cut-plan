@@ -20,6 +20,7 @@ describe("settings", () => {
       "optimizer.seed": null,
       "optimizer.goal": "cost",
       "optimizer.extraCostPercent": 10,
+      "optimizer.keepGroupsTogether": true,
       currency: "USD",
       "features.grain": true,
     });
@@ -86,6 +87,15 @@ describe("settings", () => {
     }
     expect(io.files.get(SHELF)).toBe(before);
   });
+
+  it("sets whether the optimizer keeps groups together", async () => {
+    const io = withExamples();
+    const result = await cli(["settings", "set", SHELF, "optimizer.keepGroupsTogether", "false", "--json"], io);
+    expect(result.file(SHELF).settings.optimizer.keepGroupsTogether).toBe(false);
+    const bad = await cli(["settings", "set", SHELF, "optimizer.keepGroupsTogether", "yes", "--json"], io);
+    expect(bad.code).toBe(2);
+    expect(bad.json().error.code).toBe("invalid-value");
+  });
 });
 
 describe("optimize", () => {
@@ -145,7 +155,7 @@ describe("optimize", () => {
 
   it("uses --goal and --extra-cost for one run, and reports the extra cost", async () => {
     const io = withExamples();
-    const result = await cli(["optimize", SHELF, "--iterations", "40", "--seed", "3", "--goal", "offcuts", "--extra-cost", "50", "--json"], io);
+    const result = await cli(["optimize", SHELF, "--iterations", "40", "--seed", "3", "--goal", "offcuts", "--extra-cost", "50", "--keep-groups", "false", "--json"], io);
     expect(result.code).toBe(0);
     const data = result.json();
     expect(data).toMatchObject({ goal: "offcuts", extraCostPercent: 50 });
@@ -158,12 +168,35 @@ describe("optimize", () => {
     expect(data.materials.some((m: { extraCostPercent: number }) => m.extraCostPercent > 0)).toBe(true);
     expect(result.file(SHELF).settings.optimizer).toMatchObject({ goal: "cost", extraCostPercent: 10 });
 
-    const text = await cli(["optimize", SHELF, "--iterations", "40", "--seed", "3", "--goal", "offcuts", "--extra-cost", "50", "--out", "/dev/null"], withExamples());
+    const text = await cli(["optimize", SHELF, "--iterations", "40", "--seed", "3", "--goal", "offcuts", "--extra-cost", "50", "--keep-groups", "false", "--out", "/dev/null"], withExamples());
     expect(text.stdout).toContain("Goal: best offcuts, up to 50 % extra cost.");
     expect(text.stdout).toMatch(/^ {2}.+: \d+ sheets?, [\d.]+ % more cost than the cheapest plan found\.$/m);
     const plain = await cli(["optimize", SHELF, "--iterations", "5", "--out", "/dev/null"], withExamples());
     expect(plain.stdout).toContain("Goal: lowest cost.");
     expect(plain.stdout).not.toContain("% more cost");
+  });
+
+  it("keeps groups together by default, uses --keep-groups for one run, and reports the groups on more than one sheet", async () => {
+    const io = withExamples();
+    const result = await cli(["optimize", SHELF, "--iterations", "60", "--json"], io);
+    const data = result.json();
+    expect(data.keepGroupsTogether).toBe(true);
+    expect(data.materials.map((m: { score: { groupSpread: number } }) => m.score.groupSpread)).toEqual([3, 0]);
+    expect(data.groups).toEqual([
+      { key: "group:3x2 A", label: "3x2 A", material: "bb18", sheets: 2 },
+      { key: "group:3x2 C", label: "3x2 C", material: "bb18", sheets: 2 },
+      { key: "group:4x2 B", label: "4x2 B", material: "bb18", sheets: 2 },
+    ]);
+    const off = await cli(["optimize", SHELF, "--iterations", "60", "--keep-groups", "false", "--json"], withExamples());
+    expect(off.json().keepGroupsTogether).toBe(false);
+    expect(off.json().materials[0].score.groupSpread).toBeGreaterThan(3);
+    expect(off.file(SHELF).settings.optimizer.keepGroupsTogether).toBe(true);
+
+    const text = await cli(["optimize", SHELF, "--iterations", "60", "--out", "/dev/null"], withExamples());
+    expect(text.stdout).toContain("Groups: 3x2 A is on 2 sheets of Baltic birch 18mm; 3x2 C is on 2 sheets of Baltic birch 18mm; 4x2 B is on 2 sheets of Baltic birch 18mm.");
+    const plain = await cli(["optimize", SHELF, "--iterations", "60", "--keep-groups", "false", "--out", "/dev/null"], withExamples());
+    expect(plain.stdout).not.toContain("Groups:");
+    expect((await cli(["optimize", SHELF, "--keep-groups", "yes", "--json"], withExamples())).json().error.code).toBe("invalid-value");
   });
 
   it("says in the help that --continue can give a worse goal measure for the goals offcuts and cuts", async () => {

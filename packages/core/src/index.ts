@@ -43,6 +43,7 @@ export * from "./optimize/goal-setting.ts";
 export * from "./optimize/search.ts";
 export * from "./optimize/worker.ts";
 export * from "./optimize/runs.ts";
+export * from "./optimize/groups.ts";
 export * from "./edit/patch.ts";
 export * from "./edit/parts.ts";
 export * from "./edit/stock.ts";

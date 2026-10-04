@@ -156,6 +156,13 @@ const KEYS: Key[] = [
       withSettings(p, (s) => ({ ...s, optimizer: { ...s.optimizer, extraCostPercent: numberValue(v, "optimizer.extraCostPercent", 0, MAX_EXTRA_COST_PERCENT) } })),
   },
   {
+    key: "optimizer.keepGroupsTogether",
+    values: "true|false",
+    description: "Put the parts of each design unit and each part group on as few sheets as possible, at no extra cost. Default: true.",
+    get: (p) => p.settings.optimizer.keepGroupsTogether,
+    set: (p, v) => withSettings(p, (s) => ({ ...s, optimizer: { ...s.optimizer, keepGroupsTogether: booleanValue(v, "optimizer.keepGroupsTogether") } })),
+  },
+  {
     key: "currency",
     values: "<code>",
     description: "The ISO 4217 code of the stock costs, such as USD or EUR.",
