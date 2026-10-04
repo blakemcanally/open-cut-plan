@@ -75,16 +75,22 @@ function overlapProject(): Project {
   return project;
 }
 
-describe("the plan problems on the Shop tab and the Reports tab", () => {
-  it("shows a banner that names the parts, keeps the Shop tab usable, and opens the Problems list", async () => {
+describe("the plan problems on the Cut tab and the Reports tab", () => {
+  it("shows a banner that names the parts, keeps the Cut tab usable, and opens the Problems list", async () => {
     await renderWorkspace(overlapProject());
-    await userEvent.click(tab("Shop"));
+    await userEvent.click(tab("Cut"));
     const banner = screen.getByRole("status");
     expect(banner.textContent).toContain("✖ The plan is not ready to cut. 2 parts have a layout error: Side 1 and Side 2. 1 part is not on a sheet: Shelf.");
     expect(screen.getByRole("button", { name: "Mark done" })).toBeTruthy();
     await userEvent.click(within(banner).getByRole("button", { name: "Show the problems on the Layout tab" }));
     expect(selectedTab()).toBe("tab-layout");
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: /^Problems/ }));
+  });
+
+  it("does not show the banner on the Assembly tab, because the assembly steps do not use the plan", async () => {
+    await renderWorkspace(overlapProject());
+    await userEvent.click(tab("Assembly"));
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("shows the banner on the Reports tab, and none when every part is placed with no error", async () => {
@@ -125,9 +131,12 @@ describe("a new project", () => {
     await userEvent.click(tab("Layout"));
     await userEvent.click(screen.getByRole("button", { name: "Design tab" }));
     expect(selectedTab()).toBe("tab-design");
-    await userEvent.click(tab("Shop"));
+    await userEvent.click(tab("Cut"));
     await userEvent.click(screen.getByRole("button", { name: "Layout tab" }));
     expect(selectedTab()).toBe("tab-layout");
+    await userEvent.click(tab("Assembly"));
+    await userEvent.click(screen.getByRole("button", { name: "Design tab" }));
+    expect(selectedTab()).toBe("tab-design");
     await userEvent.click(tab("Reports"));
     await userEvent.click(screen.getByRole("button", { name: "Layout tab" }));
     expect(selectedTab()).toBe("tab-layout");

@@ -22,7 +22,6 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { TabLink } from "../components/TabLink.tsx";
 import type { PrintJob } from "../print/PrintView.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
-import { AssemblyChecklist } from "./AssemblyChecklist.tsx";
 import { chooseOrder, chooseTool, cutKey, keepProgress, setStepDone, shopState, writeProgress } from "./progress.ts";
 
 interface ShopTabProps {
@@ -113,7 +112,6 @@ export function ShopTab({ store, analysis, onPrint, openStep = null, cutColors =
             </>
           )}
         </p>
-        <AssemblyChecklist store={store} />
       </div>
     );
   }
@@ -304,7 +302,6 @@ export function ShopTab({ store, analysis, onPrint, openStep = null, cutColors =
           })}
         </section>
       </div>
-      <AssemblyChecklist store={store} />
     </div>
   );
 }

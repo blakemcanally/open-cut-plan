@@ -45,7 +45,7 @@ export function CutLegend({ coloring, tools, steps, onColoring }: CutLegendProps
           </li>
         ))}
       </ul>
-      <p className="muted">Click a cut number to open its step on the Shop tab.</p>
+      <p className="muted">Click a cut number to open its step on the Cut tab.</p>
     </section>
   );
 }

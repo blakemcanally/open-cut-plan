@@ -10,6 +10,7 @@ import { ReportsTab } from "../reports/ReportsTab.tsx";
 import type { WorkerFactory } from "../optimizer/useOptimizer.ts";
 import { usePrefs } from "../state/prefs.ts";
 import { useAutosave } from "../state/useAutosave.ts";
+import { AssemblyTab } from "../shop/AssemblyTab.tsx";
 import { ShopTab } from "../shop/ShopTab.tsx";
 import { useProject } from "../state/useProject.ts";
 import type { Storage } from "../storage/db.ts";
@@ -26,7 +27,8 @@ export const TABS = [
   { id: "stock", label: "Stock" },
   { id: "tools", label: "Tools" },
   { id: "layout", label: "Layout" },
-  { id: "shop", label: "Shop" },
+  { id: "shop", label: "Cut" },
+  { id: "assembly", label: "Assembly" },
   { id: "reports", label: "Reports" },
   { id: "settings", label: "Settings" },
 ] as const;
@@ -261,6 +263,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
             />
           )}
           {tab === "shop" && <ShopTab store={store} analysis={analysis} onPrint={setPrintJob} openStep={shopStep} cutColors={prefs.cutColors} />}
+          {tab === "assembly" && <AssemblyTab store={store} onPrint={setPrintJob} />}
           {tab === "reports" && <ReportsTab store={store} analysis={analysis} prefs={prefs} onPrefs={setPrefs} onPrint={setPrintJob} />}
           {tab === "settings" && <SettingsTab store={store} prefs={prefs} onPrefs={setPrefs} section={settingsSection} onSection={setSettingsSection} />}
         </div>

@@ -273,7 +273,7 @@ describe("ReportsTab", () => {
     expect(design.getByRole("img", { name: "Front view of Hall" }).querySelector("svg")).toBeTruthy();
     expect(design.queryByText("Hall as SVG")).toBeNull();
     expect(design.getAllByRole("listitem")[0]!.textContent).toBe("Drill the pocket holes");
-    expect(design.getByText("The Shop tab has these steps as a checklist.")).toBeTruthy();
+    expect(design.getByText("The Assembly tab has these steps as a checklist, with a drawing for each step.")).toBeTruthy();
     expect(booklet().getByRole("checkbox", { name: "Assembly steps" })).toHaveProperty("checked", true);
     await userEvent.click(booklet().getByRole("button", { name: "Print booklet" }));
     expect(onPrint).toHaveBeenCalledWith({ kind: "booklet", sections: ["title", "shopping", "sheets", "sequence", "assembly"] });

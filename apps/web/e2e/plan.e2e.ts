@@ -73,7 +73,7 @@ test("plans a project from CSV, keeps shop progress, and prints and exports it",
 
   await optimize(page);
 
-  await page.getByRole("tab", { name: "Shop" }).click();
+  await page.getByRole("tab", { name: "Cut" }).click();
   await expect(page.getByRole("heading", { level: 2 })).toHaveText(/^Step 1 · /);
   await expect(page.locator(".shop-pickup")).toHaveText(/^Pick up the full sheet 96" × 48" \(sheet 1\)\.$/);
   await expect(page.locator(".shop-actions li").first()).toHaveText(/\.$/);
@@ -83,7 +83,7 @@ test("plans a project from CSV, keeps shop progress, and prints and exports it",
   await expect(page.getByRole("heading", { level: 2 })).toHaveText(/^Step 2 · /);
   await expect.poll(() => savedData(page)).toContain('"progress"');
   await page.reload();
-  await page.getByRole("tab", { name: "Shop" }).click();
+  await page.getByRole("tab", { name: "Cut" }).click();
   await expect(page.getByRole("checkbox", { name: "Step 1 done" })).toBeChecked();
   const tool = page.getByRole("combobox", { name: "Tool", exact: true });
   const other = (await tool.inputValue()) === "track-saw" ? "table-saw" : "track-saw";
@@ -216,14 +216,21 @@ test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware
   await expect(page.getByRole("list", { name: "Colours", exact: true }).getByRole("listitem")).toHaveText(["KALLAX 2x2 1 of 2", "KALLAX 2x2 2 of 2"]);
   await expect(page.locator('[data-copy-key="kallax-2x2-top#1"] rect.fill')).toHaveAttribute("fill", "#123456");
 
-  await page.getByRole("tab", { name: "Shop" }).click();
-  const assembly = page.getByRole("region", { name: "Assembly" });
+  await page.getByRole("tab", { name: "Cut" }).click();
+  await expect(page.getByText(/assembly steps done/)).toHaveCount(0);
+  await page.getByRole("tab", { name: "Assembly" }).click();
+  const assembly = page.getByRole("tabpanel", { name: "Assembly" });
+  await expect(assembly.locator('li[aria-current="step"] .assembly-drawing svg [data-state="current"]').first()).toBeVisible();
   await assembly.getByRole("checkbox", { name: "Assembly step 1 done" }).check();
   await expect(assembly.getByText(/^1 of \d+ assembly steps done\.$/)).toBeVisible();
   await expect.poll(() => savedData(page)).toContain('"assemblyProgress"');
+  await assembly.getByRole("button", { name: "Enlarge the drawing of step 2" }).click();
+  await expect(page.getByRole("dialog", { name: /^Step 2 of \d+: Mark the shelf positions$/ }).locator("svg [data-mark]").first()).toBeVisible();
+  await page.keyboard.press("Escape");
   await page.reload();
-  await page.getByRole("tab", { name: "Shop" }).click();
+  await page.getByRole("tab", { name: "Assembly" }).click();
   await expect(page.getByRole("checkbox", { name: "Assembly step 1 done" })).toBeChecked();
+  await page.getByRole("tab", { name: "Cut" }).click();
   await expect(page.getByRole("checkbox", { name: "Step 1 done", exact: true })).not.toBeChecked();
 
   await page.getByRole("tab", { name: "Reports" }).click();
@@ -234,6 +241,7 @@ test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware
   await page.emulateMedia({ media: "print" });
   await expect(page.locator(".print-root").getByRole("heading", { name: "E2E kallax: KALLAX 2x2" })).toBeVisible();
   await expect(page.locator(".print-root .print-elevation svg")).toBeVisible();
+  await expect(page.locator(".print-root .print-step-drawing svg").first()).toBeVisible();
   await expect(page.locator(".print-root .print-sheet")).toHaveCount(0);
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
   await page.emulateMedia({ media: "screen" });

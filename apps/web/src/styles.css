@@ -222,12 +222,22 @@ fieldset.choice label { display: inline-flex; align-items: center; gap: 4px; }
 .cell[aria-selected="true"] { background: #eaf1fb; border-color: var(--focus); box-shadow: inset 0 0 0 1px var(--focus); }
 select[aria-invalid="true"] { border-color: var(--bad); outline: 2px solid var(--bad); }
 table.grid tr.generated td { color: var(--muted); }
-.assembly { margin-top: 24px; max-width: 70ch; }
+.assembly { max-width: 980px; }
+.assembly h2 { font-size: 18px; margin: 14px 0 4px; }
+.assembly-key { margin: 0 0 8px; font-size: 13px; }
 .assembly-steps { list-style: none; padding: 0; margin: 0; }
-.assembly-steps li { display: flex; gap: 8px; align-items: flex-start; padding: 4px 6px; }
-.assembly-steps li p { margin: 2px 0 0; }
-.assembly-steps li.done { color: var(--muted); }
-.assembly-steps input[type="checkbox"] { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.assembly-steps li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 8px; border-bottom: 1px solid var(--line); }
+.assembly-steps li p { margin: 2px 0 0; max-width: 70ch; }
+.assembly-steps li.done .assembly-text { color: var(--muted); }
+.assembly-steps li.done .assembly-drawing { opacity: 0.6; }
+.assembly-steps li[aria-current="step"] { background: #eaf1fb; outline: 1px solid var(--focus); border-radius: 4px; }
+.assembly-steps li[aria-current="step"] .assembly-text { font-size: 16px; }
+.assembly-steps input[type="checkbox"] { width: 20px; height: 20px; margin: 2px 0 0; }
+.assembly-drawing { display: block; width: 112px; height: 112px; padding: 4px; background: #fff; border: 1px solid var(--line); border-radius: 6px; cursor: zoom-in; }
+.assembly-thumb, .assembly-thumb svg { display: block; width: 100%; height: 100%; }
+.assembly-steps li[aria-current="step"] .assembly-drawing { width: 300px; height: 300px; }
+.assembly-steps li:not([aria-current="step"]) [data-label] { display: none; }
+.assembly-large svg { display: block; width: 100%; height: auto; max-height: 60vh; }
 
 .reports { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); gap: 16px 28px; align-items: start; }
 .report-summary { grid-column: 1 / -1; }
@@ -304,6 +314,10 @@ table.grid tr.generated td { color: var(--muted); }
   .print-steps li { display: flex; gap: 6pt; margin: 0 0 5pt; break-inside: avoid; }
   .print-box { font-size: 13pt; line-height: 1; }
   .print-elevation svg { display: block; width: auto; height: 80mm; max-width: 100%; margin: 0 0 8pt; }
+  .print-step-text { flex: 1; min-width: 0; }
+  .print-step-drawing { flex: none; width: 30mm; height: 30mm; }
+  .print-step-drawing svg { display: block; width: 100%; height: 100%; }
+  .print-step-drawing [data-label] { display: none; }
   .print-root table.grid th, .print-root table.grid td { border-bottom: 0.5pt solid #999; }
   .label-page { position: relative; overflow: hidden; }
   .label { position: absolute; box-sizing: border-box; padding: 0.06in 0.1in; overflow: hidden; display: flex; flex-direction: column; justify-content: center; font-size: 8pt; line-height: 1.2; }
@@ -334,4 +348,9 @@ table.grid tr.generated td { color: var(--muted); }
   table.grid.cards td.wide, table.grid.cards td.actions { grid-column: 1 / -1; }
   table.grid.cards td input[type="text"], table.grid.cards td input.narrow, table.grid.cards td select { width: 100%; min-width: 0; }
   table.grid.cards .material-status { min-width: 0; }
+  .assembly-steps li { gap: 8px; padding: 8px 4px; }
+  .assembly-drawing { width: 76px; height: 76px; }
+  .assembly-steps li[aria-current="step"] .assembly-drawing { grid-column: 1 / -1; width: 100%; height: auto; }
+  .assembly-steps li[aria-current="step"] .assembly-thumb, .assembly-steps li[aria-current="step"] .assembly-thumb svg { height: auto; max-height: 55vh; }
+  .assembly-large svg { max-height: 50vh; }
 }

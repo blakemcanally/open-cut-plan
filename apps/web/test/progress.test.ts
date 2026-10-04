@@ -114,6 +114,13 @@ describe("assembly progress", () => {
     expect(readProgress(kept)?.done).toEqual([1]);
     expect(writeProgress(kept, null, "assemblyProgress").extensions).toEqual({ [APP_EXTENSION]: { progress: readProgress(ticked) } });
   });
+
+  it("takes the fingerprint from the text of the steps only, so the boards of a step do not make old ticks stale", () => {
+    const groups = assemblyGroups(designProject());
+    const text = groups.map((group) => ({ ...group, steps: group.steps.map(({ title, body }) => ({ title, body })) }));
+    expect(groups[0]!.steps[4]!.boards).toHaveLength(3);
+    expect(assemblyKey(groups)).toBe(assemblyKey(text));
+  });
 });
 
 describe("chooseTool", () => {

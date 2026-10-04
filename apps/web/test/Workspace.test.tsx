@@ -25,8 +25,11 @@ describe("Workspace", () => {
     expect(screen.getByRole("tab", { name: "Layout" }).getAttribute("aria-selected")).toBe("true");
     screen.getByRole("tab", { name: "Layout" }).focus();
     await userEvent.keyboard("{ArrowRight}");
-    expect(screen.getByRole("tab", { name: "Shop" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: "Cut" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("heading", { level: 2 }).textContent).toMatch(/^Step 1 · /);
+    await userEvent.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: "Assembly" }).getAttribute("aria-selected")).toBe("true");
+    await userEvent.keyboard("{ArrowLeft}");
     await userEvent.keyboard("{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}");
     expect(screen.getByRole("tab", { name: "Parts" }).getAttribute("aria-selected")).toBe("true");
     expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Parts" }));
@@ -50,10 +53,10 @@ describe("Workspace", () => {
     expect(list.scrollLeft).toBe(400 - 300 - 32);
   });
 
-  it("opens the step of a cut number on the Shop tab, and a later visit to the Shop tab starts at the first open step", async () => {
+  it("opens the step of a cut number on the Cut tab, and a later visit to the Cut tab starts at the first open step", async () => {
     await renderWorkspace();
     await userEvent.click(screen.getByRole("button", { name: /^Step 3, / }));
-    expect(screen.getByRole("tab", { name: "Shop" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: "Cut" }).getAttribute("aria-selected")).toBe("true");
     const title = screen.getByRole("heading", { level: 2 });
     expect(title.textContent).toMatch(/^Step 3 · /);
     expect(document.activeElement).toBe(title);
@@ -62,7 +65,7 @@ describe("Workspace", () => {
     await userEvent.keyboard("{Enter}");
     expect(screen.getByRole("heading", { level: 2 }).textContent).toMatch(/^Step 4 · /);
     await userEvent.click(screen.getByRole("tab", { name: "Layout" }));
-    await userEvent.click(screen.getByRole("tab", { name: "Shop" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Cut" }));
     expect(screen.getByRole("heading", { level: 2 }).textContent).toMatch(/^Step 1 · /);
   });
 
@@ -200,10 +203,10 @@ describe("Workspace", () => {
     expect(part("Side 2").getAttribute("aria-label")).not.toContain("across the grain");
   });
 
-  it("prints the cut sequence from the Shop tab and removes the print pages after the dialog", async () => {
+  it("prints the cut sequence from the Cut tab and removes the print pages after the dialog", async () => {
     const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
     await renderWorkspace();
-    await userEvent.click(screen.getByRole("tab", { name: "Shop" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Cut" }));
     await userEvent.click(screen.getByRole("button", { name: "Print cut sequence" }));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
     const root = document.body.querySelector(":scope > .print-root");

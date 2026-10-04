@@ -123,7 +123,7 @@ export function ReportsTab({ store, analysis, prefs, onPrefs, onPrint }: Reports
                         ))}
                       </ol>
                       <p className="muted">
-                        The <TabLink tab="shop">Shop tab</TabLink> has these steps as a checklist.
+                        The <TabLink tab="assembly">Assembly tab</TabLink> has these steps as a checklist, with a drawing for each step.
                       </p>
                     </div>
                   )}

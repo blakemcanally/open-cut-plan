@@ -290,7 +290,7 @@ export function SheetView(props: SheetViewProps) {
                     open();
                   }}
                 >
-                  <title>{`${name}, stage ${step.stage}. Open it on the Shop tab.`}</title>
+                  <title>{`${name}, stage ${step.stage}. Open it on the Cut tab.`}</title>
                   <circle cx={mx} cy={my} r={8} fill={byTool && toolWarning(step) ? TOOL_WARNING_FILL : "#fff"} stroke={color} />
                   <text x={mx} y={my} fontSize={9} textAnchor="middle" dominantBaseline="central" fill={color}>
                     {step.step}
