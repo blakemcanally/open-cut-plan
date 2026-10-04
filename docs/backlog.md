@@ -4,6 +4,8 @@ Requests from a review of the app on 2026-10-04. Each item has the request and w
 
 ## 1. Keep parts from the same design on the same sheet
 
+**Status:** Done.
+
 **Request:** The optimizer puts the parts of one design (for example, all parts of "Shelf 1") on one sheet when it can.
 Now it mixes parts from all designs on all sheets.
 
@@ -17,6 +19,18 @@ not stay together.
 - Put this score after cost, so that it never makes the plan cost more.
 - Add a part order that sorts by group first, then by size.
 - Make it a setting, because some users want the least waste and do not care about groups.
+
+**Chosen approach:**
+
+- A group is a colour key from item 3: one unit of a design, or one group of parts without a design.
+- The score has `groupSpread`: for each group, the sheets of the material that hold it minus 1, summed. The goal
+  `cost` compares it after the cost. The goals `offcuts` and `cuts` compare it after the cost limit.
+- File format 1.5 adds `settings.optimizer.keepGroupsTogether`. It is true when the file does not give it. When it is
+  false, the optimizer gives the same plans as before.
+- The search adds a part order with the groups together, moves of whole groups, and group affinity in the
+  constructors. The result puts the sheets that share a group next to each other.
+- The Settings tab has "Keep each unit and group together". The Layout tab and the CLI tell which units and groups
+  are on more than one sheet.
 
 ## 2. Put parts against the factory edges
 
