@@ -34,6 +34,8 @@ not stay together.
 
 ## 2. Put parts against the factory edges
 
+**Status:** Done.
+
 **Request:** The optimizer and the cut plan put parts against the factory edges, mostly long parts. A factory edge on
 a long part is straighter and looks better than a cut edge.
 
@@ -46,6 +48,22 @@ touch it. Nothing makes the optimizer *prefer* it.
 - Add a score for the parts with this option that are not against a factory edge. Fewer is better.
 - Optional: a project setting that gives this option to every part longer than a set length.
 - Show the factory edges of each part in the layout and on the labels.
+
+**Chosen approach:**
+
+- File format 1.6 adds `parts[].factoryEdge` (`"long"` or `"none"`, an open set of values) and the rule
+  `settings.factoryEdge.minLength`. The choice of a part comes before the rule. A request for both long edges is
+  left for a later version.
+- A sheet has factory edges when it is sheet stock with no trim. Owned offcuts and trimmed sheets have none. The
+  validator gives a `factory-edge` warning for each placed copy that does not get its factory edge.
+- The score has `factoryEdgeMisses`. The goal `cost` compares it after the cost. The goals `offcuts` and `cuts`
+  compare it after the cost limit. So it never makes a plan cost more or leave more copies unplaced.
+- To mirror a sheet does not help: all four edges of a sheet are factory edges, or none are. In its place, the search
+  pushes the pieces of the cut tree of each candidate against the edges of the sheet, and keeps the pushed copy when
+  it is better. The random moves start from the best plan when the misses do not count, so a project with no
+  requests gets the same plans as before.
+- The Layout tab marks the factory edges of the parts that ask for one, and **Push to factory edges** does the same
+  push on one sheet. The Parts tab, the Settings tab, the labels, the CLI, and the cut list show the request.
 
 ## 3. Give each copy of a design its own colour, and let the user choose colours
 
