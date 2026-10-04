@@ -308,6 +308,8 @@ smaller, or show the size only, when the part is small. Keep the toolbar height 
 
 ## 13. Group the Shop steps by saw setting
 
+**Status:** Done.
+
 **Size:** M.
 
 **Problem:** "Group cuts with the same saw setting" is in Settings → Plan, where users do not find it. When it is on,
@@ -318,7 +320,22 @@ example "Table saw · stop at 30" · 4 cuts". A note shows when the setup change
 
 **Files:** `apps/web/src/shop/ShopTab.tsx`, `packages/core/src/sequence/sequence.ts`.
 
+**Chosen approach:**
+
+- **Order** on the Shop tab (**By sheet** / **By saw setting**) sets `settings.orderMode`. **Cut order** in Settings →
+  Plan shows the same choice. A change keeps the ticks and the current step on their cuts.
+- By saw setting, the list has a heading for each setup ("Table saw · fence at 15 3/8" · 4 cuts"), and each step
+  shows its sheet. A note "New setup: …" shows on the current step when its setup is not the setup of the step
+  before.
+- The setup order starts the next setup with the first one that can finish in one run, so a setting is not split
+  only because one of its cuts waits for another setting. A property test checks that the order keeps every cut after
+  the cut that makes its piece. A setup can still split when two settings wait for each other (a rip, then a
+  crosscut, then a rip again).
+- `report sequence` gives the `setup` of each step, and groups the text by setup in the order by saw setting.
+
 ## 14. Make the tool limits realistic
+
+**Status:** Done.
 
 **Size:** M–L.
 
@@ -330,6 +347,18 @@ narrow strips. Add help text and presets for common saws.
 
 **Files:** `apps/web/src/screens/ToolsTab.tsx`, `packages/core/src/sequence/tools.ts`, `format/schema.ts`, `schema/`,
 `docs/cut-analysis.md`. This item changes the file format.
+
+**Chosen approach:**
+
+- File format 1.8: a table saw has `maxCrosscutPiece`, the largest piece for a crosscut. When it is missing,
+  `maxPiece` is the limit for a crosscut too, so older files mean the same thing. A new tool type `"miter-saw"` has
+  `maxCut`, the widest piece that it can cut across. It makes crosscuts only, on a piece of any length. A reader of
+  1.7 or earlier refuses a file with a mitre saw.
+- A new project's table saw has a crosscut piece of 48" × 24" (1220 × 610 mm). So a 96" × 15 3/4" strip goes to the
+  track saw or a mitre saw, not to the table saw with the stop at 30". The cut tree sees the new limits too.
+- The Tools tab has help text for each type, the crosscut piece fields, and **Typical saw** presets: a 10" jobsite
+  table saw, a cabinet saw with a crosscut sled, track saws with 55" and 118" rails, and a 12" sliding mitre saw.
+  `tools add --preset` and `--type miter-saw` do the same in the CLI.
 
 ## 15. Put the Reports tab in three sections: Buy, Cut, and Build
 

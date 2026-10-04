@@ -146,9 +146,18 @@ that has no enabled stock gets a line with **Add stock**.
 ### Tools
 
 The tools in the order the cut analysis tries them. Each tool has a name, a kerf, the limits for its type, and an
-**Enabled** switch. **Up** and **Down** change the order. A new project starts with a table saw and a track saw,
-with limits that send the breakdown of full sheets to the track saw. **Add tool** gives a new table saw or track saw
-the same limits.
+**Enabled** switch. A short text under the name of each tool tells what each limit means. **Up** and **Down** change
+the order. A new project starts with a table saw and a track saw, with limits that send the breakdown of full sheets
+and the crosscuts of long strips to the track saw. **Add tool** gives a new table saw, track saw, or mitre saw the
+same limits.
+
+- A table saw has **Widest rip**, **Longest crosscut**, **Largest piece for a rip**, and **Largest piece for a
+  crosscut**. A blank crosscut piece uses the piece for a rip.
+- A mitre saw makes crosscuts only. Its **Widest crosscut** is the widest piece that it can cut across. The piece
+  can have any length.
+- **Typical saw** and **Add typical saw** add a common saw with typical values: a 10" jobsite table saw, a cabinet
+  saw with a crosscut sled, a track saw with a 55" or a 118" rail, or a 12" sliding mitre saw. The values are in the
+  units of the project. The user measures the saw and changes them.
 
 **Tool profiles** keep a set of tools in the browser for use in other projects. A profile stores its units; using a
 millimetre profile in an inch project converts the kerf and limits.
@@ -245,7 +254,8 @@ list follows.
   **Waste**. On the drawing, the piece to pick up has an outline and the rest of the sheet is pale; the current cut
   is thick and filled, and the cuts that are done are grey.
 - **Tool** changes the tool of the current cut. The recommended tool has "(recommended)"; a tool that is over one of
-  its limits for the cut says which limit, and the first action warns about it. The file keeps the choice. The ticks
+  its limits for the cut says which limit, and the first action warns about it. A mitre saw on a rip says
+  "(crosscuts only)". The file keeps the choice. The ticks
   stay on their cuts.
 - A colour box beside **Tool** shows the colour of the tool, as on the Layout tab. The box is red when the cut has
   no tool, or when the tool is over one of its limits.

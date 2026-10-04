@@ -1,7 +1,7 @@
 # OpenCutPlan
 
-An open-source planner for cutting plywood and other sheet goods with a table saw, track saw, circular saw, or panel
-saw. This repository contains the core library (file format, CSV, cut analysis, and the optimizer) and a web app to enter
+An open-source planner for cutting plywood and other sheet goods with a table saw, track saw, circular saw, panel
+saw, or mitre saw. This repository contains the core library (file format, CSV, cut analysis, and the optimizer) and a web app to enter
 parts, stock, and tools, to edit layouts, to follow the cut sequence at the saw, and to print sheet diagrams, the cut
 sequence, a shopping list, and part labels.
 

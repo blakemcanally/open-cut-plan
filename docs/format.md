@@ -1,4 +1,4 @@
-# The OpenCutPlan file format (`.cutplan.json`), version 1.7
+# The OpenCutPlan file format (`.cutplan.json`), version 1.8
 
 An OpenCutPlan file describes a sheet-goods cutting project: the parts to cut, the stock to cut them from, the tools
 available, settings, and optionally a layout of parts on sheets with an ordered list of cuts.
@@ -21,7 +21,7 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | Always `"opencutplan"`. |
-| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.7"`. |
+| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.8"`. |
 | `project` | yes | `name` (text), `units` (`"in"` or `"mm"`), optional `notes`, `created`, `modified` (should be ISO 8601 date-times; readers accept any string). |
 | `materials` | yes | Materials; see below. |
 | `stock` | yes | Stock pieces available for cutting. |
@@ -200,10 +200,14 @@ no limit.
 
 | `type` | Limits |
 |---|---|
-| `"table-saw"` | `maxRip` (fence-to-blade capacity), `maxCrosscut` (sled or mitre-gauge capacity), `maxPiece` {`length`, `width`} (largest piece the user can control) |
+| `"table-saw"` | `maxRip` (fence-to-blade capacity), `maxCrosscut` (sled or mitre-gauge capacity), `maxPiece` {`length`, `width`} (largest piece the user can control for a rip), `maxCrosscutPiece` {`length`, `width`} (added in 1.8: largest piece the user can control for a crosscut) |
 | `"track-saw"` | `maxCut` (track length) |
 | `"circular-saw"` | `maxCut` (straightedge length) |
 | `"panel-saw"` | `maxCut`, `maxStages` (deepest cut stage) |
+| `"miter-saw"` | Added in 1.8. `maxCut` (the widest piece that the saw can cut across). A mitre saw makes crosscuts only, on a piece of any length. |
+
+When a table saw has no `maxCrosscutPiece`, `maxPiece` is the limit for a crosscut too. So a file from 1.7 or earlier
+means the same thing in 1.8.
 
 ## Settings
 
@@ -253,6 +257,8 @@ uses gets a new id (`s1` becomes `s1-2`) with a warning, because edits find a sh
 - Readers must load a file whose `plan` has invalid references, and report the problems as warnings.
 - The value sets of `type`, `grain`, `kind`, `units`, `orderMode`, `axis`, and `display.inch`/`display.mm` are fixed
   within a major version. Adding a value requires a new major version, so a reader can refuse a value it does not know.
+  There is one exception: version 1.8 adds the tool type `"miter-saw"`. A reader of 1.7 or earlier refuses a file
+  with a mitre saw. It reads a 1.8 file with no mitre saw.
 - `designs[].system`, `designs[].mount`, `parts[].factoryEdge`, and `settings.optimizer.goal` are not fixed: a minor
   version can add values.
 

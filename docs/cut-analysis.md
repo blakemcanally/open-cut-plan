@@ -112,15 +112,26 @@ enabled tool.
 | Tool | Can make the cut when |
 |---|---|
 | Table saw, rip | the piece fits `maxPiece` (either orientation), and the cut-off side or the remainder is at most `maxRip` wide; the side that fits goes against the fence, the cut-off side first. A zero-size cut-off side does not count, except on a trim cut |
-| Table saw, crosscut | the piece fits `maxPiece`, and the cut is at most `maxCrosscut` long |
+| Table saw, crosscut | the piece fits `maxCrosscutPiece` (either orientation), or `maxPiece` when the tool has no `maxCrosscutPiece`, and the cut is at most `maxCrosscut` long |
 | Track saw, circular saw | the cut is at most `maxCut` long |
 | Panel saw | the cut is at most `maxCut` long, and its stage is at most `maxStages` |
+| Mitre saw | the cut is a crosscut, and it is at most `maxCut` long; the piece can have any length |
 
 Trim cuts use the rip or crosscut rule for their direction.
 
-A new project has a table saw (largest piece 96" × 24", widest rip 24", longest crosscut 24"; 2440 × 610, 610, and
-610 mm) and then a track saw (longest cut 110", 2800 mm, for a 118" or 3000 mm rail). So the track saw breaks down
-full sheets, and the table saw cuts the pieces that fit it.
+`toolLimit` gives the first limit that a cut is over: `maxPiece`, `maxCrosscutPiece`, `maxRip`, `maxCrosscut`,
+`maxCut`, `maxStages`, or `crosscutOnly` (a mitre saw on a rip or a trim along the length).
+
+A new project has a table saw (largest piece for a rip 96" × 24", largest piece for a crosscut 48" × 24", widest rip
+24", longest crosscut 24"; 2440 × 610, 1220 × 610, 610, and 610 mm) and then a track saw (longest cut 110", 2800 mm,
+for a 118" or 3000 mm rail). So the track saw breaks down full sheets and crosscuts long strips, and the table saw
+cuts the pieces that fit it. For example, the table saw does not crosscut a 96" × 15 3/4" strip; the track saw does.
+A new mitre saw has a longest cut of 14" (350 mm).
+
+`TOOL_PRESETS` lists typical values for common saws: a 10" jobsite table saw, a cabinet saw with a crosscut sled, a
+track saw with a 55" or a 118" rail (1400 or 3000 mm), and a 12" (305 mm) sliding mitre saw. `presetTool` and
+`addPresetTool` make a tool from a preset, in inches or millimetres. The values are typical; the user checks them
+against the saw.
 
 A sheet can store a chosen tool for a cut (`toolChoices`). The step then uses that tool, even when the cut is over one
 of its limits; `overLimit` names the limit, and the step text warns first. `recommended` is the tool that the rules
@@ -161,8 +172,8 @@ one `results` item for each side of the cut. For example:
 
 A result is a `part` (finished), `next` (a later step cuts it), `offcut` (set it aside), or `waste`. The measured side
 comes first and says where it is at the saw. Trims name the edge ("Trim 1/4" off the top edge"). A table saw rip sets
-the fence; a table saw crosscut and a panel saw set the stop; a track saw, a circular saw, and a step with no tool
-mark the cut. A step with no tool starts with a warning. `resultSentence(result)` gives one result as a sentence;
+the fence; a table saw crosscut, a panel saw, and a mitre saw set the stop; a track saw, a circular saw, and a step
+with no tool mark the cut. A step with no tool starts with a warning. `resultSentence(result)` gives one result as a sentence;
 `body` joins the pick-up line, the actions, and the result sentences.
 
 `setupLabel(context, step)` names the setup of a step: the tool and what the user sets, for example

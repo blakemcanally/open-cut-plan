@@ -128,8 +128,8 @@ files. `parts` also has `colors` and `group-color` for the colours of the layout
 | `materials remove <file> <id>...` | Removes materials. A material in use gives exit 1. | `opencutplan materials remove shelf.cutplan.json mdf-3-4` |
 | `tools list <file>` | Lists the saws in preference order. | `opencutplan tools list shelf.cutplan.json` |
 | `tools get <file> <id>` | Shows one saw. | `opencutplan tools get shelf.cutplan.json table-saw` |
-| `tools add <file>` | Adds a saw with its kerf and limits. | `opencutplan tools add shelf.cutplan.json --type track-saw --max-cut 110 --position 1` |
-| `tools set <file> <id>` | Changes a saw. | `opencutplan tools set shelf.cutplan.json table-saw --max-rip 30` |
+| `tools add <file>` | Adds a saw with its kerf and limits. `--type` is `table-saw`, `track-saw`, `circular-saw`, `panel-saw`, or `miter-saw`. `--preset` adds a common saw with typical values: `jobsite-table-saw`, `cabinet-saw-sled`, `track-saw-55`, `track-saw-118`, or `sliding-miter-saw`. Other options change the values. | `opencutplan tools add shelf.cutplan.json --type track-saw --max-cut 110 --position 1` |
+| `tools set <file> <id>` | Changes a saw. A table saw has `--max-piece-length` and `--max-piece-width` for a rip, and `--max-crosscut-piece-length` and `--max-crosscut-piece-width` for a crosscut. | `opencutplan tools set shelf.cutplan.json table-saw --max-crosscut-piece-length 48 --max-crosscut-piece-width 24` |
 | `tools remove <file> <id>...` | Removes saws. | `opencutplan tools remove shelf.cutplan.json track-saw` |
 | `tools move <file> <id>` | Changes the place of a saw in the preference order. | `opencutplan tools move shelf.cutplan.json track-saw --position 1` |
 
