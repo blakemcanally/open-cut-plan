@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { analyzeProject, escapeXml, PART_PALETTE, partColors, regenerateDesigns, sheetSvg, sheetSvgExtent, stageColor, type Project } from "../../src/index.ts";
+import {
+  analyzeProject,
+  defaultTools,
+  escapeXml,
+  PART_PALETTE,
+  partColors,
+  regenerateDesigns,
+  sequencePlan,
+  setToolChoice,
+  sheetSvg,
+  sheetSvgExtent,
+  stageColor,
+  TOOL_COLORS,
+  TOOL_WARNING_COLOR,
+  TOOL_WARNING_FILL,
+  type Project,
+} from "../../src/index.ts";
 import { designProject, kallaxDesign, sampleProject } from "../helpers.ts";
 
 function drawn(project: Project, options?: Parameters<typeof sheetSvg>[3]) {
@@ -114,6 +130,35 @@ describe("sheetSvg", () => {
     expect(svg).not.toMatch(/data-step="2"[^>]*data-done/);
     expect(svg).toContain(`stroke="${stageColor(analysis.steps[2]!.stage)}"`);
     expect(drawn(sampleProject(), { showCuts: false }).svg).not.toContain("data-step");
+  });
+
+  it("colours the cuts by tool when asked, and marks a cut over a limit of its tool", () => {
+    const project = sampleProject();
+    project.tools = defaultTools("in");
+    const chosen = setToolChoice(project, sequencePlan(project)[0]!, "table-saw");
+    const { analysis, svg } = drawn(chosen, { cutColors: "tool" });
+    const cut = (step: number) => svg.slice(svg.indexOf(`<g data-step="${step}"`), svg.indexOf("</g>", svg.indexOf(`<g data-step="${step}"`)));
+    const ofTool = (id: string) => analysis.steps.find((step) => step.tool?.id === id && step.overLimit === null)!.step;
+    expect(cut(1)).toContain(`stroke="${TOOL_WARNING_COLOR}"`);
+    expect(cut(1)).toContain(`fill="${TOOL_WARNING_FILL}"`);
+    expect(cut(ofTool("track-saw"))).toContain(`stroke="${TOOL_COLORS[1]}"`);
+    expect(cut(ofTool("track-saw"))).toContain('fill="#fff"');
+    expect(drawn(chosen).svg).not.toContain(TOOL_WARNING_COLOR);
+  });
+
+  it("gives a cut with no tool the warning colour", () => {
+    const project = sampleProject();
+    project.tools[0]!.enabled = false;
+    const { analysis, svg } = drawn(project, { cutColors: "tool" });
+    expect(analysis.steps.length).toBeGreaterThan(0);
+    expect(analysis.steps.every((step) => step.tool === null)).toBe(true);
+    expect(svg.match(new RegExp(`<line [^>]*stroke="${TOOL_WARNING_COLOR}"`, "g"))).toHaveLength(analysis.steps.length);
+  });
+
+  it("keeps the done and highlight colours when the cuts are coloured by tool", () => {
+    const { svg } = drawn(sampleProject(), { cutColors: "tool", highlight: 2, done: new Set([1]) });
+    expect(svg).toMatch(/data-step="1" data-done="true">\n<line [^>]*stroke="#9a9a9a"/);
+    expect(svg).toMatch(new RegExp(`data-step="2" data-highlight="true">\\n<line [^>]*stroke="${TOOL_COLORS[0]}"`));
   });
 });
 

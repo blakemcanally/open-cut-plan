@@ -1,5 +1,6 @@
 import { DEFAULT_DESIGN_QUANTITY } from "../design/systems.ts";
-import { HexColorSchema, type Design, type Part, type Project } from "../format/schema.ts";
+import { HexColorSchema, type Design, type Part, type Project, type Tool } from "../format/schema.ts";
+import type { Step } from "../sequence/sequence.ts";
 
 /** Light fills with a contrast of 7 or more against `#222` text. The first eight are the colours of earlier versions, so old files keep their colours. */
 export const PART_PALETTE: readonly string[] = [
@@ -18,6 +19,12 @@ export const PART_PALETTE: readonly string[] = [
 ];
 export const NO_GROUP_COLOR = "#d9d4c7";
 export const STAGE_COLORS = ["#c0392b", "#1a5fd0", "#7a4bb5", "#1e8449", "#b9770e"];
+/** Cut line and number colours with a contrast of 4.5 or more against white. Red is only for `TOOL_WARNING_COLOR`. */
+export const TOOL_COLORS: readonly string[] = ["#1a5fd0", "#1e8449", "#a35c00", "#7a4bb5", "#0b7285", "#a61e6a"];
+/** A cut with no tool, or over a limit of its tool. */
+export const TOOL_WARNING_COLOR = "#c62828";
+/** The fill of the number of a cut with `TOOL_WARNING_COLOR`. */
+export const TOOL_WARNING_FILL = "#fde2de";
 
 export function isHexColor(value: string): boolean {
   return HexColorSchema.safeParse(value).success;
@@ -123,4 +130,37 @@ export function partColors(project: Project): PartColors {
 
 export function stageColor(stage: number): string {
   return STAGE_COLORS[(stage - 1) % STAGE_COLORS.length]!;
+}
+
+export type CutColoring = "stage" | "tool";
+
+export interface ToolColor {
+  tool: string;
+  name: string;
+  color: string;
+}
+
+export interface ToolColors {
+  /** The enabled tools in profile order. */
+  legend: readonly ToolColor[];
+  /** Null for a tool that is not enabled. */
+  colorOf(tool: string): string | null;
+  /** `TOOL_WARNING_COLOR` for a cut with no tool, or over a limit of its tool. */
+  cutColor(step: Pick<Step, "tool" | "overLimit">): string;
+}
+
+export function toolWarning(step: Pick<Step, "tool" | "overLimit">): boolean {
+  return step.tool === null || step.overLimit !== null;
+}
+
+/** One colour for each enabled tool, in profile order, so a tool keeps its colour while the plan changes. */
+export function toolColors(tools: readonly Tool[]): ToolColors {
+  const legend = tools.filter((tool) => tool.enabled).map((tool, index): ToolColor => ({ tool: tool.id, name: tool.name, color: TOOL_COLORS[index % TOOL_COLORS.length]! }));
+  const byId = new Map(legend.map((entry) => [entry.tool, entry.color]));
+  const colorOf = (tool: string) => byId.get(tool) ?? null;
+  return {
+    legend,
+    colorOf,
+    cutColor: (step) => (toolWarning(step) ? TOOL_WARNING_COLOR : (colorOf(step.tool!.id) ?? TOOL_WARNING_COLOR)),
+  };
 }

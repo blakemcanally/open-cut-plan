@@ -1,7 +1,7 @@
 import { copyLabel, formatSize, grainOk, stockLabel, usableRect, type PlanContext } from "../plan/context.ts";
 import type { SheetAnalysis } from "../plan/sheets.ts";
 import type { Step } from "../sequence/sequence.ts";
-import { NO_GROUP_COLOR, stageColor, type PartColors } from "./colors.ts";
+import { NO_GROUP_COLOR, stageColor, TOOL_WARNING_FILL, toolColors, toolWarning, type CutColoring, type PartColors } from "./colors.ts";
 
 export interface SheetSvgOptions {
   /** The fill of each part copy; see `partColors`. Without it, every part is `NO_GROUP_COLOR`. */
@@ -11,6 +11,8 @@ export interface SheetSvgOptions {
   height?: string;
   /** Defaults to true. */
   showCuts?: boolean;
+  /** Colours each cut line and its number by its stage (the default) or by its tool; see `toolColors`. */
+  cutColors?: CutColoring;
   /** A step number to draw stronger than the others. */
   highlight?: number | null;
   /** Pales the sheet outside the piece of the `highlight` step and outlines that piece. */
@@ -119,12 +121,14 @@ export function sheetSvg(ctx: PlanContext, sheet: SheetAnalysis, steps: readonly
   }
 
   if (options.showCuts ?? true) {
+    const tools = options.cutColors === "tool" ? toolColors(ctx.tools) : null;
     for (const step of steps) {
       if (step.sheetNumber !== number) continue;
       const [x1, y1, x2, y2] = step.axis === "x" ? [step.at, step.from, step.at, step.to] : [step.from, step.at, step.to, step.at];
       const current = options.highlight === step.step;
       const done = options.done?.has(step.step) === true && !current;
-      const color = done ? DONE_COLOR : stageColor(step.stage);
+      const color = done ? DONE_COLOR : tools ? tools.cutColor(step) : stageColor(step.stage);
+      const numberFill = current ? color : !done && tools !== null && toolWarning(step) ? TOOL_WARNING_FILL : "#fff";
       const attributes = `data-step="${step.step}"${current ? ' data-highlight="true"' : ""}${done ? ' data-done="true"' : ""}`;
       const dash = step.kind === "trim" ? ` stroke-dasharray="${num(base * 0.3)} ${num(base * 0.2)}"` : "";
       const r = base * (current ? 0.75 : 0.55);
@@ -133,7 +137,7 @@ export function sheetSvg(ctx: PlanContext, sheet: SheetAnalysis, steps: readonly
       out.push(
         `<g ${attributes}>`,
         `<line x1="${num(x1)}" y1="${num(y1)}" x2="${num(x2)}" y2="${num(y2)}" stroke="${color}" stroke-width="${num(base * (current ? 0.22 : 0.07))}"${dash}/>`,
-        `<circle cx="${num(mx)}" cy="${num(my)}" r="${num(r)}" fill="${current ? color : "#fff"}" stroke="${color}" stroke-width="${num(base * 0.06)}"/>`,
+        `<circle cx="${num(mx)}" cy="${num(my)}" r="${num(r)}" fill="${numberFill}" stroke="${color}" stroke-width="${num(base * 0.06)}"/>`,
         `<text x="${num(mx)}" y="${num(my)}" font-size="${num(r * 1.1)}" text-anchor="middle" dominant-baseline="central" fill="${current ? "#fff" : color}">${step.step}</text>`,
         "</g>",
       );

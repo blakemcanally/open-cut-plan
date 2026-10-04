@@ -8,12 +8,25 @@ import {
   PART_PALETTE,
   partColors,
   regenerateDesigns,
+  STAGE_COLORS,
+  TOOL_COLORS,
+  TOOL_WARNING_COLOR,
+  toolColors,
   type Part,
+  type Tool,
   type Project,
 } from "../../src/index.ts";
 import { designProject, kallaxDesign, sampleProject } from "../helpers.ts";
 
 const part = (project: Project, id: string): Part => project.parts.find((p) => p.id === id)!;
+
+const luminance = (hex: string) => {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const c = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+};
 
 function withGroups(...groups: (string | undefined)[]): Project {
   const project = sampleProject();
@@ -30,15 +43,46 @@ describe("PART_PALETTE", () => {
   });
 
   it("keeps black text readable on every colour (contrast of 7 or more)", () => {
-    const luminance = (hex: string) => {
-      const [r, g, b] = [1, 3, 5].map((i) => {
-        const c = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
-        return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-      });
-      return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
-    };
     const text = luminance("#222222");
     for (const color of PART_PALETTE) expect((luminance(color) + 0.05) / (text + 0.05)).toBeGreaterThanOrEqual(7);
+  });
+});
+
+describe("TOOL_COLORS", () => {
+  it("has six different dark colours that are readable on white, and keeps red for the warning", () => {
+    expect(TOOL_COLORS).toHaveLength(6);
+    expect(new Set(TOOL_COLORS).size).toBe(6);
+    expect(TOOL_COLORS).not.toContain(TOOL_WARNING_COLOR);
+    expect(TOOL_COLORS).not.toContain(STAGE_COLORS[0]);
+    for (const color of [...TOOL_COLORS, TOOL_WARNING_COLOR]) expect(1.05 / (luminance(color) + 0.05)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("toolColors", () => {
+  const tool = (id: string, enabled = true): Tool => ({ id, name: id.toUpperCase(), type: "track-saw", kerf: 0.125, enabled });
+
+  it("gives each enabled tool one colour in profile order, and leaves out the tools that are turned off", () => {
+    const colors = toolColors([tool("a"), tool("off", false), tool("b"), tool("c")]);
+    expect(colors.legend).toEqual([
+      { tool: "a", name: "A", color: TOOL_COLORS[0] },
+      { tool: "b", name: "B", color: TOOL_COLORS[1] },
+      { tool: "c", name: "C", color: TOOL_COLORS[2] },
+    ]);
+    expect(colors.colorOf("b")).toBe(TOOL_COLORS[1]);
+    expect(colors.colorOf("off")).toBeNull();
+  });
+
+  it("starts the colours again after the last one", () => {
+    const tools = Array.from({ length: TOOL_COLORS.length + 1 }, (_, index) => tool(`t${index}`));
+    expect(toolColors(tools).colorOf(`t${TOOL_COLORS.length}`)).toBe(TOOL_COLORS[0]);
+  });
+
+  it("gives the warning colour to a cut with no tool or over a limit of its tool", () => {
+    const colors = toolColors([tool("a"), tool("b")]);
+    expect(colors.cutColor({ tool: tool("b"), overLimit: null })).toBe(TOOL_COLORS[1]);
+    expect(colors.cutColor({ tool: null, overLimit: null })).toBe(TOOL_WARNING_COLOR);
+    expect(colors.cutColor({ tool: tool("a"), overLimit: "maxCut" })).toBe(TOOL_WARNING_COLOR);
+    expect(colors.cutColor({ tool: tool("gone"), overLimit: null })).toBe(TOOL_WARNING_COLOR);
   });
 });
 
