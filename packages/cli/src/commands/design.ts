@@ -6,6 +6,8 @@ import {
   DESIGN_MOUNTS,
   DESIGN_SYSTEM_NAMES,
   DESIGN_SYSTEMS,
+  assemblyDrawings,
+  assemblySteps,
   designElevationSvg,
   designErrors,
   designGeometry,
@@ -525,25 +527,40 @@ const drawing: CommandSpec = {
   name: "design drawing",
   summary: "Draw the front view of a design as SVG.",
   description:
-    "Draw one unit of a design from the front, to scale: the panels at their true thickness, each opening size, the outside width and height, the depth, and the legs, feet, or wall rail. Each board has the name of its part as its title, and the boards that a combined cell makes also have a label. The default target is standard output. A design with an error has no drawing (exit 1, design-invalid).",
+    "Draw one unit of a design from the front, to scale: the panels at their true thickness, each opening size, the outside width and height, the depth, and the legs, feet, or wall rail. Each board has the name of its part as its title, and the boards that a combined cell makes also have a label. With --step, draw one assembly step in place of the front view: the boards of the step are blue, the boards from earlier steps have the colour of the design, and the boards of later steps are grey outlines. The step numbers are those of 'report assembly --design <id>'. The default target is standard output. A design with an error has no drawing (exit 1, design-invalid).",
   args: [FILE_ARG, DESIGN_ARG],
-  options: [{ name: "out", type: "string", value: "<path|->", description: "The SVG file to write, or - for standard output. Default: standard output." }],
+  options: [
+    { name: "out", type: "string", value: "<path|->", description: "The SVG file to write, or - for standard output. Default: standard output." },
+    { name: "step", type: "string", value: "<n>", description: "Draw assembly step n of the design, from 1." },
+  ],
   examples: [
     { command: `${PROGRAM} design drawing hall.cutplan.json kallax-2x4 --out hall.svg`, description: "Write the drawing to hall.svg." },
     { command: `${PROGRAM} design drawing hall.cutplan.json kallax-2x4 > hall.svg`, description: "Print the drawing." },
+    { command: `${PROGRAM} design drawing hall.cutplan.json kallax-2x4 --step 5 --out step-5.svg`, description: "Write the drawing of assembly step 5." },
   ],
-  output: "design (the id), path when --out is a file; svg on standard output. For a design with an error: error { code: \"design-invalid\", issues }.",
+  output:
+    "design (the id), path when --out is a file; svg on standard output. With --step, also step, title, and description (a text alternative for the drawing). For a design with an error: error { code: \"design-invalid\", issues }.",
   async run({ args, options, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const design = findById(project.designs ?? [], args[1]!, "design");
-    const svg = designElevationSvg(project, design.id);
+    const stepText = str(options, "step");
+    let svg: string | null;
+    let data: Record<string, unknown> = { design: design.id };
+    if (stepText === undefined) svg = designElevationSvg(project, design.id);
+    else {
+      const drawings = assemblyDrawings(project, design.id);
+      if (drawings === null) throw invalidDesign(project, design);
+      const step = integerValue(stepText, "step", 1, drawings.length);
+      svg = drawings[step - 1]!.svg;
+      data = { ...data, step, title: assemblySteps(project, design.id)![step - 1]!.title, description: drawings[step - 1]!.description };
+    }
     if (svg === null) throw invalidDesign(project, design);
     const warnings = warningLines(loaded);
     const out = str(options, "out") ?? "-";
-    if (out === "-") return { data: { design: design.id, svg }, text: "", payload: `${svg}\n`, warnings };
+    if (out === "-") return { data: { ...data, svg }, text: "", payload: `${svg}\n`, warnings };
     await writeOutput(io, out, `${svg}\n`);
-    return { data: { design: design.id, path: out }, text: `Wrote ${out}.`, warnings };
+    return { data: { ...data, path: out }, text: `Wrote ${out}.`, warnings };
   },
 };
 

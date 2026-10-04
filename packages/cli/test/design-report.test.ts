@@ -16,6 +16,9 @@ describe("report assembly", () => {
       "Hang the unit",
     ]);
     expect(result.json().skipped).toEqual([]);
+    expect(design.steps.map((step: { action: string }) => step.action)).toEqual(["drill", "mark", "join", "square", "join", "mount"]);
+    expect(design.steps[1].boards).toEqual([{ kind: "top" }, { kind: "bottom" }]);
+    expect(design.steps[4].boards).toEqual([{ kind: "back" }]);
     const text = await cli(["report", "assembly", KALLAX], withDesignExamples());
     expect(text.stdout).toContain("Hall KALLAX (kallax)\n  1. Drill the pocket holes\n     Drill 3 pocket holes in each end of the 2 sides and the 1 divider");
   });

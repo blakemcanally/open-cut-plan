@@ -360,6 +360,18 @@ describe("design drawing", () => {
     expect(io.files.get("hall.svg")).toBe(printed.stdout);
   });
 
+  it("draws one assembly step with --step", async () => {
+    const io = withDesignExamples();
+    const result = await cli(["design", "drawing", KALLAX, "kallax", "--step", "5", "--out", "step.svg", "--json"], io);
+    expect(result.json()).toMatchObject({ ok: true, design: "kallax", step: 5, title: "Assemble column 1 of 2", path: "step.svg" });
+    expect(result.json().description).toMatch(/^Front view with the boards that this step adds marked: the left side/);
+    expect(io.files.get("step.svg")).toMatch(/^<svg [^>]+>\n<title>Front view with the boards that this step adds marked: /);
+    expect(io.files.get("step.svg")).toContain('data-state="current"');
+    const last = await cli(["design", "drawing", KALLAX, "kallax", "--step", "10", "--json"], io);
+    expect(last.code).toBe(2);
+    expect(last.json().error.message).toContain("1 to 9");
+  });
+
   it("exits 1 for a design that makes no parts", async () => {
     const io = withDesignExamples();
     editFile(io, KALLAX, (file) => {

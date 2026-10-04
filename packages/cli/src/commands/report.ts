@@ -239,7 +239,8 @@ const assembly: CommandSpec = {
     { command: `${PROGRAM} report assembly hall.cutplan.json`, description: "Print the steps of every design." },
     { command: `${PROGRAM} report assembly hall.cutplan.json --design kallax-2x4 --json`, description: "The steps of one design as JSON." },
   ],
-  output: "designs [{ design, name, quantity, steps [{ title, body }] }], skipped (the ids of designs that make no parts).",
+  output:
+    "designs [{ design, name, quantity, steps [{ title, body, action, boards }] }], skipped (the ids of designs that make no parts). action is drill, mark, spacers, subassembly, join, square, mount, or anchor. boards lists the boards that the step works on; a join step lists only the boards that it adds to the unit. A board is { kind: top|bottom|back }, { kind: side, side: left|right }, or { kind: divider|shelf, line, from, to }: line j is between the cells j and j + 1 counted from 1 (a column line for a divider, a row line for a shelf), and from and to are the first and the last cell along the line, counted from 0.",
   async run({ args, options, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
