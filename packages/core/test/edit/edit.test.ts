@@ -4,6 +4,7 @@ import {
   addPart,
   addSheet,
   addStock,
+  addPresetTool,
   addTool,
   analyzeProject,
   convertProjectUnits,
@@ -113,6 +114,10 @@ describe("tool edits", () => {
     expect(presetTool("sliding-miter-saw", "in", taken)).toEqual({ id: "mitre-saw-2", name: '12" sliding mitre saw', type: "miter-saw", kerf: 0.125, enabled: true, maxCut: 14 });
     expect(presetTool("track-saw-55", "mm", new Set())).toMatchObject({ name: "Track saw, 1400 mm rail", type: "track-saw", maxCut: 1250 });
     expect(presetTool("jobsite-table-saw", "in", new Set())).toMatchObject({ type: "table-saw", maxRip: 24, maxCrosscut: 12, maxPiece: { length: 96, width: 24 }, maxCrosscutPiece: { length: 36, width: 12 } });
+    expect(addPresetTool(sampleProject(), "track-saw-118").tools.map((tool) => [tool.id, tool.name])).toEqual([
+      ["ts", "Table saw"],
+      ["track-saw", 'Track saw, 118" rail'],
+    ]);
     for (const preset of TOOL_PRESETS) {
       for (const units of ["in", "mm"] as const) expect(ToolSchema.safeParse(presetTool(preset.id, units, new Set())).success).toBe(true);
     }

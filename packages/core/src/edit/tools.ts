@@ -101,6 +101,10 @@ export function addTool(project: Project, type: ToolType): Project {
   return { ...project, tools: [...project.tools, newTool(type, project.project.units, idsOf(project.tools))] };
 }
 
+export function addPresetTool(project: Project, preset: string): Project {
+  return { ...project, tools: [...project.tools, presetTool(preset, project.project.units, idsOf(project.tools))] };
+}
+
 export function updateTool(project: Project, id: string, change: (tool: Tool) => Tool): Project {
   return { ...project, tools: project.tools.map((tool) => (tool.id === id ? change(tool) : tool)) };
 }
