@@ -392,7 +392,7 @@ describe("keeping groups together", () => {
     expect(optimize(off, { iterations: 100, seed: 3, keepGroupsTogether: true }).materials[0]!.score.groupSpread).toBe(0);
   });
 
-  it("returns valid plans of grouped parts that account for every copy, the same for the same seed", () => {
+  it("returns valid plans of grouped parts that account for every copy, the same for the same seed, with a sheet next to one that shares a group", () => {
     const arb = fc.record({
       kerf: fc.constantFrom(0, 0.125, 0.25),
       stock: fc.array(fc.record({ length: fc.integer({ min: 30, max: 120 }), width: fc.integer({ min: 20, max: 60 }), cost: fc.integer({ min: 5, max: 60 }), quantity: fc.option(fc.integer({ min: 1, max: 3 })) }), { minLength: 1, maxLength: 3 }),
@@ -417,6 +417,10 @@ describe("keeping groups together", () => {
         const placed = result.sheets.reduce((n, s) => n + s.placements.length, 0);
         expect(placed + result.unplaced.length).toBe(a.parts.reduce((n, p) => n + p.quantity, 0));
         expect(optimize(project, { iterations: 40, seed: a.seed })).toEqual(result);
+        const groupsOf = (index: number) => new Set(result.sheets[index]!.placements.map((p) => project.parts.find((part) => part.id === p.part)!.group).filter((group) => group !== undefined));
+        const shares = (i: number, j: number) => [...groupsOf(i)].some((group) => groupsOf(j).has(group));
+        const skipped = result.sheets.flatMap((_, i) => (i > 0 && !shares(i - 1, i) && result.sheets.some((__, j) => j > i && shares(i - 1, j)) ? [i] : []));
+        expect(skipped).toEqual([]);
       }),
       { numRuns: 80 },
     );

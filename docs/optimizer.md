@@ -119,7 +119,10 @@ limit stays. C can only go down, so the search drops a candidate when its cost g
 
 `OptimizeResult` has:
 
-- `sheets`: the pinned sheets, then the new sheets of each material, in project material order;
+- `sheets`: the pinned sheets, then the new sheets of each material, in project material order. When the groups stay
+  together, the new sheets of a material are in group order: the next sheet is the first sheet left that shares a
+  group with the sheet before it, else the first sheet left. So the sheets of a group are often next to each other.
+  The order does not change the score, and the new sheet ids follow the order;
 - `unplaced`: `{ part, copy, reason }` for each copy with no place, grouped by material in project material order,
   and in part order, then copy order, within each material;
 - `materials`: `{ material, score, cheapestCost }`. The `score` has the measures above (`unplaced`, `cost`,

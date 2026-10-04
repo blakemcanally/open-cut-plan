@@ -5,7 +5,8 @@ import { projectGoal, type OptimizerGoal } from "./goal-setting.ts";
 import { createTradeOffs, type TradeOffs } from "./goal.ts";
 import { guillotinePack, SPLIT_RULES, type SplitRule } from "./guillotine.ts";
 import type { Packing, RotationPolicy } from "./pack.ts";
-import { buildProblem, type Copy, type MaterialProblem, type Problem, type UnplacedCopy } from "./problem.ts";
+import { orderByGroup } from "./groups.ts";
+import { buildProblem, copyKey, type Copy, type MaterialProblem, type Problem, type UnplacedCopy } from "./problem.ts";
 import { randomInt, seededRandom, shuffled, type Random } from "./random.ts";
 import { stripPack } from "./strip.ts";
 
@@ -320,7 +321,9 @@ function assemble(problem: Problem, searches: MaterialSearch[], iterations: numb
   const materials: MaterialResult[] = [];
   for (const search of searches) {
     if (!search.best) continue;
-    for (const sheet of search.best.result.sheets) {
+    const groups = search.problem.groups;
+    const groupsOf = (sheet: PlanSheet) => new Set(sheet.placements.flatMap((p) => groups.get(copyKey(p.part, p.copy)) ?? []));
+    for (const sheet of search.groups ? orderByGroup(search.best.result.sheets, groupsOf) : search.best.result.sheets) {
       const id = uniqueId(`s${sheets.length + 1}`, taken);
       taken.add(id);
       sheets.push({ id, stock: sheet.stock, placements: sheet.placements });
