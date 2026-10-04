@@ -1,4 +1,5 @@
 import type { HardwareLine, Project } from "@opencutplan/core";
+import { useId } from "react";
 
 interface HardwareTableProps {
   project: Project;
@@ -15,15 +16,17 @@ function quantityText(line: HardwareLine): string {
 export function HardwareTable({ project, lines, level }: HardwareTableProps) {
   const Heading = level === 2 ? "h2" : "h3";
   const names = new Map((project.designs ?? []).map((design) => [design.id, design.name]));
+  const title = useId();
+  const articles = lines.some((line) => line.article !== undefined);
   return (
-    <section className="hardware" aria-labelledby="hardware-title">
-      <Heading id="hardware-title">Hardware</Heading>
+    <section className="hardware" aria-labelledby={title}>
+      <Heading id={title}>Hardware</Heading>
       <div className="table-wrap">
         <table className="grid">
           <thead>
             <tr>
               <th scope="col">Item</th>
-              <th scope="col">IKEA article</th>
+              {articles && <th scope="col">IKEA article</th>}
               <th scope="col">Quantity</th>
               <th scope="col">For</th>
             </tr>
@@ -35,7 +38,7 @@ export function HardwareTable({ project, lines, level }: HardwareTableProps) {
                   {line.name}
                   {line.choices && <span className="muted"> (choose one: {line.choices.map((choice) => `${choice.name}, ${choice.article}`).join("; ")})</span>}
                 </td>
-                <td>{line.article && (line.source ? <a href={line.source}>{line.article}</a> : line.article)}</td>
+                {articles && <td>{line.article && (line.source ? <a href={line.source}>{line.article}</a> : line.article)}</td>}
                 <td>{quantityText(line)}</td>
                 <td>{line.design === null ? "Every design" : (names.get(line.design) ?? line.design)}</td>
               </tr>
@@ -43,7 +46,7 @@ export function HardwareTable({ project, lines, level }: HardwareTableProps) {
           </tbody>
         </table>
       </div>
-      <p className="muted">The article numbers are for IKEA in Great Britain. In another country, find the item by its name.</p>
+      {articles && <p className="muted">The article numbers are for IKEA in Great Britain. In another country, find the item by its name.</p>}
     </section>
   );
 }

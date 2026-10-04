@@ -60,11 +60,11 @@ describe("history", () => {
 
 describe("view prefs", () => {
   it("loads saved choices and falls back to the defaults for bad or missing values", () => {
-    localStorage.setItem("opencutplan.view", JSON.stringify({ showCuts: false, showKerf: "yes", grid: { in: 0.5, mm: -1 }, booklet: { title: false, sheets: "no" }, cutColors: "tool" }));
-    expect(loadPrefs()).toEqual({ showCuts: false, showKerf: DEFAULT_PREFS.showKerf, cutColors: "tool", grid: { in: 0.5, mm: 25 }, booklet: { ...DEFAULT_PREFS.booklet, title: false } });
+    localStorage.setItem("opencutplan.view", JSON.stringify({ showCuts: false, showKerf: "yes", grid: { in: 0.5, mm: -1 }, booklet: { title: false, sheets: "no" }, cutColors: "tool", detailedSteps: true }));
+    expect(loadPrefs()).toEqual({ showCuts: false, showKerf: DEFAULT_PREFS.showKerf, cutColors: "tool", grid: { in: 0.5, mm: 25 }, booklet: { ...DEFAULT_PREFS.booklet, title: false }, detailedSteps: true });
     expect(DEFAULT_PREFS.cutColors).toBe("stage");
-    localStorage.setItem("opencutplan.view", JSON.stringify({ cutColors: "part" }));
-    expect(loadPrefs().cutColors).toBe("stage");
+    localStorage.setItem("opencutplan.view", JSON.stringify({ cutColors: "part", detailedSteps: "yes" }));
+    expect(loadPrefs()).toMatchObject({ cutColors: "stage", detailedSteps: false });
     expect(DEFAULT_PREFS.booklet).toEqual({ title: true, shopping: true, sheets: true, sequence: true, assembly: true });
     localStorage.setItem("opencutplan.view", "{not json");
     expect(loadPrefs()).toEqual(DEFAULT_PREFS);

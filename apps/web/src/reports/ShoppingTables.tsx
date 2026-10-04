@@ -1,9 +1,9 @@
-import { formatSize, stockLabel, type ProjectAnalysis } from "@opencutplan/core";
+import { formatSize, stockLabel, type ProjectAnalysis, type ShoppingLine } from "@opencutplan/core";
 import { formatMoney, formatPercent } from "./money.ts";
 
 interface ShoppingTablesProps {
   analysis: ProjectAnalysis;
-  /** The heading level of each material; the sheet table uses the same level. */
+  /** The heading level of each material. */
   level: 2 | 3;
 }
 
@@ -15,6 +15,10 @@ export function ShoppingTables({ analysis, level }: ShoppingTablesProps) {
 
   if (shopping.materials.length === 0) return <p className="muted">The plan uses no stock.</p>;
 
+  const stockText = (line: ShoppingLine) => {
+    const name = ctx.stock.get(line.stock)?.name;
+    return name ? `${name}, ${formatSize(ctx, line)}` : formatSize(ctx, line);
+  };
   const missing = shopping.missingPrices.map((id) => {
     const stock = ctx.stock.get(id);
     return stock ? stockLabel(ctx, stock) : id;
@@ -30,7 +34,6 @@ export function ShoppingTables({ analysis, level }: ShoppingTablesProps) {
               <thead>
                 <tr>
                   <th scope="col">Stock</th>
-                  <th scope="col">Size</th>
                   <th scope="col">In the plan</th>
                   <th scope="col">To buy</th>
                   {cost && <th scope="col">Unit cost</th>}
@@ -41,10 +44,9 @@ export function ShoppingTables({ analysis, level }: ShoppingTablesProps) {
                 {material.lines.map((line) => (
                   <tr key={line.stock}>
                     <td>
-                      {line.label}
+                      {stockText(line)}
                       {line.kind === "offcut" ? " (offcut you have)" : ""}
                     </td>
-                    <td>{formatSize(ctx, line)}</td>
                     <td>{line.used}</td>
                     <td>{line.buy}</td>
                     {cost && <td>{money(line.unitCost)}</td>}
@@ -55,7 +57,7 @@ export function ShoppingTables({ analysis, level }: ShoppingTablesProps) {
               {cost && (
                 <tfoot>
                   <tr>
-                    <th scope="row" colSpan={5}>
+                    <th scope="row" colSpan={4}>
                       Subtotal
                     </th>
                     <td>{money(material.cost)}</td>
@@ -75,32 +77,35 @@ export function ShoppingTables({ analysis, level }: ShoppingTablesProps) {
         ) : (
           <p className="warning">⚠ The total is not known. This stock has no price: {missing.join(", ")}.</p>
         ))}
-      <section className="shopping-sheets">
-        <Heading>Sheet use</Heading>
-        <div className="table-wrap">
-          <table className="grid">
-            <thead>
-              <tr>
-                <th scope="col">Sheet</th>
-                <th scope="col">Stock</th>
-                <th scope="col">Parts use</th>
+    </div>
+  );
+}
+
+export function SheetUseTable({ analysis }: { analysis: ProjectAnalysis }) {
+  const { shopping, context: ctx } = analysis;
+  return (
+    <div className="table-wrap">
+      <table className="grid">
+        <thead>
+          <tr>
+            <th scope="col">Sheet</th>
+            <th scope="col">Stock</th>
+            <th scope="col">Parts use</th>
+          </tr>
+        </thead>
+        <tbody>
+          {shopping.sheets.map((sheet) => {
+            const stock = ctx.stock.get(sheet.stock);
+            return (
+              <tr key={sheet.sheet}>
+                <td>{sheet.sheetNumber}</td>
+                <td>{stock ? stockLabel(ctx, stock) : sheet.stock}</td>
+                <td>{formatPercent(sheet.utilization)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {shopping.sheets.map((sheet) => {
-                const stock = ctx.stock.get(sheet.stock);
-                return (
-                  <tr key={sheet.sheet}>
-                    <td>{sheet.sheetNumber}</td>
-                    <td>{stock ? stockLabel(ctx, stock) : sheet.stock}</td>
-                    <td>{formatPercent(sheet.utilization)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

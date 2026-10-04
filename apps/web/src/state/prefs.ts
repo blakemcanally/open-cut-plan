@@ -9,6 +9,8 @@ export interface ViewPrefs {
   /** The snap grid for each unit system, in that unit. 0 turns the grid off. */
   grid: Readonly<Record<Units, number>>;
   booklet: Readonly<Record<BookletSection, boolean>>;
+  /** Prints the full text of each cut step in place of the short table. */
+  detailedSteps: boolean;
 }
 
 export const DEFAULT_PREFS: ViewPrefs = {
@@ -17,6 +19,7 @@ export const DEFAULT_PREFS: ViewPrefs = {
   cutColors: "stage",
   grid: { in: 1, mm: 25 },
   booklet: { title: true, shopping: true, sheets: true, sequence: true, assembly: true },
+  detailedSteps: false,
 };
 const KEY = "opencutplan.view";
 
@@ -35,6 +38,7 @@ export function loadPrefs(storage: globalThis.Storage = localStorage): ViewPrefs
       cutColors: saved.cutColors === "tool" || saved.cutColors === "stage" ? saved.cutColors : DEFAULT_PREFS.cutColors,
       grid: { in: gridSize(grid.in, DEFAULT_PREFS.grid.in), mm: gridSize(grid.mm, DEFAULT_PREFS.grid.mm) },
       booklet: Object.fromEntries(BOOKLET_SECTIONS.map((section) => [section, typeof booklet[section] === "boolean" ? booklet[section] : DEFAULT_PREFS.booklet[section]])) as Record<BookletSection, boolean>,
+      detailedSteps: typeof saved.detailedSteps === "boolean" ? saved.detailedSteps : DEFAULT_PREFS.detailedSteps,
     };
   } catch {
     return DEFAULT_PREFS;
