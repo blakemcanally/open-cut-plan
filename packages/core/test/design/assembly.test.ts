@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { assemblySteps, boardLayout, columnSteps, combineCells, convertProjectUnits, regenerateDesigns, type Board, type BoardLayout, type CombinedCell, type Design } from "../../src/index.ts";
+import { assemblySteps, boardLayout, columnSteps, combineCells, shelfAssemblies, convertProjectUnits, regenerateDesigns, type Board, type BoardLayout, type CombinedCell, type Design } from "../../src/index.ts";
 import { designProject, eketDesign, kallaxDesign } from "../helpers.ts";
 
 const project = regenerateDesigns(designProject([kallaxDesign(), eketDesign(), kallaxDesign({ id: "c", name: "Mixed", system: "custom", width: { openings: [335, 400, 335] }, height: { openings: [400, 300, 335] } })]));
@@ -120,10 +120,10 @@ describe("assemblySteps with combined cells", () => {
     designProject([grid("a", 4, 2, [span(1, 1, 2, 1)]), grid("p", 3, 3, [span(1, 1, 2, 1), span(3, 1, 1, 2), span(2, 3, 2, 1), span(1, 2, 1, 2)])]),
   );
 
-  it("counts the boards, marks each panel, and puts the long shelf and the divider under it in column 1 (spec 14.1)", () => {
+  it("counts the boards, marks each panel, joins the short divider to the long shelf first, and names each board (spec 14.1)", () => {
     const steps = assemblySteps(grids, "a")!;
     const body = (title: string) => steps.find((step) => step.title === title)!.body;
-    expect(steps.map((step) => step.title).slice(4, 8)).toEqual(["Assemble column 1 of 4", "Assemble column 2 of 4", "Assemble column 3 of 4", "Assemble column 4 of 4"]);
+    expect(steps.map((step) => step.title).slice(4, 9)).toEqual(["Assemble the long shelves", "Assemble column 1 of 4", "Assemble column 2 of 4", "Assemble column 3 of 4", "Assemble column 4 of 4"]);
     expect(body("Drill the pocket holes")).toContain("each end of the 2 sides and the 3 dividers, on the inside face of each side and on one face of each divider, and in each end of the 3 shelves");
     expect(body("Mark the shelf positions")).toBe(
       "Mark the underside of each shelf, from the bottom end of the panel: on the sides, the divider on the right of column 2 and the divider on the right of column 3 at 335 mm.",
@@ -131,17 +131,45 @@ describe("assemblySteps with combined cells", () => {
     expect(body("Mark the divider positions")).toBe(
       "Mark the left face of each divider, from the left end: on the top at 706 mm and 1059 mm; on the bottom at 353 mm, 706 mm and 1059 mm; on the underside of the shelf under row 1 (Shelf, columns 1–2) at 335 mm.",
     );
-    expect(body("Assemble column 1 of 4")).toBe(
-      'Lay the left side on its outside face, with the marks up. Put the shelf under row 1 (Shelf, columns 1–2, 688 mm long) on its mark, with the pocket holes down, and screw it to the panel with 1 1/4" (32 mm) coarse-thread pocket screws. Then put the divider in row 2 on its mark. Screw the top end of the divider in row 2 to the shelf above it.',
+    expect(body("Assemble the long shelves")).toBe(
+      "Lay the shelf under row 1 (Shelf, columns 1–2) on its top face. Stand the divider on the right of column 1 (Divider, row 2) on its mark on the underside, and screw it on through the pocket holes in its upper end. Hold each divider square to the shelf while you drive the screws.",
     );
-    expect(body("Assemble column 2 of 4")).toBe("Put the next divider on its mark, and screw the other end of the shelf that stops there to it.");
+    expect(body("Assemble column 1 of 4")).toBe(
+      'Lay the left side on its outside face, with the marks up. Put the shelf under row 1 (Shelf, columns 1–2, 688 mm long), with its divider, on its mark, with the pocket holes down, and screw it to the panel with 1 1/4" (32 mm) coarse-thread pocket screws.',
+    );
+    expect(body("Assemble column 2 of 4")).toBe("Put the divider on the right of column 2 on the right end of the shelf under row 1 (Shelf, columns 1–2), and screw it on.");
+    expect(body("Assemble column 3 of 4")).toBe(
+      'Use the divider on the right of column 2 as the left panel. Put the shelf of this column (Shelf, 335 mm long) on its mark, with the pocket holes down, and screw it to the panel with 1 1/4" (32 mm) coarse-thread pocket screws. Then put the divider on the right of column 3 on the other end of the shelf, and screw it on.',
+    );
+    expect(body("Assemble column 4 of 4")).toMatch(/Then put the right side on the other end of the shelf, and screw it on\.$/);
     expect(body("Fit the bottom and the top")).toContain("the sides and the dividers that reach it");
+  });
+
+  it("joins the short dividers that stand on a long shelf before the shelf goes in (spec 14.5)", () => {
+    const bottom = regenerateDesigns(designProject([grid("b", 4, 2, [span(1, 2, 3, 1)])]));
+    const steps = assemblySteps(bottom, "b")!;
+    const body = (title: string) => steps.find((step) => step.title === title)!.body;
+    expect(body("Assemble the long shelves")).toBe(
+      "Lay the shelf under row 1 (Shelf, columns 1–3) on its underside. Stand the divider on the right of column 1 (Divider, row 1) and the divider on the right of column 2 (Divider, row 1) on their marks on the top face, and screw them on through the pocket holes in their lower ends. Hold each divider square to the shelf while you drive the screws.",
+    );
+    expect(body("Assemble column 1 of 4")).toContain("Put the shelf under row 1 (Shelf, columns 1–3, 1041 mm long), with its dividers, on its mark");
+    expect(steps.map((step) => step.title)).not.toContain("Assemble column 2 of 4");
+    expect(body("Assemble column 3 of 4")).toBe("Put the divider on the right of column 3 on the right end of the shelf under row 1 (Shelf, columns 1–3), and screw it on.");
   });
 
   it("assembles the pinwheel of spec 14.4 in three column steps", () => {
     const steps = assemblySteps(grids, "p")!.filter((step) => step.title.startsWith("Assemble"));
-    expect(steps.map((step) => step.title)).toEqual(["Assemble column 1 of 3", "Assemble column 2 of 3", "Assemble column 3 of 3"]);
-    expect(steps[1]!.body).toMatch(/^Use the divider on the right of column 1, rows 2–3, as the left panel\. Put the shelf under row 2 \(Shelf, columns 2–3, 688 mm long\)/);
+    expect(steps.map((step) => step.title)).toEqual(["Assemble the long shelves", "Assemble column 1 of 3", "Assemble column 2 of 3", "Assemble column 3 of 3"]);
+    expect(steps[2]!.body).toBe(
+      'Use the divider on the right of column 1 (Divider, rows 2–3) as the left panel. Put the shelf under row 2 (Shelf, columns 2–3, 688 mm long), with its divider, on its mark, with the pocket holes down, and screw it to the panel with 1 1/4" (32 mm) coarse-thread pocket screws. Screw the right end of the shelf under row 1 (Shelf, columns 1–2) to the divider on the right of column 2 (Divider, rows 1–2).',
+    );
+    expect(steps[3]!.body).toBe("Put the right side on the right end of the shelf under row 2 (Shelf, columns 2–3), and screw it on.");
+  });
+
+  it("screws the top end of a divider between two long shelves when the shelf above goes in", () => {
+    const stack = regenerateDesigns(designProject([grid("s", 4, 3, [span(2, 1, 2, 1), span(1, 3, 3, 1)])]));
+    const body = assemblySteps(stack, "s")!.find((step) => step.title === "Assemble column 2 of 4")!.body;
+    expect(body).toContain("Screw the top end of the divider on the right of column 2 (Divider, row 2) to the shelf under row 1 (Shelf, columns 2–3).");
   });
 
   it("only screws a board to a board that the same step or an earlier step put in place, for random layouts", () => {
@@ -160,16 +188,25 @@ describe("assemblySteps with combined cells", () => {
       fc.property(arb, ({ columns, rows, combined }) => {
         const layout = boardLayout(columns, rows, combined);
         const placed = new Map<Board | string, number>([["left", -1], ["top", Infinity], ["bottom", Infinity]]);
-        const steps = columnSteps(layout, columns);
+        const steps = columnSteps(layout, columns, rows);
+        const assemblies = shelfAssemblies(layout, rows);
         steps.forEach((step) => {
           for (const board of step.shelves) placed.set(board, step.column);
           for (const board of step.dividers) placed.set(board, step.column);
+          for (const board of step.shelves) for (const stem of assemblies.get(board) ?? []) placed.set(stem, step.column);
         });
         placed.set("right", columns - 1);
+        expect(layout.dividers.every((board) => placed.has(board))).toBe(true);
+        for (const [shelf, stems] of assemblies) {
+          for (const stem of stems) {
+            const lower = member(layout, stem, "end", columns, rows);
+            expect(lower === shelf || (lower === "bottom" && member(layout, stem, "start", columns, rows) === shelf)).toBe(true);
+          }
+        }
         for (const step of steps) {
           for (const board of step.shelves) {
             expect(placed.get(member(layout, board, "start", columns, rows))).toBeLessThan(step.column);
-            expect(placed.get(member(layout, board, "end", columns, rows))).toBe(board.to);
+            expect(placed.get(member(layout, board, "end", columns, rows))).toBeLessThanOrEqual(board.to);
           }
           for (const board of step.dividers) {
             for (const end of ["start", "end"] as const) {

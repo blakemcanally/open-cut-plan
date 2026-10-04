@@ -19,6 +19,12 @@ export function shelfName(board: Board, columns: readonly number[]): string {
   return sizes.length === 1 ? "Shelf" : `Shelf ${sizes.indexOf(columns[board.from]!) + 1}`;
 }
 
+/** The part name of a divider board: "Divider" for a divider that runs the full inside height, else "Divider, row a" or "Divider, rows a–b". */
+export function dividerName(board: Board, rows: number): string {
+  if (board.from === 0 && board.to === rows - 1) return "Divider";
+  return board.from === board.to ? `Divider, row ${board.from + 1}` : `Divider, rows ${board.from + 1}–${board.to + 1}`;
+}
+
 export function buildDesignParts(design: Design, geometry: DesignGeometry): Part[] {
   const quantity = design.quantity ?? DEFAULT_DESIGN_QUANTITY;
   const part = (id: string, name: string, material: string, length: number, width: number, count: number): Part => ({
@@ -46,10 +52,8 @@ export function buildDesignParts(design: Design, geometry: DesignGeometry): Part
   if (full.length > 0) parts.push(part("divider", "Divider", design.material, upright, panelDepth, full.length));
   for (const group of bySpan(dividers.filter((board) => !full.includes(board)))) {
     const { from, to } = group[0]!;
-    const one = from === to;
-    const id = one ? `divider-rows-${from + 1}` : `divider-rows-${from + 1}-${to + 1}`;
-    const name = one ? `Divider, row ${from + 1}` : `Divider, rows ${from + 1}–${to + 1}`;
-    parts.push(part(id, name, design.material, boardLength(group[0]!, geometry), panelDepth, group.length));
+    const id = from === to ? `divider-rows-${from + 1}` : `divider-rows-${from + 1}-${to + 1}`;
+    parts.push(part(id, dividerName(group[0]!, rows.length), design.material, boardLength(group[0]!, geometry), panelDepth, group.length));
   }
 
   const sizes = new Map<number, number>();

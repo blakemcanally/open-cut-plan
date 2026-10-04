@@ -372,22 +372,37 @@ their order, and their text follows the boards:
    into them, from the left end.
 4. **Cut spacers.** One pair for each different height of the opening under a shelf board. The opening under a shelf can
    be a combined cell.
-5. **Assemble column *c* of *n*.** The steps still go from left to right. Each step puts the shelf boards that **start**
-   in column *c*, then the divider boards on the right of column *c* (or the right side). A divider that stands on a
-   shelf, or hangs from one, is screwed to that shelf in the same step. A column where no board starts and no divider
-   is on the right gets no step.
-6. **Fit the bottom and the top**, and the other steps, as today. The text says "the dividers that reach it", because
+5. **Assemble the long shelves.** Before the column steps, each long shelf gets its short dividers on the bench: the
+   dividers that stand on it, on its top face, and the dividers that hang from it and stand on the bottom, on its
+   underside. The step names each board with its part name, for example "Lay the shelf under row 1 (Shelf, columns
+   1–3) on its underside. Stand the divider on the right of column 1 (Divider, row 1) and the divider on the right of
+   column 2 (Divider, row 1) on their marks on the top face, and screw them on through the pocket holes in their lower
+   ends." Every short divider is in one assembly: a short divider stops at a shelf at one end or at both ends, and that
+   shelf runs through, so it is a long shelf. A divider between two long shelves goes with the shelf under it.
+6. **Assemble column *c* of *n*.** The steps still go from left to right. Each step puts the shelf boards that **start**
+   in column *c*, each long shelf with its assembly, then the divider that runs the full height on the right of column
+   *c* (or the right side), on the ends of the shelves that stop there. The right end of a shelf that stops at a short
+   divider is screwed to it in the step of the last column of the shelf. The top end of a divider between two long
+   shelves is screwed to the upper shelf in the step that puts the second of the two shelves in place. A column with
+   nothing to do gets no step.
+7. **Fit the bottom and the top**, and the other steps, as today. The text says "the dividers that reach it", because
    some dividers stop at a shelf.
 
-**Why the column order always works.** A shelf board that starts in column *c* has its left end on the panel on the
-left of column *c*, which an earlier step put in place. Its right end is on a panel that this step or a later step puts
-in place. A divider on the right of column *c* butts into the top, the bottom (both fitted last), or a shelf that runs
-over it. That shelf started in column *c* or before, so it is in place. So each step only screws a board to a board that
-is already there. This also holds for the layout in §14.4, where each board butts into the next one around the center
-cell.
+**Why the assemblies.** In the column order of the prototype, a long shelf went in screwed at its left end only, and
+the short dividers on it went in one at a time on a board that could move. A long shelf with its short dividers is a
+rigid T or comb when it is made flat on the bench first. Both faces are easy to reach, and a square holds each divider
+at 90° while the screws go in. This also gives the order that a builder expects: the shelf that runs through goes in
+before the dividers that stand on it.
 
-The prototype gives correct but plain text for step 5. Better text, with the part names on the boards, is a later task
-(§16).
+**Why the column order always works.** A shelf board that starts in column *c* has its left end on the panel on the
+left of column *c*: the left side, a full divider that an earlier step put in place, or a short divider that came in
+an earlier step with its assembly (its shelf starts before column *c*). Its right end is on a panel that this step or
+an earlier step put in place, and the step of its last column screws it. A full divider on the right of column *c*
+butts into the top and the bottom (both fitted last). A short divider comes with its long shelf, which starts in column
+*c* or before. So each step only screws a board to a board that is already there. This also holds for the layout in
+§14.4, where each board butts into the next one around the center cell.
+
+The board names in the text are the part names of §6, so the text matches the labels on the parts.
 
 ## 11. Front view
 
@@ -575,9 +590,10 @@ pinwheel of four boards of 688 mm: "Shelf, columns 1–2", "Divider, rows 1–2"
 rows 2–3". Each board butts into the next one. Lemma 3 shows that a real conflict needs a junction with a missing
 vertical arm and a missing horizontal arm, which rectangles that do not overlap cannot make.
 
-The column order of §10 assembles it: column 1 puts "Shelf, columns 1–2" on the left side and "Divider, rows 2–3"
-under it; column 2 puts "Shelf, columns 2–3" on that divider and "Divider, rows 1–2" on the right end of the first
-shelf; column 3 puts the right side on.
+The steps of §10 assemble it: first "Divider, rows 2–3" goes on the underside of "Shelf, columns 1–2", and "Divider,
+rows 1–2" on the top face of "Shelf, columns 2–3". Column 1 puts the first assembly on the left side. Column 2 puts
+the second assembly on "Divider, rows 2–3", and screws the right end of "Shelf, columns 1–2" to "Divider, rows 1–2".
+Column 3 puts the right side on.
 
 ### 14.5 KALLAX 4 × 2, three cells combined in the bottom row (a span warning)
 
@@ -636,8 +652,8 @@ shelf; column 3 puts the right side on.
    front view, the checks, the hardware, and correct but plain assembly text. `design set` applies `fitCombined`.
 2. **Web (prototype).** The Cells fieldset with Combine and Split, the Parts section, and an example file.
 3. **CLI.** `design combine`, `design split`, and the docs (§13).
-4. **Polish.** The assembly text with the board names, a highlight of the selected cells in the front view, labels on
-   the boards in the front view, and an e2e test.
+4. **Polish.** The assembly text with the board names and the long shelf assemblies (§10), a highlight of the selected
+   cells in the front view, labels on the boards in the front view, and an e2e test.
 
 ## 17. Open questions
 
