@@ -118,6 +118,15 @@ full grid.
 | `<id>-shelf`, or `<id>-shelf-<k>` | Shelf, or Shelf *k* | column opening × panel depth | (*m* − 1) × the columns with that opening × *q* |
 | `<id>-back` | Back | outside height × outside width | *q* |
 
+With combined cells, some boards change. The table above is for a design with no combined cells.
+
+| Part id | Name | Length × width | Quantity |
+|---|---|---|---|
+| `<id>-divider` | Divider | (outside height − 2*t*) × panel depth | the dividers from the top to the bottom × *q* |
+| `<id>-divider-rows-<a>`, or `<id>-divider-rows-<a>-<b>` | Divider, row *a*, or Divider, rows *a*–*b* | (the row openings *a* to *b* + (*b* − *a*) × *t*) × panel depth | the dividers of those rows × *q* |
+| `<id>-shelf`, or `<id>-shelf-<k>` | Shelf, or Shelf *k* | column opening × panel depth | the shelves of one cell in a column with that opening × *q* |
+| `<id>-shelf-cols-<a>-<b>` | Shelf, columns *a*–*b* | (the column openings *a* to *b* + (*b* − *a*) × *t*) × panel depth | the shelves of those columns × *q* |
+
 - An `outside` axis has openings of (outside − (cells + 1) × *t*) / cells. An `openings` axis has an outside size of
   the sum of the openings + (*n* + 1) × *t*, where *n* is the number of openings.
 - The panel depth is `depth` minus the back thickness.
@@ -126,6 +135,13 @@ full grid.
   with pocket screws. A design with 1 column has no divider part, and a design with 1 row has no shelf part.
 - Columns with the same opening share one shelf part. With more than one opening size, *k* counts the sizes in column
   order from 1.
+- With combined cells, a combined cell has no board inside it. Each divider and each shelf is one board. Where a
+  divider and a shelf meet, the divider runs through when the divider continues above and below the shelf; otherwise
+  the shelf runs through. So a shelf under or over a combined cell is one long board, and a short divider under it
+  holds it up. *k* still counts the opening sizes of all the columns, so the shelf ids do not change when cells are
+  combined. A part with no boards is not listed.
+- A reader of an older version (1.6 or earlier) does not know `combined`. It keeps the stored parts and does not make
+  them again.
 - Every generated part has `grain: "length"` and `group` set to the design name. The colour of a part copy comes
   from its unit; see [Colours](#colours-added-in-14).
 

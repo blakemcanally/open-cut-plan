@@ -187,6 +187,10 @@ The IKEA numbers are in millimetres. The CLI converts them to the project units,
 exit 1 and `invalid-value`, and `error.issues` lists the checks. `design set` gives `partChanges` (the parts that were
 added, removed, or resized) and `removedPlacements` (the copies that went to the tray).
 
+The CLI has no command to combine cells yet. To combine cells, edit `combined` in the file
+([format.md](format.md)), or use the Design tab of the web app. When `design set` changes the columns or the rows, it
+fits each combined cell to the new grid, and removes a combined cell that has only one cell left.
+
 ### Settings
 
 `settings get` shows all settings or one setting. `settings set` takes one or more key and value pairs. The pairs

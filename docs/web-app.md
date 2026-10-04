@@ -60,6 +60,14 @@ parts from the design, and the Parts tab lists them. The file format is in [form
 - A KALLAX or EKET width or height takes its size from the cells. A custom axis is sized by the outside size, or by
   the list of openings (`335, 335`). Changing the count of a custom axis sized by openings repeats the last opening.
 - Changing the system to KALLAX or EKET applies its cell sizes and depth. Changing it to Custom keeps the sizes.
+- **Cells** shows the grid of cells, to scale. Click a cell to select it. Shift-click a second cell, or drag over the
+  cells, to select the rectangle between them. The arrow keys move between the cells, and Shift with an arrow key makes
+  the selection larger. A selection that touches a combined cell becomes larger to hold all of it.
+- **Combine** makes the selected cells into one cell: the boards inside it go, and the shelf over and under it becomes
+  one long board. **Split** makes each combined cell in the selection into single cells again. Each one is one undo
+  step. When the columns or rows change, a combined cell that is now outside the grid gets smaller, and a combined cell
+  of one cell goes.
+- **Parts** under the front view lists the parts of the design, with their sizes and quantities.
 - The front view updates while the user types. Enter or leaving the field applies the value; Escape goes back.
 - A value that makes the design impossible (for example, a material too thin for pocket screws) is not applied. The
   field stays marked and a message gives the reason. It adds no undo step.
