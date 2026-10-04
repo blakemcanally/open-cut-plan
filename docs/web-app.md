@@ -137,7 +137,7 @@ turns red and has a ⚠ mark; the **Problems** list names each problem, and **Sh
   **Change** opens the Optimizer section of the Settings tab. After a search, the line names each material whose plan
   costs more than the cheapest plan found, for example "Plywood: 4 % more cost than the cheapest plan found." When
   the optimizer keeps each unit and group together, the line also tells which units and groups are on more than one
-  sheet, for example "Calyx cabinet 1 of 2 is on 2 sheets.", or "Each unit is on one sheet."
+  sheet, for example "KALLAX 1 of 2 is on 2 sheets.", or "Each unit is on one sheet."
 - The optimizer runs in a Web Worker, so the page stays responsive. A progress bar shows the part of the time limit
   that is used. When the project changes during a search, the result is not used.
 - **Pin** on a sheet keeps it through **Optimize**. **Remove** puts its parts in the tray.
