@@ -170,3 +170,201 @@ the name is cut off at three columns. The use of each sheet shows only on the Re
 - Under each sheet title, one short summary line, for example "Track saw 3 cuts · Table saw 9 cuts · 96% used ·
   $65". The sheet title wraps, so it is not cut off at three columns.
 - A click (or Enter) on a cut number in the Layout drawing opens that step on the Shop tab.
+
+# Proposed
+
+Ideas from a walk through the app on 2026-10-04, with screenshots, and follow-ups from the work on items 1–7. None of
+these items has started. Size: S is a day or less, M is a few days, L is a week or more.
+
+## 8. Warn about plan problems on the Shop tab, the Reports tab, and in print
+
+**Size:** S–M. **Recommended.**
+
+**Problem:** The Shop tab, the Reports tab, and the printed booklet do not read the plan issues. In the review, a part
+dragged on top of another part gave an `overlap` error on the Layout tab. The Shop tab then showed 19 steps in place
+of 21, with no warning, and the two parts had no cut step. A user can do every step at the saw and still be short of
+parts.
+
+**Idea:**
+
+- A banner at the top of the Shop tab, the Reports tab, and the first page of the booklet, for example "2 parts have
+  no cut step: Side 3, Door. Fix the layout first." A link opens the Layout tab with the Problems list.
+- A count badge on the Layout tab when the plan has errors.
+
+**Files:** `apps/web/src/shop/ShopTab.tsx`, `reports/ReportsTab.tsx`, `print/PrintView.tsx`, `print/booklet.ts`,
+`screens/Workspace.tsx`, `layout/IssueList.tsx`.
+
+## 9. Help the user set up a design so that the first optimize works
+
+**Size:** M. **Recommended.**
+
+**Problem:** **Add design** makes the materials "Plywood 3/4"" and "Plywood 1/4"". It adds a 96" × 48" sheet for the
+1/4" back only. After **Optimize**, all 13 parts in 3/4" plywood say "larger than every enabled stock". The real cause
+is that the material has no stock.
+
+**Idea:**
+
+- A design adds a sheet stock for its main material too (now possible from the catalogue, item 4).
+- A new reason for an unplaced part: "Plywood 3/4" has no stock", with an **Add stock** button.
+- The Parts tab and the Stock tab show a line for each material that has no stock or no price.
+- A new project opens on the Design tab. Each empty state links to the tab that fixes it.
+
+**Files:** `apps/web/src/design/form.ts`, `packages/core/src/optimize/problem.ts`, `apps/web/src/layout/Tray.tsx`,
+`screens/PartsTab.tsx`, `screens/StockTab.tsx`, `screens/Workspace.tsx`.
+
+## 10. Show the result of an optimize run, and undo it
+
+**Size:** S.
+
+**Problem:** After a run, the Layout tab says "Tried 192,031 plans. The best uses 3 sheets." It does not give the cost
+or a comparison with the plan before the run. The CLI prints "Before" and "After" with the cost.
+
+**Idea:** Show "Before: 4 sheets, $260. After: 3 sheets, $195." with an **Undo optimize** button. When **Keep
+searching** finds no better plan, say so.
+
+**Files:** `apps/web/src/optimizer/useOptimizeRuns.ts`, `layout/LayoutTab.tsx`.
+
+## 11. Draw overlaps and small parts clearly
+
+**Size:** S.
+
+**Problem:** A part on top of another part hides the lower part fully. The labels of small parts overlap each other.
+The toolbar moves while the optimizer runs.
+
+**Idea:** Draw overlapping parts with transparency and an outline, so the lower part stays visible. Make the label
+smaller, or show the size only, when the part is small. Keep the toolbar height fixed.
+
+**Files:** `apps/web/src/layout/SheetView.tsx`, `styles.css`.
+
+## 12. Small fixes to the forms
+
+**Size:** S.
+
+**Problem and idea:**
+
+- **Add part** does not select the name "Part 6", so typing gives "Part 6Door". Select the name.
+- Both default materials get the same beige colour. Give each new material its own colour.
+- A stock row shows an id as its name, for example "plywood-1-4-96x48". Show a readable name.
+- A bad value in a length field, for example "abc", gets a red border but no message. Show the message.
+- "Size by" goes back to "Each opening" after a reload. Keep the choice.
+
+**Files:** `apps/web/src/screens/PartsTab.tsx`, `screens/StockTab.tsx`, `components/fields.tsx`, `screens/DesignTab.tsx`.
+
+## 13. Group the Shop steps by saw setting
+
+**Size:** M.
+
+**Problem:** "Group cuts with the same saw setting" is in Settings → Plan, where users do not find it. When it is on,
+the Shop list repeats "SHEET 1 · TABLE SAW" three times, and one 30" setup is split into steps 5–6 and 15–16.
+
+**Idea:** A switch on the Shop tab: "Order: by sheet / by saw setting". Each group has a heading with the setup, for
+example "Table saw · stop at 30" · 4 cuts". A note shows when the setup changes.
+
+**Files:** `apps/web/src/shop/ShopTab.tsx`, `packages/core/src/sequence/sequence.ts`.
+
+## 14. Make the tool limits realistic
+
+**Size:** M–L.
+
+**Problem:** The table saw has one "Largest piece" limit for rips and crosscuts. So the plan can tell the user to
+crosscut a 96" × 15 3/4" strip on the table saw with the stop at 30". The app has no miter saw.
+
+**Idea:** Give the table saw separate limits for a rip and a crosscut. Add a miter saw type for short crosscuts on
+narrow strips. Add help text and presets for common saws.
+
+**Files:** `apps/web/src/screens/ToolsTab.tsx`, `packages/core/src/sequence/tools.ts`, `format/schema.ts`, `schema/`,
+`docs/cut-analysis.md`. This item changes the file format.
+
+## 15. Put the Reports tab in three sections: Buy, Cut, and Build
+
+**Size:** M.
+
+**Problem:** The Reports tab is one long page (about 2000 px) with no structure. Buttons, SVG exports, and tables are
+mixed. The Stock and Size columns repeat each other. The IKEA article column is empty for a custom design. The front
+view caption says "Garage cabinet Garage cabinet as SVG". The app has no cut list, but the CLI has `report cutlist`.
+
+**Idea:** A summary row at the top (sheets, cost, cut length). A **Buy** section (shopping list), a **Cut** section
+(sheet use and a new cut list), and a **Build** section (hardware and assembly). One panel for print and export.
+Remove the repeated column and the empty column.
+
+**Files:** `apps/web/src/reports/ReportsTab.tsx`, `reports/ShoppingTables.tsx`, `reports/HardwareTable.tsx`,
+`packages/core/src/reports/`.
+
+## 16. Print the cut sequence for use at the saw
+
+**Size:** M.
+
+**Problem:** The printed cut sequence is a block of text under a drawing at 1:16 that is too small to read. The sheet
+diagram uses only about 60% of the landscape page.
+
+**Idea:** One sheet for each page, with a large drawing. Under it, a short table: a tick box, the step, the tool, the
+setting, and the part. The diagram fills the page. The print can use the tool colours from item 7.
+
+**Files:** `apps/web/src/print/PrintView.tsx`, `print/scale.ts`, `styles.css`.
+
+## 17. Show the material status on the Stock tab
+
+**Size:** S.
+
+**Problem:** The Stock tab does not tell which materials the parts use, or which stock has no price. The **Delete**
+button is disabled for a material in use, with no reason.
+
+**Idea:** A line for each material, for example "Used by 13 parts · 1 size · no price". A tooltip on the disabled
+**Delete** button says why.
+
+**Files:** `apps/web/src/screens/StockTab.tsx`.
+
+## 18. Show the parts and a sheet estimate on the Design tab
+
+**Size:** S.
+
+**Problem:** The user must go to the Parts tab and the Layout tab to see what a design needs.
+
+**Idea:** Under the front view, an estimate, for example "About 2 sheets of Birch plywood 3/4"", with an **Optimize
+now** button. (The combined cubbies prototype already adds a Parts list under the front view.)
+
+**Files:** `apps/web/src/screens/DesignTab.tsx`, `packages/core/src/design/parts.ts`.
+
+## 19. Make the app work on a phone
+
+**Size:** M.
+
+**Problem:** At a width of 420 px, the tab bar hides Shop, Reports, and Settings with no hint. The tables hide
+columns.
+
+**Idea:** A hint or a **More** menu on the tab bar. Show the Parts and Stock tables as cards on narrow screens.
+
+**Files:** `apps/web/src/screens/Workspace.tsx`, `screens/PartsTab.tsx`, `screens/StockTab.tsx`, `styles.css`.
+
+## 20. Follow-ups from items 1–7
+
+**Size:** S each.
+
+- **Offcuts against cut length (item 5):** The shortest cuts can cut the waste into smaller pieces. On one sheet of
+  `simple-bookcase-mm`, the largest offcut became about 23% smaller. Idea: when the optimizer goal is `offcuts`, the
+  cut tree compares the largest offcut before the cut length.
+- **Tool colours (item 7):** The table saw is dark blue and the track saw is dark green. A cut can be hard to see on a
+  part with a blue or green fill. Idea: give the cut lines a white outline, or choose tool colours far from the part
+  colours.
+- **Print and export (item 7):** The booklet and the "Sheet N as SVG" export colour the cuts by stage only. Idea: use
+  the choice from the Layout tab.
+- **Typical price (item 4):** The typical price is the lowest listing. Some low prices come from old search results.
+  Idea: use the median, or the newest listing.
+- **Speed with factory edges (item 2):** With requests, each candidate takes 2–3 times as long. Idea: push only the
+  candidates that can become the best plan.
+- **Group renames (item 3):** A chosen group colour does not follow a rename of the group. Idea: an edit helper that
+  renames a group and moves its colour.
+
+## 21. Combined cubbies: the next phases
+
+**Size:** M.
+
+The prototype (spec: `docs/superpowers/specs/2026-10-04-combined-cubbies-design.md`) covers the core, the parts, the
+checks, the front view, and the Design tab. Next:
+
+- `design combine` and `design split` in the CLI (task 11 of the plan).
+- The rest of the UI work (task 12 of the plan) and an e2e test.
+- A divider that stands on a shelf does not count as a support for the board above it. This gives more warnings than
+  necessary. Decide the rule.
+- Check the assembly text in a real build.
+- The span check does not look at the bottom panel when the unit is on legs or on a wall rail.
