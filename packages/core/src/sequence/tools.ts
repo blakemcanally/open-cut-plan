@@ -38,7 +38,7 @@ export function measuredSide(cut: Pick<CutGeometry, "kind" | "axis" | "released"
   return cut.kind === "trim" || sizeAlong(cut.released, cut.axis) > EPSILON ? "released" : "remainder";
 }
 
-export type ToolLimit = "maxPiece" | "maxRip" | "maxCrosscut" | "maxCut" | "maxStages";
+export type ToolLimit = "maxPiece" | "maxCrosscutPiece" | "maxRip" | "maxCrosscut" | "maxCut" | "maxStages" | "crosscutOnly";
 
 type TableSaw = Extract<Tool, { type: "table-saw" }>;
 
@@ -52,10 +52,16 @@ function tableRipSide(tool: TableSaw, cut: CutGeometry): SettingSide | null {
 export function toolLimit(tool: Tool, cut: CutGeometry, limits: boolean): ToolLimit | null {
   if (!limits) return null;
   switch (tool.type) {
-    case "table-saw":
-      if (tool.maxPiece && !fitsWithin(cut.piece, tool.maxPiece)) return "maxPiece";
+    case "table-saw": {
+      const piece = cut.axis === "x" && tool.maxCrosscutPiece ? "maxCrosscutPiece" : "maxPiece";
+      const largest = tool[piece];
+      if (largest && !fitsWithin(cut.piece, largest)) return piece;
       if (cut.axis === "x") return within(cut.length, tool.maxCrosscut) ? null : "maxCrosscut";
       return tableRipSide(tool, cut) ? null : "maxRip";
+    }
+    case "miter-saw":
+      if (cut.axis !== "x") return "crosscutOnly";
+      return within(cut.length, tool.maxCut) ? null : "maxCut";
     case "track-saw":
     case "circular-saw":
       return within(cut.length, tool.maxCut) ? null : "maxCut";

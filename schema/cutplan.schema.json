@@ -465,6 +465,24 @@
                   "width"
                 ],
                 "additionalProperties": {}
+              },
+              "maxCrosscutPiece": {
+                "type": "object",
+                "properties": {
+                  "length": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "width": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "length",
+                  "width"
+                ],
+                "additionalProperties": {}
               }
             },
             "required": [
@@ -578,6 +596,42 @@
                 "type": "integer",
                 "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "kerf",
+              "enabled",
+              "type"
+            ],
+            "additionalProperties": {}
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kerf": {
+                "type": "number",
+                "minimum": 0
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "type": {
+                "type": "string",
+                "const": "miter-saw"
+              },
+              "maxCut": {
+                "type": "number",
+                "exclusiveMinimum": 0
               }
             },
             "required": [

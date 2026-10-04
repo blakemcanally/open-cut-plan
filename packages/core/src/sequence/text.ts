@@ -40,15 +40,21 @@ export const LIMIT_WORDS: Readonly<Record<ToolLimit, string>> = {
   maxRip: "widest rip",
   maxCrosscut: "longest crosscut",
   maxPiece: "largest piece",
+  maxCrosscutPiece: "largest piece for a crosscut",
   maxCut: "longest cut",
   maxStages: "most cut stages",
+  crosscutOnly: "crosscuts only",
 };
 
-function limitValue(ctx: PlanContext, tool: Tool, limit: ToolLimit): string {
-  const values = tool as Partial<Record<"maxRip" | "maxCrosscut" | "maxCut" | "maxStages", number>> & { maxPiece?: { length: number; width: number } };
-  if (limit === "maxPiece") return `${formatIn(ctx, values.maxPiece!.length)} × ${formatIn(ctx, values.maxPiece!.width)}`;
-  if (limit === "maxStages") return String(values.maxStages);
-  return formatIn(ctx, values[limit]!);
+type PieceLimit = "maxPiece" | "maxCrosscutPiece";
+
+/** The limit and its value, for example `widest rip 24"`. */
+export function limitText(ctx: PlanContext, tool: Tool, limit: ToolLimit): string {
+  if (limit === "crosscutOnly") return "it makes crosscuts only";
+  const values = tool as Partial<Record<"maxRip" | "maxCrosscut" | "maxCut" | "maxStages", number> & Record<PieceLimit, { length: number; width: number }>>;
+  if (limit === "maxPiece" || limit === "maxCrosscutPiece") return `${LIMIT_WORDS[limit]} ${formatIn(ctx, values[limit]!.length)} × ${formatIn(ctx, values[limit]!.width)}`;
+  if (limit === "maxStages") return `${LIMIT_WORDS[limit]} ${values.maxStages}`;
+  return `${LIMIT_WORDS[limit]} ${formatIn(ctx, values[limit]!)}`;
 }
 
 const LABEL: Readonly<Record<StepResultKind, string>> = { part: "Part", next: "Next", offcut: "Offcut", waste: "Waste" };
@@ -110,7 +116,7 @@ export function describeStep(ctx: PlanContext, step: Step): StepText {
       step.tool === null
         ? "No enabled tool can make this cut. Check the Tools tab."
         : step.overLimit
-          ? `This cut is over a limit of the ${step.tool.name}: ${LIMIT_WORDS[step.overLimit]} ${limitValue(ctx, step.tool, step.overLimit)}.`
+          ? `This cut is over a limit of the ${step.tool.name}: ${limitText(ctx, step.tool, step.overLimit)}.`
           : null;
     const actions = warning ? [warning, ...stepActions] : stepActions;
     return {
@@ -157,7 +163,7 @@ type Guide = "fence" | "stop" | "marks";
 function guideOf(step: Pick<Step, "tool" | "axis">): Guide {
   const type = step.tool?.type;
   if (type === "table-saw") return step.axis === "y" ? "fence" : "stop";
-  return type === "panel-saw" ? "stop" : "marks";
+  return type === "panel-saw" || type === "miter-saw" ? "stop" : "marks";
 }
 
 function trimAmount(ctx: PlanContext, step: Step): string {

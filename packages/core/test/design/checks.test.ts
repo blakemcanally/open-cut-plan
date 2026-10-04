@@ -41,7 +41,7 @@ describe("checkDesigns", () => {
 
   it("gives no stale warning for a file from a newer minor version", () => {
     const once = current(kallaxDesign());
-    const newer = { ...once, version: "1.8", designs: [kallaxDesign({ width: { openings: [335, 335, 335] } })] };
+    const newer = { ...once, version: "1.9", designs: [kallaxDesign({ width: { openings: [335, 335, 335] } })] };
     expect(codes(newer)).toEqual([]);
   });
 

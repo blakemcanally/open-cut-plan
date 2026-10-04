@@ -93,6 +93,23 @@ describe("describeStep", () => {
     expect(circular.results[0]!.where).toBe("the top piece");
   });
 
+  it("uses the stop on a mitre saw", () => {
+    const cut = texts(withTool({ id: "m", name: "Mitre saw", type: "miter-saw", kerf: 0.125, enabled: true }))[6]!;
+    expect(cut.method).toBe("Mitre saw · crosscut: a cut across the length of the sheet");
+    expect(cut.actions).toEqual(['Set the stop 90" from the blade.', 'Put a 12" edge of the panel against the stop.', "Make the cut."]);
+    expect(cut.results[0]!.where).toBe("at the stop");
+  });
+
+  it("names the limit of a chosen tool: a mitre saw on a rip, or the crosscut piece of a table saw", () => {
+    const project = stripProject();
+    const ctx = planContext(project);
+    const [, , , , rip, , crosscut] = sequencePlan(project);
+    const miter: Tool = { id: "m", name: "Mitre saw", type: "miter-saw", kerf: 0.125, enabled: true };
+    expect(describeStep(ctx, { ...rip!, tool: miter, overLimit: "crosscutOnly" }).actions[0]).toBe("This cut is over a limit of the Mitre saw: it makes crosscuts only.");
+    const table: Tool = { id: "ts", name: "Table saw", type: "table-saw", kerf: 0.125, enabled: true, maxCrosscutPiece: { length: 48, width: 24 } };
+    expect(describeStep(ctx, { ...crosscut!, tool: table, overLimit: "maxCrosscutPiece" }).actions[0]).toBe('This cut is over a limit of the Table saw: largest piece for a crosscut 48" × 24".');
+  });
+
   it("warns when no tool can make the cut", () => {
     const project = sampleProject();
     project.tools[0]!.enabled = false;
@@ -162,6 +179,7 @@ describe("setupLabel", () => {
       'Table saw · fence at 12"',
     ]);
     expect(labels(withTool({ id: "ps", name: "Panel saw", type: "panel-saw", kerf: 0.125, enabled: true }))[4]).toBe('Panel saw · stop at 12"');
+    expect(labels(withTool({ id: "m", name: "Mitre saw", type: "miter-saw", kerf: 0.125, enabled: true }))[6]).toBe('Mitre saw · stop at 90"');
     expect(labels(withTool({ id: "track", name: "Track saw", type: "track-saw", kerf: 0.125, enabled: true }))[6]).toBe('Track saw · marks at 90"');
     const none = sampleProject();
     none.tools[0]!.enabled = false;

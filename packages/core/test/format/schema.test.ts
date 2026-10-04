@@ -6,7 +6,7 @@ describe("createProject", () => {
   it("fills every default", () => {
     const project = createProject("Shelf", "in");
     expect(project.format).toBe("opencutplan");
-    expect(project.version).toBe("1.7");
+    expect(project.version).toBe("1.8");
     expect(project.project).toEqual({ name: "Shelf", units: "in" });
     expect(project.settings).toEqual({
       features: Object.fromEntries(FEATURE_KEYS.map((key) => [key, true])),

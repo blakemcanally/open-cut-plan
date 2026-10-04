@@ -16,6 +16,7 @@ import {
   type Placement,
   type Project,
   type Step,
+  type Tool,
 } from "../../src/index.ts";
 import { sampleProject, stripProject } from "../helpers.ts";
 
@@ -58,10 +59,25 @@ describe("sequencePlan", () => {
     ]);
   });
 
-  it("sends the full-sheet cuts to the track saw and the strip crosscuts to the table saw with the default tools", () => {
+  it("sends the full-sheet cuts and the crosscuts of long strips to the track saw with the default tools", () => {
     const project = stripProject();
     project.tools = defaultTools("in");
-    expect(sequencePlan(project).map((step) => step.tool?.id)).toEqual(["track-saw", "track-saw", "track-saw", "track-saw", "track-saw", "track-saw", "table-saw", "table-saw"]);
+    expect(sequencePlan(project).map((step) => step.tool?.id)).toEqual(Array(8).fill("track-saw"));
+    const { maxCrosscutPiece: _, ...older } = project.tools[0] as Extract<Tool, { type: "table-saw" }>;
+    project.tools[0] = older;
+    expect(sequencePlan(project).map((step) => step.tool?.id)).toEqual([...Array(6).fill("track-saw"), "table-saw", "table-saw"]);
+  });
+
+  it("builds the cut tree around the crosscut piece limit of the table saw", () => {
+    const project = sampleProject();
+    project.tools[0] = { ...project.tools[0]!, type: "table-saw", maxCrosscutPiece: { length: 96, width: 12 } };
+    const cuts = sequencePlan(project).filter((step) => step.kind !== "trim");
+    expect(cuts.map((step) => [step.kind, step.tool?.id])).toEqual([
+      ["rip", "ts"],
+      ["rip", "ts"],
+      ["crosscut", "ts"],
+      ["crosscut", "ts"],
+    ]);
   });
 
   it("describes the geometry of each cut", () => {
@@ -118,7 +134,9 @@ describe("sequencePlan", () => {
 
   it("finishes a saw setting before it starts a setting that a later cut of the first setting waits for", () => {
     const project = shelf();
-    project.tools = defaultTools("in");
+    const [table, track] = defaultTools("in") as [Extract<Tool, { type: "table-saw" }>, Tool];
+    const { maxCrosscutPiece: _, ...older } = table;
+    project.tools = [older, track];
     project.settings.orderMode = "setup";
     const ctx = planContext(project);
     const keys = setupRuns(ctx, sequencePlan(project))

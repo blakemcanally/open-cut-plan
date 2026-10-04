@@ -10,6 +10,9 @@ import {
   createProject,
   defaultTools,
   newTool,
+  presetTool,
+  TOOL_PRESETS,
+  ToolSchema,
   findCopy,
   findFreeSpot,
   materialInUse,
@@ -93,14 +96,26 @@ describe("stock and material edits", () => {
 describe("tool edits", () => {
   it("gives a new project a table saw and a track saw with the default limits", () => {
     expect(defaultTools("in")).toEqual([
-      { id: "table-saw", name: "Table saw", type: "table-saw", kerf: 0.125, enabled: true, maxPiece: { length: 96, width: 24 }, maxRip: 24, maxCrosscut: 24 },
+      { id: "table-saw", name: "Table saw", type: "table-saw", kerf: 0.125, enabled: true, maxPiece: { length: 96, width: 24 }, maxCrosscutPiece: { length: 48, width: 24 }, maxRip: 24, maxCrosscut: 24 },
       { id: "track-saw", name: "Track saw", type: "track-saw", kerf: 0.125, enabled: true, maxCut: 110 },
     ]);
     expect(defaultTools("mm")).toEqual([
-      { id: "table-saw", name: "Table saw", type: "table-saw", kerf: 3, enabled: true, maxPiece: { length: 2440, width: 610 }, maxRip: 610, maxCrosscut: 610 },
+      { id: "table-saw", name: "Table saw", type: "table-saw", kerf: 3, enabled: true, maxPiece: { length: 2440, width: 610 }, maxCrosscutPiece: { length: 1220, width: 610 }, maxRip: 610, maxCrosscut: 610 },
       { id: "track-saw", name: "Track saw", type: "track-saw", kerf: 3, enabled: true, maxCut: 2800 },
     ]);
     expect(newTool("circular-saw", "in", new Set())).toEqual({ id: "circular-saw", name: "Circular saw", type: "circular-saw", kerf: 0.125, enabled: true });
+    expect(newTool("miter-saw", "mm", new Set())).toEqual({ id: "mitre-saw", name: "Mitre saw", type: "miter-saw", kerf: 3, enabled: true, maxCut: 350 });
+  });
+
+  it("makes a tool from a preset of typical values, in the units of the project", () => {
+    expect(TOOL_PRESETS.map((preset) => preset.id)).toEqual(["jobsite-table-saw", "cabinet-saw-sled", "track-saw-55", "track-saw-118", "sliding-miter-saw"]);
+    const taken = new Set(["mitre-saw"]);
+    expect(presetTool("sliding-miter-saw", "in", taken)).toEqual({ id: "mitre-saw-2", name: '12" sliding mitre saw', type: "miter-saw", kerf: 0.125, enabled: true, maxCut: 14 });
+    expect(presetTool("track-saw-55", "mm", new Set())).toMatchObject({ name: "Track saw, 1400 mm rail", type: "track-saw", maxCut: 1250 });
+    expect(presetTool("jobsite-table-saw", "in", new Set())).toMatchObject({ type: "table-saw", maxRip: 24, maxCrosscut: 12, maxPiece: { length: 96, width: 24 }, maxCrosscutPiece: { length: 36, width: 12 } });
+    for (const preset of TOOL_PRESETS) {
+      for (const units of ["in", "mm"] as const) expect(ToolSchema.safeParse(presetTool(preset.id, units, new Set())).success).toBe(true);
+    }
   });
 
   it("adds tools with the unit's default kerf and reorders them", () => {
@@ -206,9 +221,12 @@ describe("convertProjectUnits", () => {
   });
 
   it("converts tool limits", () => {
-    const project = { ...sampleProject(), tools: [{ id: "ts", name: "TS", type: "table-saw" as const, kerf: 0.125, enabled: true, maxRip: 30, maxPiece: { length: 48, width: 24 } }] };
+    const project = {
+      ...sampleProject(),
+      tools: [{ id: "ts", name: "TS", type: "table-saw" as const, kerf: 0.125, enabled: true, maxRip: 30, maxPiece: { length: 48, width: 24 }, maxCrosscutPiece: { length: 36, width: 12 } }],
+    };
     const tool = convertProjectUnits(project, "mm").tools[0]!;
-    expect(tool).toMatchObject({ maxRip: 762, maxPiece: { length: 1219.2, width: 609.6 } });
+    expect(tool).toMatchObject({ maxRip: 762, maxPiece: { length: 1219.2, width: 609.6 }, maxCrosscutPiece: { length: 914.4, width: 304.8 } });
   });
 
   it("keeps a part that touches the far trim line on the sheet, there and back", () => {

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { INCH_PRECISIONS, MM_PRECISIONS } from "../geometry/format.ts";
 
 export const FORMAT_ID = "opencutplan";
-export const FORMAT_VERSION = "1.7";
+export const FORMAT_VERSION = "1.8";
 /** Analysis and the editor work per copy, so a larger quantity would freeze them. */
 export const MAX_PART_QUANTITY = 10_000;
 export const MAX_DESIGN_CELLS = 50;
@@ -103,6 +103,7 @@ export const ToolSchema = z.discriminatedUnion("type", [
       maxRip: positive.optional(),
       maxCrosscut: positive.optional(),
       maxPiece: z.object({ length: positive, width: positive }).loose().optional(),
+      maxCrosscutPiece: z.object({ length: positive, width: positive }).loose().optional(),
     })
     .loose(),
   z.object({ ...toolBase, type: z.literal("track-saw"), maxCut: positive.optional() }).loose(),
@@ -115,6 +116,7 @@ export const ToolSchema = z.discriminatedUnion("type", [
       maxStages: z.number().int().positive().optional(),
     })
     .loose(),
+  z.object({ ...toolBase, type: z.literal("miter-saw"), maxCut: positive.optional() }).loose(),
 ]);
 
 export const FeaturesSchema = z

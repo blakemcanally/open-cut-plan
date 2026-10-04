@@ -18,8 +18,11 @@ export function convertTool(tool: Tool, from: Units, to: Units): Tool {
     const value = next[key];
     if (typeof value === "number") next[key] = c(value);
   }
-  if (tool.type === "table-saw" && tool.maxPiece) {
-    next.maxPiece = { ...tool.maxPiece, length: c(tool.maxPiece.length), width: c(tool.maxPiece.width) };
+  if (tool.type === "table-saw") {
+    for (const key of ["maxPiece", "maxCrosscutPiece"] as const) {
+      const piece = tool[key];
+      if (piece) next[key] = { ...piece, length: c(piece.length), width: c(piece.width) };
+    }
   }
   return next as Tool;
 }
