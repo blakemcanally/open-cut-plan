@@ -2,6 +2,7 @@ import type { Features, Material, Part, Placement, Project, Stock, Tool } from "
 import { formatLength, type DisplayPrecision } from "../geometry/format.ts";
 import { fitsWithin, inset, type Rect, type Size } from "../geometry/rect.ts";
 import type { Units } from "../geometry/units.ts";
+import { projectGoal } from "../optimize/goal-setting.ts";
 
 export const DEFAULT_MIN_OFFCUT: Readonly<Record<Units, Size>> = {
   in: { length: 12, width: 6 },
@@ -18,6 +19,8 @@ export interface PlanContext {
   /** The largest kerf among enabled tools, or 0 when the kerf feature is off. */
   kerf: number;
   minOffcut: Size;
+  /** "offcuts" when the cut trees compare the largest offcut before the cut length: the optimizer goal is offcuts and the offcuts feature is on. */
+  treeGoal: "offcuts" | "length";
   materials: ReadonlyMap<string, Material>;
   stock: ReadonlyMap<string, Stock>;
   parts: ReadonlyMap<string, Part>;
@@ -34,6 +37,7 @@ export function planContext(project: Project): PlanContext {
     tools,
     kerf: settings.features.kerf ? Math.max(0, ...tools.map((tool) => tool.kerf)) : 0,
     minOffcut: settings.minOffcut ?? DEFAULT_MIN_OFFCUT[project.project.units],
+    treeGoal: settings.features.offcuts && projectGoal(project) === "offcuts" ? "offcuts" : "length",
     materials: byId(project.materials),
     stock: byId(project.stock),
     parts: byId(project.parts),
@@ -97,4 +101,9 @@ export function stockLabel(ctx: PlanContext, stock: Stock): string {
 /** Waste at least `minOffcut` in both dimensions (either orientation) is an offcut; never when the offcuts feature is off. */
 export function isOffcutSize(ctx: PlanContext, size: Size): boolean {
   return ctx.features.offcuts && fitsWithin(ctx.minOffcut, size);
+}
+
+/** The minimum offcut for `buildCutTree` when the trees compare the largest offcut first. */
+export function treeMinOffcut(ctx: PlanContext): Size | undefined {
+  return ctx.treeGoal === "offcuts" ? ctx.minOffcut : undefined;
 }

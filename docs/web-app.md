@@ -350,7 +350,8 @@ The sections put the common settings first:
   100; off for "Lowest cost"), **Keep each unit and group together** (on by default), the search time (up to 3600
   seconds), and the seed. A goal from a newer version of the app shows as "<value> (unknown)", and the optimizer uses
   the lowest cost. When the Offcuts feature is off, a note says that "Best offcuts" gives the same plan as "Lowest
-  cost". **Keep each unit and group together** puts the parts of each design unit and each part group (one colour
+  cost". With "Best offcuts", the cut tree of each sheet also keeps the largest offcut before the shortest cuts (see
+  [Cut tree](cut-analysis.md#cut-tree)). **Keep each unit and group together** puts the parts of each design unit and each part group (one colour
   in the layout) on as few sheets as possible. It never makes the plan cost more. See
   [`optimizer.md`](optimizer.md#objective).
 - **Money**: the currency.

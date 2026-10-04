@@ -7,6 +7,7 @@ import { createProject } from "../../src/format/defaults.ts";
 import { parseProject } from "../../src/format/parse.ts";
 import { sameNumber } from "../../src/optimize/evaluate.ts";
 import { costLimit, withinLimit } from "../../src/optimize/goal.ts";
+import { analyzeProject } from "../../src/analysis.ts";
 import { applyOptimizeResult, createSearch, optimize, type OptimizeResult } from "../../src/optimize/search.ts";
 import { validatePlan } from "../../src/plan/validate.ts";
 import { sequencePlan, totalCutLength } from "../../src/sequence/sequence.ts";
@@ -288,6 +289,24 @@ describe("the optimizer goal", () => {
       "kallax-2x4-mm": "df858571c0e70e17",
       "eket-wall-in": "252be793e5f5e0fa",
     });
+  });
+
+  it("scores the offcuts of the trees that keep the largest offcut when the goal in the settings is offcuts, as the reports show them", () => {
+    const bookcase = load("simple-bookcase-mm");
+    const withGoal = (project: Project, goal: string): Project => ({ ...project, settings: { ...project.settings, optimizer: { ...project.settings.optimizer, goal } } });
+    const result = optimize(withGoal(bookcase, "offcuts"), { iterations: 150, seed: 7 });
+    const planned = applyOptimizeResult(withGoal(bookcase, "offcuts"), result);
+    const areas = (project: Project, material: string) =>
+      analyzeProject(project)
+        .offcuts.filter((offcut) => offcut.material === material)
+        .map((offcut) => offcut.rect.length * offcut.rect.width)
+        .sort((a, b) => b - a);
+    for (const { material, score } of result.materials) {
+      expect(areas(planned, material).map(Math.round)).toEqual(score.offcuts.map(Math.round));
+      expect(score.largestOffcut).toBeGreaterThanOrEqual(areas(withGoal(planned, "cost"), material)[0]!);
+    }
+    const hdf = result.materials.find((m) => m.material === "hdf3")!.score.largestOffcut;
+    expect(hdf / areas(withGoal(planned, "cost"), "hdf3")[0]!).toBeGreaterThan(1.2);
   });
 
   it("keeps to plans with no bought stock when an owned offcut makes the cheapest cost 0", () => {

@@ -230,7 +230,8 @@ a long side of at least that length asks for a long edge on a factory edge of th
   text output says `The search found no better plan. The plan did not change.`
 - `--time <seconds>` sets the search time. `--seed <n>` sets the random seed.
 - `--goal <goal>` and `--extra-cost <percent>` set the goal and the extra cost for this run only. The stored settings
-  do not change. See [`optimizer.md`](optimizer.md#objective).
+  do not change. The cut trees follow the goal in the settings: only `optimizer.goal` `offcuts` makes them prefer
+  the largest offcut to the shortest cuts. See [`optimizer.md`](optimizer.md#objective).
 - `--keep-groups <true|false>` sets for this run only whether the optimizer keeps the groups together. When it does,
   it puts the parts of each design unit and each part group on as few sheets as it can, but never at a higher cost.
   The default is the `optimizer.keepGroupsTogether` setting.

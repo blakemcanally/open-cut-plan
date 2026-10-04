@@ -1,6 +1,6 @@
 import type { Part, Placement, PlanSheet, Project, Stock } from "../format/schema.ts";
 import { EPSILON, span, type Rect, type Size } from "../geometry/rect.ts";
-import { copyLabel, placedRect, stockRect, trimFor, type PlanContext } from "./context.ts";
+import { copyLabel, placedRect, stockRect, treeMinOffcut, trimFor, type PlanContext } from "./context.ts";
 import { buildCutTree, type CutNode, type TreeItem } from "./cutTree.ts";
 import { planWarning, type PlanIssue } from "./issues.ts";
 
@@ -166,7 +166,7 @@ export function pushToFactoryEdges(ctx: PlanContext, sheet: PlanSheet, requested
   }
   const before = sheetFactoryEdgeMisses(ctx, sheet, requested);
   if (before === 0) return null;
-  const tree = buildCutTree(stockRect(stock), items, ctx.kerf, 0);
+  const tree = buildCutTree(stockRect(stock), items, ctx.kerf, 0, undefined, treeMinOffcut(ctx));
   if (tree.stuck.length > 0) return null;
 
   const rects = new Map(items.map((item) => [item.index, item.rect]));

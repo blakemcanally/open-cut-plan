@@ -152,7 +152,7 @@ const KEYS: Key[] = [
   {
     key: "optimizer.goal",
     values: OPTIMIZER_GOALS.join("|"),
-    description: "What the optimizer looks for after it fits every part: the lowest cost, the best offcuts (the largest offcut first), or the fewest cut steps. Default: cost.",
+    description: "What the optimizer looks for after it fits every part: the lowest cost, the best offcuts (the largest offcut first; the cut trees then also keep the largest offcut before the shortest cuts), or the fewest cut steps. Default: cost.",
     get: (p) => p.settings.optimizer.goal,
     set: (p, v) => withSettings(p, (s) => ({ ...s, optimizer: { ...s.optimizer, goal: choiceValue(v, "optimizer.goal", OPTIMIZER_GOALS) } })),
   },

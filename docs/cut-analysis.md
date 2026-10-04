@@ -79,13 +79,22 @@ trims.
 3. The tree chooses the split whose subtree (the split and all the cuts below it) has, in this order:
    1. the fewest stuck parts;
    2. the fewest cuts that no enabled tool can make (only with `toolLimits` on, see below);
-   3. the least total cut length;
-   4. the fewest cuts.
+   3. the largest offcut, only when the optimizer goal in the settings is `offcuts` and the `offcuts` feature is on
+      (see below);
+   4. the least total cut length;
+   5. the fewest cuts.
 
    When two subtrees are equal, the tree keeps the earlier split in this order: at the first stage rips before
    crosscuts, and at each deeper stage the other direction first; in each direction, a cut at each side of every gap
    first. For example, a 20" × 10" part in a corner of a 96" × 48" sheet gets a 48" crosscut and then a 20" rip
    (68" of cuts). Rips first would give a 96" rip and then a 10" crosscut (106").
+
+   The shortest cuts can cut the waste into smaller pieces. So when `settings.optimizer.goal` is `offcuts`, the tree
+   compares the largest offcut of each subtree before its cut length. An offcut is a waste piece that is at least the
+   minimum offcut, as in the offcut list (see [Offcuts](#offcuts)). Each piece keeps the largest
+   offcut that it can, so a tree can have longer cuts than necessary for the largest offcut of the sheet. With other
+   goals, or with the `offcuts` feature off, the tree does not compare offcuts. The goal comes from the settings, so
+   the validator, the sequence, the Shop tab, the reports, and the optimizer all use the same tree for a project.
 
    With `toolLimits` on, the tree is first built with no tool check. When an enabled tool can make every cut of that
    tree, the tree stays. Otherwise the tree is built again, and this time it counts the cuts that no enabled tool can

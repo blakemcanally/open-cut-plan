@@ -2,15 +2,19 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../../../examples/builders/index.ts";
 import {
+  analyzeProject,
   analyzeSheets,
   buildCutTree,
+  fitsWithin,
   nodeItems,
   parseProject,
   planContext,
+  totalCutLength,
   span,
   otherAxis,
   type CutNode,
   type Rect,
+  type Size,
   type TreeItem,
 } from "../../src/index.ts";
 import { sampleProject } from "../helpers.ts";
@@ -45,6 +49,12 @@ function wastes(node: CutNode): Rect[] {
   if (node.kind === "split") return node.children.flatMap(wastes);
   return [];
 }
+
+function largestOffcut(node: CutNode, min: Size): number {
+  return Math.max(0, ...wastes(node).filter((rect) => fitsWithin(min, rect)).map((rect) => rect.length * rect.width));
+}
+
+const MIN_OFFCUT: Size = { length: 12, width: 6 };
 
 describe("buildCutTree", () => {
   it("returns a part leaf when the part fills the region", () => {
@@ -209,6 +219,46 @@ describe("buildCutTree", () => {
     );
   });
 
+  it("compares the largest offcut before the cut length when it has the minimum offcut", () => {
+    const layout = items(r(0, 0, 50, 20));
+    const shortest = buildCutTree(r(0, 0, 96, 48), layout, 0, 0);
+    expect(shortest.root).toMatchObject({ kind: "split", axis: "x", cuts: [50] });
+    expect([cutLength(shortest.root), largestOffcut(shortest.root, MIN_OFFCUT)]).toEqual([48 + 50, 46 * 48]);
+    const offcut = buildCutTree(r(0, 0, 96, 48), layout, 0, 0, undefined, MIN_OFFCUT);
+    expect(offcut.root).toMatchObject({ kind: "split", axis: "y", cuts: [20] });
+    expect([cutLength(offcut.root), largestOffcut(offcut.root, MIN_OFFCUT)]).toEqual([96 + 20, 96 * 28]);
+    expect(buildCutTree(r(0, 0, 96, 48), layout, 0, 0, undefined, { length: 97, width: 30 })).toEqual(shortest);
+  });
+
+  it("counts an offcut without the kerf, and only when it is at least the minimum offcut", () => {
+    const k = 0.125;
+    const layout = items(r(0, 0, 50, 20));
+    const offcut = buildCutTree(r(0, 0, 96, 48), layout, k, 0, undefined, MIN_OFFCUT);
+    expect(largestOffcut(offcut.root, MIN_OFFCUT)).toBeCloseTo(96 * (28 - k));
+    expect(buildCutTree(r(0, 0, 96, 48), layout, k, 0, undefined, { length: 96, width: 28 })).toEqual(buildCutTree(r(0, 0, 96, 48), layout, k, 0));
+  });
+
+  it("never has a smaller largest offcut than the shortest tree or the old tree when it has the minimum offcut, and cuts every part free", () => {
+    fc.assert(
+      fc.property(fc.integer(), fc.constantFrom(0, 0.125, 0.25), fc.constantFrom(MIN_OFFCUT, { length: 30, width: 10 }), (seed, kerf, min) => {
+        const random = mulberry32(seed);
+        const region = r(0, 0, 96, 48);
+        const rects: Rect[] = [];
+        guillotine(random, region, kerf, 6, rects);
+        const tree = buildCutTree(region, items(...rects), kerf, 0, undefined, min);
+        const shortest = buildCutTree(region, items(...rects), kerf, 0);
+        const old = oldTree(region, items(...rects), kerf);
+        const largest = largestOffcut(tree.root, min);
+        expect(largest).toBeGreaterThanOrEqual(largestOffcut(shortest.root, min) - 1e-6);
+        expect(largest).toBeGreaterThanOrEqual(largestOffcut(old.root, min) - 1e-6);
+        expect(sortedGroups(tree.stuck)).toEqual(sortedGroups(shortest.stuck));
+        expect(parts(tree.root).sort((a, b) => a - b)).toEqual(rects.map((_, i) => i));
+        assertCutsMissParts(tree.root, rects, kerf);
+      }),
+      { numRuns: 300 },
+    );
+  });
+
   it("finds the same stuck groups as the old tree for random rectangles on the sheet, and the same stuck parts anywhere", () => {
     const eighths = (min: number, max: number) => fc.integer({ min: min * 8, max: max * 8 }).map((n) => n / 8);
     const anywhere = fc.record({ x: eighths(-20, 100), y: eighths(-10, 50), length: eighths(0.125, 60), width: eighths(0.125, 30) });
@@ -292,6 +342,30 @@ describe("analyzeSheets", () => {
     ]);
     expect(sheets[1]!.tree).toEqual({ trims: [], root: { kind: "waste", rect: r(0, 0, 96, 48), stage: 1 }, stuck: [] });
     expect(nodeItems(sheets[0]!.tree.root)).toEqual([0, 1]);
+  });
+
+  it("compares the largest offcut before the cut length when the optimizer goal is offcuts, the same in the offcuts, the steps, and the checks", () => {
+    const project = sampleProject();
+    project.settings.trim = 0;
+    project.tools = [{ id: "ts", name: "Table saw", type: "table-saw", kerf: 0.125, enabled: true }];
+    project.parts[0] = { ...project.parts[0]!, length: 50, width: 20, quantity: 1 };
+    project.plan!.sheets[0]!.placements = [{ part: "side", copy: 0, x: 0, y: 0, rotated: false }];
+    const withGoal = (goal: string, offcuts = true) => ({ ...project, settings: { ...project.settings, optimizer: { ...project.settings.optimizer, goal }, features: { ...project.settings.features, offcuts } } });
+    expect(planContext(withGoal("offcuts")).treeGoal).toBe("offcuts");
+    expect(planContext(withGoal("cost")).treeGoal).toBe("length");
+    expect(planContext(withGoal("offcuts", false)).treeGoal).toBe("length");
+    expect(planContext(withGoal("other")).treeGoal).toBe("length");
+    const summary = (goal: string) => {
+      const analysis = analyzeProject(withGoal(goal));
+      return {
+        axis: (analysis.sheets[0]!.tree.root as Extract<CutNode, { kind: "split" }>).axis,
+        offcuts: analysis.offcuts.map((offcut) => [offcut.rect.length, offcut.rect.width]),
+        steps: totalCutLength(analysis.steps),
+        errors: analysis.issues.filter((issue) => issue.severity === "error").length,
+      };
+    };
+    expect(summary("cost")).toMatchObject({ axis: "x", offcuts: [[50, 28 - 0.125], [46 - 0.125, 48]], errors: 0 });
+    expect(summary("offcuts")).toMatchObject({ axis: "y", offcuts: [[46 - 0.125, 20], [96, 28 - 0.125]], steps: 96 + 20, errors: 0 });
   });
 
   it("keeps a copy for a later sheet when its first placement is on a sheet with missing stock", () => {

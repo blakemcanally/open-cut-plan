@@ -127,6 +127,10 @@ For the goals `offcuts` and `cuts`, the search chooses a plan for each material 
 6. When candidates are still equal, the order of the goal `cost` decides. Of two equal candidates, the first found
    stays.
 
+When the goal in the settings is `offcuts`, the cut tree of each sheet also compares the largest offcut before the cut
+length (see [Cut tree](cut-analysis.md#cut-tree)). A `goal` option that is not the goal in the settings does not
+change the cut trees. So the score of a plan always agrees with the reports of the project.
+
 Costs and areas that differ by less than a small relative tolerance are equal, so a candidate that costs exactly the
 limit stays. C can only go down, so the search drops a candidate when its cost goes over the limit. With the
 `offcuts` feature off, every offcut list is empty, and the goal `offcuts` gives the same plan as the goal `cost`.

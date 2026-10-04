@@ -1,4 +1,4 @@
-import { contains, EPSILON, inset, otherAxis, sameRect, span, withSpan, type Axis, type Rect } from "../geometry/rect.ts";
+import { area, contains, EPSILON, fitsWithin, inset, otherAxis, sameRect, span, withSpan, type Axis, type Rect, type Size } from "../geometry/rect.ts";
 
 export interface TreeItem {
   /** Index of the placement in its sheet's `placements`. */
@@ -44,10 +44,11 @@ export interface TreeCut {
  * removes a sliver narrower than itself.
  *
  * Each piece gets the split whose subtree has the fewest stuck parts, then the fewest cuts that `canCut` rejects, then
- * the least total cut length, then the fewest cuts. Equal subtrees keep rips first at the first stage and the other
- * direction first at each deeper stage, with every cut of the direction made at once.
+ * (with `minOffcut`) the largest waste piece that is at least `minOffcut`, then the least total cut length, then the
+ * fewest cuts. Equal subtrees keep rips first at the first stage and the other direction first at each deeper stage,
+ * with every cut of the direction made at once.
  */
-export function buildCutTree(sheet: Rect, items: readonly TreeItem[], kerf: number, trim: number, canCut?: (cut: TreeCut) => boolean): CutTree {
+export function buildCutTree(sheet: Rect, items: readonly TreeItem[], kerf: number, trim: number, canCut?: (cut: TreeCut) => boolean, minOffcut?: Size): CutTree {
   const stuck: number[][] = [];
   const trims = trim > 0 ? trimCuts(sheet, trim, kerf) : [];
   const region = trim > 0 ? inset(sheet, trim) : sheet;
@@ -57,10 +58,10 @@ export function buildCutTree(sheet: Rect, items: readonly TreeItem[], kerf: numb
     return it;
   });
   const group = { items: inner, x: inner.toSorted((a, b) => a.x[0] - b.x[0]), y: inner.toSorted((a, b) => a.y[0] - b.y[0]), runs: {} };
-  const root = treeBuilder(kerf, undefined)(region, group, 1, "y", stuck);
+  const root = treeBuilder(kerf, undefined, minOffcut)(region, group, 1, "y", stuck);
   if (!canCut || everyCut(root, kerf, canCut)) return { trims, root, stuck };
   const again: number[][] = [];
-  return { trims, root: treeBuilder(kerf, canCut)(region, group, 1, "y", again), stuck: again };
+  return { trims, root: treeBuilder(kerf, canCut, minOffcut)(region, group, 1, "y", again), stuck: again };
 }
 
 function everyCut(node: CutNode, kerf: number, canCut: (cut: TreeCut) => boolean): boolean {
@@ -100,19 +101,29 @@ function trimCuts(sheet: Rect, trim: number, kerf: number): TrimCut[] {
 interface Cost {
   stuck: number;
   noTool: number;
+  /** The area of the largest waste piece that is an offcut; always 0 when the tree does not compare offcuts. */
+  offcut: number;
   length: number;
   cuts: number;
 }
 
-const FREE: Cost = { stuck: 0, noTool: 0, length: 0, cuts: 0 };
+const FREE: Cost = { stuck: 0, noTool: 0, offcut: 0, length: 0, cuts: 0 };
 
 function plus(a: Cost, b: Cost): Cost {
-  return { stuck: a.stuck + b.stuck, noTool: a.noTool + b.noTool, length: a.length + b.length, cuts: a.cuts + b.cuts };
+  return { stuck: a.stuck + b.stuck, noTool: a.noTool + b.noTool, offcut: Math.max(a.offcut, b.offcut), length: a.length + b.length, cuts: a.cuts + b.cuts };
 }
 
-function compareCost(a: Cost, b: Cost): number {
+function compareLength(a: Cost, b: Cost): number {
   if (a.stuck !== b.stuck) return a.stuck - b.stuck;
   if (a.noTool !== b.noTool) return a.noTool - b.noTool;
+  if (Math.abs(a.length - b.length) > EPSILON) return a.length - b.length;
+  return a.cuts - b.cuts;
+}
+
+function compareOffcutFirst(a: Cost, b: Cost): number {
+  if (a.stuck !== b.stuck) return a.stuck - b.stuck;
+  if (a.noTool !== b.noTool) return a.noTool - b.noTool;
+  if (Math.abs(a.offcut - b.offcut) > EPSILON) return b.offcut - a.offcut;
   if (Math.abs(a.length - b.length) > EPSILON) return a.length - b.length;
   return a.cuts - b.cuts;
 }
@@ -181,9 +192,11 @@ interface Step {
 
 type Build = (rect: Rect, group: Group, stage: number, prefer: Axis, stuck: number[][]) => CutNode;
 
-function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefined): Build {
+function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefined, minOffcut: Size | undefined): Build {
   const half = kerf / 2;
   const memo = new Map<number, Known[]>();
+  const compareCost = minOffcut ? compareOffcutFirst : compareLength;
+  const offcutOf = (waste: Rect | null) => (minOffcut && waste && fitsWithin(minOffcut, waste) ? area(waste) : 0);
 
   const lookup = (x: number, y: number, length: number, width: number, items: readonly Item[], stage: number): Known | undefined => {
     for (const known of memo.get(items[0]!.index) ?? []) {
@@ -222,7 +235,7 @@ function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefin
       const fits =
         Math.abs(part.x - x) <= EPSILON && Math.abs(part.y - y) <= EPSILON && Math.abs(part.length - length) <= EPSILON && Math.abs(part.width - width) <= EPSILON;
       if (fits) return FREE;
-      if (!canCut && length > EPSILON && width > EPSILON && contains({ x, y, length, width }, part)) return singleCost(x, y, length, width, part);
+      if (!canCut && length > EPSILON && width > EPSILON && contains({ x, y, length, width }, part)) return singleCost(x, y, length, width, part, kerf, minOffcut);
     }
     return (lookup(x, y, length, width, items, stage)?.solved ?? solve({ x, y, length, width }, group, stage)).cost;
   };
@@ -277,7 +290,7 @@ function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefin
           piece = remainder;
         });
       }
-      return { stuck: 0, noTool, length: count * length, cuts: count };
+      return { stuck: 0, noTool, offcut: offcutOf(boundary.waste), length: count * length, cuts: count };
     };
 
     // tail[b][o]: the best cost of run b and everything after it, when option o of boundary b starts run b.
@@ -351,19 +364,22 @@ function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefin
 
 const lengths = new Float64Array(16);
 const counts = new Int32Array(16);
+const offcuts = new Float64Array(16);
 
 /** The cost of cutting one part free from a piece that contains it: each edge with waste takes one cut. */
-function singleCost(x: number, y: number, length: number, width: number, part: Rect): Cost {
+function singleCost(x: number, y: number, length: number, width: number, part: Rect, kerf: number, minOffcut: Size | undefined): Cost {
   const waste = [part.x - x, x + length - part.x - part.length, part.y - y, y + width - part.y - part.width];
   let full = 0;
   for (let side = 0; side < 4; side++) if (waste[side]! > EPSILON) full |= 1 << side;
   lengths[0] = 0;
   counts[0] = 0;
+  offcuts[0] = 0;
   for (let mask = 1; mask <= full; mask++) {
     if ((mask & full) !== mask) continue;
     const across = [part.width + (mask & 4 ? waste[2]! : 0) + (mask & 8 ? waste[3]! : 0), part.length + (mask & 1 ? waste[0]! : 0) + (mask & 2 ? waste[1]! : 0)];
     let best = Number.POSITIVE_INFINITY;
     let fewest = 0;
+    let largest = 0;
     for (let a = 0; a < 2; a++) {
       const sides = a === 0 ? 3 : 12;
       const open = mask & sides;
@@ -371,16 +387,28 @@ function singleCost(x: number, y: number, length: number, width: number, part: R
         const n = cut === sides ? 2 : 1;
         const total = n * across[a]! + lengths[mask & ~cut]!;
         const cuts = n + counts[mask & ~cut]!;
-        if (total < best - EPSILON || (Math.abs(total - best) <= EPSILON && cuts < fewest)) {
+        const shorter = total < best - EPSILON || (Math.abs(total - best) <= EPSILON && cuts < fewest);
+        let offcut = 0;
+        if (minOffcut) {
+          offcut = offcuts[mask & ~cut]!;
+          for (let side = 2 * a; side < 2 * a + 2; side++) {
+            if (!(cut & (1 << side))) continue;
+            const piece = { length: Math.max(0, waste[side]! - kerf), width: across[a]! };
+            if (fitsWithin(minOffcut, piece)) offcut = Math.max(offcut, piece.length * piece.width);
+          }
+        }
+        if (minOffcut ? offcut - largest > EPSILON || (Math.abs(offcut - largest) <= EPSILON && shorter) : shorter) {
           best = total;
           fewest = cuts;
+          largest = offcut;
         }
       }
     }
     lengths[mask] = best;
     counts[mask] = fewest;
+    offcuts[mask] = largest;
   }
-  return { stuck: 0, noTool: 0, length: lengths[full]!, cuts: counts[full]! };
+  return { stuck: 0, noTool: 0, offcut: offcuts[full]!, length: lengths[full]!, cuts: counts[full]! };
 }
 
 /** Groups the parts into runs along the axis: parts closer than the kerf share a run. */
