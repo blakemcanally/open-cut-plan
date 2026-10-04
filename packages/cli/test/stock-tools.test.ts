@@ -84,6 +84,40 @@ describe("tools", () => {
     expect(unset.json().tool).not.toHaveProperty("maxRip");
   });
 
+  it("sets the crosscut piece of a table saw apart from the rip piece", async () => {
+    const io = withExamples();
+    const set = await cli(["tools", "set", SHELF, "table-saw", "--max-crosscut-piece-length", "48", "--max-crosscut-piece-width", "30", "--json"], io);
+    expect(set.json().tool).toMatchObject({ maxCrosscutPiece: { length: 48, width: 30 } });
+    const shown = await cli(["tools", "get", SHELF, "table-saw"], io);
+    expect(shown.stdout).toContain('crosscut piece 48" × 30"');
+    const half = await cli(["tools", "set", BOOKCASE, "table-saw", "--max-crosscut-piece-length", "900", "--json"], io);
+    expect(half.json().error.code).toBe("missing-option");
+    const unset = await cli(["tools", "set", SHELF, "table-saw", "--unset", "max-crosscut-piece-width", "--json"], io);
+    expect(unset.json().tool).not.toHaveProperty("maxCrosscutPiece");
+  });
+
+  it("adds a mitre saw, which takes only the longest cut", async () => {
+    const io = withExamples();
+    const miter = await cli(["tools", "add", SHELF, "--type", "miter-saw", "--max-cut", "16", "--json"], io);
+    expect(miter.json().tool).toEqual({ id: "mitre-saw", name: "Mitre saw", type: "miter-saw", kerf: 0.125, enabled: true, maxCut: 16 });
+    const wrong = await cli(["tools", "add", SHELF, "--type", "miter-saw", "--max-rip", "10", "--json"], io);
+    expect(wrong.json().error.code).toBe("invalid-option");
+  });
+
+  it("adds a saw from a preset of typical values, and lets options change them", async () => {
+    const io = withExamples();
+    const preset = await cli(["tools", "add", BOOKCASE, "--preset", "track-saw-55", "--json"], io);
+    expect(preset.json().tool).toEqual({ id: "track-saw-2", name: "Track saw, 1400 mm rail", type: "track-saw", kerf: 2.2, enabled: true, maxCut: 1250 });
+    const sled = await cli(["tools", "add", SHELF, "--preset", "cabinet-saw-sled", "--max-rip", "52", "--json"], io);
+    expect(sled.json().tool).toMatchObject({ name: "Cabinet saw with a crosscut sled", maxRip: 52, maxCrosscutPiece: { length: 48, width: 30 } });
+    const both = await cli(["tools", "add", SHELF, "--preset", "cabinet-saw-sled", "--type", "track-saw", "--json"], io);
+    expect(both.json().error.code).toBe("invalid-option");
+    const none = await cli(["tools", "add", SHELF, "--json"], io);
+    expect(none.json().error.code).toBe("missing-option");
+    const unknown = await cli(["tools", "add", SHELF, "--preset", "laser", "--json"], io);
+    expect(unknown.code).toBe(2);
+  });
+
   it("moves and removes tools", async () => {
     const io = withExamples();
     const moved = await cli(["tools", "move", BOOKCASE, "table-saw", "--position", "1", "--json"], io);

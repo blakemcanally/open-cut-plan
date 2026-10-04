@@ -96,7 +96,7 @@ const sequence: CommandSpec = {
     { command: `${PROGRAM} report sequence shelf.cutplan.json --sheet 1 --json`, description: "The steps of sheet 1 as JSON." },
   ],
   output:
-    "orderMode, cutLength (the total length of the cut lines of the steps, trims included), steps [{ step, sheet, sheetNumber, kind (rip|crosscut|trim), axis, stage, at, from, to, tool (id or null), toolName, recommendedTool (id or null), setup (the tool and what the user sets, such as Table saw · fence at 15 3/8\"), chosen, overLimit (maxPiece|maxRip|maxCrosscut|maxCut|maxStages or null), side, setting, requires, releasedNext, remainderNext, piece, released, remainder { x, y, length, width }, title, headline, method, pickUp, actions [string], results [{ kind (part|next|offcut|waste), where, size, parts [string], next }], body }].",
+    "orderMode, cutLength (the total length of the cut lines of the steps, trims included), steps [{ step, sheet, sheetNumber, kind (rip|crosscut|trim), axis, stage, at, from, to, tool (id or null), toolName, recommendedTool (id or null), setup (the tool and what the user sets, such as Table saw · fence at 15 3/8\"), chosen, overLimit (maxPiece|maxCrosscutPiece|maxRip|maxCrosscut|maxCut|maxStages|crosscutOnly or null), side, setting, requires, releasedNext, remainderNext, piece, released, remainder { x, y, length, width }, title, headline, method, pickUp, actions [string], results [{ kind (part|next|offcut|waste), where, size, parts [string], next }], body }].",
   async run({ args, options, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;

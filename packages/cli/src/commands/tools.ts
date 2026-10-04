@@ -1,20 +1,26 @@
-import { moveTool, newTool, removeTool, TOOL_TYPE_NAMES, TOOL_TYPES, updateTool, type Project, type Tool, type ToolType } from "@opencutplan/core";
+import { moveTool, newTool, presetTool, removeTool, TOOL_PRESETS, TOOL_TYPE_NAMES, TOOL_TYPES, updateTool, type Project, type Tool, type ToolType } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines } from "../project.ts";
 import { usageError, type CommandSpec, type GroupSpec, type OptionValues } from "../spec.ts";
 import { len, table } from "../text.ts";
-import { choiceValue, integerValue, optionalBoolean, optionalLength, str } from "../values.ts";
+import { integerValue, optionalBoolean, optionalChoice, optionalLength, str } from "../values.ts";
 import { assertNoConflict, findAll, findById, ID_OPTION, newId, nonEmpty, unsetFields, unsetOption } from "./common.ts";
 
-const LIMITS = ["max-rip", "max-crosscut", "max-piece-length", "max-piece-width", "max-cut", "max-stages"] as const;
+const LIMITS = ["max-rip", "max-crosscut", "max-piece-length", "max-piece-width", "max-crosscut-piece-length", "max-crosscut-piece-width", "max-cut", "max-stages"] as const;
 type Limit = (typeof LIMITS)[number];
 
 const APPLIES: Readonly<Record<ToolType, readonly Limit[]>> = {
-  "table-saw": ["max-rip", "max-crosscut", "max-piece-length", "max-piece-width"],
+  "table-saw": ["max-rip", "max-crosscut", "max-piece-length", "max-piece-width", "max-crosscut-piece-length", "max-crosscut-piece-width"],
   "track-saw": ["max-cut"],
   "circular-saw": ["max-cut"],
   "panel-saw": ["max-cut", "max-stages"],
+  "miter-saw": ["max-cut"],
 };
+
+const PIECES = [
+  { field: "maxPiece", length: "max-piece-length", width: "max-piece-width" },
+  { field: "maxCrosscutPiece", length: "max-crosscut-piece-length", width: "max-crosscut-piece-width" },
+] as const;
 
 const OPTIONS = {
   name: { name: "name", type: "string", value: "<text>", description: "The tool name. Default for add: the type name, such as \"Table saw\"." },
@@ -22,9 +28,26 @@ const OPTIONS = {
   enabled: { name: "enabled", type: "string", value: "<true|false>", description: "false leaves the tool out of cut assignment. Default for add: true." },
   "max-rip": { name: "max-rip", type: "string", value: "<length>", description: "Table saw: the fence-to-blade capacity." },
   "max-crosscut": { name: "max-crosscut", type: "string", value: "<length>", description: "Table saw: the sled or mitre gauge capacity." },
-  "max-piece-length": { name: "max-piece-length", type: "string", value: "<length>", description: "Table saw: the length of the largest piece you can control. Give it with --max-piece-width." },
-  "max-piece-width": { name: "max-piece-width", type: "string", value: "<length>", description: "Table saw: the width of the largest piece you can control." },
-  "max-cut": { name: "max-cut", type: "string", value: "<length>", description: "Track, circular, or panel saw: the longest cut." },
+  "max-piece-length": {
+    name: "max-piece-length",
+    type: "string",
+    value: "<length>",
+    description: "Table saw: the length of the largest piece you can control for a rip, and for a crosscut when the crosscut piece has no limit. Give it with --max-piece-width.",
+  },
+  "max-piece-width": { name: "max-piece-width", type: "string", value: "<length>", description: "Table saw: the width of the largest piece you can control for a rip." },
+  "max-crosscut-piece-length": {
+    name: "max-crosscut-piece-length",
+    type: "string",
+    value: "<length>",
+    description: "Table saw: the length of the largest piece you can control for a crosscut, on the sled or the mitre gauge. Give it with --max-crosscut-piece-width.",
+  },
+  "max-crosscut-piece-width": { name: "max-crosscut-piece-width", type: "string", value: "<length>", description: "Table saw: the width of the largest piece you can control for a crosscut." },
+  "max-cut": {
+    name: "max-cut",
+    type: "string",
+    value: "<length>",
+    description: "Track, circular, or panel saw: the longest cut. Mitre saw: the widest piece that it can cut across; the piece can have any length.",
+  },
   "max-stages": { name: "max-stages", type: "string", value: "<n>", description: "Panel saw: the deepest cut stage." },
 } as const;
 
@@ -40,6 +63,7 @@ function limitsText(project: Project, tool: Tool): string {
     if (tool.maxRip !== undefined) out.push(`rip ${len(project, tool.maxRip)}`);
     if (tool.maxCrosscut !== undefined) out.push(`crosscut ${len(project, tool.maxCrosscut)}`);
     if (tool.maxPiece) out.push(`piece ${len(project, tool.maxPiece.length)} × ${len(project, tool.maxPiece.width)}`);
+    if (tool.maxCrosscutPiece) out.push(`crosscut piece ${len(project, tool.maxCrosscutPiece.length)} × ${len(project, tool.maxCrosscutPiece.width)}`);
   } else {
     if (tool.maxCut !== undefined) out.push(`cut ${len(project, tool.maxCut)}`);
     if (tool.type === "panel-saw" && tool.maxStages !== undefined) out.push(`stages ${tool.maxStages}`);
@@ -67,16 +91,18 @@ function applyLimits(project: Project, tool: Tool, options: OptionValues, unset:
   if (stages !== undefined) next.maxStages = integerValue(stages, "max-stages", 1);
   if (unset.includes("max-stages")) delete next.maxStages;
   if (tool.type === "table-saw") {
-    const length = optionalLength(options, "max-piece-length", units);
-    const width = optionalLength(options, "max-piece-width", units);
-    if (length !== undefined || width !== undefined) {
-      const old = tool.maxPiece;
-      if (!old && (length === undefined || width === undefined)) {
-        throw usageError("Give both --max-piece-length and --max-piece-width.", "missing-option", { option: length === undefined ? "max-piece-length" : "max-piece-width" });
+    for (const piece of PIECES) {
+      const length = optionalLength(options, piece.length, units);
+      const width = optionalLength(options, piece.width, units);
+      if (length !== undefined || width !== undefined) {
+        const old = tool[piece.field];
+        if (!old && (length === undefined || width === undefined)) {
+          throw usageError(`Give both --${piece.length} and --${piece.width}.`, "missing-option", { option: length === undefined ? piece.length : piece.width });
+        }
+        next[piece.field] = { ...old, length: length ?? old!.length, width: width ?? old!.width };
       }
-      next.maxPiece = { ...old, length: length ?? old!.length, width: width ?? old!.width };
+      if (unset.includes(piece.length) || unset.includes(piece.width)) delete next[piece.field];
     }
-    if (unset.includes("max-piece-length") || unset.includes("max-piece-width")) delete next.maxPiece;
   }
   return next as Tool;
 }
@@ -113,7 +139,7 @@ const list: CommandSpec = {
   args: [FILE_ARG],
   options: [],
   examples: [{ command: `${PROGRAM} tools list shelf.cutplan.json`, description: "List the tools." }],
-  output: "units, tools [{ id, name, type, kerf, enabled, maxRip?, maxCrosscut?, maxPiece? { length, width }, maxCut?, maxStages?, position }]. position (1-based) is derived; it is not a file field.",
+  output: "units, tools [{ id, name, type, kerf, enabled, maxRip?, maxCrosscut?, maxPiece? { length, width }, maxCrosscutPiece? { length, width }, maxCut?, maxStages?, position }]. position (1-based) is derived; it is not a file field.",
   async run({ args, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
@@ -147,10 +173,17 @@ const get: CommandSpec = {
 const add: CommandSpec = {
   name: "tools add",
   summary: "Add a saw.",
-  description: "Add a saw with its kerf and limits. A missing limit gets the default of its type (see docs/cut-analysis.md); tools set --unset removes a limit. The tool goes last in the order unless you give --position.",
+  description:
+    "Add a saw with its kerf and limits. Give --type or --preset. A missing limit gets the default of its type, or the typical value of the preset (see docs/cut-analysis.md); tools set --unset removes a limit. The tool goes last in the order unless you give --position.",
   args: [FILE_ARG],
   options: [
-    { name: "type", type: "string", value: "<table-saw|track-saw|circular-saw|panel-saw>", required: true, description: "The kind of saw." },
+    { name: "type", type: "string", value: `<${TOOL_TYPES.join("|")}>`, description: "The kind of saw." },
+    {
+      name: "preset",
+      type: "string",
+      value: `<${TOOL_PRESETS.map((preset) => preset.id).join("|")}>`,
+      description: "A common saw with typical values for its name, kerf, and limits. Check the values against your saw. Other options change them.",
+    },
     OPTIONS.name,
     OPTIONS.kerf,
     OPTIONS.enabled,
@@ -162,15 +195,21 @@ const add: CommandSpec = {
   examples: [
     { command: `${PROGRAM} tools add shelf.cutplan.json --type track-saw --max-cut 110 --position 1`, description: "Add a track saw with a 110\" track, and try it first." },
     { command: `${PROGRAM} tools add shelf.cutplan.json --type table-saw --name "Jobsite saw" --kerf 3/32 --max-rip 24 --max-piece-length 48 --max-piece-width 30`, description: "Add a small table saw." },
+    { command: `${PROGRAM} tools add shelf.cutplan.json --preset sliding-miter-saw --max-cut 16`, description: "Add a 12\" sliding mitre saw that cuts across pieces up to 16\" wide." },
   ],
   output: "tool (the new tool), position, changes, validation, written, dryRun.",
   async run(invocation) {
     const { args, options, io } = invocation;
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
-    const type = choiceValue(str(options, "type")!, "type", TOOL_TYPES);
-    const name = nonEmpty(str(options, "name"), "name") ?? TOOL_TYPE_NAMES[type];
-    const base: Tool = { ...newTool(type, project.project.units, new Set()), id: newId(project.tools, str(options, "id"), name, "tool"), name };
+    const preset = optionalChoice(options, "preset", TOOL_PRESETS.map((p) => p.id));
+    const type = optionalChoice(options, "type", TOOL_TYPES);
+    if (preset !== undefined && type !== undefined) throw usageError("Give --type or --preset, not both.", "invalid-option", { option: "type" });
+    if (preset === undefined && type === undefined) throw usageError("Give --type or --preset.", "missing-option", { option: "type" });
+    const start = preset === undefined ? newTool(type!, project.project.units, new Set()) : presetTool(preset, project.project.units, new Set());
+    const given = nonEmpty(str(options, "name"), "name");
+    const name = given ?? start.name;
+    const base: Tool = { ...start, id: newId(project.tools, str(options, "id"), given ?? TOOL_TYPE_NAMES[start.type], "tool"), name };
     const tool = applyLimits(project, applyBase(project, base, options), options, []);
     let next: Project = { ...project, tools: [...project.tools, tool] };
     const position = str(options, "position");
