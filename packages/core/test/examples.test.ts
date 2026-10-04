@@ -114,6 +114,28 @@ describe("kallax-2x4-mm", () => {
   });
 });
 
+describe("kallax-4x2-combined-mm", () => {
+  const project = build("kallax-4x2-combined-mm");
+
+  it("runs one shelf under the two combined cells, on a short divider (spec 14.1)", () => {
+    expect(project.parts.map((p) => [p.id, p.name, p.length, p.width, p.quantity])).toEqual([
+      ["kx-top", "Top", 1430, 390, 1],
+      ["kx-bottom", "Bottom", 1430, 390, 1],
+      ["kx-side", "Side", 688, 390, 2],
+      ["kx-divider", "Divider", 688, 390, 2],
+      ["kx-divider-rows-2", "Divider, row 2", 335, 390, 1],
+      ["kx-shelf", "Shelf", 335, 390, 2],
+      ["kx-shelf-cols-1-2", "Shelf, columns 1–2", 688, 390, 1],
+    ]);
+  });
+
+  it("optimizes on the track saw with every copy placed and no errors", () => {
+    const result = optimize(project, { iterations: 10 });
+    expect(result.unplaced).toEqual([]);
+    expect(validatePlan(applyOptimizeResult(project, result)).filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+});
+
 describe("eket-wall-in", () => {
   const project = build("eket-wall-in");
 

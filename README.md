@@ -15,8 +15,9 @@ sequence, a shopping list, and part labels.
 - **Command line:** [`docs/cli.md`](docs/cli.md) — the `opencutplan` command for scripts and AI agents.
 - **Catalogue:** [`docs/catalog.md`](docs/catalog.md) — common sheet goods and sizes with typical, dated prices.
 - **Examples:** [`examples/`](examples/) — `living-room-shelf` (inches, with a full layout),
-  `simple-bookcase-mm` (metric, with an owned offcut and two saws), `kallax-2x4-mm` (a KALLAX-style design), and
-  `eket-wall-in` (two EKET-style wall units, in inches).
+  `simple-bookcase-mm` (metric, with an owned offcut and two saws), `kallax-2x4-mm` (a KALLAX-style design),
+  `kallax-4x2-combined-mm` (a KALLAX-style design with two cells combined), and `eket-wall-in` (two EKET-style wall
+  units, in inches).
 - **Design:** [`docs/superpowers/specs/`](docs/superpowers/specs/).
 
 ## Command line

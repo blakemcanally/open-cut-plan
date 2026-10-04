@@ -1,0 +1,173 @@
+{
+  "format": "opencutplan",
+  "version": "1.7",
+  "project": {
+    "name": "KALLAX-style 4x2 with combined cells (metric)",
+    "units": "mm"
+  },
+  "materials": [
+    {
+      "id": "ply18",
+      "name": "Birch plywood 18mm",
+      "thickness": 18,
+      "grained": true
+    }
+  ],
+  "stock": [
+    {
+      "id": "ply18-2440x1220",
+      "material": "ply18",
+      "length": 2440,
+      "width": 1220,
+      "quantity": null,
+      "cost": 80,
+      "kind": "sheet"
+    }
+  ],
+  "parts": [
+    {
+      "id": "kx-top",
+      "name": "Top",
+      "material": "ply18",
+      "length": 1430,
+      "width": 390,
+      "quantity": 1,
+      "grain": "length",
+      "group": "Media KALLAX",
+      "design": "kx"
+    },
+    {
+      "id": "kx-bottom",
+      "name": "Bottom",
+      "material": "ply18",
+      "length": 1430,
+      "width": 390,
+      "quantity": 1,
+      "grain": "length",
+      "group": "Media KALLAX",
+      "design": "kx"
+    },
+    {
+      "id": "kx-side",
+      "name": "Side",
+      "material": "ply18",
+      "length": 688,
+      "width": 390,
+      "quantity": 2,
+      "grain": "length",
+      "group": "Media KALLAX",
+      "design": "kx"
+    },
+    {
+      "id": "kx-divider",
+      "name": "Divider",
+      "material": "ply18",
+      "length": 688,
+      "width": 390,
+      "quantity": 2,
+      "grain": "length",
+      "group": "Media KALLAX",
+      "design": "kx"
+    },
+    {
+      "id": "kx-divider-rows-2",
+      "name": "Divider, row 2",
+      "material": "ply18",
+      "length": 335,
+      "width": 390,
+      "quantity": 1,
+      "grain": "length",
+      "group": "Media KALLAX",
+      "design": "kx"
+    },
+    {
+      "id": "kx-shelf",
+      "name": "Shelf",
+      "material": "ply18",
+      "length": 335,
+      "width": 390,
+      "quantity": 2,
+      "grain": "length",
+      "group": "Media KALLAX",
+      "design": "kx"
+    },
+    {
+      "id": "kx-shelf-cols-1-2",
+      "name": "Shelf, columns 1–2",
+      "material": "ply18",
+      "length": 688,
+      "width": 390,
+      "quantity": 1,
+      "grain": "length",
+      "group": "Media KALLAX",
+      "design": "kx"
+    }
+  ],
+  "designs": [
+    {
+      "id": "kx",
+      "name": "Media KALLAX",
+      "system": "kallax",
+      "material": "ply18",
+      "width": {
+        "openings": [
+          335,
+          335,
+          335,
+          335
+        ]
+      },
+      "height": {
+        "openings": [
+          335,
+          335
+        ]
+      },
+      "depth": 390,
+      "combined": [
+        {
+          "column": 1,
+          "row": 1,
+          "columns": 2,
+          "rows": 1
+        }
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "id": "track-saw",
+      "name": "Track saw (2.8 m rail)",
+      "kerf": 2.2,
+      "enabled": true,
+      "type": "track-saw",
+      "maxCut": 2800
+    }
+  ],
+  "settings": {
+    "features": {
+      "grain": true,
+      "kerf": true,
+      "trim": true,
+      "cutOrder": true,
+      "toolLimits": true,
+      "offcuts": true,
+      "cost": true,
+      "labels": true,
+      "snapping": true
+    },
+    "orderMode": "sheet",
+    "trim": 0,
+    "display": {
+      "inch": 32,
+      "mm": 1
+    },
+    "optimizer": {
+      "timeLimitMs": 2000,
+      "goal": "cost",
+      "extraCostPercent": 10,
+      "keepGroupsTogether": true
+    },
+    "currency": "USD"
+  }
+}
