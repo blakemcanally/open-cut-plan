@@ -533,6 +533,10 @@ columns.
   renames a group and moves its colour. **Status:** Done. `renameGroup` renames the group on all the parts that
   are not in a design, moves its entry in `groups`, and merges it when the new name is a group already. The Parts tab
   has a "Rename" action next to each group colour, and the CLI has `parts rename-group`.
+- **Longest parts first (item 2):** With a lower **Shortest long part**, more parts ask for a factory edge. Each miss
+  counted the same, so a short part could take the edge from a longer part. **Status:** Done. The misses compare by
+  the long sides of the copies, longest first (`compareFactoryEdgeMisses`), in the optimizer score and in
+  `pushToFactoryEdges`. The score has `factoryEdgeMissLengths`.
 
 ## 21. Combined cubbies: the next phases
 

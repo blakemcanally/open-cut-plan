@@ -11,6 +11,7 @@ import {
   planContext,
   pushToFactoryEdges,
   regenerateDesigns,
+  sheetFactoryEdgeMissLengths,
   sheetFactoryEdgeMisses,
   sideLine,
   validatePlan,
@@ -182,7 +183,25 @@ describe("pushToFactoryEdges", () => {
     const sheet = project.plan!.sheets[0]!;
     expect(sheetFactoryEdgeMisses(ctx, sheet)).toBe(2);
     const pushed = pushToFactoryEdges(ctx, sheet);
-    expect(pushed).toEqual({ placements: [at(0, 0), at(0, 36, 1)], misses: 0 });
+    expect(pushed).toEqual({ placements: [at(0, 0), at(0, 36, 1)], misses: 0, missLengths: [] });
+    expect(pushToFactoryEdges(ctx, { ...sheet, placements: pushed!.placements })).toBeNull();
+  });
+
+  it("gives the factory edges to the longest copies, when only some copies can have one", () => {
+    const project = edgeProject();
+    project.settings.factoryEdge = { minLength: 40 };
+    project.parts = [
+      { id: "a", name: "A", material: "ply", length: 90, width: 15, quantity: 1, grain: "none" },
+      { id: "b", name: "B", material: "ply", length: 85, width: 15, quantity: 1, grain: "none" },
+      { id: "c", name: "C", material: "ply", length: 80, width: 15, quantity: 1, grain: "none" },
+    ];
+    const strip = (part: string, y: number): Placement => ({ part, copy: 0, x: 0, y, rotated: false });
+    const sheet = { id: "s1", stock: "sheet", placements: [strip("a", 0), strip("b", 15.125), strip("c", 33)] };
+    const ctx = planContext(project);
+    expect(sheetFactoryEdgeMissLengths(ctx, sheet)).toEqual([85]);
+    const pushed = pushToFactoryEdges(ctx, sheet);
+    expect(pushed?.missLengths).toEqual([80]);
+    expect(pushed?.placements.find((p) => p.part === "b")?.y).toBe(33);
     expect(pushToFactoryEdges(ctx, { ...sheet, placements: pushed!.placements })).toBeNull();
   });
 

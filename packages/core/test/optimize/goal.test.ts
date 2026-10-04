@@ -7,7 +7,10 @@ import { projectGoal } from "../../src/optimize/goal-setting.ts";
 import { validatePlan } from "../../src/plan/validate.ts";
 import { sampleProject } from "../helpers.ts";
 
-const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 0, offcuts: [], cuts: 10, cutLength: 500, sheets: 1, groupSpread: 0, factoryEdgeMisses: 0, ...over });
+const score = (over: Partial<Score>): Score => {
+  const lengths = (over.factoryEdgeMissLengths ?? Array<number>(over.factoryEdgeMisses ?? 0).fill(50)).toSorted((a, b) => b - a);
+  return { unplaced: 0, cost: 100, largestOffcut: 0, offcuts: [], cuts: 10, cutLength: 500, sheets: 1, groupSpread: 0, ...over, factoryEdgeMisses: lengths.length, factoryEdgeMissLengths: lengths };
+};
 
 describe("compareOffcuts", () => {
   it("prefers the larger first area, then the larger second area, then the longer list", () => {
@@ -102,7 +105,7 @@ describe("admits", () => {
       cost: fc.integer({ min: 90, max: 120 }),
       offcuts: fc.array(fc.integer({ min: 0, max: 5 }), { maxLength: 2 }),
       cuts: fc.integer({ min: 1, max: 4 }),
-      factoryEdgeMisses: fc.integer({ min: 0, max: 2 }),
+      factoryEdgeMissLengths: fc.array(fc.constantFrom(30, 60), { maxLength: 2 }),
       groupSpread: fc.integer({ min: 0, max: 2 }),
     });
     fc.assert(

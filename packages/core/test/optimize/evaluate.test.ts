@@ -3,7 +3,9 @@ import { compareScores, evaluate, type Score } from "../../src/optimize/evaluate
 import { buildProblem } from "../../src/optimize/problem.ts";
 import { sampleProject } from "../helpers.ts";
 
-const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 50, offcuts: [50], cuts: 10, cutLength: 500, sheets: 2, groupSpread: 0, factoryEdgeMisses: 0, ...over });
+const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 50, offcuts: [50], cuts: 10, cutLength: 500, sheets: 2, groupSpread: 0, factoryEdgeMisses: 0, factoryEdgeMissLengths: [], ...over });
+
+const misses = (lengths: number[]): Score => score({ factoryEdgeMisses: lengths.length, factoryEdgeMissLengths: lengths });
 
 describe("compareScores", () => {
   it("compares unplaced, then cost, then largest offcut (bigger wins), then cuts, then cut length, then sheets", () => {
@@ -28,11 +30,18 @@ describe("compareScores", () => {
   });
 
   it("compares the factory edge misses after the cost, before the group spread and the largest offcut", () => {
-    const base = score({ factoryEdgeMisses: 2 });
-    expect(compareScores(score({ factoryEdgeMisses: 1, largestOffcut: 0, groupSpread: 3 }), base, true)).toBeLessThan(0);
-    expect(compareScores(score({ factoryEdgeMisses: 1, largestOffcut: 0 }), base)).toBeLessThan(0);
-    expect(compareScores(score({ factoryEdgeMisses: 0, cost: 101 }), base)).toBeGreaterThan(0);
-    expect(compareScores(score({ factoryEdgeMisses: 0, unplaced: 1 }), base)).toBeGreaterThan(0);
+    const base = misses([40, 40]);
+    expect(compareScores(score({ ...misses([40]), largestOffcut: 0, groupSpread: 3 }), base, true)).toBeLessThan(0);
+    expect(compareScores(score({ ...misses([40]), largestOffcut: 0 }), base)).toBeLessThan(0);
+    expect(compareScores(score({ cost: 101 }), base)).toBeGreaterThan(0);
+    expect(compareScores(score({ unplaced: 1 }), base)).toBeGreaterThan(0);
+  });
+
+  it("gives the factory edges to the longest copies first: the plan whose longest miss is shorter wins, also with more misses", () => {
+    expect(compareScores(misses([40, 40]), misses([60]))).toBeLessThan(0);
+    expect(compareScores(misses([60, 30]), misses([60, 40]))).toBeLessThan(0);
+    expect(compareScores(misses([60]), misses([60, 10]))).toBeLessThan(0);
+    expect(compareScores(misses([60, 40]), misses([60, 40 + 1e-10]))).toBe(0);
   });
 });
 

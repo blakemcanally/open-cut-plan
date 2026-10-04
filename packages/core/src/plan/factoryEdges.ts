@@ -89,16 +89,41 @@ function requestedIn(ctx: PlanContext): Requested {
   return (part) => factoryEdgeRequest(ctx.project, part) !== null;
 }
 
-/** The placed copies on the sheet that ask for a factory edge and do not get one. */
-export function sheetFactoryEdgeMisses(ctx: PlanContext, sheet: PlanSheet, requested: Requested = requestedIn(ctx)): number {
+/** The long sides of the placed copies on the sheet that ask for a factory edge and do not get one, longest first. */
+export function sheetFactoryEdgeMissLengths(ctx: PlanContext, sheet: PlanSheet, requested: Requested = requestedIn(ctx)): number[] {
   const stock = ctx.stock.get(sheet.stock);
-  if (!stock) return 0;
-  let misses = 0;
+  if (!stock) return [];
+  const lengths: number[] = [];
   for (const placement of sheet.placements) {
     const part = ctx.parts.get(placement.part);
-    if (part && placement.copy < part.quantity && requested(part) && !getsFactoryEdge(ctx, stock, part, placement)) misses++;
+    if (part && placement.copy < part.quantity && requested(part) && !getsFactoryEdge(ctx, stock, part, placement)) lengths.push(Math.max(part.length, part.width));
   }
-  return misses;
+  return lengths.sort(longestFirst);
+}
+
+/** The placed copies on the sheet that ask for a factory edge and do not get one. */
+export function sheetFactoryEdgeMisses(ctx: PlanContext, sheet: PlanSheet, requested: Requested = requestedIn(ctx)): number {
+  return sheetFactoryEdgeMissLengths(ctx, sheet, requested).length;
+}
+
+function longestFirst(a: number, b: number): number {
+  return b - a;
+}
+
+/**
+ * Negative when the misses `a` are better than the misses `b`, as lists of long sides, longest first. At the first
+ * length that differs, the shorter miss wins, and a list that ends first wins. So a copy gets its factory edge before
+ * any number of shorter copies.
+ */
+export function compareFactoryEdgeMisses(a: readonly number[], b: readonly number[]): number {
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const x = a[i];
+    const y = b[i];
+    if (x === undefined) return -1;
+    if (y === undefined) return 1;
+    if (Math.abs(x - y) > EPSILON) return x - y;
+  }
+  return 0;
 }
 
 /** A `factory-edge` warning for each placed copy that asks for a factory edge and does not get one, and an `unknown-factory-edge` warning for each request that this app does not know. */
@@ -138,17 +163,21 @@ export function checkFactoryEdges(ctx: PlanContext): PlanIssue[] {
 export interface PushedSheet {
   placements: Placement[];
   misses: number;
+  /** The long sides of the copies that still miss, longest first. */
+  missLengths: number[];
 }
 
 interface Arranged {
-  hits: number;
+  /** The long sides of the copies on a factory edge, longest first. */
+  hits: number[];
   place(dx: number, dy: number, out: Map<number, { x: number; y: number }>): void;
 }
 
 /**
- * Moves the pieces of the sheet's cut tree, so that more copies that ask for a factory edge get one. At each split, the
- * pieces with parts can change order: one goes against each end of the split, and the others follow the first one,
- * one kerf apart. Parts do not turn, and every piece stays a piece of the same cuts. Null when no copy gains.
+ * Moves the pieces of the sheet's cut tree, so that the copies that ask for a factory edge get one, the longest copies
+ * first (see `compareFactoryEdgeMisses`). At each split, the pieces with parts can change order: one goes against each
+ * end of the split, and the others follow the first one, one kerf apart. Parts do not turn, and every piece stays a
+ * piece of the same cuts. Null when the misses do not get better.
  */
 export function pushToFactoryEdges(ctx: PlanContext, sheet: PlanSheet, requested: Requested = requestedIn(ctx)): PushedSheet | null {
   const stock = ctx.stock.get(sheet.stock);
@@ -164,12 +193,14 @@ export function pushToFactoryEdges(ctx: PlanContext, sheet: PlanSheet, requested
     items.push({ index, rect: placedRect(part, placement) });
     if (requested(part)) wanted.add(index);
   }
-  const before = sheetFactoryEdgeMisses(ctx, sheet, requested);
-  if (before === 0) return null;
+  const before = sheetFactoryEdgeMissLengths(ctx, sheet, requested);
+  if (before.length === 0) return null;
   const tree = buildCutTree(stockRect(stock), items, ctx.kerf, 0, undefined, treeMinOffcut(ctx));
   if (tree.stuck.length > 0) return null;
 
   const rects = new Map(items.map((item) => [item.index, item.rect]));
+  const merge = (...lists: number[][]) => lists.flat().sort(longestFirst);
+  const better = (a: number[], b: number[]) => compareFactoryEdgeMisses(b, a) < 0;
   const memo = new Map<CutNode, Map<number, Arranged>>();
   const solve = (node: CutNode, bits: number): Arranged => {
     const known = memo.get(node)?.get(bits);
@@ -183,19 +214,19 @@ export function pushToFactoryEdges(ctx: PlanContext, sheet: PlanSheet, requested
     if (node.kind === "part") {
       const rect = rects.get(node.item)!;
       return {
-        hits: wanted.has(node.item) && (longBits(rect) & bits) !== 0 ? 1 : 0,
+        hits: wanted.has(node.item) && (longBits(rect) & bits) !== 0 ? [Math.max(rect.length, rect.width)] : [],
         place: (dx, dy, out) => out.set(node.item, { x: rect.x + dx, y: rect.y + dy }),
       };
     }
-    if (node.kind !== "split") return { hits: 0, place: () => {} };
+    if (node.kind !== "split") return { hits: [], place: () => {} };
     const blocks = node.children.filter((child) => child.kind !== "waste");
     const kept = blocks.map((child) => solve(child, bits & touching(child.rect, node.rect)));
     const keep: Arranged = {
-      hits: kept.reduce((sum, a) => sum + a.hits, 0),
+      hits: merge(...kept.map((a) => a.hits)),
       place: (dx, dy, out) => kept.forEach((a) => a.place(dx, dy, out)),
     };
     const moved = rearrange(node, blocks, bits);
-    return moved && moved.hits > keep.hits ? moved : keep;
+    return moved && better(moved.hits, keep.hits) ? moved : keep;
   };
   const rearrange = (node: Extract<CutNode, { kind: "split" }>, blocks: CutNode[], bits: number): Arranged | null => {
     const along = node.axis;
@@ -213,20 +244,20 @@ export function pushToFactoryEdges(ctx: PlanContext, sheet: PlanSheet, requested
       const full = size(only) >= hi - lo - EPSILON ? bits & (low | high) : 0;
       const first = solve(only, across | (bits & low) | full);
       const last = solve(only, across | (bits & high) | full);
-      const atEnd = last.hits > first.hits;
+      const atEnd = better(last.hits, first.hits);
       const chosen = atEnd ? last : first;
       return { hits: chosen.hits, place: shifted(chosen, (atEnd ? hi - size(only) : lo) - start(only)) };
     }
 
     const middle = blocks.map((child) => solve(child, across));
-    let best: { first: number; last: number; hits: number } | null = null;
+    let best: { first: number; last: number; hits: number[] } | null = null;
     const order = [...blocks.keys()];
     for (const f of order) {
       for (const l of order.toReversed()) {
         if (f === l) continue;
-        const rest = middle.reduce((sum, a, i) => (i === f || i === l ? sum : sum + a.hits), 0);
-        const hits = rest + solve(blocks[f]!, across | (bits & low)).hits + solve(blocks[l]!, across | (bits & high)).hits;
-        if (!best || hits > best.hits) best = { first: f, last: l, hits };
+        const rest = middle.filter((_, i) => i !== f && i !== l).map((a) => a.hits);
+        const hits = merge(...rest, solve(blocks[f]!, across | (bits & low)).hits, solve(blocks[l]!, across | (bits & high)).hits);
+        if (!best || better(hits, best.hits)) best = { first: f, last: l, hits };
       }
     }
     const { first, last, hits } = best!;
@@ -253,6 +284,6 @@ export function pushToFactoryEdges(ctx: PlanContext, sheet: PlanSheet, requested
     const at = out.get(index);
     return at ? { ...placement, x: at.x, y: at.y } : placement;
   });
-  const misses = sheetFactoryEdgeMisses(ctx, { ...sheet, placements }, requested);
-  return misses < before ? { placements, misses } : null;
+  const after = sheetFactoryEdgeMissLengths(ctx, { ...sheet, placements }, requested);
+  return compareFactoryEdgeMisses(after, before) < 0 ? { placements, misses: after.length, missLengths: after } : null;
 }

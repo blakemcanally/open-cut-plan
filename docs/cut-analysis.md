@@ -47,14 +47,18 @@ its long side is at least `settings.factoryEdge.minLength` (see [format.md](form
 - `factoryEdgeRequest(project, part)` gives the request of a part, `getsFactoryEdge` tells if a placed copy gets its
   factory edge, `factoryEdgeSides` gives the edges of a placed copy that lie on a factory edge, and
   `sheetFactoryEdgeMisses` counts the copies of a sheet that ask for a factory edge and do not get one.
+  `sheetFactoryEdgeMissLengths` gives the long sides of those copies, longest first.
+- `compareFactoryEdgeMisses(a, b)` compares two lists of misses, longest first. At the first length that differs, the
+  shorter miss is better, and a list that ends first is better. So the longest copies get their factory edges first:
+  a plan that misses two 40" parts is better than a plan that misses one 60" part.
 - `factoryEdgeMarks` gives the long edges on a factory edge of a copy that asks for one. The Layout tab and
   `sheetSvg` draw a thick black line on each of these edges. `sideLine` gives the line of an edge.
 - `pushToFactoryEdges(ctx, sheet)` moves pieces of the sheet so that more copies get their factory edge. It builds the
   cut tree of the sheet. At each split, the pieces with parts can change order: one piece goes against each end of the
   split, and the other pieces follow the first piece, one kerf apart. The waste moves to the gap that is left. It
-  chooses the order with the most copies on a factory edge, and keeps a split as it is when no order is better. Parts
-  do not turn. It gives null when no copy gains, when the sheet has no factory edges, or when the sheet has parts that
-  no cut separates.
+  chooses the order with the best misses (see `compareFactoryEdgeMisses`), and keeps a split as it is when no order is
+  better. Parts do not turn. The result has the new placements, `misses`, and `missLengths`. It gives null when the
+  misses do not get better, when the sheet has no factory edges, or when the sheet has parts that no cut separates.
 - `pushSheetToFactoryEdges(project, sheetId)` is the same push as an edit of the project. The Layout tab uses it for
   **Push to factory edges**, and the optimizer uses `pushToFactoryEdges` on its candidates (see
   [optimizer.md](optimizer.md#search)).

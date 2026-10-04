@@ -1,6 +1,6 @@
 import type { Part, PlanSheet, Project, Stock } from "../format/schema.ts";
 import { uniqueId } from "../format/ids.ts";
-import { pushToFactoryEdges, sheetFactoryEdgeMisses } from "../plan/factoryEdges.ts";
+import { pushToFactoryEdges, sheetFactoryEdgeMissLengths } from "../plan/factoryEdges.ts";
 import { compareScores, evaluate, type Evaluated, type Score } from "./evaluate.ts";
 import { projectGoal, type OptimizerGoal } from "./goal-setting.ts";
 import { costLimit, createTradeOffs, withinLimit, type TradeOffs } from "./goal.ts";
@@ -88,8 +88,8 @@ interface MaterialSearch {
 
 interface Pushed {
   packing: Packing;
-  /** The copies that get a factory edge from the push. */
-  gained: number;
+  /** The long sides of the copies that miss a factory edge after the push, longest first. */
+  missLengths: number[];
   result?: Evaluated;
 }
 
@@ -156,11 +156,11 @@ export function createSearch(project: Project, options: OptimizeOptions = {}): S
     record(search, { candidate, result });
     if (result.score.factoryEdgeMisses === 0 || !contends(search, result.score, extra)) return;
     const whole = result.sheets.length === packing.sheets.length;
-    if (whole && !canWin(search, optimistic(result.score, 0))) return;
+    if (whole && !canWin(search, optimistic(result.score, []))) return;
     const pushed = pushedCopy(problem, search, packing);
     if (!pushed) return;
     if (!pushed.result) {
-      if (whole && !canWin(search, optimistic(result.score, result.score.factoryEdgeMisses - pushed.gained))) return;
+      if (whole && !canWin(search, optimistic(result.score, pushed.missLengths))) return;
       pushed.result = evaluate(problem, search.problem, pushed.packing, prefix);
     }
     record(search, { candidate, result: pushed.result }, false);
@@ -203,7 +203,7 @@ function record(search: MaterialSearch, planned: Planned, candidate = true) {
 }
 
 function keep(target: Blind, planned: Planned, blind: boolean, groups: boolean) {
-  const scoreOf = (p: Planned): Score => (blind ? { ...p.result.score, factoryEdgeMisses: 0 } : p.result.score);
+  const scoreOf = (p: Planned): Score => (blind ? { ...p.result.score, factoryEdgeMisses: 0, factoryEdgeMissLengths: [] } : p.result.score);
   if (!target.trade) {
     if (!target.best || compareScores(scoreOf(planned), scoreOf(target.best), groups) < 0) target.best = planned;
     return;
@@ -223,8 +223,8 @@ function contends(search: MaterialSearch, score: Score, extra: number): boolean 
  * The best score that a pushed copy of a plan with this score can have: the same unplaced copies, cost, and group
  * spread when no sheet is dropped, the given misses, and offcuts and cuts that no plan beats.
  */
-function optimistic(score: Score, misses: number): Score {
-  return { ...score, factoryEdgeMisses: misses, largestOffcut: Number.MAX_VALUE, offcuts: [Number.MAX_VALUE], cuts: 0, cutLength: 0 };
+function optimistic(score: Score, missLengths: number[]): Score {
+  return { ...score, factoryEdgeMisses: missLengths.length, factoryEdgeMissLengths: missLengths, largestOffcut: Number.MAX_VALUE, offcuts: [Number.MAX_VALUE], cuts: 0, cutLength: 0 };
 }
 
 /** False when a plan with this score cannot enter the result. */
@@ -251,18 +251,23 @@ function pushedCopy(problem: Problem, search: MaterialSearch, packing: Packing):
   return pushed;
 }
 
-/** The packing with the pieces of each sheet pushed against the factory edges, and the copies that gain a factory edge; null when no sheet changes. */
+/** The packing with the pieces of each sheet pushed against the factory edges, and the misses after the push; null when no sheet changes. */
 function pushPacking(problem: Problem, material: MaterialProblem, packing: Packing): Pushed | null {
   const requested = (part: Part) => material.factoryEdgeParts.has(part.id);
-  let gained = 0;
+  const missLengths: number[] = [];
+  let changed = false;
   const sheets = packing.sheets.map((sheet, i) => {
     const plan = { id: `${i}`, stock: sheet.stock.id, placements: sheet.placements };
     const pushed = pushToFactoryEdges(problem.ctx, plan, requested);
-    if (!pushed) return sheet;
-    gained += sheetFactoryEdgeMisses(problem.ctx, plan, requested) - pushed.misses;
+    if (!pushed) {
+      missLengths.push(...sheetFactoryEdgeMissLengths(problem.ctx, plan, requested));
+      return sheet;
+    }
+    changed = true;
+    missLengths.push(...pushed.missLengths);
     return { ...sheet, placements: pushed.placements };
   });
-  return gained > 0 ? { packing: { ...packing, sheets }, gained } : null;
+  return changed ? { packing: { ...packing, sheets }, missLengths: missLengths.sort((a, b) => b - a) } : null;
 }
 
 function pack(problem: Problem, material: MaterialProblem, candidate: Candidate): Packing {

@@ -209,7 +209,7 @@ export function SettingsTab({ store, prefs, onPrefs, section: current, onSection
                   <b>Put long parts on a factory edge</b>
                   <small>
                     A factory edge is straighter than a cut edge. The optimizer puts a long edge of each long part on the edge of the sheet when the cost stays the
-                    same. The Parts tab can make a choice for each part.
+                    same, the longest parts first. The Parts tab can make a choice for each part.
                   </small>
                 </span>
               </label>

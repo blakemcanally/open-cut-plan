@@ -1,7 +1,7 @@
 import type { Part, PlanSheet, Project } from "../format/schema.ts";
 import { area } from "../geometry/rect.ts";
 import { planContext, type PlanContext } from "../plan/context.ts";
-import { sheetFactoryEdgeMisses } from "../plan/factoryEdges.ts";
+import { compareFactoryEdgeMisses, sheetFactoryEdgeMissLengths } from "../plan/factoryEdges.ts";
 import type { PlanIssue } from "../plan/issues.ts";
 import { checkLayout } from "../plan/layout.ts";
 import { analyzeSheets } from "../plan/sheets.ts";
@@ -28,8 +28,10 @@ export interface Score {
   sheets: number;
   /** For each group, the sheets of the material that hold its copies (pinned sheets included) minus 1, summed. Fewer is better. */
   groupSpread: number;
-  /** Placed copies that ask for a factory edge and do not get one. Fewer is better. */
+  /** Placed copies that ask for a factory edge and do not get one. */
   factoryEdgeMisses: number;
+  /** The long sides of those copies, longest first. They compare with `compareFactoryEdgeMisses`. */
+  factoryEdgeMissLengths: number[];
 }
 
 export interface Evaluated {
@@ -53,7 +55,8 @@ function differ(a: number, b: number): boolean {
 export function compareScores(a: Score, b: Score, groups = false): number {
   if (a.unplaced !== b.unplaced) return a.unplaced - b.unplaced;
   if (differ(a.cost, b.cost)) return a.cost - b.cost;
-  if (a.factoryEdgeMisses !== b.factoryEdgeMisses) return a.factoryEdgeMisses - b.factoryEdgeMisses;
+  const edges = compareFactoryEdgeMisses(a.factoryEdgeMissLengths, b.factoryEdgeMissLengths);
+  if (edges !== 0) return edges;
   if (groups && a.groupSpread !== b.groupSpread) return a.groupSpread - b.groupSpread;
   if (differ(a.largestOffcut, b.largestOffcut)) return b.largestOffcut - a.largestOffcut;
   if (a.cuts !== b.cuts) return a.cuts - b.cuts;
@@ -108,6 +111,7 @@ export function evaluate(problem: Problem, material: MaterialProblem, packing: P
   const order = new Map(problem.ctx.project.parts.map((p, i) => [p.id, i]));
   unplaced.sort((a, b) => (order.get(a.part) ?? 0) - (order.get(b.part) ?? 0) || a.copy - b.copy);
   const keptSteps = steps.filter((s) => keptIds.has(s.sheet));
+  const missLengths = factoryEdgeMissLengths(ctx, material, kept);
   return {
     sheets: kept,
     unplaced,
@@ -120,7 +124,8 @@ export function evaluate(problem: Problem, material: MaterialProblem, packing: P
       cutLength: totalCutLength(keptSteps),
       sheets: kept.length,
       groupSpread: groupSpread(material, kept),
-      factoryEdgeMisses: factoryEdgeMisses(ctx, material, kept),
+      factoryEdgeMisses: missLengths.length,
+      factoryEdgeMissLengths: missLengths,
     },
   };
 }
@@ -140,10 +145,10 @@ function groupSpread(material: MaterialProblem, sheets: readonly PlanSheet[]): n
   return spread;
 }
 
-function factoryEdgeMisses(ctx: PlanContext, material: MaterialProblem, sheets: readonly PlanSheet[]): number {
-  if (material.factoryEdgeParts.size === 0) return 0;
+function factoryEdgeMissLengths(ctx: PlanContext, material: MaterialProblem, sheets: readonly PlanSheet[]): number[] {
+  if (material.factoryEdgeParts.size === 0) return [];
   const requested = (part: Part) => material.factoryEdgeParts.has(part.id);
-  return sheets.reduce((sum, sheet) => sum + sheetFactoryEdgeMisses(ctx, sheet, requested), 0);
+  return sheets.flatMap((sheet) => sheetFactoryEdgeMissLengths(ctx, sheet, requested)).sort((a, b) => b - a);
 }
 
 function sheetsOf(issue: PlanIssue): string[] {

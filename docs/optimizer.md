@@ -99,7 +99,8 @@ For the goal `cost`, candidates are compared per material, in this order:
 1. **Unplaced copies**: fewer is better.
 2. **Cost**: the sum of the stock `cost` of the sheets used. Owned offcuts count as 0. When the `cost` feature is off,
    or any enabled sheet stock of the material has no `cost`, the stock area is used in place of the cost.
-3. **Factory edge misses**: the placed copies that ask for a factory edge and do not get one. Fewer is better.
+3. **Factory edge misses**: the placed copies that ask for a factory edge and do not get one, compared by their long
+   sides (see below).
 4. **Group spread**, only when the groups stay together (see below): fewer is better.
 5. **Largest offcut** area: bigger is better (0 when the `offcuts` feature is off).
 6. **Cut steps**, including trims: fewer is better.
@@ -109,6 +110,10 @@ For the goal `cost`, candidates are compared per material, in this order:
 **Factory edges.** A copy asks for a factory edge by its `factoryEdge` value or by the rule
 `settings.factoryEdge.minLength` (see [Factory edges](format.md#factory-edges-added-in-16)). The copy gets a factory
 edge when a long edge of the copy is on the edge of a sheet with factory edges: sheet stock with no trim. The misses
+compare as lists of the long sides of the copies, longest first, with `compareFactoryEdgeMisses` (see
+[Factory edges](cut-analysis.md#factory-edges)). At the first length that differs, the shorter miss is better, and a
+list that ends first is better. So the longest copies get their factory edges first, also when a lower `minLength`
+makes more copies ask. A plan that misses two 40" copies is better than a plan that misses one 60" copy. The misses
 come after the cost, so they never make a plan cost more or leave more copies unplaced. When no copy asks for a
 factory edge, the misses are always 0, and the search gives the same plans as before.
 
@@ -126,7 +131,7 @@ For the goals `offcuts` and `cuts`, the search chooses a plan for each material 
 1. It keeps the candidates with the fewest unplaced copies.
 2. C is the lowest cost of those candidates. It keeps the candidates that cost at most
    C × (1 + `extraCostPercent` / 100). `extraCostPercent` defaults to `settings.optimizer.extraCostPercent`.
-3. It chooses the fewest factory edge misses.
+3. It chooses the best factory edge misses.
 4. When the groups stay together, it chooses the smallest group spread.
 5. It chooses by the goal. For `offcuts`, the offcut areas compare largest first: the larger first area wins, then
    the larger second area, and so on, and a list that ends first loses. For `cuts`, fewer cut steps win, and of
@@ -154,7 +159,8 @@ limit stays. C can only go down, so the search drops a candidate when its cost g
   and in part order, then copy order, within each material;
 - `materials`: `{ material, score, cheapestCost }`. The `score` has the measures above (`unplaced`, `cost`,
   `factoryEdgeMisses`, `groupSpread`, `largestOffcut`, `cuts`, `cutLength`, and `sheets`), with `offcuts`: the area of
-  every offcut, largest first. The score gives the group spread also when the groups need not stay together.
+  every offcut, largest first, and `factoryEdgeMissLengths`: the long side of each factory edge miss, longest first.
+  The score gives the group spread also when the groups need not stay together.
   `cheapestCost` is C for the goals `offcuts` and `cuts`, and the cost of the chosen plan for the goal `cost`;
 - `iterations`: the candidates tried, over all materials, including those of a `start` result.
 

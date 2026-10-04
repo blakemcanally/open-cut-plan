@@ -186,6 +186,7 @@ long part. A part can ask for a factory edge on one of its long edges.
   [`cut-analysis.md`](cut-analysis.md#terms)). Then all four edges of the stock are factory edges. An owned offcut
   and a trimmed sheet have no factory edges.
 - A copy gets its factory edge when one of its long edges lies on an edge of a stock with factory edges.
+- When not every copy that asks can get a factory edge, the longest copies come first.
 - A request is not a rule of the plan. A copy that does not get its factory edge is a warning (`factory-edge`), not an
   error.
 

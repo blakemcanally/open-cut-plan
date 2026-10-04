@@ -9,6 +9,8 @@ import { sameNumber } from "../../src/optimize/evaluate.ts";
 import { costLimit, withinLimit } from "../../src/optimize/goal.ts";
 import { analyzeProject } from "../../src/analysis.ts";
 import { applyOptimizeResult, createSearch, optimize, type OptimizeResult } from "../../src/optimize/search.ts";
+import { planContext } from "../../src/plan/context.ts";
+import { compareFactoryEdgeMisses, sheetFactoryEdgeMissLengths } from "../../src/plan/factoryEdges.ts";
 import { validatePlan } from "../../src/plan/validate.ts";
 import { sequencePlan, totalCutLength } from "../../src/sequence/sequence.ts";
 import { sampleProject } from "../helpers.ts";
@@ -499,6 +501,11 @@ describe("factory edges", () => {
     };
   }
   const edgeWarnings = (project: Project, result: OptimizeResult) => validatePlan(applyOptimizeResult(project, result)).filter((issue) => issue.code === "factory-edge");
+  const missLengths = (project: Project, result: OptimizeResult) => {
+    const applied = applyOptimizeResult(project, result);
+    const ctx = planContext(applied);
+    return applied.plan!.sheets.flatMap((sheet) => sheetFactoryEdgeMissLengths(ctx, sheet)).sort((a, b) => b - a);
+  };
   const withoutRequests = (project: Project): Project => {
     const { factoryEdge: _rule, ...settings } = project.settings;
     return { ...project, settings, parts: project.parts.map(({ factoryEdge: _edge, ...part }) => part) };
@@ -514,6 +521,19 @@ describe("factory edges", () => {
     expect(edgeWarnings(project, result)).toEqual([]);
     expect(result.materials[0]!.score).toMatchObject({ factoryEdgeMisses: 0, cost: plain.materials[0]!.score.cost, unplaced: 0 });
     expect(errors(applyOptimizeResult(project, result))).toEqual([]);
+  });
+
+  it("gives the factory edges to the longest parts first when the rule asks for more edges than the sheet has", () => {
+    const project = stripsProject();
+    project.settings = { ...project.settings, factoryEdge: { minLength: 40 } };
+    project.parts = [
+      { id: "a", name: "A", material: "m", length: 90, width: 15, quantity: 1, grain: "none" },
+      { id: "b", name: "B", material: "m", length: 85, width: 15, quantity: 1, grain: "none" },
+      { id: "c", name: "C", material: "m", length: 80, width: 15, quantity: 1, grain: "none" },
+    ];
+    const result = optimize(project, { iterations: 60, seed: 1 });
+    expect(result.materials[0]!.score).toMatchObject({ factoryEdgeMisses: 1, factoryEdgeMissLengths: [80], unplaced: 0 });
+    expect(edgeWarnings(project, result).map((issue) => issue.message)).toEqual([expect.stringContaining("C asks for a factory edge")]);
   });
 
   it("gives the same plans as before when no part asks for a factory edge", () => {
@@ -538,14 +558,14 @@ describe("factory edges", () => {
         for (const goal of ["cost", "offcuts", "cuts"] as const) {
           const off = optimize(project, { iterations: 80, seed, goal });
           const on = optimize(ruled, { iterations: 80, seed, goal });
-          const missesOff = edgeWarnings(ruled, off).length;
+          const missesOff = missLengths(ruled, off);
           on.materials.forEach((m, i) => {
             const before = off.materials[i]!;
             const limit = goal === "cost" ? before.score.cost : costLimit(before.cheapestCost, 10);
             const ok = m.score.unplaced < before.score.unplaced || (m.score.unplaced === before.score.unplaced && withinLimit(m.cheapestCost, before.cheapestCost) && withinLimit(m.score.cost, limit));
             if (!ok) worse.push(`${name} ${seed} ${goal} ${m.material}`);
           });
-          if (goal === "cost" && edgeWarnings(ruled, on).length > missesOff) worse.push(`${name} ${seed} misses`);
+          if (goal === "cost" && compareFactoryEdgeMisses(missLengths(ruled, on), missesOff) > 0) worse.push(`${name} ${seed} misses`);
           if (errors(applyOptimizeResult(ruled, on)).length > 0) worse.push(`${name} ${seed} ${goal} errors`);
         }
       }

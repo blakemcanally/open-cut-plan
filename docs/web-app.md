@@ -250,9 +250,9 @@ part that asks for a factory edge and does not get one.
 - The optimizer runs in a Web Worker, so the page stays responsive. A progress bar shows the part of the time limit
   that is used. When the project changes during a search, the result is not used.
 - **Pin** on a sheet keeps it through **Optimize**. **Remove** puts its parts in the tray.
-- **Push to factory edges** on a sheet moves its pieces so that more parts that ask for a factory edge get one. It
-  uses the same push as the optimizer: the cuts stay the same, and no part turns. The button shows only when the push
-  gives one or more parts a factory edge.
+- **Push to factory edges** on a sheet moves its pieces so that more parts that ask for a factory edge get one, the
+  longest parts first. It uses the same push as the optimizer: the cuts stay the same, and no part turns. The button
+  shows only when the push gives a longer part, or more parts, a factory edge.
 - **Add sheet** adds a sheet of the chosen stock. **Remove empty sheets** removes sheets with no parts.
 - **Unplaced parts** (the tray) lists the parts that are not on a sheet, in groups by material. After a run, each part
   tells why the optimizer did not place it, for example "larger than every enabled stock". When a material has no
@@ -419,7 +419,9 @@ The sections put the common settings first:
 - **Factory edges**: **Use the factory edges** (no trim) or **Trim each edge** with a trim width. A stock item on the
   Stock tab can make its own choice. **Put long parts on a factory edge** turns on the rule
   `settings.factoryEdge`, with a **Shortest long part** of 36" or 900 mm. Each part with a long side of at least
-  that length then asks for a factory edge. The rule can change only while the plan uses the factory edges.
+  that length then asks for a factory edge. When the sheets do not have room on their edges for all of these parts, the
+  longest parts get the factory edges first. So a lower length adds shorter parts but does not push the longest
+  parts off the edges. The rule can change only while the plan uses the factory edges.
 - **Snapping**: the snapping switch and the grid size. A grid of 0 turns the grid off. The default grid is 1" or
   25 mm.
 - **Plan**: the cut order (**By sheet** or **By saw setting**, the same choice as **Order** on the Shop tab) and the

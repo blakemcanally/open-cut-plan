@@ -1,4 +1,5 @@
 import { compareScores, sameNumber, type Score } from "./evaluate.ts";
+import { compareFactoryEdgeMisses } from "../plan/factoryEdges.ts";
 import type { OptimizerGoal } from "./goal-setting.ts";
 
 const GOAL_NAMES: Readonly<Record<OptimizerGoal, string>> = { cost: "lowest cost", offcuts: "best offcuts", cuts: "fewest cuts" };
@@ -24,7 +25,8 @@ export function compareOffcuts(a: readonly number[], b: readonly number[]): numb
 /** The order in which the search chooses among the plans within the cost limit: the factory edge misses first, then the group spread when `groups`, then the goal. */
 export function compareChoice(goal: OptimizerGoal, a: Score, b: Score, groups = false): number {
   if (goal === "cost") return compareScores(a, b, groups);
-  if (a.factoryEdgeMisses !== b.factoryEdgeMisses) return a.factoryEdgeMisses - b.factoryEdgeMisses;
+  const edges = compareFactoryEdgeMisses(a.factoryEdgeMissLengths, b.factoryEdgeMissLengths);
+  if (edges !== 0) return edges;
   if (groups && a.groupSpread !== b.groupSpread) return a.groupSpread - b.groupSpread;
   const byGoal = goal === "offcuts" ? compareOffcuts(a.offcuts, b.offcuts) : goal === "cuts" ? compareCuts(a, b) : 0;
   return byGoal || compareScores(a, b, groups);
