@@ -294,6 +294,8 @@ smaller, or show the size only, when the part is small. Keep the toolbar height 
 
 ## 12. Small fixes to the forms
 
+**Status:** Done.
+
 **Size:** S.
 
 **Problem and idea:**
@@ -305,6 +307,17 @@ smaller, or show the size only, when the part is small. Keep the toolbar height 
 - "Size by" goes back to "Each opening" after a reload. Keep the choice.
 
 **Files:** `apps/web/src/screens/PartsTab.tsx`, `screens/StockTab.tsx`, `components/fields.tsx`, `screens/DesignTab.tsx`.
+
+**Chosen approach:**
+
+- **Add part** puts the focus in the new name and selects it.
+- A material with no chosen colour gets the colour of its place in the list, from `MATERIAL_PALETTE` (wood and board
+  tones that are not part colours). The file does not change until the user chooses a colour.
+- A stock with no name shows `stockLabel`, for example "Birch plywood 3/4" 96" × 48"", as its label and placeholder.
+- A length or number field with a bad value shows a message under it, for example "Type a length, for example 24 1/2,
+  2' 3", or 600 mm." The field names the message with `aria-describedby`.
+- "Size by" comes from the axis in the file (`openings` or `outside` and `cells`), so a reload keeps it. The real loss
+  was a new count of KALLAX or EKET cells, which always gave the IKEA axis. That count now keeps the choice.
 
 ## 13. Group the Shop steps by saw setting
 
@@ -389,6 +402,8 @@ setting, and the part. The diagram fills the page. The print can use the tool co
 
 ## 17. Show the material status on the Stock tab
 
+**Status:** Done.
+
 **Size:** S.
 
 **Problem:** The Stock tab does not tell which materials the parts use, or which stock has no price. The **Delete**
@@ -398,6 +413,17 @@ button is disabled for a material in use, with no reason.
 **Delete** button says why.
 
 **Files:** `apps/web/src/screens/StockTab.tsx`.
+
+**Chosen approach:**
+
+- `materialStatus` and `materialStatusText` in the core give the line, for example "Used by 13 parts · 1 size · no
+  price". It counts the part rows, the enabled stock, and the enabled sheets with no cost.
+- The Materials table has a **Status** column. A material that parts use with no enabled stock says "no stock" and
+  has **Add stock**. This takes the place of the item 9 line on the Stock tab. The Parts tab keeps that line.
+- A material in use has a **Delete** button with `aria-disabled`, so it stays in the Tab order. A tip on hover and
+  focus says why, for example "Parts and stock use this material. Change them first." The tip is the description of
+  the button.
+- `materials list` in the CLI gives the same `status` text.
 
 ## 18. Show the parts and a sheet estimate on the Design tab
 
@@ -431,6 +457,8 @@ now** button. (The combined cubbies prototype already adds a Parts list under th
 
 ## 19. Make the app work on a phone
 
+**Status:** Done.
+
 **Size:** M.
 
 **Problem:** At a width of 420 px, the tab bar hides Shop, Reports, and Settings with no hint. The tables hide
@@ -439,6 +467,13 @@ columns.
 **Idea:** A hint or a **More** menu on the tab bar. Show the Parts and Stock tables as cards on narrow screens.
 
 **Files:** `apps/web/src/screens/Workspace.tsx`, `screens/PartsTab.tsx`, `screens/StockTab.tsx`, `styles.css`.
+
+**Chosen approach:**
+
+- The tab bar scrolls sideways with a shadow at each end that has more tabs. The tab bar scrolls to show the chosen
+  tab. The arrow keys still move between the tabs.
+- Below 640 px, the Parts, Materials, and Stock tables show each row as a card, with the column name above each field.
+- The header puts the project name on its own line, so the buttons fit in one line at 420 px.
 
 ## 20. Follow-ups from items 1–7
 
