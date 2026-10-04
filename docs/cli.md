@@ -53,7 +53,7 @@ node packages/cli/src/main.ts help parts add
 - `--strict` writes nothing and exits 1 when the result has plan errors. `optimize --strict` also fails when copies
   cannot be placed, and CSV `import --strict` also fails when a row has an error.
 - `-` as the file reads the project from stdin. The result then goes to stdout.
-- Every change result has `changes` (what changed, by id), `validation` (`errors`, `warnings`, `issues`), `written`
+- Every change result has `changes` (what changed, by id; `groups` lists the groups whose colour changed), `validation` (`errors`, `warnings`, `issues`), `written`
   (the path, or null), and `dryRun`.
 - The CLI does not write a file that core cannot read back. It stops with exit 1 and the code `invalid-result`.
 - The CLI does not write a file that core refuses. A refused input is exit 3, and the file does not change.
@@ -98,7 +98,7 @@ The examples use `shelf.cutplan.json`. Every command accepts `--json` and `--hel
 ### Parts, stock, materials, and tools
 
 Each group has `list`, `get`, `add`, `set`, and `remove`. `parts` and `stock` also have `import` and `export` for CSV
-files.
+files. `parts` also has `colors` and `group-color` for the colours of the layout.
 
 | Command | What it does | Example |
 | ------- | ------------ | ------- |
@@ -107,6 +107,8 @@ files.
 | `parts add <file>` | Adds a part. | `opencutplan parts add shelf.cutplan.json --name Side --material bb18 --length 30 --width "11 1/4" --quantity 2` |
 | `parts set <file> <id>` | Changes a part. A lower quantity removes the extra placements. | `opencutplan parts set shelf.cutplan.json a-side --quantity 3 --grain none` |
 | `parts remove <file> <id>...` | Removes parts and their placements. | `opencutplan parts remove shelf.cutplan.json a-back` |
+| `parts colors <file>` | Lists the colour of each design unit and each group, as the layout shows them. | `opencutplan parts colors shelf.cutplan.json` |
+| `parts group-color <file> <group> <#rrggbb\|auto>` | Chooses the colour of a group of parts without a design. `auto` gives the automatic colour again. | `opencutplan parts group-color shelf.cutplan.json "3x2 A" "#ff8800"` |
 | `parts import <file> <csv>` | Adds the parts in a CSV file. `--map length=Len` reads the length from the column `Len`. | `opencutplan parts import shelf.cutplan.json parts.csv --dry-run` |
 | `parts export <file>` | Writes the parts as CSV. | `opencutplan parts export shelf.cutplan.json --out parts.csv` |
 | `stock list <file>` | Lists the stock and the sheets cut from each item. | `opencutplan stock list shelf.cutplan.json` |
@@ -174,6 +176,9 @@ The flags of `design add` and `design set`:
   and `--width`, or `--rows` and `--height`.
 - `--depth <length>`, `--material <id|name>`, `--back <id|name|none>`, `--mount floor|legs|feet|wall-rail`,
   `--quantity <n>`, `--name <text>`, and `--id <id>`.
+- `--color <unit>=<#rrggbb|auto>`: the colour of one unit in the layout, for example `--color 2=#ff8800`. The units
+  count from 1, up to the quantity. `auto` gives the unit its automatic colour again. Give the flag one time for each
+  unit.
 
 The IKEA numbers are in millimetres. The CLI converts them to the project units, so an inch project gets 13 3/16" for
 335 mm. Without `--name`, the name is the system and the grid, such as `KALLAX 2x4`, and the id comes from the name:

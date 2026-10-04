@@ -25,6 +25,8 @@ export interface Changes {
   parts: CollectionChanges;
   tools: CollectionChanges;
   designs: CollectionChanges;
+  /** The names of the groups whose settings changed. */
+  groups: string[];
   settings: string[];
   plan: PlanChanges;
 }
@@ -75,6 +77,11 @@ function isEmpty(changes: CollectionChanges): boolean {
   return changes.added.length === 0 && changes.removed.length === 0 && changes.changed.length === 0 && !changes.reordered;
 }
 
+function changedGroups(before: Project, after: Project): string[] {
+  const names = [...new Set([...Object.keys(before.groups ?? {}), ...Object.keys(after.groups ?? {})])];
+  return names.filter((name) => stableStringify(before.groups?.[name]) !== stableStringify(after.groups?.[name]));
+}
+
 export function diffProjects(before: Project, after: Project): Changes {
   const beforeSheets = before.plan?.sheets ?? [];
   const afterSheets = after.plan?.sheets ?? [];
@@ -88,6 +95,7 @@ export function diffProjects(before: Project, after: Project): Changes {
     parts: collection(before.parts, after.parts),
     tools: collection(before.tools, after.tools),
     designs: collection(before.designs ?? [], after.designs ?? []),
+    groups: changedGroups(before, after),
     settings: changedKeys(before.settings, after.settings),
     plan: {
       sheetsBefore: beforeSheets.length,
@@ -102,6 +110,7 @@ export function diffProjects(before: Project, after: Project): Changes {
   changes.changed =
     changes.project.length > 0 ||
     changes.settings.length > 0 ||
+    changes.groups.length > 0 ||
     !isEmpty(changes.materials) ||
     !isEmpty(changes.stock) ||
     !isEmpty(changes.parts) ||
@@ -124,6 +133,7 @@ export function describeChanges(changes: Changes): string[] {
     if (c.reordered) lines.push(`Changed the order of the ${key}.`);
   }
   if (changes.project.length > 0) lines.push(`Changed the project: ${changes.project.join(", ")}.`);
+  if (changes.groups.length > 0) lines.push(`Changed group: ${changes.groups.join(", ")}.`);
   if (changes.settings.length > 0) lines.push(`Changed the settings: ${changes.settings.join(", ")}.`);
   const plan = changes.plan;
   if (plan.added.length > 0 || plan.removed.length > 0 || plan.changed.length > 0) {

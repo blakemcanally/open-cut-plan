@@ -1,7 +1,7 @@
-import { GrainSchema, MAX_PART_QUANTITY, removePart, updatePart, type Part, type Patch, type Project } from "@opencutplan/core";
+import { GrainSchema, isHexColor, MAX_PART_QUANTITY, partColors, removePart, setGroupColor, updatePart, type Part, type Patch, type Project } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines } from "../project.ts";
-import { type CommandSpec, type GroupSpec, type OptionValues } from "../spec.ts";
+import { usageError, type CommandSpec, type GroupSpec, type OptionValues } from "../spec.ts";
 import { len, size, table } from "../text.ts";
 import { integerValue, optionalChoice, optionalLength, str } from "../values.ts";
 import { assertNoConflict, assertNotGenerated, findAll, findById, ID_OPTION, materialFor, newId, nonEmpty, resolveMaterial, unsetFields, unsetOption } from "./common.ts";
@@ -189,6 +189,57 @@ const remove: CommandSpec = {
   },
 };
 
+const colors: CommandSpec = {
+  name: "parts colors",
+  summary: "List the colours of the layout.",
+  description:
+    "List the colour of each unit of a design and of each group of parts without a design, as the layout shows them. A design with a quantity of more than 1 has one colour for each unit, such as \"Hall KALLAX 2 of 3\". Parts without a design or a group are grey. chosen is true for a colour that design set --color or parts group-color gave.",
+  args: [FILE_ARG],
+  options: [],
+  examples: [{ command: `${PROGRAM} parts colors hall.cutplan.json`, description: "List the colours as a table." }],
+  output: "colors [{ key, label, color, chosen, design? and unit? (for a design), group? (for a group) }], in the order that they first occur in the parts.",
+  async run({ args, io }) {
+    const loaded = await loadProject(io, args[0]!);
+    const legend = partColors(loaded.project).legend;
+    const text = legend.length === 0 ? "No part has a design or a group." : table(["colour", "for"], legend.map((key) => [`${key.color}${key.chosen ? " (chosen)" : ""}`, key.label]));
+    return { data: { colors: legend }, text, warnings: warningLines(loaded) };
+  },
+};
+
+const groupColor: CommandSpec = {
+  name: "parts group-color",
+  summary: "Choose the colour of a group of parts.",
+  description:
+    "Choose the colour in the layout of the parts without a design that have this group. auto gives the group its automatic colour again. For the parts of a design, use design set --color.",
+  args: [FILE_ARG, { name: "group", description: "The group name." }, { name: "color", description: "#rrggbb, or auto." }],
+  options: [...OUTPUT_OPTIONS],
+  examples: [
+    { command: `${PROGRAM} parts group-color shelf.cutplan.json "3x2 A" "#ff8800"`, description: "Show the group 3x2 A in orange." },
+    { command: `${PROGRAM} parts group-color shelf.cutplan.json "3x2 A" auto`, description: "Use the automatic colour again." },
+  ],
+  output: "group, color (null for auto), changes, validation, written, dryRun.",
+  async run(invocation) {
+    const { args, io } = invocation;
+    const loaded = await loadProject(io, args[0]!);
+    const { project } = loaded;
+    const [, group, text] = args as [string, string, string];
+    const designs = new Set((project.designs ?? []).map((design) => design.id));
+    const known = [...new Set(project.parts.flatMap((part) => (part.group !== undefined && !(part.design !== undefined && designs.has(part.design)) ? [part.group] : [])))];
+    if (!known.includes(group)) {
+      const design = (project.designs ?? []).find((candidate) => candidate.name === group);
+      const hint = design ? ` The parts of the design ${design.id} have this group. Use 'opencutplan design set --color' for them.` : "";
+      throw usageError(`No part without a design has the group "${group}".${hint} Known groups: ${known.length > 0 ? known.join(", ") : "none"}.`, "not-found", { group, known });
+    }
+    const color = text.trim().toLowerCase();
+    if (color !== "auto" && !isHexColor(color)) throw usageError(`"${text}" is not #rrggbb or auto.`, "invalid-value", { value: text });
+    const chosen = color === "auto" ? null : color;
+    return finishMutation(invocation, loaded, setGroupColor(project, group, chosen), {
+      summary: chosen === null ? `The group ${group} uses its automatic colour.` : `The group ${group} is ${chosen}.`,
+      data: { group, color: chosen },
+    });
+  },
+};
+
 const importParts: CommandSpec = {
   name: "parts import",
   summary: "Add the parts in a CSV file.",
@@ -216,4 +267,4 @@ const exportParts: CommandSpec = {
   run: (invocation) => exportCsv(invocation, "parts"),
 };
 
-export const partsGroup: GroupSpec = { name: "parts", summary: "Parts to cut", commands: [list, get, add, set, remove, importParts, exportParts] };
+export const partsGroup: GroupSpec = { name: "parts", summary: "Parts to cut", commands: [list, get, add, set, remove, colors, groupColor, importParts, exportParts] };

@@ -12,6 +12,7 @@ import {
   EKET,
   generatedParts,
   isDesignSystem,
+  isHexColor,
   isNewerMinor,
   isPresetSystem,
   KALLAX,
@@ -23,6 +24,7 @@ import {
   regenerateDesigns,
   removeDesign,
   renameDesign,
+  setDesignColor,
   type Design,
   type DesignAxis,
   type DesignSystem,
@@ -35,7 +37,7 @@ import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS, warningLines, writeOutput, type Loaded } from "../project.ts";
 import { CliError, EXIT, usageError, type CommandSpec, type GroupSpec, type OptionSpec, type OptionValues } from "../spec.ts";
 import { len, plural, table } from "../text.ts";
-import { choiceValue, integerValue, lengthValue, optionalChoice, optionalLength, str } from "../values.ts";
+import { choiceValue, integerValue, lengthValue, list as listValues, optionalChoice, optionalLength, str } from "../values.ts";
 import { findAll, findById, ID_OPTION, materialFor, newId, nonEmpty, resolveMaterial } from "./common.ts";
 
 const DESIGN_ARG = { name: "id", description: "The design id." };
@@ -54,6 +56,13 @@ const OPTIONS = {
   mount: { name: "mount", type: "string", value: "<floor|legs|feet|wall-rail>", description: "How the unit stands or hangs. legs, feet, and wall-rail add the EKET items to the hardware list. Default: floor." },
   quantity: { name: "quantity", type: "string", value: "<n>", description: `The number of units to build, 1 to ${MAX_DESIGN_QUANTITY}. Default for add: 1.` },
   name: { name: "name", type: "string", value: "<text>", description: "The design name. It is also the group of its parts. Default for add: the system and the grid, such as KALLAX 2x4." },
+  color: {
+    name: "color",
+    type: "string",
+    value: "<unit>=<#rrggbb|auto>",
+    multiple: true,
+    description: "The colour of one unit in the layout, for example 2=#ff8800. The units count from 1. auto gives the unit its automatic colour again.",
+  },
 } as const satisfies Record<string, OptionSpec>;
 
 const FIELD_OPTIONS: OptionSpec[] = Object.values(OPTIONS);
@@ -90,6 +99,20 @@ function axisValue(options: OptionValues, flags: AxisFlags, system: DesignSystem
   if (isPresetSystem(system)) return presetAxis(system, count, units);
   if (current && "outside" in current) return { outside: current.outside, cells: count };
   throw usageError(`--${flags.count} needs --${flags.outside} for a custom design.`, "missing-option", { option: flags.outside });
+}
+
+function withColors(project: Project, options: OptionValues, id: string): Project {
+  const design = findById(project.designs ?? [], id, "design");
+  const units = design.quantity ?? 1;
+  return listValues(options, "color").reduce((next, text) => {
+    const match = /^(\d+)=(.+)$/.exec(text.trim());
+    const unit = match ? Number(match[1]) : Number.NaN;
+    const color = match ? match[2]!.trim() : "";
+    if (!(unit >= 1 && unit <= units) || (color !== "auto" && !isHexColor(color))) {
+      throw usageError(`--color "${text}" is not <unit>=<#rrggbb|auto> with a unit from 1 to ${units}.`, "invalid-value", { option: "color", value: text });
+    }
+    return setDesignColor(next, id, unit, color === "auto" ? null : color);
+  }, project);
 }
 
 /** Refuses a file from a newer minor version: its designs can have fields that this CLI does not know. */
@@ -268,10 +291,11 @@ const add: CommandSpec = {
     if (back !== undefined && back !== "none") design.back = { material: resolveMaterial(project, back).id };
     const mount = optionalChoice(options, "mount", DESIGN_MOUNTS);
     if (mount !== undefined) design.mount = mount;
-    const added = { ...project, designs: [...(project.designs ?? []), design] };
+    const added = withColors({ ...project, designs: [...(project.designs ?? []), design] }, options, design.id);
     assertValid(added, design);
     const next = regenerateDesigns(added);
-    return finishMutation(invocation, loaded, next, { summary: `Added design ${line(next, design)}.`, data: { design, parts: generatedParts(next, design.id) } });
+    const result = findById(next.designs ?? [], design.id, "design");
+    return finishMutation(invocation, loaded, next, { summary: `Added design ${line(next, result)}.`, data: { design: result, parts: generatedParts(next, design.id) } });
   },
 };
 
@@ -285,6 +309,7 @@ const set: CommandSpec = {
   examples: [
     { command: `${PROGRAM} design set hall.cutplan.json kallax-2x4 --rows 5`, description: "Add a row of cells." },
     { command: `${PROGRAM} design set hall.cutplan.json sideboard --column-openings 400,300,400 --back none --dry-run`, description: "See what new column sizes and no back change." },
+    { command: `${PROGRAM} design set hall.cutplan.json eket --color 2=#ff8800`, description: "Show the second unit in orange in the layout." },
   ],
   output:
     "design (after the change), parts (the generated parts), partChanges { added, removed, resized } (part ids), removedPlacements [{ part, copy }], changes, validation, written, dryRun. For a design with an error: error { code: \"invalid-value\", issues }.",
@@ -317,14 +342,15 @@ const set: CommandSpec = {
     if (quantity !== undefined) design.quantity = integerValue(quantity, "quantity", 1, MAX_DESIGN_QUANTITY);
     const mount = optionalChoice(options, "mount", DESIGN_MOUNTS);
     if (mount !== undefined) design.mount = mount;
-    const changed = { ...renamed, designs: (renamed.designs ?? []).map((item) => (item.id === id ? design : item)) };
+    const changed = withColors({ ...renamed, designs: (renamed.designs ?? []).map((item) => (item.id === id ? design : item)) }, options, id);
     assertValid(changed, design);
     const next = regenerateDesigns(changed);
+    const result = findById(next.designs ?? [], id, "design");
     const parts = generatedParts(next, id);
     const removedPlacements = droppedCopies(renamed, next);
     return finishMutation(invocation, loaded, next, {
-      summary: `Changed design ${line(next, design)}.`,
-      data: { design, parts, partChanges: partChanges(generatedParts(renamed, id), parts), removedPlacements },
+      summary: `Changed design ${line(next, result)}.`,
+      data: { design: result, parts, partChanges: partChanges(generatedParts(renamed, id), parts), removedPlacements },
       ...(removedPlacements.length > 0 ? { details: [`Took ${plural(removedPlacements.length, "copy", "copies")} off the sheets.`] } : {}),
     });
   },
