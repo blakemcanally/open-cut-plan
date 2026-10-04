@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { analyzeProject } from "../../src/analysis.ts";
 import type { Score } from "../../src/optimize/evaluate.ts";
-import { compareOffcuts, createTradeOffs, describeGoal, extraCostPercent } from "../../src/optimize/goal.ts";
+import { compareChoice, compareOffcuts, createTradeOffs, describeGoal, extraCostPercent } from "../../src/optimize/goal.ts";
 import { projectGoal } from "../../src/optimize/goal-setting.ts";
 import { validatePlan } from "../../src/plan/validate.ts";
 import { sampleProject } from "../helpers.ts";
 
-const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 0, offcuts: [], cuts: 10, cutLength: 500, sheets: 1, ...over });
+const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 0, offcuts: [], cuts: 10, cutLength: 500, sheets: 1, groupSpread: 0, ...over });
 
 describe("compareOffcuts", () => {
   it("prefers the larger first area, then the larger second area, then the longer list", () => {
@@ -79,6 +79,30 @@ describe("createTradeOffs", () => {
     list.add(score({ cost: 109, offcuts: [5] }), "within");
     expect(list.chosen()?.item).toBe("within");
     expect(list.cheapest).toBe(100);
+  });
+});
+
+describe("the group spread in the choice", () => {
+  it("compares the group spread before the goal only when the groups stay together", () => {
+    const spread = score({ groupSpread: 2, offcuts: [90], cuts: 3 });
+    const together = score({ groupSpread: 0, offcuts: [10], cuts: 9 });
+    for (const goal of ["offcuts", "cuts"] as const) {
+      expect(compareChoice(goal, together, spread, true)).toBeLessThan(0);
+      expect(compareChoice(goal, together, spread)).toBeGreaterThan(0);
+    }
+    expect(compareChoice("cost", score({ groupSpread: 1, largestOffcut: 50 }), score({ groupSpread: 0 }), true)).toBeGreaterThan(0);
+  });
+
+  it("keeps the groups together within the limit of the cheapest cost, and never goes over it", () => {
+    const list = createTradeOffs<string>("offcuts", 10, Number.POSITIVE_INFINITY, true);
+    list.add(score({ cost: 100, offcuts: [90], groupSpread: 3 }), "cheap");
+    list.add(score({ cost: 108, offcuts: [10], groupSpread: 1 }), "together");
+    list.add(score({ cost: 115, offcuts: [10], groupSpread: 0 }), "too dear");
+    expect(list.chosen()?.item).toBe("together");
+    const plain = createTradeOffs<string>("offcuts", 10);
+    plain.add(score({ cost: 100, offcuts: [90], groupSpread: 3 }), "cheap");
+    plain.add(score({ cost: 108, offcuts: [10], groupSpread: 1 }), "together");
+    expect(plain.chosen()?.item).toBe("cheap");
   });
 });
 

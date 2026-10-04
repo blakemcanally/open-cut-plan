@@ -8,7 +8,7 @@ import { checkCuts } from "../plan/validate.ts";
 import { listOffcuts } from "../reports/offcuts.ts";
 import { sequenceCuts, totalCutLength } from "../sequence/sequence.ts";
 import type { Packing } from "./pack.ts";
-import type { MaterialProblem, Problem, UnplacedCopy } from "./problem.ts";
+import { copyKey, type MaterialProblem, type Problem, type UnplacedCopy } from "./problem.ts";
 
 /** Compared in field order; see `compareScores`. */
 export interface Score {
@@ -25,6 +25,8 @@ export interface Score {
   /** Total length of the cut lines of those steps. Shorter is better. */
   cutLength: number;
   sheets: number;
+  /** For each group, the sheets of the material that hold its copies (pinned sheets included) minus 1, summed. Fewer is better. */
+  groupSpread: number;
 }
 
 export interface Evaluated {
@@ -44,10 +46,11 @@ function differ(a: number, b: number): boolean {
   return !sameNumber(a, b);
 }
 
-/** Negative when `a` is better than `b`, positive when worse, 0 when equal. */
-export function compareScores(a: Score, b: Score): number {
+/** Negative when `a` is better than `b`, positive when worse, 0 when equal. `groups` compares the group spread after the cost. */
+export function compareScores(a: Score, b: Score, groups = false): number {
   if (a.unplaced !== b.unplaced) return a.unplaced - b.unplaced;
   if (differ(a.cost, b.cost)) return a.cost - b.cost;
+  if (groups && a.groupSpread !== b.groupSpread) return a.groupSpread - b.groupSpread;
   if (differ(a.largestOffcut, b.largestOffcut)) return b.largestOffcut - a.largestOffcut;
   if (a.cuts !== b.cuts) return a.cuts - b.cuts;
   if (differ(a.cutLength, b.cutLength)) return a.cutLength - b.cutLength;
@@ -112,8 +115,24 @@ export function evaluate(problem: Problem, material: MaterialProblem, packing: P
       cuts: keptSteps.length,
       cutLength: totalCutLength(keptSteps),
       sheets: kept.length,
+      groupSpread: groupSpread(material, kept),
     },
   };
+}
+
+function groupSpread(material: MaterialProblem, sheets: readonly PlanSheet[]): number {
+  const counts = new Map(material.pinnedGroups);
+  for (const sheet of material.groups.size === 0 ? [] : sheets) {
+    const held = new Set<string>();
+    for (const p of sheet.placements) {
+      const group = material.groups.get(copyKey(p.part, p.copy));
+      if (group !== undefined) held.add(group);
+    }
+    for (const group of held) counts.set(group, (counts.get(group) ?? 0) + 1);
+  }
+  let spread = 0;
+  for (const count of counts.values()) spread += count - 1;
+  return spread;
 }
 
 function sheetsOf(issue: PlanIssue): string[] {

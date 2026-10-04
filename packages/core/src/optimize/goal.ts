@@ -21,10 +21,12 @@ export function compareOffcuts(a: readonly number[], b: readonly number[]): numb
   return 0;
 }
 
-/** The order in which the search chooses among the plans within the cost limit. */
-export function compareChoice(goal: OptimizerGoal, a: Score, b: Score): number {
+/** The order in which the search chooses among the plans within the cost limit. `groups` compares the group spread first. */
+export function compareChoice(goal: OptimizerGoal, a: Score, b: Score, groups = false): number {
+  if (goal === "cost") return compareScores(a, b, groups);
+  if (groups && a.groupSpread !== b.groupSpread) return a.groupSpread - b.groupSpread;
   const byGoal = goal === "offcuts" ? compareOffcuts(a.offcuts, b.offcuts) : goal === "cuts" ? compareCuts(a, b) : 0;
-  return byGoal || compareScores(a, b);
+  return byGoal || compareScores(a, b, groups);
 }
 
 function compareCuts(a: Score, b: Score): number {
@@ -62,12 +64,12 @@ export interface TradeOffs<T> {
  * The plans of one material that no other plan beats on cost and on the choice order, among the plans with the fewest
  * unplaced copies. Plans over the cost limit leave the list, because the cheapest cost can only go down.
  */
-export function createTradeOffs<T>(goal: OptimizerGoal, extra: number, cheapest = Number.POSITIVE_INFINITY): TradeOffs<T> {
+export function createTradeOffs<T>(goal: OptimizerGoal, extra: number, cheapest = Number.POSITIVE_INFINITY, groups = false): TradeOffs<T> {
   let entries: TradeOff<T>[] = [];
   let unplaced = Number.POSITIVE_INFINITY;
   let floor = cheapest;
   const notMore = (a: Score, b: Score) => withinLimit(a.cost, b.cost);
-  const beats = (a: Score, b: Score) => notMore(a, b) && compareChoice(goal, a, b) <= 0;
+  const beats = (a: Score, b: Score) => notMore(a, b) && compareChoice(goal, a, b, groups) <= 0;
   return {
     get cheapest() {
       return floor;
@@ -91,7 +93,7 @@ export function createTradeOffs<T>(goal: OptimizerGoal, extra: number, cheapest 
     chosen() {
       let best: TradeOff<T> | null = null;
       for (const entry of entries) {
-        if (!best || compareChoice(goal, entry.score, best.score) < 0) best = entry;
+        if (!best || compareChoice(goal, entry.score, best.score, groups) < 0) best = entry;
       }
       return best;
     },

@@ -5,6 +5,7 @@ import { EXAMPLES } from "../../../../examples/builders/index.ts";
 import type { Project } from "../../src/format/schema.ts";
 import { createProject } from "../../src/format/defaults.ts";
 import { parseProject } from "../../src/format/parse.ts";
+import { sameNumber } from "../../src/optimize/evaluate.ts";
 import { costLimit, withinLimit } from "../../src/optimize/goal.ts";
 import { applyOptimizeResult, createSearch, optimize, type OptimizeResult } from "../../src/optimize/search.ts";
 import { validatePlan } from "../../src/plan/validate.ts";
@@ -264,10 +265,10 @@ describe("the optimizer goal", () => {
   }
   const stockOf = (project: Project, options: Parameters<typeof optimize>[1]) => optimize(project, { iterations: 60, ...options }).sheets.map((sheet) => sheet.stock);
 
-  it("gives the same plans as before for the goal cost", () => {
+  it("gives the same plans as before for the goal cost when the groups need not stay together", () => {
     const fingerprints = Object.fromEntries(
       ["living-room-shelf", "simple-bookcase-mm", "kallax-2x4-mm", "eket-wall-in"].map((name) => {
-        const result = optimize(load(name), { iterations: 150, seed: 7, goal: "cost" });
+        const result = optimize(load(name), { iterations: 150, seed: 7, goal: "cost", keepGroupsTogether: false });
         const text = JSON.stringify({ sheets: result.sheets, unplaced: result.unplaced });
         return [name, createHash("sha256").update(text).digest("hex").slice(0, 16)];
       }),
@@ -358,5 +359,43 @@ describe("the optimizer goal", () => {
       }),
       { numRuns: 60 },
     );
+  });
+});
+
+describe("keeping groups together", () => {
+  const sizes = [23.5, 23.4, 23.3, 23.2, 23.1, 23.0, 22.9, 22.8];
+  /** Eight 47-long parts, four to a sheet; A and B alternate in size, so an order by size mixes them. */
+  function twoGroups(): Project {
+    const project = sampleProject();
+    project.plan = { sheets: [] };
+    project.parts = sizes.map((width, i) => ({ id: `p${i}`, name: `P${i}`, material: "ply", length: 47, width, quantity: 1, grain: "length" as const, group: i % 2 === 0 ? "A" : "B" }));
+    return project;
+  }
+  it("gives the group spread of the chosen plan with the setting on or off", () => {
+    const project = twoGroups();
+    expect(optimize(project, { iterations: 100, seed: 3, keepGroupsTogether: false }).materials[0]!.score.groupSpread).toBe(2);
+    expect(optimize(project, { iterations: 100, seed: 1, keepGroupsTogether: false }).materials[0]!.score.groupSpread).toBe(0);
+  });
+
+  it("never costs more or leaves more copies unplaced than the same search with the setting off", () => {
+    const worse: string[] = [];
+    for (const name of ["living-room-shelf", "simple-bookcase-mm", "kallax-2x4-mm", "eket-wall-in"]) {
+      const project = load(name);
+      for (const seed of [1, 2]) {
+        for (const goal of ["cost", "offcuts", "cuts"] as const) {
+          const off = optimize(project, { iterations: 80, seed, goal, keepGroupsTogether: false });
+          const on = optimize(project, { iterations: 80, seed, goal, keepGroupsTogether: true });
+          on.materials.forEach((m, i) => {
+            const before = off.materials[i]!;
+            const limit = goal === "cost" ? before.score.cost : costLimit(before.cheapestCost, 10);
+            const fewerUnplaced = m.score.unplaced < before.score.unplaced;
+            const ok = fewerUnplaced || (m.score.unplaced === before.score.unplaced && withinLimit(m.cheapestCost, before.cheapestCost) && withinLimit(m.score.cost, limit));
+            const spreadOk = goal !== "cost" || fewerUnplaced || !sameNumber(m.score.cost, before.score.cost) || m.score.groupSpread <= before.score.groupSpread;
+            if (!ok || !spreadOk) worse.push(`${name} ${seed} ${goal} ${m.material}`);
+          });
+        }
+      }
+    }
+    expect(worse).toEqual([]);
   });
 });

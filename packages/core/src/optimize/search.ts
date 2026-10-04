@@ -24,6 +24,8 @@ export interface OptimizeOptions {
   goal?: OptimizerGoal;
   /** Defaults to `settings.optimizer.extraCostPercent`. Ignored for the goal `cost`. */
   extraCostPercent?: number;
+  /** Defaults to `settings.optimizer.keepGroupsTogether`: compare the group spread after the cost. */
+  keepGroupsTogether?: boolean;
 }
 
 export interface MaterialResult {
@@ -69,6 +71,7 @@ interface MaterialSearch {
   best: Planned | null;
   /** Null for the goal `cost`, which keeps only the best plan. */
   trade: TradeOffs<Planned> | null;
+  groups: boolean;
 }
 
 interface Planned {
@@ -94,9 +97,10 @@ export function createSearch(project: Project, options: OptimizeOptions = {}): S
   const perMaterial = options.iterations === undefined ? undefined : Math.max(1, options.iterations);
   const goal = options.goal ?? projectGoal(project);
   const extra = options.extraCostPercent ?? settings.extraCostPercent;
+  const groups = options.keepGroupsTogether ?? settings.keepGroupsTogether;
   const random = seededRandom(seed + (options.start?.iterations ?? 0));
-  const tradeOffs = (cheapest?: number) => (goal === "cost" ? null : createTradeOffs<Planned>(goal, extra, cheapest));
-  const searches = problem.materials.map((m): MaterialSearch => ({ problem: m, base: baseCandidates(m), next: 0, evaluated: 0, rerun: 0, best: null, trade: tradeOffs() }));
+  const tradeOffs = (cheapest?: number) => (goal === "cost" ? null : createTradeOffs<Planned>(goal, extra, cheapest, groups));
+  const searches = problem.materials.map((m): MaterialSearch => ({ problem: m, base: baseCandidates(m), next: 0, evaluated: 0, rerun: 0, best: null, trade: tradeOffs(), groups }));
   if (options.start) seedFrom(problem, searches, options.start, tradeOffs);
   let iterations = options.start?.iterations ?? 0;
   let elapsed = 0;
@@ -153,7 +157,7 @@ export function applyOptimizeResult(project: Project, result: OptimizeResult): P
 
 function record(search: MaterialSearch, planned: Planned) {
   if (!search.trade) {
-    if (!search.best || compareScores(planned.result.score, search.best.result.score) < 0) search.best = planned;
+    if (!search.best || compareScores(planned.result.score, search.best.result.score, search.groups) < 0) search.best = planned;
     return;
   }
   search.trade.add(planned.result.score, planned);

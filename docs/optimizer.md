@@ -71,20 +71,31 @@ For the goal `cost`, candidates are compared per material, in this order:
 1. **Unplaced copies**: fewer is better.
 2. **Cost**: the sum of the stock `cost` of the sheets used. Owned offcuts count as 0. When the `cost` feature is off,
    or any enabled sheet stock of the material has no `cost`, the stock area is used in place of the cost.
-3. **Largest offcut** area: bigger is better (0 when the `offcuts` feature is off).
-4. **Cut steps**, including trims: fewer is better.
-5. **Cut length**: the total length of the cut lines of those steps. Shorter is better.
-6. **Sheets**: fewer is better.
+3. **Group spread**, only when the groups stay together (see below): fewer is better.
+4. **Largest offcut** area: bigger is better (0 when the `offcuts` feature is off).
+5. **Cut steps**, including trims: fewer is better.
+6. **Cut length**: the total length of the cut lines of those steps. Shorter is better.
+7. **Sheets**: fewer is better.
+
+**Groups.** A group is a colour key (see [Colours](format.md#colours-added-in-14)): one unit of a design, or one group
+of parts without a design. A copy with no colour key is in no group. The **group spread** of a material is the number
+of sheets of that material that hold copies of a group, minus 1, summed over the groups. Pinned sheets count. A
+group spread of 0 means that each group is on one sheet of the material.
+
+The groups stay together when `keepGroupsTogether` is true (default `settings.optimizer.keepGroupsTogether`, which is
+true when the file does not give it). The group spread comes after the cost, so it never makes a plan cost more or
+leave more copies unplaced. When the groups need not stay together, the search does not use the group spread.
 
 For the goals `offcuts` and `cuts`, the search chooses a plan for each material with this rule:
 
 1. It keeps the candidates with the fewest unplaced copies.
 2. C is the lowest cost of those candidates. It keeps the candidates that cost at most
    C × (1 + `extraCostPercent` / 100). `extraCostPercent` defaults to `settings.optimizer.extraCostPercent`.
-3. It chooses by the goal. For `offcuts`, the offcut areas compare largest first: the larger first area wins, then
+3. When the groups stay together, it chooses the smallest group spread.
+4. It chooses by the goal. For `offcuts`, the offcut areas compare largest first: the larger first area wins, then
    the larger second area, and so on, and a list that ends first loses. For `cuts`, fewer cut steps win, and of
    two candidates with the same number of cut steps, the shorter cut length wins.
-4. When candidates are still equal, the order of the goal `cost` decides. Of two equal candidates, the first found
+5. When candidates are still equal, the order of the goal `cost` decides. Of two equal candidates, the first found
    stays.
 
 Costs and areas that differ by less than a small relative tolerance are equal, so a candidate that costs exactly the
@@ -99,7 +110,8 @@ limit stays. C can only go down, so the search drops a candidate when its cost g
 - `unplaced`: `{ part, copy, reason }` for each copy with no place, grouped by material in project material order,
   and in part order, then copy order, within each material;
 - `materials`: `{ material, score, cheapestCost }`. The `score` has the measures above (`unplaced`, `cost`,
-  `largestOffcut`, `cuts`, `cutLength`, and `sheets`), with `offcuts`: the area of every offcut, largest first.
+  `groupSpread`, `largestOffcut`, `cuts`, `cutLength`, and `sheets`), with `offcuts`: the area of every offcut, largest
+  first. The score gives the group spread also when the groups need not stay together.
   `cheapestCost` is C for the goals `offcuts` and `cuts`, and the cost of the chosen plan for the goal `cost`;
 - `iterations`: the candidates tried, over all materials, including those of a `start` result.
 

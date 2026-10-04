@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { regenerateDesigns } from "../../src/design/generate.ts";
 import { buildProblem } from "../../src/optimize/problem.ts";
-import { sampleProject } from "../helpers.ts";
+import { designProject, eketDesign, sampleProject } from "../helpers.ts";
 
 describe("buildProblem", () => {
   it("expands copies with their allowed orientations and forces cutOrder on", () => {
@@ -48,5 +49,40 @@ describe("buildProblem", () => {
     project.parts[0]!.grain = "width";
     const [material] = buildProblem({ ...project, plan: { sheets: [] } }).materials;
     expect(material!.copies[0]!.orientations).toEqual([true]);
+  });
+});
+
+describe("the groups of the copies", () => {
+  it("gives each copy the colour key of its design unit or its group, and no key to a part without either", () => {
+    const project = regenerateDesigns(designProject([eketDesign()]));
+    project.parts.push(
+      { id: "box", name: "Box", material: "ply18", length: 300, width: 200, quantity: 1, grain: "length", group: "Toy box" },
+      { id: "loose", name: "Loose", material: "ply18", length: 300, width: 200, quantity: 1, grain: "length" },
+    );
+    const [material] = buildProblem(project).materials;
+    const groups = (id: string) => material!.copies.filter((c) => c.part.id === id).map((c) => c.group);
+    expect(groups("ek-top")).toEqual(["design:ek#1", "design:ek#2"]);
+    expect(groups("ek-side")).toEqual(["design:ek#1", "design:ek#1", "design:ek#2", "design:ek#2"]);
+    expect(groups("box")).toEqual(["group:Toy box"]);
+    expect(groups("loose")).toEqual([null]);
+  });
+
+  it("counts the pinned sheets of the material that hold each group", () => {
+    const project = sampleProject();
+    project.parts[0]!.group = "Case";
+    project.parts[0]!.quantity = 4;
+    project.materials.push({ id: "mdf", name: "MDF", thickness: 0.5, grained: false });
+    project.stock.push({ id: "mdf-4x8", material: "mdf", length: 96, width: 48, quantity: null, kind: "sheet" });
+    project.parts.push({ id: "back", name: "Back", material: "mdf", length: 30, width: 20, quantity: 1, grain: "none", group: "Case" });
+    project.plan = {
+      sheets: [
+        { id: "a", stock: "ply-4x8", pinned: true, placements: [{ part: "side", copy: 0, x: 0.25, y: 0.25, rotated: false }] },
+        { id: "b", stock: "ply-4x8", pinned: true, placements: [{ part: "side", copy: 1, x: 0.25, y: 0.25, rotated: false }] },
+        { id: "c", stock: "ply-4x8", placements: [{ part: "side", copy: 2, x: 0.25, y: 0.25, rotated: false }] },
+      ],
+    };
+    const [ply, mdf] = buildProblem(project).materials;
+    expect([...ply!.pinnedGroups]).toEqual([["group:Case", 2]]);
+    expect([...mdf!.pinnedGroups]).toEqual([]);
   });
 });

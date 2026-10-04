@@ -3,7 +3,7 @@ import { compareScores, evaluate, type Score } from "../../src/optimize/evaluate
 import { buildProblem } from "../../src/optimize/problem.ts";
 import { sampleProject } from "../helpers.ts";
 
-const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 50, offcuts: [50], cuts: 10, cutLength: 500, sheets: 2, ...over });
+const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 50, offcuts: [50], cuts: 10, cutLength: 500, sheets: 2, groupSpread: 0, ...over });
 
 describe("compareScores", () => {
   it("compares unplaced, then cost, then largest offcut (bigger wins), then cuts, then cut length, then sheets", () => {
@@ -16,6 +16,15 @@ describe("compareScores", () => {
     expect(compareScores(score({ cutLength: 500 + 1e-10 }), base)).toBe(0);
     expect(compareScores(score({ sheets: 1 }), base)).toBeLessThan(0);
     expect(compareScores(score({ cost: 100 + 1e-12 }), base)).toBe(0);
+  });
+
+  it("compares the group spread after the cost, before the largest offcut, only when the groups stay together", () => {
+    const base = score({ groupSpread: 1 });
+    expect(compareScores(score({ groupSpread: 0, largestOffcut: 0 }), base, true)).toBeLessThan(0);
+    expect(compareScores(score({ groupSpread: 0, cost: 101 }), base, true)).toBeGreaterThan(0);
+    expect(compareScores(score({ groupSpread: 0, unplaced: 1 }), base, true)).toBeGreaterThan(0);
+    expect(compareScores(score({ groupSpread: 0, largestOffcut: 0 }), base)).toBeGreaterThan(0);
+    expect(compareScores(score({ groupSpread: 5 }), base)).toBe(0);
   });
 });
 
@@ -65,6 +74,26 @@ describe("evaluate", () => {
       { part: "side", copy: 1, reason: "no-tool" },
     ]);
     expect(result.score).toMatchObject({ unplaced: 2, cost: 0, cuts: 0, sheets: 0 });
+  });
+
+  it("counts the sheets past the first that hold each group, with the pinned sheets of the material", () => {
+    const project = sampleProject();
+    project.parts = [
+      { id: "a", name: "A", material: "ply", length: 30, width: 12, quantity: 3, grain: "length", group: "A" },
+      { id: "b", name: "B", material: "ply", length: 30, width: 12, quantity: 2, grain: "length", group: "B" },
+      { id: "c", name: "C", material: "ply", length: 30, width: 12, quantity: 2, grain: "length" },
+    ];
+    const at = (part: string, copy: number, y = 0.25) => ({ part, copy, x: 0.25, y, rotated: false });
+    project.plan = { sheets: [{ id: "p", stock: "ply-4x8", pinned: true, placements: [at("a", 0)] }] };
+    const problem = buildProblem(project);
+    const material = problem.materials[0]!;
+    const stock = material.stock[0]!;
+    const sheets = [
+      { stock, placements: [at("a", 1), at("b", 0, 12.375), at("c", 0, 24.5)] },
+      { stock, placements: [at("a", 2), at("b", 1, 12.375), at("c", 1, 24.5)] },
+    ];
+    expect(evaluate(problem, material, { sheets, unplaced: [] }, "t").score.groupSpread).toBe(3);
+    expect(evaluate(problem, material, { sheets: sheets.slice(0, 1), unplaced: [] }, "t").score.groupSpread).toBe(1);
   });
 
   it("keeps sheets when no tool is enabled at all", () => {
