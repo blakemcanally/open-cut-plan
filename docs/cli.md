@@ -114,7 +114,7 @@ files. `parts` also has `colors` and `group-color` for the colours of the layout
 | `parts export <file>` | Writes the parts as CSV. | `opencutplan parts export shelf.cutplan.json --out parts.csv` |
 | `stock list <file>` | Lists the stock and the sheets cut from each item. | `opencutplan stock list shelf.cutplan.json` |
 | `stock get <file> <id>` | Shows one stock item. | `opencutplan stock get shelf.cutplan.json bb18-5x5` |
-| `stock add <file>` | Adds a sheet size or an owned offcut. `--catalog <size id>` adds a catalogue size. | `opencutplan stock add shelf.cutplan.json --material bb18 --length "8'" --width "4'" --cost 65` |
+| `stock add <file>` | Adds a sheet size or an owned offcut. `--catalog <size id>` adds a catalogue size. `--suggested` adds the [suggested sheet](catalog.md#suggested-sheet) of the material. | `opencutplan stock add shelf.cutplan.json --material bb18 --length "8'" --width "4'" --cost 65` |
 | `stock set <file> <id>` | Changes a stock item. `--trim` is a length, `factory`, or `project`. | `opencutplan stock set shelf.cutplan.json bb18-5x5 --quantity 4 --factory-edges` |
 | `stock remove <file> <id>...` | Removes stock and the sheets cut from it. | `opencutplan stock remove shelf.cutplan.json bb6-5x5` |
 | `stock import <file> <csv>` | Adds the stock in a CSV file. | `opencutplan stock import shelf.cutplan.json stock.csv` |
@@ -148,6 +148,10 @@ typical price. The prices are approximate and dated.
 - The cost of the new stock is the typical price when the project currency is USD. `--cost` sets another cost.
 - When the project has the material or the sheet, the command changes nothing, and `added` is `false`.
 - The result has `added`. `stock add --catalog` also has `material` and `addedMaterial`.
+- `stock add --suggested --material <id|name>` adds the [suggested sheet](catalog.md#suggested-sheet) of the
+  material: the largest size of the catalogue material with the same id or name, or a 96" × 48" (2440 × 1220 mm)
+  sheet with no cost. It refuses `--catalog`, `--length`, `--width`, and `--kind` (exit 2, `conflict`). It is the
+  same as **Add stock** in the app.
 
 ### Designs
 
@@ -190,6 +194,10 @@ added, removed, or resized) and `removedPlacements` (the copies that went to the
 The CLI has no command to combine cells yet. To combine cells, edit `combined` in the file
 ([format.md](format.md)), or use the Design tab of the web app. When `design set` changes the columns or the rows, it
 fits each combined cell to the new grid, and removes a combined cell that has only one cell left.
+
+When the material or the back material of `design add` has no enabled stock, the command adds its
+[suggested sheet](catalog.md#suggested-sheet), as the app does. `design set` does the same for a `--material` or a
+`--back` that it gets. `addedStock` lists the ids of the new stock, and the text output names them.
 
 ### Settings
 
@@ -234,6 +242,11 @@ which units and groups are on more than one sheet, for example `Groups: Hall KAL
 `Groups: Each unit is on one sheet.` When a placed copy asks for a factory edge, a `Factory edges:` line tells how
 many get one, for example `Factory edges: 5 of 6 copies that ask for one get one.` The `validation` issues have a
 `factory-edge` warning for each copy that does not get one.
+
+Each copy that the run cannot place has a line with its reason, for example
+`not placed: Side (side copy 0): no-stock-for-material`. The reasons are in [`optimizer.md`](optimizer.md#result).
+For each material with the reason `no-stock-for-material`, a line gives the command that adds a sheet:
+`Plywood has no enabled stock. Add a sheet with: opencutplan stock add shelf.cutplan.json --suggested --material ply`.
 
 The `--json` output has `goal`, `extraCostPercent` (the limit of the run), `keepGroupsTogether`, and `materials`:
 `{ material, score, cheapestCost, extraCostPercent }` for each material, where `extraCostPercent` is the extra cost

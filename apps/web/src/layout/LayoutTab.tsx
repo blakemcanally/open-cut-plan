@@ -1,5 +1,6 @@
 import {
   addSheet,
+  addSuggestedStock,
   clearsKerf,
   contains,
   copyLabel,
@@ -425,6 +426,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
               if (size) startDrag(event, ref, { x: size.length / 2, y: size.width / 2 });
             }}
             onSelect={select}
+            onAddStock={(material) => edit((p) => addSuggestedStock(p, material).project)}
           />
           <div className="sheets" ref={sheetsRef}>
             {sheets.length === 0 && <p className="muted">No sheets yet. Press Optimize, or add a sheet and drag parts onto it.</p>}

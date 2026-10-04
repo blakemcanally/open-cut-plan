@@ -14,10 +14,10 @@ export interface Copy {
 }
 
 /**
- * `too-large`: fits no enabled stock. `no-stock`: the stock quantities ran out. `no-tool`: no enabled tool can make a cut
+ * `no-stock-for-material`: its material has no enabled stock. `too-large`: fits no enabled stock. `no-stock`: the stock quantities ran out. `no-tool`: no enabled tool can make a cut
  * its sheet needs. `not-guillotine`: its sheet failed the validator for another reason; constructors never cause it.
  */
-export type UnplacedReason = "too-large" | "no-stock" | "no-tool" | "not-guillotine";
+export type UnplacedReason = "no-stock-for-material" | "too-large" | "no-stock" | "no-tool" | "not-guillotine";
 
 export interface UnplacedCopy {
   part: string;
@@ -33,7 +33,7 @@ export interface MaterialProblem {
   stock: Stock[];
   /** Pieces of each stock still available after pinned sheets, or null for unlimited. */
   available: ReadonlyMap<string, number | null>;
-  /** Copies that fit no enabled stock in any allowed orientation. */
+  /** Copies that fit no enabled stock in any allowed orientation, or whose material has none. */
   tooLarge: UnplacedCopy[];
   /** The group of each copy of this material, keyed by `copyKey`; copies with no group are left out. */
   groups: ReadonlyMap<string, string>;
@@ -112,7 +112,7 @@ export function buildProblem(project: Project): Problem {
         if (group !== null) groups.set(copyKey(part.id, copy), group);
         const fits = orientations.some((r) => stock.some((s) => fitsStock(ctx, s, orientedSize(part, r))));
         if (fits) copies.push({ part, copy, orientations, group });
-        else tooLarge.push({ part: part.id, copy, reason: "too-large" });
+        else tooLarge.push({ part: part.id, copy, reason: stock.length === 0 ? "no-stock-for-material" : "too-large" });
       }
     }
     if (copies.length > 0 || tooLarge.length > 0) {

@@ -93,6 +93,15 @@ describe("optimize", () => {
     ]);
   });
 
+  it("reports the parts of a material with no stock, and plans the other materials", () => {
+    const project = sampleProject();
+    project.materials.push({ id: "mdf", name: "MDF", thickness: 0.75, grained: false });
+    project.parts.push({ id: "door", name: "Door", material: "mdf", length: 20, width: 10, quantity: 1, grain: "none" });
+    const result = optimize({ ...project, plan: { sheets: [] } }, { iterations: 10 });
+    expect(result.unplaced).toEqual([{ part: "door", copy: 0, reason: "no-stock-for-material" }]);
+    expect(result.sheets.flatMap((s) => s.placements.map((p) => p.part))).toEqual(["side", "side"]);
+  });
+
   it("keeps pinned sheets unchanged and plans only the other copies", () => {
     const project = load("living-room-shelf");
     const pinned = { ...project.plan!.sheets[0]!, pinned: true };

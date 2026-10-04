@@ -1,5 +1,6 @@
 import {
   addCatalogStock,
+  addSuggestedStock,
   analyzeProject,
   removeStock,
   saveOffcutsToStock,
@@ -135,12 +136,12 @@ const add: CommandSpec = {
   name: "stock add",
   summary: "Add a stock item.",
   description:
-    "Add a stock item: a sheet size of a material that can be cut, or an owned offcut. With --catalog, the material, the size, and the cost come from the catalogue (see catalog list). The material is added when the project does not have it. The cost is the typical price when the project currency is USD; otherwise there is no cost. When the project has a sheet of that material and size, nothing changes.",
+    "Add a stock item: a sheet size of a material that can be cut, or an owned offcut. With --catalog, the material, the size, and the cost come from the catalogue (see catalog list). The material is added when the project does not have it. The cost is the typical price when the project currency is USD; otherwise there is no cost. When the project has a sheet of that material and size, nothing changes. With --suggested, the size and the cost come from the suggested sheet of the material: the largest catalogue size of the catalogue material with the same id or name, at the typical price in a USD project, or else a 96 × 48 in (2440 × 1220 mm) sheet with no cost.",
   args: [FILE_ARG],
   options: [
     OPTIONS.material,
-    { ...OPTIONS.length, description: `${OPTIONS.length.description} Required without --catalog.` },
-    { ...OPTIONS.width, description: `${OPTIONS.width.description} Required without --catalog.` },
+    { ...OPTIONS.length, description: `${OPTIONS.length.description} Required without --catalog or --suggested.` },
+    { ...OPTIONS.width, description: `${OPTIONS.width.description} Required without --catalog or --suggested.` },
     OPTIONS.quantity,
     OPTIONS.cost,
     OPTIONS.kind,
@@ -149,6 +150,7 @@ const add: CommandSpec = {
     OPTIONS.enabled,
     OPTIONS.name,
     catalogOption("size"),
+    { name: "suggested", type: "boolean", description: "Add the suggested sheet of the material, as the app's Add stock button does." },
     ID_OPTION,
     ...OUTPUT_OPTIONS,
   ],
@@ -156,6 +158,7 @@ const add: CommandSpec = {
     { command: `${PROGRAM} stock add shelf.cutplan.json --material ply --length 96 --width 48 --cost 65`, description: "Add unlimited 4 × 8 ft sheets at 65 each." },
     { command: `${PROGRAM} stock add shelf.cutplan.json --material ply --length 30 --width 20 --quantity 1 --kind offcut --factory-edges`, description: "Add an owned offcut with cut edges." },
     { command: `${PROGRAM} stock add shelf.cutplan.json --catalog baltic-birch-18mm-5x5`, description: "Add 5 × 5 ft Baltic birch 3/4\" (18 mm) sheets from the catalogue, and the material." },
+    { command: `${PROGRAM} stock add shelf.cutplan.json --suggested --material ply`, description: "Add the suggested sheet of a material that has no stock." },
   ],
   output:
     "stock (the new item, or the one the project has), added (false when --catalog found the sheet in the project), material and addedMaterial (with --catalog), changes, validation, written, dryRun.",
@@ -164,6 +167,7 @@ const add: CommandSpec = {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const catalog = str(options, "catalog");
+    if (flag(options, "suggested")) return addSuggested(invocation, loaded);
     if (catalog !== undefined) return addFromCatalog(invocation, loaded, catalog);
     if (str(options, "length") === undefined) throw missingOption("length");
     if (str(options, "width") === undefined) throw missingOption("width");
@@ -187,6 +191,23 @@ const add: CommandSpec = {
     return finishMutation(invocation, loaded, next, { summary: `Added stock ${line(project, stock)}.`, data: { stock, added: true } });
   },
 };
+
+async function addSuggested(invocation: Invocation, loaded: Loaded): Promise<Outcome> {
+  const { options } = invocation;
+  const { project } = loaded;
+  for (const name of ["catalog", "length", "width", "kind"]) {
+    if (options[name] !== undefined) throw usageError(`Give --suggested or --${name}, not both. --suggested sets the ${name === "catalog" ? "size" : name}.`, "conflict", { option: name });
+  }
+  const patch = fields(project, options);
+  const material = patch.material ?? materialFor(project, undefined).id;
+  const result = addSuggestedStock(project, material);
+  const requested = str(options, "id");
+  const id = requested === undefined ? result.stock : newId(project.stock, requested, "", "stock");
+  const { material: _material, ...rest } = patch;
+  const next = updateStock(result.project, result.stock, { ...rest, id });
+  const stock = findById(next.stock, id, "stock");
+  return finishMutation(invocation, loaded, next, { summary: `Added stock ${line(next, stock)}.`, data: { stock, added: true } });
+}
 
 async function addFromCatalog(invocation: Invocation, loaded: Loaded, catalog: string): Promise<Outcome> {
   const { options } = invocation;

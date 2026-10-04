@@ -26,6 +26,7 @@ import {
   removeDesign,
   renameDesign,
   setDesignColor,
+  withStockFor,
   type Design,
   type DesignAxis,
   type DesignSystem,
@@ -42,6 +43,15 @@ import { choiceValue, integerValue, lengthValue, list as listValues, optionalCho
 import { findAll, findById, ID_OPTION, materialFor, newId, nonEmpty, resolveMaterial } from "./common.ts";
 
 const DESIGN_ARG = { name: "id", description: "The design id." };
+
+/** Adds the suggested sheet for each material that has no enabled stock, and the line that names the new stock. */
+function stockFor(project: Project, materials: (string | undefined)[]): { project: Project; addedStock: string[]; details: string[] } {
+  const next = withStockFor(project, materials);
+  const addedStock = next.stock.slice(project.stock.length).map((stock) => stock.id);
+  if (addedStock.length === 0) return { project: next, addedStock, details: [] };
+  const noun = addedStock.length === 1 ? "material" : "materials";
+  return { project: next, addedStock, details: [`Added stock ${addedStock.join(" and ")}, because the design ${noun} had no stock.`] };
+}
 
 const OPTIONS = {
   system: { name: "system", type: "string", value: "<kallax|eket|custom>", description: "The system. kallax and eket set the cell sizes and the depth from the IKEA sizes. Default for add: custom." },
@@ -254,7 +264,7 @@ const add: CommandSpec = {
   name: "design add",
   summary: "Add a design and make its parts.",
   description:
-    "Add a cabinet design and make its parts: the top, the bottom, the sides, the dividers, the shelves, and the back. Give each axis as --cols with --width (or --rows with --height), or as a list of openings. For kallax and eket, --cols and --rows alone give IKEA-size cells, and the depth is the IKEA depth; the numbers are converted to the project units. A design with an error (such as stock too thin for pocket screws) is refused with exit 1, invalid-value, and the checks in error.issues. The new parts are not placed; run optimize.",
+    "Add a cabinet design and make its parts: the top, the bottom, the sides, the dividers, the shelves, and the back. Give each axis as --cols with --width (or --rows with --height), or as a list of openings. For kallax and eket, --cols and --rows alone give IKEA-size cells, and the depth is the IKEA depth; the numbers are converted to the project units. A design with an error (such as stock too thin for pocket screws) is refused with exit 1, invalid-value, and the checks in error.issues. When the material or the back material has no enabled stock, the suggested sheet of it is added (as with stock add --suggested); addedStock lists it. The new parts are not placed; run optimize.",
   args: [FILE_ARG],
   options: [...FIELD_OPTIONS, ID_OPTION, ...OUTPUT_OPTIONS],
   examples: [
@@ -262,7 +272,7 @@ const add: CommandSpec = {
     { command: `${PROGRAM} design add hall.cutplan.json --system eket --cols 2 --rows 1 --back ply6 --mount wall-rail --quantity 2`, description: "Add two EKET 2x1 units for the wall rail." },
     { command: `${PROGRAM} design add hall.cutplan.json --width 1200 --height 800 --cols 3 --rows 2 --depth 300 --name Sideboard`, description: "Add a custom 3x2 grid in a 1200 × 800 outside size." },
   ],
-  output: "design (the new design), parts (the generated parts), changes, validation, written, dryRun. For a design with an error: error { code: \"invalid-value\", issues }.",
+  output: "design (the new design), parts (the generated parts), addedStock (the ids of the stock added for the design materials), changes, validation, written, dryRun. For a design with an error: error { code: \"invalid-value\", issues }.",
   async run(invocation) {
     const { args, options, io } = invocation;
     const loaded = await loadProject(io, args[0]!);
@@ -294,9 +304,14 @@ const add: CommandSpec = {
     if (mount !== undefined) design.mount = mount;
     const added = withColors({ ...project, designs: [...(project.designs ?? []), design] }, options, design.id);
     assertValid(added, design);
-    const next = regenerateDesigns(added);
+    const stocked = stockFor(added, [design.material, design.back?.material]);
+    const next = regenerateDesigns(stocked.project);
     const result = findById(next.designs ?? [], design.id, "design");
-    return finishMutation(invocation, loaded, next, { summary: `Added design ${line(next, result)}.`, data: { design: result, parts: generatedParts(next, design.id) } });
+    return finishMutation(invocation, loaded, next, {
+      summary: `Added design ${line(next, result)}.`,
+      details: stocked.details,
+      data: { design: result, parts: generatedParts(next, design.id), addedStock: stocked.addedStock },
+    });
   },
 };
 
@@ -304,7 +319,7 @@ const set: CommandSpec = {
   name: "design set",
   summary: "Change a design and make its parts again.",
   description:
-    "Change the fields of a design, then make its parts again. Only the fields you give change. --id gives the design a new id; its parts get new ids, and their copies stay on the sheets. A copy stays on its sheet when its part keeps the same id, size, and material; the other copies go to the tray, and removedPlacements lists them. A change that gives a design error is refused with exit 1, invalid-value, and the checks in error.issues.",
+    "Change the fields of a design, then make its parts again. Only the fields you give change. --id gives the design a new id; its parts get new ids, and their copies stay on the sheets. A copy stays on its sheet when its part keeps the same id, size, and material; the other copies go to the tray, and removedPlacements lists them. A change that gives a design error is refused with exit 1, invalid-value, and the checks in error.issues. A --material or --back with no enabled stock gets the suggested sheet (as with stock add --suggested); addedStock lists it.",
   args: [FILE_ARG, DESIGN_ARG],
   options: [...FIELD_OPTIONS, { ...ID_OPTION, description: "A new id for the design. Its parts get new ids with it." }, ...OUTPUT_OPTIONS],
   examples: [
@@ -313,7 +328,7 @@ const set: CommandSpec = {
     { command: `${PROGRAM} design set hall.cutplan.json eket --color 2=#ff8800`, description: "Show the second unit in orange in the layout." },
   ],
   output:
-    "design (after the change), parts (the generated parts), partChanges { added, removed, resized } (part ids), removedPlacements [{ part, copy }], changes, validation, written, dryRun. For a design with an error: error { code: \"invalid-value\", issues }.",
+    "design (after the change), parts (the generated parts), partChanges { added, removed, resized } (part ids), removedPlacements [{ part, copy }], addedStock (the ids of the stock added for the given materials), changes, validation, written, dryRun. For a design with an error: error { code: \"invalid-value\", issues }.",
   async run(invocation) {
     const { args, options, io } = invocation;
     const loaded = await loadProject(io, args[0]!);
@@ -346,14 +361,16 @@ const set: CommandSpec = {
     if (mount !== undefined) design.mount = mount;
     const changed = withColors({ ...renamed, designs: (renamed.designs ?? []).map((item) => (item.id === id ? design : item)) }, options, id);
     assertValid(changed, design);
-    const next = regenerateDesigns(changed);
+    const stocked = stockFor(changed, [material === undefined ? undefined : design.material, back === undefined ? undefined : design.back?.material]);
+    const next = regenerateDesigns(stocked.project);
     const result = findById(next.designs ?? [], id, "design");
     const parts = generatedParts(next, id);
     const removedPlacements = droppedCopies(renamed, next);
+    const details = [...stocked.details, ...(removedPlacements.length > 0 ? [`Took ${plural(removedPlacements.length, "copy", "copies")} off the sheets.`] : [])];
     return finishMutation(invocation, loaded, next, {
       summary: `Changed design ${line(next, result)}.`,
-      data: { design: result, parts, partChanges: partChanges(generatedParts(renamed, id), parts), removedPlacements },
-      ...(removedPlacements.length > 0 ? { details: [`Took ${plural(removedPlacements.length, "copy", "copies")} off the sheets.`] } : {}),
+      details,
+      data: { design: result, parts, partChanges: partChanges(generatedParts(renamed, id), parts), removedPlacements, addedStock: stocked.addedStock },
     });
   },
 };

@@ -78,7 +78,7 @@ export const optimizeCommand: CommandSpec = {
     { command: `${PROGRAM} optimize shelf.cutplan.json --time 10 --continue --json`, description: "Search 10 more seconds from the current plan." },
   ],
   output:
-    'mode ("all" or "rest"), continued, goal, extraCostPercent (the limit of the run), keepGroupsTogether, seed, timeLimitMs (null with --iterations), iterations (candidates tried), deterministic, planChanged (false when the plan is the same as before the run), before and after { sheets, placedCopies, unplacedCopies, sheetsToBuy, cost, errors }, unplaced [{ part, copy, name, reason }] (reason: too-large, no-stock, no-tool, not-guillotine), materials [{ material, score (with groupSpread: the sheets past the first that hold each unit or group, summed; factoryEdgeMisses: the placed copies that ask for a factory edge and do not get one), cheapestCost, extraCostPercent (the extra cost that the plan uses) }], groups [{ key, label, material, sheets }] (the units and groups on more than one sheet of a material), changes, validation, written, dryRun. With --strict, unplaced copies also give exit 1.',
+    'mode ("all" or "rest"), continued, goal, extraCostPercent (the limit of the run), keepGroupsTogether, seed, timeLimitMs (null with --iterations), iterations (candidates tried), deterministic, planChanged (false when the plan is the same as before the run), before and after { sheets, placedCopies, unplacedCopies, sheetsToBuy, cost, errors }, unplaced [{ part, copy, name, reason }] (reason: no-stock-for-material, too-large, no-stock, no-tool, not-guillotine), materials [{ material, score (with groupSpread: the sheets past the first that hold each unit or group, summed; factoryEdgeMisses: the placed copies that ask for a factory edge and do not get one), cheapestCost, extraCostPercent (the extra cost that the plan uses) }], groups [{ key, label, material, sheets }] (the units and groups on more than one sheet of a material), changes, validation, written, dryRun. With --strict, unplaced copies also give exit 1.',
   async run(invocation) {
     const { args, options, io } = invocation;
     if (flag(options, "rest-only") && flag(options, "keep-pinned")) throw usageError("Give --keep-pinned or --rest-only, not both.", "conflict");
@@ -122,6 +122,7 @@ export const optimizeCommand: CommandSpec = {
     const deterministic = opts.iterations !== undefined;
     const materials = result.materials.map((m) => ({ ...m, extraCostPercent: extraCostPercent(m.score.cost, m.cheapestCost) }));
     const names = new Map(project.materials.map((material) => [material.id, material.name]));
+    const stockless = [...new Set(unplaced.filter((u) => u.reason === "no-stock-for-material").map((u) => parts.get(u.part)!.material))];
     const groupText = together ? describeGroupSpread(next) : null;
     const edgeLine = factoryEdgeLine(next);
     const groups = spreadGroups(next).map((g) => ({ key: g.key.key, label: g.key.label, material: g.material, sheets: g.sheets }));
@@ -136,6 +137,7 @@ export const optimizeCommand: CommandSpec = {
       ...(groupText === null ? [] : [`Groups: ${groupText}`]),
       ...(edgeLine === null ? [] : [edgeLine]),
       ...unplaced.map((u) => `  not placed: ${u.name} (${u.part} copy ${u.copy}): ${u.reason}`),
+      ...stockless.map((m) => `  ${names.get(m) ?? m} has no enabled stock. Add a sheet with: ${PROGRAM} stock add ${args[0]} --suggested --material ${m}`),
       `Tried ${result.iterations} candidates${deterministic ? "" : " (a timed run; use --iterations for the same result every time)"}.`,
     ];
     return finishMutation(invocation, loaded, next, {

@@ -44,6 +44,18 @@ describe("buildProblem", () => {
     ]);
   });
 
+  it("reports the copies of a material with no enabled stock as no-stock-for-material, not too-large", () => {
+    const project = sampleProject();
+    project.materials.push({ id: "mdf", name: "MDF", thickness: 0.75, grained: false });
+    project.stock.push({ id: "mdf-off", material: "mdf", length: 96, width: 48, quantity: null, kind: "sheet", enabled: false });
+    project.parts.push({ id: "door", name: "Door", material: "mdf", length: 20, width: 10, quantity: 2, grain: "none" });
+    const materials = buildProblem({ ...project, plan: { sheets: [] } }).materials;
+    expect(materials.find((m) => m.material === "mdf")!.tooLarge).toEqual([
+      { part: "door", copy: 0, reason: "no-stock-for-material" },
+      { part: "door", copy: 1, reason: "no-stock-for-material" },
+    ]);
+  });
+
   it("lets a grained part rotate only when its grain runs across it", () => {
     const project = sampleProject();
     project.parts[0]!.grain = "width";

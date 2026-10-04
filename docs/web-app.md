@@ -196,6 +196,11 @@ part that asks for a factory edge and does not get one.
   uses the same push as the optimizer: the cuts stay the same, and no part turns. The button shows only when the push
   gives one or more parts a factory edge.
 - **Add sheet** adds a sheet of the chosen stock. **Remove empty sheets** removes sheets with no parts.
+- **Unplaced parts** (the tray) lists the parts that are not on a sheet, in groups by material. After a run, each part
+  tells why the optimizer did not place it, for example "larger than every enabled stock". When a material has no
+  enabled stock, its parts say "its material has no stock", also before a run, and **Add stock** adds the
+  [suggested sheet](catalog.md#suggested-sheet) of the material. A note beside the button gives the size and the
+  price.
 - **−**, **+**, and **Fit** change the zoom. At 100 % (**Fit**), all the sheets fit in the width of the column and
   the height of the window, in rows. When they cannot all fit, each sheet is at least 200 px long, the rows fill the
   width, and the page scrolls. The zoom percentage is relative to this fit.

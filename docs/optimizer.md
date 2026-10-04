@@ -149,7 +149,8 @@ limit stays. C can only go down, so the search drops a candidate when its cost g
 
 | `reason` | Meaning |
 |---|---|
-| `too-large` | the copy fits no enabled stock of its material in any allowed orientation |
+| `no-stock-for-material` | the material of the copy has no enabled stock |
+| `too-large` | the material has enabled stock, but the copy fits none of it in any allowed orientation |
 | `no-stock` | the stock quantities ran out |
 | `no-tool` | no enabled tool can make a cut that its sheet needs |
 | `not-guillotine` | its sheet failed the validator for another reason; the constructors are not expected to cause it |
