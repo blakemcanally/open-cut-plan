@@ -27,7 +27,7 @@ export interface SheetSvgOptions {
 }
 
 const DONE_COLOR = "#9a9a9a";
-const FACTORY_EDGE_COLOR = "#1f5fbf";
+const FACTORY_EDGE_COLOR = "#2b2b2b";
 
 export function escapeXml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");

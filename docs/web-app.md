@@ -131,7 +131,7 @@ or a group is grey. The **Colours** list beside the sheets names each colour, fo
 user chooses the colours on the Design tab and the Parts tab. The Shop tab, the Reports tab, the printed booklet, and
 the SVG files use the same colours. See [format.md](format.md#colours-added-in-14). The trim zone is dashed. Cut lines are numbered in sequence order. A part with a problem
 turns red and has a ⚠ mark; the **Problems** list names each problem, and **Show** selects the part. A part that asks
-for a factory edge has a thick blue line on each long edge that is on a factory edge. The Shop tab, the printed
+for a factory edge has a thick black line on each long edge that is on a factory edge. The Shop tab, the printed
 booklet, and the SVG files show the same lines. The Problems list names each
 part that asks for a factory edge and does not get one.
 
