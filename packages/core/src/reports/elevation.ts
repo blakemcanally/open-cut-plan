@@ -78,11 +78,16 @@ export function designElevationSvg(project: Project, designId: string, options: 
   for (const p of panels.filter((candidate) => candidate.name.includes(","))) {
     const upright = p.kind === "divider";
     const length = upright ? p.height : p.width;
-    const scale = Math.min(0.7, length / (0.6 * p.name.length + 1) / unit);
-    const x = num(p.x + p.width / 2);
-    const y = num(p.y + p.height / 2);
+    const size = unit * Math.min(0.8, length / (0.6 * p.name.length + 2) / unit);
+    const boxWidth = size * (0.58 * p.name.length + 0.8);
+    const boxHeight = size * 1.4;
+    const cx = p.x + p.width / 2;
+    const cy = p.y + p.height / 2;
     out.push(
-      `<text data-label="${p.kind}" x="${x}" y="${y}" ${font(scale)} text-anchor="middle" dominant-baseline="middle" fill="#222" stroke="#fff" stroke-width="${num(unit * scale * 0.25)}" paint-order="stroke"${upright ? ` transform="rotate(-90 ${x} ${y})"` : ""}>${escapeXml(p.name)}</text>`,
+      `<g data-label="${p.kind}"${upright ? ` transform="rotate(-90 ${num(cx)} ${num(cy)})"` : ""}>`,
+      `<rect x="${num(cx - boxWidth / 2)}" y="${num(cy - boxHeight / 2)}" width="${num(boxWidth)}" height="${num(boxHeight)}" rx="${num(size * 0.3)}" fill="#fff" stroke="#333" stroke-width="${num(unit * 0.04)}"/>`,
+      `<text x="${num(cx)}" y="${num(cy)}" font-size="${num(size)}" text-anchor="middle" dominant-baseline="central" fill="#222">${escapeXml(p.name)}</text>`,
+      "</g>",
     );
   }
 

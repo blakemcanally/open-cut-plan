@@ -48,8 +48,8 @@ describe("designElevationSvg", () => {
     );
     const svg = designElevationSvg(combined, "kx")!;
     expect(svg).toMatch(/<rect data-panel="shelf" x="18" y="353" width="688" height="18"[^>]*><title>Shelf, columns 1–2<\/title><\/rect>/);
-    expect(svg).toMatch(/<text data-label="shelf" x="362" y="362" [^>]*>Shelf, columns 1–2<\/text>/);
-    expect(svg).toMatch(/<text data-label="divider" x="362" y="538.5" [^>]*transform="rotate\(-90 362 538.5\)"[^>]*>Divider, row 2<\/text>/);
+    expect(svg).toMatch(/<g data-label="shelf">\n<rect [^>]*\/>\n<text x="362" y="362" [^>]*>Shelf, columns 1–2<\/text>\n<\/g>/);
+    expect(svg).toMatch(/<g data-label="divider" transform="rotate\(-90 362 538.5\)">\n<rect [^>]*\/>\n<text x="362" y="538.5" [^>]*>Divider, row 2<\/text>/);
     expect(count(svg, /data-label=/g)).toBe(2);
   });
 

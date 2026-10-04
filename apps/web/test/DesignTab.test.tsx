@@ -292,7 +292,7 @@ describe("DesignTab cells", () => {
     expect(drawing().querySelector("[data-highlight]")?.getAttribute("width")).toBe("688");
     await user.click(button("Combine"));
     expect(design(current).combined).toEqual([{ column: 1, row: 1, columns: 2, rows: 1 }]);
-    expect([...drawing().querySelectorAll("[data-label]")].map((label) => label.textContent)).toEqual(["Shelf, columns 1–2", "Divider, row 2"]);
+    expect([...drawing().querySelectorAll("[data-label]")].map((label) => label.textContent?.trim())).toEqual(["Shelf, columns 1–2", "Divider, row 2"]);
     expect(screen.getAllByRole("gridcell")).toHaveLength(7);
     expect(cell("Columns 1–2, row 1").getAttribute("aria-selected")).toBe("true");
     expect(current().project.parts.map((part) => [part.id, part.length, part.quantity])).toEqual([
