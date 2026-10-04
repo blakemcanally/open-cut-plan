@@ -68,6 +68,13 @@ describe("PartsTab", () => {
     expect(document.activeElement).toBe(screen.getByLabelText(`Name of ${added.name}`));
   });
 
+  it("selects the name of the new part, so that typing replaces it", async () => {
+    const { current } = renderWithStore(sampleProject(), (store) => <PartsTab store={store} />);
+    await userEvent.click(screen.getByRole("button", { name: "Add part" }));
+    await userEvent.keyboard("Door{Enter}");
+    expect(current().project.parts[2]!.name).toBe("Door");
+  });
+
   it("deletes a part and removes its copies from the plan", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <PartsTab store={store} />);
     await userEvent.click(screen.getByRole("button", { name: "Delete Side" }));

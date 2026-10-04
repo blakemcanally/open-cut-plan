@@ -16,7 +16,7 @@ import {
   type Part,
   type Project,
 } from "@opencutplan/core";
-import { useRef, useState, type ClipboardEvent } from "react";
+import { useRef, useState, type ClipboardEvent, type FocusEvent } from "react";
 import { CsvImportDialog } from "../components/CsvImportDialog.tsx";
 import { ColorChoice, LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
 import { StocklessNotes } from "../components/StockNote.tsx";
@@ -91,6 +91,11 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
   const [focusId, setFocusId] = useState<string | null>(null);
   const units = project.project.units;
   const display = project.settings.display;
+
+  const selectAdded = (event: FocusEvent<HTMLInputElement>) => {
+    event.currentTarget.select();
+    setFocusId(null);
+  };
 
   const onPaste = (event: ClipboardEvent) => {
     const text = event.clipboardData.getData("text/plain");
@@ -201,7 +206,14 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
                   <tr key={part.id}>
                     <td>
                       {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- only the row that "Add part" just created gets focus */}
-                      <TextInput aria-label={`Name of ${part.name}`} value={part.name} required autoFocus={focusId === part.id} onChange={(name) => change({ name })} />
+                      <TextInput
+                        aria-label={`Name of ${part.name}`}
+                        value={part.name}
+                        required
+                        autoFocus={focusId === part.id}
+                        onFocus={focusId === part.id ? selectAdded : undefined}
+                        onChange={(name) => change({ name })}
+                      />
                     </td>
                     <td>
                       <LengthInput aria-label={`Length of ${part.name}`} value={part.length} units={units} display={display} onChange={(length) => length !== undefined && change({ length })} />
