@@ -6,6 +6,8 @@ import { planWarning, type PlanIssue } from "../plan/issues.ts";
 import { designErrors, designRef } from "./errors.ts";
 import { designParts, generatedParts, sameParts } from "./generate.ts";
 import { designGeometry, materialsById } from "./geometry.ts";
+import { freeSpans } from "./layout.ts";
+import { shelfName } from "./parts.ts";
 import {
   EKET,
   EKET_TOLERANCE_MM,
@@ -69,9 +71,12 @@ export function checkDesigns(project: Project): PlanIssue[] {
       }
     }
     const span = SHELF_SPAN_RATIO * geometry.thickness;
-    const longest = Math.max(...geometry.columns);
-    if (longest > span + EPSILON) {
-      issues.push(planWarning("shelf-span", `${name} has a shelf of ${show(longest)}. A shelf longer than ${show(span)} in this stock can sag.`, ref));
+    const longest = freeSpans(geometry).reduce((worst, next) => (next.span > worst.span ? next : worst));
+    if (longest.span > span + EPSILON) {
+      const what = !geometry.combined
+        ? `a shelf of ${show(longest.span)}.`
+        : `${longest.board === "top" ? "a top" : `a shelf (${shelfName(longest.board, geometry.columns)})`} that spans ${show(longest.span)} with no divider under it.`;
+      issues.push(planWarning("shelf-span", `${name} has ${what} A shelf longer than ${show(span)} in this stock can sag.`, ref));
     }
     if (design.mount === "wall-rail" && design.system !== "eket") {
       issues.push(planWarning("mount-system", `${name} uses the EKET wall rail, which is made for EKET units.`, ref));

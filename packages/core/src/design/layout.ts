@@ -97,3 +97,31 @@ export function cellStarts(openings: readonly number[], thickness: number): numb
   }
   return starts;
 }
+
+export interface FreeSpan {
+  board: Board | "top";
+  /** The longest length of the board between two supports: its ends and the dividers under it. */
+  span: number;
+}
+
+/** The longest free span of the top and of each shelf board. A divider that stands on a board is not a support. */
+export function freeSpans(geometry: DesignGeometry): FreeSpan[] {
+  const { columns, rows, thickness } = geometry;
+  const has = segments(columns.length, rows.length, geometry.combined ?? []);
+  const { dividers, shelves } = designLayout(geometry);
+  const longest = (from: number, to: number, supported: (line: number) => boolean) => {
+    let start = from;
+    let span = 0;
+    for (let line = from + 1; line <= to + 1; line++) {
+      if (line <= to && !supported(line)) continue;
+      span = Math.max(span, spanLength(columns, start, line - 1, thickness));
+      start = line;
+    }
+    return span;
+  };
+  const top = new Set(dividers.filter((board) => board.from === 0).map((board) => board.line));
+  return [
+    { board: "top", span: longest(0, columns.length - 1, (line) => top.has(line)) },
+    ...shelves.map((board) => ({ board, span: longest(board.from, board.to, (line) => has.divider(line, board.line)) })),
+  ];
+}

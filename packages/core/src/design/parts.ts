@@ -12,6 +12,13 @@ function bySpan(boards: readonly Board[]): Board[][] {
   return [...groups.values()];
 }
 
+/** The part name of a shelf board: "Shelf, columns a–b" for a long shelf, or the name of the one-cell shelves of its column opening. */
+export function shelfName(board: Board, columns: readonly number[]): string {
+  if (board.from !== board.to) return `Shelf, columns ${board.from + 1}–${board.to + 1}`;
+  const sizes = [...new Set(columns)];
+  return sizes.length === 1 ? "Shelf" : `Shelf ${sizes.indexOf(columns[board.from]!) + 1}`;
+}
+
 export function buildDesignParts(design: Design, geometry: DesignGeometry): Part[] {
   const quantity = design.quantity ?? DEFAULT_DESIGN_QUANTITY;
   const part = (id: string, name: string, material: string, length: number, width: number, count: number): Part => ({
@@ -57,7 +64,7 @@ export function buildDesignParts(design: Design, geometry: DesignGeometry): Part
   }
   for (const group of bySpan(shelves.filter((board) => board.from !== board.to))) {
     const { from, to } = group[0]!;
-    parts.push(part(`shelf-cols-${from + 1}-${to + 1}`, `Shelf, columns ${from + 1}–${to + 1}`, design.material, boardLength(group[0]!, geometry), panelDepth, group.length));
+    parts.push(part(`shelf-cols-${from + 1}-${to + 1}`, shelfName(group[0]!, columns), design.material, boardLength(group[0]!, geometry), panelDepth, group.length));
   }
 
   if (design.back) parts.push(part("back", "Back", design.back.material, outsideHeight, outsideWidth, 1));

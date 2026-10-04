@@ -63,6 +63,22 @@ describe("checkDesigns", () => {
   it("warns about a shelf that can sag", () => {
     expect(codes(current(kallaxDesign({ system: "custom", width: { openings: [811] } })))).toEqual(["warning:shelf-span"]);
     expect(codes(current(kallaxDesign({ system: "custom", width: { openings: [810] } })))).toEqual([]);
+    expect(checkDesigns(current(kallaxDesign({ system: "custom", width: { openings: [335, 811] } })))[0]!.message).toBe(
+      'Design "Hall KALLAX" has a shelf of 811 mm. A shelf longer than 810 mm in this stock can sag.',
+    );
+  });
+
+  it("checks the free span of a long shelf and of the top, with the dividers under them as the only supports", () => {
+    const kallax4x2 = (combined: Design["combined"]) => kallaxDesign({ width: { openings: [335, 335, 335, 335] }, height: { openings: [335, 335] }, combined });
+    expect(codes(current(kallax4x2([{ column: 1, row: 1, columns: 2, rows: 1 }])))).toEqual([]);
+    expect(codes(current(kallax4x2([{ column: 1, row: 2, columns: 2, rows: 1 }])))).toEqual([]);
+    expect(codes(current(kallax4x2([{ column: 1, row: 1, columns: 3, rows: 1 }])))).toEqual(["warning:shelf-span"]);
+    expect(checkDesigns(current(kallax4x2([{ column: 1, row: 2, columns: 3, rows: 1 }])))[0]!.message).toBe(
+      'Design "Hall KALLAX" has a shelf (Shelf, columns 1–3) that spans 1041 mm with no divider under it. A shelf longer than 810 mm in this stock can sag.',
+    );
+    expect(checkDesigns(current(kallax4x2([{ column: 2, row: 1, columns: 3, rows: 2 }])))[0]!.message).toBe(
+      'Design "Hall KALLAX" has a top that spans 1041 mm with no divider under it. A shelf longer than 810 mm in this stock can sag.',
+    );
   });
 
   it("warns when a design other than EKET uses the EKET wall rail", () => {
