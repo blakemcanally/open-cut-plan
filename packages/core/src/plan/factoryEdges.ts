@@ -68,6 +68,21 @@ export function getsFactoryEdge(ctx: PlanContext, stock: Stock, part: Part, plac
   return (touching(rect, stockRect(stock)) & longBits(rect)) !== 0;
 }
 
+/** The long edges of a placed copy that asks for a factory edge and that lie on one; none for a copy that does not ask. */
+export function factoryEdgeMarks(ctx: PlanContext, stock: Stock, part: Part, placement: Placement): Side[] {
+  if (factoryEdgeRequest(ctx.project, part) === null || !hasFactoryEdges(ctx, stock)) return [];
+  const rect = placedRect(part, placement);
+  return sidesOf(touching(rect, stockRect(stock)) & longBits(rect));
+}
+
+/** The line of a side of a rectangle at the origin, as [x1, y1, x2, y2]. */
+export function sideLine(side: Side, size: Size): [number, number, number, number] {
+  if (side === "top") return [0, 0, size.length, 0];
+  if (side === "right") return [size.length, 0, size.length, size.width];
+  if (side === "bottom") return [0, size.width, size.length, size.width];
+  return [0, 0, 0, size.width];
+}
+
 type Requested = (part: Part) => boolean;
 
 function requestedIn(ctx: PlanContext): Requested {

@@ -1,7 +1,8 @@
 import { uniqueId } from "../format/ids.ts";
 import type { Placement, PlanSheet, Project } from "../format/schema.ts";
 import { contains, EPSILON, gapAlong, type Rect, type Size } from "../geometry/rect.ts";
-import { placedRect, usableRect, type PlanContext } from "../plan/context.ts";
+import { placedRect, planContext, usableRect, type PlanContext } from "../plan/context.ts";
+import { pushToFactoryEdges } from "../plan/factoryEdges.ts";
 import { idsOf } from "./patch.ts";
 
 export { orientedSize } from "../optimize/problem.ts";
@@ -102,6 +103,14 @@ export function setPinned(project: Project, sheetId: string, pinned: boolean): P
     const { pinned: _old, ...rest } = sheet;
     return pinned ? { ...rest, pinned: true } : rest;
   });
+}
+
+/** Moves the pieces of the sheet against its factory edges, as `pushToFactoryEdges` does; the same project when no copy gains. */
+export function pushSheetToFactoryEdges(project: Project, sheetId: string): Project {
+  const sheet = project.plan?.sheets.find((s) => s.id === sheetId);
+  const pushed = sheet ? pushToFactoryEdges(planContext(project), sheet) : null;
+  if (!pushed) return project;
+  return mapSheets(project, (s) => (s.id === sheetId ? { ...s, placements: pushed.placements } : s));
 }
 
 export function clearsKerf(a: Rect, b: Rect, kerf: number): boolean {

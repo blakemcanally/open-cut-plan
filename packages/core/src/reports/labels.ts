@@ -1,5 +1,6 @@
 import type { Grain } from "../format/schema.ts";
 import { canRotate, copyLabel, materialName, type PlanContext } from "../plan/context.ts";
+import { factoryEdgeRequest } from "../plan/factoryEdges.ts";
 import type { SheetAnalysis } from "../plan/sheets.ts";
 import type { Step } from "../sequence/sequence.ts";
 import { partColors } from "./colors.ts";
@@ -15,6 +16,8 @@ export interface PartLabel {
   material: string;
   /** "none" when grain does not constrain the part. */
   grain: Grain;
+  /** True when the copy asks for a factory edge on a long edge. */
+  factoryEdge: boolean;
   sheetNumber: number | null;
   /** The step that cuts the part free, or null when it is not placed or needs no cut. */
   step: number | null;
@@ -54,6 +57,7 @@ export function partLabels(ctx: PlanContext, sheets: readonly SheetAnalysis[], s
         width: part.width,
         material: materialName(ctx, part.material),
         grain: canRotate(ctx, part) ? "none" : part.grain,
+        factoryEdge: factoryEdgeRequest(ctx.project, part) !== null,
         sheetNumber: placed?.sheetNumber ?? null,
         step: placed ? (freedBy.get(`${placed.sheetNumber}#${placed.index}`) ?? null) : null,
       });

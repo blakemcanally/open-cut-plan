@@ -28,6 +28,21 @@ function count(text: string, pattern: RegExp): number {
 }
 
 describe("sheetSvg", () => {
+  it("marks the long edges on a factory edge of the copies that ask for one, unless the option is off", () => {
+    const project = sampleProject();
+    project.settings.trim = 0;
+    project.parts[0] = { ...project.parts[0]!, factoryEdge: "long" };
+    project.plan!.sheets[0]!.placements = [
+      { part: "side", copy: 0, x: 0, y: 0, rotated: false },
+      { part: "side", copy: 1, x: 0, y: 20, rotated: false },
+    ];
+    const { svg } = drawn(project);
+    expect(count(svg, /data-factory-edge=/g)).toBe(1);
+    expect(svg).toContain('<line data-factory-edge="top" x1="0" y1="0" x2="30" y2="0"');
+    expect(count(drawn(project, { factoryEdges: false }).svg, /data-factory-edge=/g)).toBe(0);
+    expect(count(drawn(sampleProject()).svg, /data-factory-edge=/g)).toBe(0);
+  });
+
   it("pales the sheet outside the piece of the highlighted step and outlines the piece, only with focus", () => {
     const { analysis, svg } = drawn(sampleProject(), { highlight: 5, focus: true });
     const piece = analysis.steps.find((step) => step.step === 5)!.piece;

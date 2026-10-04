@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   analyzeProject,
   createProject,
+  factoryEdgeMarks,
   factoryEdgeRequest,
   factoryEdgeSides,
   getsFactoryEdge,
@@ -10,6 +11,7 @@ import {
   planContext,
   pushToFactoryEdges,
   sheetFactoryEdgeMisses,
+  sideLine,
   validatePlan,
   type Part,
   type Placement,
@@ -124,6 +126,32 @@ describe("factoryEdgeSides and getsFactoryEdge", () => {
     const offcut = edgeProject();
     offcut.stock[0] = { ...offcut.stock[0]!, kind: "offcut", trim: 0 };
     expect(sides(offcut, at(0, 0))).toEqual([]);
+  });
+});
+
+describe("factoryEdgeMarks and sideLine", () => {
+  const marks = (project: Project, placement: Placement) => {
+    const ctx = planContext(project);
+    return factoryEdgeMarks(ctx, ctx.stock.get("sheet")!, ctx.parts.get(placement.part)!, placement);
+  };
+
+  it("gives the long edges on a factory edge of a copy that asks for one", () => {
+    expect(marks(edgeProject(), at(0, 0))).toEqual(["top"]);
+    expect(marks(edgeProject(), at(0, 0, 0, true))).toEqual(["left"]);
+    expect(marks(edgeProject(), at(10, 10))).toEqual([]);
+    const plain = edgeProject();
+    plain.parts[0]!.factoryEdge = "none";
+    expect(marks(plain, at(0, 0))).toEqual([]);
+  });
+
+  it("gives the line of each side", () => {
+    const size = { length: 40, width: 12 };
+    expect((["top", "right", "bottom", "left"] as const).map((side) => sideLine(side, size))).toEqual([
+      [0, 0, 40, 0],
+      [40, 0, 40, 12],
+      [0, 12, 40, 12],
+      [0, 0, 0, 12],
+    ]);
   });
 });
 

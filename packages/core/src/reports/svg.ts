@@ -1,4 +1,5 @@
 import { copyLabel, formatSize, grainOk, stockLabel, usableRect, type PlanContext } from "../plan/context.ts";
+import { factoryEdgeMarks, sideLine } from "../plan/factoryEdges.ts";
 import type { SheetAnalysis } from "../plan/sheets.ts";
 import type { Step } from "../sequence/sequence.ts";
 import { NO_GROUP_COLOR, stageColor, TOOL_WARNING_FILL, toolColors, toolWarning, type CutColoring, type PartColors } from "./colors.ts";
@@ -21,9 +22,12 @@ export interface SheetSvgOptions {
   done?: ReadonlySet<number>;
   /** Starts every element id. Give each drawing in one page its own prefix, or the drawings share their patterns. Defaults to `ocp`. */
   idPrefix?: string;
+  /** Marks the long edges on a factory edge of the copies that ask for one. Defaults to true. */
+  factoryEdges?: boolean;
 }
 
 const DONE_COLOR = "#9a9a9a";
+const FACTORY_EDGE_COLOR = "#1f5fbf";
 
 export function escapeXml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
@@ -97,6 +101,10 @@ export function sheetSvg(ctx: PlanContext, sheet: SheetAnalysis, steps: readonly
     );
     if (striped) out.push(`<rect width="${num(rect.length)}" height="${num(rect.width)}" fill="url(#${prefix}-${horizontal ? "h" : "v"})"/>`);
     out.push(`<rect width="${num(rect.length)}" height="${num(rect.width)}" fill="none" stroke="#333" stroke-width="${num(base * 0.05)}"/>`);
+    for (const side of options.factoryEdges === false ? [] : factoryEdgeMarks(ctx, stock, part, placement)) {
+      const [x1, y1, x2, y2] = sideLine(side, rect).map(num);
+      out.push(`<line data-factory-edge="${side}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${FACTORY_EDGE_COLOR}" stroke-width="${num(base * 0.25)}"/>`);
+    }
     const font = Math.min(base, rect.width / 3, rect.length / (0.62 * Math.max(name.length, size.length) + 1));
     if (font >= base * 0.3) {
       const cx = num(rect.length / 2);

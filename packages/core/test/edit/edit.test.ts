@@ -18,6 +18,7 @@ import {
   nudgeCopy,
   placeCopy,
   planContext,
+  pushSheetToFactoryEdges,
   removeEmptySheets,
   removeMaterial,
   removePart,
@@ -150,6 +151,24 @@ describe("layout edits", () => {
     const pinned = setPinned(withSheet, "s1", true);
     expect(pinned.plan!.sheets[0]!.pinned).toBe(true);
     expect(setPinned(pinned, "s1", false).plan!.sheets[0]).not.toHaveProperty("pinned");
+  });
+
+  it("pushes the pieces of a sheet against the factory edges, and keeps the project when no copy gains", () => {
+    const project = sampleProject();
+    project.settings.trim = 0;
+    project.parts[0] = { ...project.parts[0]!, factoryEdge: "long" };
+    project.plan!.sheets[0]!.placements = [
+      { part: "side", copy: 0, x: 0, y: 5, rotated: false },
+      { part: "side", copy: 1, x: 0, y: 17.125, rotated: false },
+    ];
+    const pushed = pushSheetToFactoryEdges(project, "s1");
+    expect(pushed.plan!.sheets[0]!.placements.map(({ x, y }) => [x, y])).toEqual([
+      [0, 0],
+      [0, 36],
+    ]);
+    expect(validatePlan(pushed).filter((issue) => issue.severity === "error" || issue.code === "factory-edge")).toEqual([]);
+    expect(pushSheetToFactoryEdges(pushed, "s1")).toBe(pushed);
+    expect(pushSheetToFactoryEdges(project, "none")).toBe(project);
   });
 
   it("finds a free spot one kerf from the other parts", () => {

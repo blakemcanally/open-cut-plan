@@ -13,8 +13,8 @@ describe("partLabels", () => {
   it("makes one label per part copy with its sheet and the step that frees it", () => {
     const project = sampleProject();
     expect(labelsOf(project)).toEqual([
-      { part: "side", copy: 0, name: "Side 1", group: null, length: 30, width: 12, material: "Plywood 3/4", grain: "length", sheetNumber: 1, step: 6 },
-      { part: "side", copy: 1, name: "Side 2", group: null, length: 30, width: 12, material: "Plywood 3/4", grain: "length", sheetNumber: 1, step: 7 },
+      { part: "side", copy: 0, name: "Side 1", group: null, length: 30, width: 12, material: "Plywood 3/4", grain: "length", factoryEdge: false, sheetNumber: 1, step: 6 },
+      { part: "side", copy: 1, name: "Side 2", group: null, length: 30, width: 12, material: "Plywood 3/4", grain: "length", factoryEdge: false, sheetNumber: 1, step: 7 },
     ]);
   });
 
@@ -24,6 +24,15 @@ describe("partLabels", () => {
     project.settings.features.grain = false;
     const labels = labelsOf(project);
     expect(labels[1]).toMatchObject({ name: "Side 2", sheetNumber: null, step: null, grain: "none" });
+  });
+
+  it("says which copies ask for a factory edge, by their choice or by the rule", () => {
+    const project = sampleProject();
+    expect(labelsOf(project).map((label) => label.factoryEdge)).toEqual([false, false]);
+    project.settings.factoryEdge = { minLength: 30 };
+    expect(labelsOf(project).map((label) => label.factoryEdge)).toEqual([true, true]);
+    project.parts[0] = { ...project.parts[0]!, factoryEdge: "none" };
+    expect(labelsOf(project).map((label) => label.factoryEdge)).toEqual([false, false]);
   });
 
   it("names the group, and the unit of a design with more than one unit", () => {
