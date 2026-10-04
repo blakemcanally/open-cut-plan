@@ -169,6 +169,32 @@ describe("LayoutTab", () => {
     expect(shelf.x).toBe(50);
   });
 
+  it("marks the factory edges of the parts that ask for one, and pushes a sheet against its factory edges", async () => {
+    const project = sampleProject();
+    project.settings.trim = 0;
+    project.parts[0] = { ...project.parts[0]!, factoryEdge: "long" };
+    project.plan!.sheets[0]!.placements = [
+      { part: "side", copy: 0, x: 0, y: 0, rotated: false },
+      { part: "side", copy: 1, x: 0, y: 20, rotated: false },
+    ];
+    const current = renderLayout(project);
+    expect(part("Side 1").getAttribute("aria-label")).toContain("on a factory edge");
+    expect(part("Side 2").getAttribute("aria-label")).not.toContain("factory edge");
+    expect(part("Side 1").querySelectorAll("[data-factory-edge]")).toHaveLength(1);
+    await userEvent.click(screen.getByRole("button", { name: "Push sheet 1 to the factory edges" }));
+    expect(current().project.plan!.sheets[0]!.placements.map(({ x, y }) => [x, y])).toEqual([
+      [0, 0],
+      [0, 36],
+    ]);
+    expect(part("Side 2").getAttribute("aria-label")).toContain("on a factory edge");
+    expect(screen.queryByRole("button", { name: "Push sheet 1 to the factory edges" })).toBeNull();
+  });
+
+  it("offers no push when no part asks for a factory edge", () => {
+    renderLayout();
+    expect(screen.queryByRole("button", { name: /to the factory edges/ })).toBeNull();
+  });
+
   it("adds a sheet and removes empty sheets", async () => {
     const current = renderLayout();
     await userEvent.click(screen.getByRole("button", { name: "Add sheet" }));

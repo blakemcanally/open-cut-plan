@@ -1,5 +1,6 @@
 import {
   convertProjectUnits,
+  DEFAULT_FACTORY_EDGE_LENGTH,
   DEFAULT_MIN_OFFCUT,
   DEFAULT_TRIM,
   FEATURE_KEYS,
@@ -187,6 +188,43 @@ export function SettingsTab({ store, prefs, onPrefs, section: current, onSection
                 </label>
               )}
               <p className="muted">A sheet on the Stock tab can make its own choice.</p>
+            </>
+          ),
+        },
+        {
+          names: ["Put long parts on a factory edge", "Shortest long part"],
+          node: (
+            <>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={settings.factoryEdge !== undefined}
+                  disabled={!factoryEdges}
+                  onChange={(event) =>
+                    set(({ factoryEdge: _rule, ...s }) => (event.target.checked ? { ...s, factoryEdge: { minLength: DEFAULT_FACTORY_EDGE_LENGTH[units] } } : s))
+                  }
+                />
+                <span>
+                  <b>Put long parts on a factory edge</b>
+                  <small>
+                    A factory edge is straighter than a cut edge. The optimizer puts a long edge of each long part on the edge of the sheet when the cost stays the
+                    same. The Parts tab can make a choice for each part.
+                  </small>
+                </span>
+              </label>
+              {settings.factoryEdge && (
+                <label className="stack">
+                  Shortest long part
+                  <LengthInput
+                    value={settings.factoryEdge.minLength}
+                    units={units}
+                    display={display}
+                    disabled={!factoryEdges}
+                    onChange={(minLength) => minLength !== undefined && set((s) => ({ ...s, factoryEdge: { ...s.factoryEdge, minLength } }))}
+                  />
+                </label>
+              )}
+              {!factoryEdges && <p className="muted">Use the factory edges to put long parts on them.</p>}
             </>
           ),
         },

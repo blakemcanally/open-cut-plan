@@ -1,6 +1,8 @@
 import {
   addPart,
   errorMessage,
+  factoryEdgeRequest,
+  isFactoryEdgeChoice,
   formatArea,
   formatLength,
   MAX_PART_QUANTITY,
@@ -9,6 +11,7 @@ import {
   setGroupColor,
   updatePart,
   type Grain,
+  type Part,
   type Project,
 } from "@opencutplan/core";
 import { useState, type ClipboardEvent } from "react";
@@ -22,6 +25,11 @@ const GRAINS: readonly { value: Grain; label: string }[] = [
   { value: "width", label: "Along width" },
   { value: "none", label: "None" },
 ];
+
+function ruleText(project: Project, part: Part): string {
+  const { factoryEdge: _choice, ...byRule } = part;
+  return `By the rule: ${factoryEdgeRequest(project, byRule) === null ? "none" : "long edge"}`;
+}
 
 /** Text with a tab or a line break came from a spreadsheet, not from typing in one cell. */
 export function isTableText(text: string): boolean {
@@ -112,6 +120,7 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
                 <th scope="col">Qty</th>
                 <th scope="col">Material</th>
                 <th scope="col">Grain</th>
+                <th scope="col">Factory edge</th>
                 <th scope="col">Group</th>
                 <th scope="col">Notes</th>
                 <th scope="col">
@@ -131,6 +140,7 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
                       <td>{part.quantity}</td>
                       <td>{project.materials.find((material) => material.id === part.material)?.name ?? part.material}</td>
                       <td>{GRAINS.find((grain) => grain.value === part.grain)?.label}</td>
+                      <td>{ruleText(project, part)}</td>
                       <td>{part.group}</td>
                       <td colSpan={2}>
                         From design:{" "}
@@ -182,6 +192,14 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
                             {grain.label}
                           </option>
                         ))}
+                      </select>
+                    </td>
+                    <td>
+                      <select aria-label={`Factory edge of ${part.name}`} value={part.factoryEdge ?? ""} onChange={(event) => change({ factoryEdge: event.target.value || undefined })}>
+                        <option value="">{ruleText(project, part)}</option>
+                        <option value="long">Long edge</option>
+                        <option value="none">None</option>
+                        {part.factoryEdge !== undefined && !isFactoryEdgeChoice(part.factoryEdge) && <option value={part.factoryEdge}>{part.factoryEdge} (not known)</option>}
                       </select>
                     </td>
                     <td>

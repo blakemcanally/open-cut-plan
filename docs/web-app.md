@@ -77,7 +77,7 @@ parts from the design, and the Parts tab lists them. The file format is in [form
 
 ### Parts
 
-An editable table: name, length, width, quantity, material, grain, group, and notes. Lengths accept fractions and
+An editable table: name, length, width, quantity, material, grain, factory edge, group, and notes. Lengths accept fractions and
 feet (`2' 3 1/2`), decimals, and millimetres. A field keeps text it cannot read, marks it, and restores the last good
 value when the focus leaves; Escape restores it at once.
 
@@ -87,6 +87,10 @@ value when the focus leaves; Escape restores it at once.
   errors are listed and left out. The dialog names the materials that are new; **Import** adds them.
 - Lowering a quantity takes the extra copies off the sheets. Deleting a part removes its copies from the plan.
 - The totals give the number of pieces and the area for each material.
+- **Factory edge** asks for a long edge of the part on a factory edge of the sheet. **By the rule** follows the
+  rule in Settings → Factory edges, and the choice says what the rule gives, for example "By the rule: long edge".
+  **Long edge** asks for a factory edge, and **None** does not. A value that this app does not know shows with
+  "(not known)" and stays in the file. A part that a design makes always follows the rule.
 - A part that a design makes cannot be changed on this tab. Its row says **From design:** with a link to the design.
 - **Group colours in the layout** has a colour box for each group of parts without a design. Choose a colour to
   change it. **Automatic** gives the group its automatic colour again. The colours of the design units are on the
@@ -126,7 +130,10 @@ unit of a design has its own colour, and each group of parts without a design ha
 or a group is grey. The **Colours** list beside the sheets names each colour, for example "Hall KALLAX 2 of 2". The
 user chooses the colours on the Design tab and the Parts tab. The Shop tab, the Reports tab, the printed booklet, and
 the SVG files use the same colours. See [format.md](format.md#colours-added-in-14). The trim zone is dashed. Cut lines are numbered in sequence order. A part with a problem
-turns red and has a ⚠ mark; the **Problems** list names each problem, and **Show** selects the part.
+turns red and has a ⚠ mark; the **Problems** list names each problem, and **Show** selects the part. A part that asks
+for a factory edge has a thick blue line on each long edge that is on a factory edge. The Shop tab, the printed
+booklet, and the SVG files show the same lines. The Problems list names each
+part that asks for a factory edge and does not get one.
 
 - Under the title of each sheet, the app shows the full stock name. The name wraps, so it is never cut off.
 - Under the stock name, a summary line gives the cuts of each tool, the part of the sheet that parts use, and the
@@ -156,6 +163,9 @@ turns red and has a ⚠ mark; the **Problems** list names each problem, and **Sh
 - The optimizer runs in a Web Worker, so the page stays responsive. A progress bar shows the part of the time limit
   that is used. When the project changes during a search, the result is not used.
 - **Pin** on a sheet keeps it through **Optimize**. **Remove** puts its parts in the tray.
+- **Push to factory edges** on a sheet moves its pieces so that more parts that ask for a factory edge get one. It
+  uses the same push as the optimizer: the cuts stay the same, and no part turns. The button shows only when the push
+  gives one or more parts a factory edge.
 - **Add sheet** adds a sheet of the chosen stock. **Remove empty sheets** removes sheets with no parts.
 - **−**, **+**, and **Fit** change the zoom. At 100 % (**Fit**), all the sheets fit in the width of the column and
   the height of the window, in rows. When they cannot all fit, each sheet is at least 200 px long, the rows fill the
@@ -233,8 +243,8 @@ list follows.
   added again. This also holds after a unit change or a project rename.
 - **Labels** (when the `labels` feature is on): pick the label sheet and the first free label on it, then **Print
   labels**. Each label has the part name, size, material, group (with the unit of a design that has more than one,
-  for example "Hall KALLAX 2 of 2"), grain arrow (↔ along the length, ↕ along the width),
-  and the sheet and step that cut it, or "Not placed".
+  for example "Hall KALLAX 2 of 2"), grain arrow (↔ along the length, ↕ along the width), "Factory edge" when
+  the part asks for one, and the sheet and step that cut it, or "Not placed".
 
 With no plan, the tab says so. It keeps the CSV exports and the labels, and each label says "Not placed".
 
@@ -276,7 +286,9 @@ The sections put the common settings first:
 
 - **Units and precision**. Changing units converts every length in the project and removes the stored cut sequence.
 - **Factory edges**: **Use the factory edges** (no trim) or **Trim each edge** with a trim width. A stock item on the
-  Stock tab can make its own choice.
+  Stock tab can make its own choice. **Put long parts on a factory edge** turns on the rule
+  `settings.factoryEdge`, with a **Shortest long part** of 36" or 900 mm. Each part with a long side of at least
+  that length then asks for a factory edge. The rule can change only while the plan uses the factory edges.
 - **Snapping**: the snapping switch and the grid size. A grid of 0 turns the grid off. The default grid is 1" or
   25 mm.
 - **Plan**: the cut order and the smallest useful offcut.

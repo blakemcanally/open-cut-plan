@@ -75,10 +75,35 @@ describe("PartsTab", () => {
     const row = screen.getByRole("row", { name: /^Side/ });
     expect(within(row).queryByRole("textbox")).toBeNull();
     expect(within(row).queryByRole("button", { name: /^Delete/ })).toBeNull();
-    expect(within(row).getAllByRole("cell").map((cell) => cell.textContent)).toEqual(["Side", "688 mm", "390 mm", "2", "Plywood 18", "Along length", "Hall", "From design: Hall"]);
+    expect(within(row).getAllByRole("cell").map((cell) => cell.textContent)).toEqual(["Side", "688 mm", "390 mm", "2", "Plywood 18", "Along length", "By the rule: none", "Hall", "From design: Hall"]);
     await userEvent.click(within(row).getByRole("button", { name: "Hall" }));
     expect(onShowDesign).toHaveBeenCalledWith("hall");
     expect(screen.getByLabelText("Name of Plinth")).toBeTruthy();
+  });
+
+  it("asks for a factory edge on a part, follows the rule of the settings, and shows the rule for a design part", async () => {
+    const project = sampleProject();
+    project.settings.factoryEdge = { minLength: 25 };
+    const { current } = renderWithStore(project, (store) => <PartsTab store={store} />);
+    const side = screen.getByLabelText("Factory edge of Side") as HTMLSelectElement;
+    expect(side.value).toBe("");
+    expect(side.selectedOptions[0]!.textContent).toBe("By the rule: long edge");
+    expect(screen.getByLabelText<HTMLSelectElement>("Factory edge of Shelf").selectedOptions[0]!.textContent).toBe("By the rule: none");
+    await userEvent.selectOptions(side, "none");
+    expect(current().project.parts[0]!.factoryEdge).toBe("none");
+    await userEvent.selectOptions(side, "");
+    expect(current().project.parts[0]).not.toHaveProperty("factoryEdge");
+    await userEvent.selectOptions(screen.getByLabelText("Factory edge of Shelf"), "long");
+    expect(current().project.parts[1]!.factoryEdge).toBe("long");
+  });
+
+  it("keeps a factory edge request that this app does not know", () => {
+    const project = sampleProject();
+    project.parts[0] = { ...project.parts[0]!, factoryEdge: "both" };
+    renderWithStore(project, (store) => <PartsTab store={store} />);
+    const side = screen.getByLabelText("Factory edge of Side") as HTMLSelectElement;
+    expect(side.value).toBe("both");
+    expect(side.selectedOptions[0]!.textContent).toBe("both (not known)");
   });
 
   it("treats text with a tab or a line break as table text", () => {

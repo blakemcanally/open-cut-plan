@@ -278,7 +278,7 @@ function labelLines(analysis: ProjectAnalysis, label: PartLabel): string[] {
   const ctx = analysis.context;
   const grain = label.grain === "length" ? "Grain ↔" : label.grain === "width" ? "Grain ↕" : "";
   const where = label.sheetNumber === null ? "Not placed" : `Sheet ${label.sheetNumber}${label.step === null ? "" : ` · step ${label.step}`}`;
-  return [`${formatSize(ctx, label)} · ${label.material}`, [label.group, grain].filter(Boolean).join(" · "), where].filter(Boolean);
+  return [`${formatSize(ctx, label)} · ${label.material}`, [label.group, grain, label.factoryEdge ? "Factory edge" : ""].filter(Boolean).join(" · "), where].filter(Boolean);
 }
 
 function LabelPages({ analysis, layout: id, start }: { analysis: ProjectAnalysis; layout: LabelLayoutId; start: number }) {

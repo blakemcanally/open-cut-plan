@@ -1,11 +1,13 @@
 import {
   copyLabel,
+  factoryEdgeMarks,
   formatSize,
   grainOk,
   LIMIT_WORDS,
   NO_GROUP_COLOR,
   placedRect,
   sameCopy,
+  sideLine,
   stageColor,
   stockLabel,
   TOOL_WARNING_COLOR,
@@ -57,6 +59,8 @@ interface SheetViewProps {
   onTogglePin(): void;
   onRemove(): void;
   onOpenStep(step: number): void;
+  /** Shown as a sheet action when set: the push gives more parts their factory edges. */
+  onPushToFactoryEdges?: (() => void) | undefined;
 }
 
 const GRID_MIN_PX = 6;
@@ -99,6 +103,17 @@ export function SheetView(props: SheetViewProps) {
     <section className="sheet" aria-label={`Sheet ${number}: ${stockLabel(ctx, stock)}`}>
       <header className="sheet-head">
         <span className="name">Sheet {number}</span>
+        {props.onPushToFactoryEdges && (
+          <button
+            type="button"
+            onClick={props.onPushToFactoryEdges}
+            disabled={busy}
+            aria-label={`Push sheet ${number} to the factory edges`}
+            title="Moves the pieces of this sheet so that more parts that ask for a factory edge get one. No part turns."
+          >
+            Push to factory edges
+          </button>
+        )}
         <button type="button" aria-pressed={sheet.pinned === true} onClick={props.onTogglePin} disabled={busy} title="A pinned sheet keeps its layout when you optimize.">
           {sheet.pinned ? "📌 Pinned" : "Pin"}
         </button>
@@ -163,6 +178,7 @@ export function SheetView(props: SheetViewProps) {
           const w = px(rect.length);
           const h = px(rect.width);
           const font = Math.max(8, Math.min(12, h / 3));
+          const marks = factoryEdgeMarks(ctx, stock, part, placement);
           return (
             <g
               key={`${copyKey(ref)}@${index}`}
@@ -172,13 +188,17 @@ export function SheetView(props: SheetViewProps) {
               tabIndex={0}
               role="button"
               aria-pressed={isSelected}
-              aria-label={`${label}, ${size}${placement.rotated ? ", turned" : ""}${cross ? ", across the grain" : ""}${bad ? ", has a problem" : ""}${colorKey ? `, ${colorKey.label}` : ""}`}
+              aria-label={`${label}, ${size}${placement.rotated ? ", turned" : ""}${cross ? ", across the grain" : ""}${marks.length > 0 ? ", on a factory edge" : ""}${bad ? ", has a problem" : ""}${colorKey ? `, ${colorKey.label}` : ""}`}
               onPointerDown={(event) => props.onPartPointerDown(event, ref)}
               onFocus={() => props.onSelect(ref)}
             >
               <rect className="fill" width={w} height={h} fill={colorKey?.color ?? NO_GROUP_COLOR} />
               {striped && <rect width={w} height={h} fill={`url(#${uid}-${horizontal ? "h" : "v"})`} />}
               <rect className="outline" width={w} height={h} />
+              {marks.map((side) => {
+                const [x1, y1, x2, y2] = sideLine(side, { length: w, width: h });
+                return <line key={side} className="factory-edge" data-factory-edge={side} x1={x1} y1={y1} x2={x2} y2={y2} />;
+              })}
               {w > 28 && h > 14 && (
                 <text x={w / 2} y={h / 2} fontSize={font} textAnchor="middle" dominantBaseline="middle">
                   <tspan x={w / 2} dy={h > 3 * font ? -font / 2 : 0}>

@@ -279,6 +279,28 @@ describe("SettingsTab", () => {
     expect(current().project.settings.trim).toBe(0.25);
   });
 
+  it("turns on the rule that puts long parts on a factory edge, only while the plan uses the factory edges", async () => {
+    const project = sampleProject();
+    const { current } = renderWithStore({ ...project, settings: { ...project.settings, trim: 0 } }, (store) => <WithPrefs store={store} />);
+    await showSection("Factory edges");
+    const edges = within(screen.getByRole("group", { name: "Factory edges" }));
+    const rule = edges.getByRole("checkbox", { name: /^Put long parts on a factory edge/ });
+    expect(rule).toHaveProperty("checked", false);
+    expect(edges.queryByLabelText("Shortest long part")).toBeNull();
+    await userEvent.click(rule);
+    expect(current().project.settings.factoryEdge).toEqual({ minLength: 36 });
+    const length = edges.getByLabelText("Shortest long part");
+    await userEvent.clear(length);
+    await userEvent.type(length, "48{Enter}");
+    expect(current().project.settings.factoryEdge).toEqual({ minLength: 48 });
+    await userEvent.click(edges.getByRole("radio", { name: /^Trim each edge/ }));
+    expect(edges.getByRole("checkbox", { name: /^Put long parts on a factory edge/ })).toHaveProperty("disabled", true);
+    expect(edges.getByLabelText("Shortest long part")).toHaveProperty("disabled", true);
+    await userEvent.click(edges.getByRole("radio", { name: /^Use the factory edges/ }));
+    await userEvent.click(edges.getByRole("checkbox", { name: /^Put long parts on a factory edge/ }));
+    expect(current().project.settings).not.toHaveProperty("factoryEdge");
+  });
+
   it("shows the factory edges when an old file turned the trim feature off", async () => {
     const project = sampleProject();
     const { current } = renderWithStore({ ...project, settings: { ...project.settings, features: { ...project.settings.features, trim: false } } }, (store) => <WithPrefs store={store} />);

@@ -3,6 +3,9 @@ import { FORMAT_ID, FORMAT_VERSION, ProjectSchema, type Project } from "./schema
 
 export const DEFAULT_TRIM: Readonly<Record<Units, number>> = { in: 0.25, mm: 6 };
 
+/** The `settings.factoryEdge.minLength` that the apps suggest when the rule is turned on. */
+export const DEFAULT_FACTORY_EDGE_LENGTH: Readonly<Record<Units, number>> = { in: 36, mm: 900 };
+
 export function createProject(name: string, units: Units): Project {
   return ProjectSchema.parse({
     format: FORMAT_ID,

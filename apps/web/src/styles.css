@@ -130,6 +130,7 @@ fieldset.choice label { display: inline-flex; align-items: center; gap: 4px; }
 .sheet-area .trim { fill: none; stroke: #0006; stroke-dasharray: 4 3; }
 .sheet-area .part { cursor: grab; touch-action: none; outline: none; }
 .sheet-area .part .outline { fill: none; stroke: #333; stroke-width: 1; }
+.sheet-area .part .factory-edge { stroke: #1f5fbf; stroke-width: 4; pointer-events: none; }
 .sheet-area .part text { fill: #222; pointer-events: none; font-weight: 600; }
 .sheet-area .part.bad .fill { fill: #f6b3b3; }
 .sheet-area .part.bad .outline { stroke: var(--bad); stroke-width: 2.5; stroke-dasharray: 5 2; }

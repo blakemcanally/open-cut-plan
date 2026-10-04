@@ -175,6 +175,14 @@ describe("PrintView", () => {
     expect(labels[2]!.textContent).toBe('Shelf20" × 10" · PlywoodANot placed');
   });
 
+  it("says factory edge on the label of a copy that asks for one", () => {
+    const project = sampleProject();
+    project.parts[0] = { ...project.parts[0]!, factoryEdge: "long" };
+    const { root } = renderPrint({ kind: "labels", layout: "avery-5160", start: 1 }, project);
+    const labels = [...root.querySelectorAll<HTMLElement>(".label")];
+    expect(labels.map((label) => label.textContent?.includes("Factory edge"))).toEqual([true, true, false]);
+  });
+
   it("uses mm for an A4 label sheet", () => {
     const { root } = renderPrint({ kind: "labels", layout: "avery-l7160", start: 1 });
     expect(root.querySelector("style")?.textContent).toBe("@page { size: 210mm 297mm; margin: 0; }");

@@ -15,6 +15,8 @@ import {
   orientedSize,
   placeCopy,
   projectGoal,
+  pushSheetToFactoryEdges,
+  pushToFactoryEdges,
   removeEmptySheets,
   removeSheet,
   rotateCopy,
@@ -107,6 +109,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
   const colors = useMemo(() => partColors(project), [project]);
   const tools = useMemo(() => toolColors(ctx.tools), [ctx.tools]);
   const unplaced = useMemo(() => unplacedCopies(project), [project]);
+  const pushable = useMemo(() => new Set((ctx.project.plan?.sheets ?? []).filter((sheet) => pushToFactoryEdges(ctx, sheet) !== null).map((sheet) => sheet.id)), [ctx]);
   const enabledStock = project.stock.filter((stock) => stock.enabled !== false);
   const chosenStock = enabledStock.find((stock) => stock.id === stockChoice) ?? enabledStock[0];
 
@@ -434,6 +437,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
                   onTogglePin={() => edit((p) => setPinned(p, sheet.id, !sheet.pinned))}
                   onRemove={() => edit((p) => removeSheet(p, sheet.id))}
                   onOpenStep={onOpenStep}
+                  onPushToFactoryEdges={pushable.has(sheet.id) ? () => edit((p) => pushSheetToFactoryEdges(p, sheet.id)) : undefined}
                 />
               );
             })}
