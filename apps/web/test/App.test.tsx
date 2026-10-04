@@ -18,14 +18,14 @@ async function renderApp() {
 }
 
 describe("App", () => {
-  it("creates a millimetre project with a table saw and a track saw and opens it on the Parts tab", async () => {
+  it("creates a millimetre project with a table saw and a track saw and opens it on the Design tab", async () => {
     await renderApp();
     await userEvent.type(screen.getByLabelText("Name"), "Shelf");
     await userEvent.selectOptions(screen.getByLabelText("Units"), "mm");
     await userEvent.click(screen.getByRole("button", { name: "Create project" }));
     expect(window.location.hash).toBe("#/project/p1");
     expect(screen.getByLabelText<HTMLInputElement>("Project name").value).toBe("Shelf");
-    expect(screen.getByRole("tab", { name: "Parts" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: "Design" }).getAttribute("aria-selected")).toBe("true");
     const created = newProject("Shelf", "mm");
     expect(created.tools.map((t) => [t.type, t.kerf])).toEqual([["table-saw", 3], ["track-saw", 3]]);
   });

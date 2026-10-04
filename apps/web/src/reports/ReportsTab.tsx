@@ -20,6 +20,7 @@ import {
   type ProjectAnalysis,
 } from "@opencutplan/core";
 import { useMemo, useState } from "react";
+import { TabLink } from "../components/TabLink.tsx";
 import { BOOKLET_LABELS, BOOKLET_SECTIONS, type BookletSection } from "../print/booklet.ts";
 import type { PrintJob } from "../print/PrintView.tsx";
 import type { ViewPrefs } from "../state/prefs.ts";
@@ -84,7 +85,11 @@ export function ReportsTab({ store, analysis, prefs, onPrefs, onPrint }: Reports
     <div className="reports">
       <section aria-labelledby="reports-output">
         <h2 id="reports-output">Print and export</h2>
-        {!planned && <p className="muted">There is no plan yet. Optimize on the Layout tab.</p>}
+        {!planned && (
+          <p className="muted">
+            There is no plan yet. Optimize on the <TabLink tab="layout">Layout tab</TabLink>.
+          </p>
+        )}
         <fieldset className="booklet">
           <legend>Print booklet</legend>
           {BOOKLET_SECTIONS.filter((section) => section !== "assembly" || available.assembly).map((section) => {

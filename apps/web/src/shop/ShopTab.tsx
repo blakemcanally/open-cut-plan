@@ -15,6 +15,7 @@ import {
   type Tool,
 } from "@opencutplan/core";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { TabLink } from "../components/TabLink.tsx";
 import type { PrintJob } from "../print/PrintView.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
 import { AssemblyChecklist } from "./AssemblyChecklist.tsx";
@@ -90,9 +91,15 @@ export function ShopTab({ store, analysis, onPrint, openStep = null, cutColors =
     return (
       <div className="shop">
         <p className="muted">
-          {ctx.features.cutOrder
-            ? "There are no cut steps. Optimize on the Layout tab, or place parts on a sheet."
-            : "The cut order is off. Turn on Cut order in Settings to see the cut steps."}
+          {ctx.features.cutOrder ? (
+            <>
+              There are no cut steps. Optimize on the <TabLink tab="layout">Layout tab</TabLink>, or place parts on a sheet.
+            </>
+          ) : (
+            <>
+              The cut order is off. Turn on Cut order in <TabLink tab="settings" section="features">Settings</TabLink> to see the cut steps.
+            </>
+          )}
         </p>
         <AssemblyChecklist store={store} />
       </div>

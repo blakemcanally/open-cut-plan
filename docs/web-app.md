@@ -16,7 +16,8 @@ GitHub Pages at `https://<owner>.github.io/<repo>/`. CI publishes it to GitHub P
 ## Home
 
 - **New project** asks for a name and units (inches or millimetres). A new project has one table saw with the default
-  kerf (1/8" or 3 mm) and no parts or stock. It uses the factory edges of each sheet, so it has no trim.
+  kerf (1/8" or 3 mm) and no parts or stock. It uses the factory edges of each sheet, so it has no trim. A new
+  project opens on the Design tab. A project with parts opens on the Layout tab.
 - **Open a .cutplan.json file** reads a project file. Browsers with the File System Access API remember the file, so
   **Save file** writes back to it. Other browsers upload the file and download it again on save.
 - **Open example** opens one of the projects in `examples/`.
@@ -41,6 +42,10 @@ is `#/project/<id>`, so a reload opens the same project.
 
 The tabs are **Design**, **Parts**, **Stock**, **Tools**, **Layout**, **Shop**, **Reports**, and **Settings**. The
 left and right arrow keys move between tabs.
+
+- An empty tab tells the user what to do, with a link to the tab that does it. For example, the Layout tab with no
+  parts links to the Design tab and the Parts tab, and with no stock it links to the Stock tab. The Shop tab and the
+  Reports tab with no plan link to the Layout tab.
 
 ### Design
 
@@ -104,6 +109,8 @@ value when the focus leaves; Escape restores it at once.
   **Long edge** asks for a factory edge, and **None** does not. A value that this app does not know shows with
   "(not known)" and stays in the file. A part that a design makes always follows the rule.
 - A part that a design makes cannot be changed on this tab. Its row says **From design:** with a link to the design.
+- Each material that parts use and that has no enabled stock gets a line above the table, for example "⚠ MDF has no
+  stock." **Add stock** adds the suggested sheet of the material (see [catalog.md](catalog.md#suggested-sheet)).
 - **Group colours in the layout** has a colour box for each group of parts without a design. Choose a colour to
   change it. **Automatic** gives the group its automatic colour again. The colours of the design units are on the
   Design tab.
@@ -113,7 +120,8 @@ value when the focus leaves; Escape restores it at once.
 A materials table (name, thickness, grain, colour) and a stock table (name, material, size, quantity or unlimited,
 cost, kind, edges, and whether to use it). Stock also has a CSV import. **Edges** is the project choice, **Use factory
 edges**, or **Trim** with a width for that stock. A material that parts, stock, or designs use cannot
-be deleted. Deleting stock also removes its sheets from the plan.
+be deleted. Deleting stock also removes its sheets from the plan. As on the Parts tab, each material that parts use and
+that has no enabled stock gets a line with **Add stock**.
 
 **Add from catalogue…** opens the [catalogue of sheet goods](catalog.md).
 

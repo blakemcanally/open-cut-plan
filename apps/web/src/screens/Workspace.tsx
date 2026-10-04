@@ -1,6 +1,7 @@
 import { analyzeProject, errorMessage, projectFileName, serializeProjectChecked, withCuts, type Project } from "@opencutplan/core";
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { TextInput } from "../components/fields.tsx";
+import { ShowTab } from "../components/TabLink.tsx";
 import { LayoutTab } from "../layout/LayoutTab.tsx";
 import { useOptimizeRuns } from "../optimizer/useOptimizeRuns.ts";
 import { PrintView, type PrintJob } from "../print/PrintView.tsx";
@@ -52,7 +53,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
   const analysis = useMemo(() => analyzeProject(project), [project]);
   const runs = useOptimizeRuns(store, workerFactory);
   const [prefs, setPrefs] = usePrefs();
-  const [tab, setTab] = useState<TabId>(initial.parts.length > 0 ? "layout" : "parts");
+  const [tab, setTab] = useState<TabId>(initial.parts.length > 0 ? "layout" : "design");
   const [notices, setNotices] = useState(initialNotices);
   const [handle, setHandle] = useState(initialHandle);
   const [fileStatus, setFileStatus] = useState<string | null>(null);
@@ -91,6 +92,11 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
   const showTab = (next: TabId) => {
     setShopStep(null);
     setTab(next);
+  };
+
+  const showLinked = (next: TabId, section?: SettingsSectionId) => {
+    if (section) setSettingsSection(section);
+    showTab(next);
   };
 
   const onTabKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -170,40 +176,42 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
           </button>
         ))}
       </div>
-      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="panel">
-        {tab === "design" && <DesignTab store={store} analysis={analysis} focus={designFocus} />}
-        {tab === "parts" && (
-          <PartsTab
-            store={store}
-            onShowDesign={(design) => {
-              setDesignFocus(design);
-              setTab("design");
-            }}
-          />
-        )}
-        {tab === "stock" && <StockTab store={store} />}
-        {tab === "tools" && <ToolsTab store={store} storage={storage} />}
-        {tab === "layout" && (
-          <LayoutTab
-            store={store}
-            analysis={analysis}
-            prefs={prefs}
-            onPrefs={setPrefs}
-            runs={runs}
-            onShowSettings={() => {
-              setSettingsSection("optimizer");
-              setTab("settings");
-            }}
-            onOpenStep={(step) => {
-              setShopStep(step);
-              setTab("shop");
-            }}
-          />
-        )}
-        {tab === "shop" && <ShopTab store={store} analysis={analysis} onPrint={setPrintJob} openStep={shopStep} cutColors={prefs.cutColors} />}
-        {tab === "reports" && <ReportsTab store={store} analysis={analysis} prefs={prefs} onPrefs={setPrefs} onPrint={setPrintJob} />}
-        {tab === "settings" && <SettingsTab store={store} prefs={prefs} onPrefs={setPrefs} section={settingsSection} onSection={setSettingsSection} />}
-      </div>
+      <ShowTab.Provider value={showLinked}>
+        <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="panel">
+          {tab === "design" && <DesignTab store={store} analysis={analysis} focus={designFocus} />}
+          {tab === "parts" && (
+            <PartsTab
+              store={store}
+              onShowDesign={(design) => {
+                setDesignFocus(design);
+                setTab("design");
+              }}
+            />
+          )}
+          {tab === "stock" && <StockTab store={store} />}
+          {tab === "tools" && <ToolsTab store={store} storage={storage} />}
+          {tab === "layout" && (
+            <LayoutTab
+              store={store}
+              analysis={analysis}
+              prefs={prefs}
+              onPrefs={setPrefs}
+              runs={runs}
+              onShowSettings={() => {
+                setSettingsSection("optimizer");
+                setTab("settings");
+              }}
+              onOpenStep={(step) => {
+                setShopStep(step);
+                setTab("shop");
+              }}
+            />
+          )}
+          {tab === "shop" && <ShopTab store={store} analysis={analysis} onPrint={setPrintJob} openStep={shopStep} cutColors={prefs.cutColors} />}
+          {tab === "reports" && <ReportsTab store={store} analysis={analysis} prefs={prefs} onPrefs={setPrefs} onPrint={setPrintJob} />}
+          {tab === "settings" && <SettingsTab store={store} prefs={prefs} onPrefs={setPrefs} section={settingsSection} onSection={setSettingsSection} />}
+        </div>
+      </ShowTab.Provider>
       {printJob && <PrintView job={printJob} analysis={analysis} onDone={endPrint} />}
     </div>
   );

@@ -43,6 +43,7 @@ input[aria-invalid="true"] { border-color: var(--bad); outline: 2px solid var(--
 .banner { margin: 8px 16px; padding: 8px 12px; border-radius: 6px; background: #fff7d6; border: 1px solid #e9d27a; }
 .banner.error { background: #fdecea; border-color: #f0a9a2; color: var(--bad); }
 .banner p { margin: 2px 0; }
+.stock-note { margin: 4px 0 8px; }
 
 .home { max-width: 960px; margin: 0 auto; padding: 24px 16px 60px; }
 .home-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 16px 0 24px; }

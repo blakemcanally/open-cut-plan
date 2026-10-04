@@ -34,6 +34,7 @@ import {
   type UnplacedReason,
 } from "@opencutplan/core";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { TabLink } from "../components/TabLink.tsx";
 import { RUN_NAMES, type OptimizeRuns } from "../optimizer/useOptimizeRuns.ts";
 import type { ViewPrefs } from "../state/prefs.ts";
 import type { ProjectStore } from "../state/useProject.ts";
@@ -410,8 +411,16 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
           )}
         </div>
       )}
-      {project.parts.length === 0 && <p className="muted">Add parts on the Parts tab first.</p>}
-      {project.parts.length > 0 && enabledStock.length === 0 && <p className="muted">Add stock on the Stock tab to lay out or optimize.</p>}
+      {project.parts.length === 0 && (
+        <p className="muted">
+          No parts yet. Add a design on the <TabLink tab="design">Design tab</TabLink>, or add parts on the <TabLink tab="parts">Parts tab</TabLink>.
+        </p>
+      )}
+      {project.parts.length > 0 && enabledStock.length === 0 && (
+        <p className="muted">
+          Add stock on the <TabLink tab="stock">Stock tab</TabLink> to lay out or optimize.
+        </p>
+      )}
       <div className="layout-body">
         <div className="layout-main">
           <Tray

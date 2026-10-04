@@ -4,14 +4,13 @@ import {
   hasEnabledStock,
   materialName,
   sameCopy,
-  suggestedStock,
   type CopyRef,
   type PartColors,
   type PlanContext,
   type UnplacedReason,
 } from "@opencutplan/core";
 import type { PointerEvent } from "react";
-import { formatMoney } from "../reports/money.ts";
+import { StockNote } from "../components/StockNote.tsx";
 import { copyKey } from "./SheetView.tsx";
 
 export const REASON_TEXT: Readonly<Record<UnplacedReason, string>> = {
@@ -34,23 +33,6 @@ interface TrayProps {
   onAddStock?(material: string): void;
 }
 
-function StockNote({ ctx, material, onAddStock }: { ctx: PlanContext; material: string; onAddStock(material: string): void }) {
-  const name = materialName(ctx, material);
-  const stock = suggestedStock(ctx.project, material);
-  const id = `tray-stock-${material}`;
-  return (
-    <p className="warning">
-      ⚠ {name} has no stock.{" "}
-      <button type="button" aria-label={`Add stock for ${name}`} aria-describedby={id} onClick={() => onAddStock(material)}>
-        Add stock
-      </button>{" "}
-      <span id={id} className="muted">
-        Adds unlimited {formatSize(ctx, stock)} sheets {stock.cost === undefined ? "with no price" : `at ${formatMoney(stock.cost, ctx.project.settings.currency)} each`}.
-      </span>
-    </p>
-  );
-}
-
 export function Tray({ ctx, copies, colors, reasons, selected, dropping, onPointerDown, onSelect, onAddStock }: TrayProps) {
   const byMaterial = new Map<string, CopyRef[]>();
   for (const ref of copies) {
@@ -68,7 +50,7 @@ export function Tray({ ctx, copies, colors, reasons, selected, dropping, onPoint
         return (
           <div key={material} className="tray-group">
             <h4>{materialName(ctx, material)}</h4>
-            {stockless && onAddStock && <StockNote ctx={ctx} material={material} onAddStock={onAddStock} />}
+            {stockless && onAddStock && <StockNote project={ctx.project} material={material} onAdd={onAddStock} />}
             <ul>
               {refs.map((ref) => {
                 const part = ctx.parts.get(ref.part)!;

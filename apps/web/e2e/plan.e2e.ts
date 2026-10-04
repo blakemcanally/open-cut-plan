@@ -59,6 +59,7 @@ test("plans a project from CSV, keeps shop progress, and prints and exports it",
   await page.getByLabel("Name").fill("E2E shelf");
   await page.getByRole("button", { name: "Create project" }).click();
 
+  await page.getByRole("tab", { name: "Parts" }).click();
   await page.getByRole("button", { name: "Paste rows…" }).click();
   await page.getByLabel("Rows (paste from a spreadsheet, or edit)").fill(PARTS);
   await page.getByRole("button", { name: "Import 2 rows" }).click();
@@ -140,6 +141,7 @@ test("edits the layout with the mouse and the keyboard, and undoes the edits", a
   await page.goto("/");
   await page.getByLabel("Name").fill("E2E editor");
   await page.getByRole("button", { name: "Create project" }).click();
+  await page.getByRole("tab", { name: "Parts" }).click();
   await page.getByRole("button", { name: "Paste rows…" }).click();
   await page.getByLabel("Rows (paste from a spreadsheet, or edit)").fill(PARTS);
   await page.getByRole("button", { name: "Import 2 rows" }).click();
@@ -192,7 +194,7 @@ test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware
   await page.getByLabel("Name").fill("E2E kallax");
   await page.getByRole("button", { name: "Create project" }).click();
 
-  await page.getByRole("tab", { name: "Design" }).click();
+  await expect(page.getByRole("tab", { name: "Design" })).toHaveAttribute("aria-selected", "true");
   await page.getByRole("button", { name: "Add design" }).click();
   await expect(page.getByRole("img", { name: /^Front view of KALLAX 2x2: / })).toBeVisible();
   await page.getByLabel("Rows").fill("3");
@@ -207,9 +209,8 @@ test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware
   await expect(page.getByRole("row", { name: /^Side/ })).toContainText("From design: KALLAX 2x2");
 
   await page.getByRole("tab", { name: "Stock" }).click();
-  await page.getByRole("button", { name: "Paste rows…" }).click();
-  await page.getByLabel("Rows (paste from a spreadsheet, or edit)").fill(STOCK);
-  await page.getByRole("button", { name: "Import 1 row" }).click();
+  await expect(page.getByLabel("Length of stock plywood-96x48")).toBeVisible();
+  await expect(page.getByText(/has no stock\./)).toHaveCount(0);
   await optimize(page);
   await expect(page.getByRole("list", { name: "Colours", exact: true }).getByRole("listitem")).toHaveText(["KALLAX 2x2 1 of 2", "KALLAX 2x2 2 of 2"]);
   await expect(page.locator('[data-copy-key="kallax-2x2-top#1"] rect.fill')).toHaveAttribute("fill", "#123456");

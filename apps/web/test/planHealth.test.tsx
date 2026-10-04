@@ -1,12 +1,14 @@
-import { analyzeProject, type Project } from "@opencutplan/core";
+import { analyzeProject, createProject, type Project } from "@opencutplan/core";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
 import { describe, expect, it } from "vitest";
 import { LayoutTab } from "../src/layout/LayoutTab.tsx";
 import { useOptimizeRuns } from "../src/optimizer/useOptimizeRuns.ts";
+import { Workspace } from "../src/screens/Workspace.tsx";
 import { DEFAULT_PREFS } from "../src/state/prefs.ts";
 import { useProject, type ProjectStore } from "../src/state/useProject.ts";
+import { openStorage } from "../src/storage/db.ts";
 import { inProcessWorkers, sampleProject } from "./helpers.ts";
 
 function renderLayout(initial: Project) {
@@ -54,5 +56,51 @@ describe("a material with no stock in the tray", () => {
     expect(current().project.stock.at(-1)).toEqual({ id: "mdf-96x48", material: "mdf", length: 96, width: 48, quantity: null, kind: "sheet" });
     expect(within(tray()).queryByRole("button", { name: "Add stock for MDF" })).toBeNull();
     expect(within(tray()).getByRole("button", { name: /Door 1/ }).textContent).not.toContain("⚠");
+  });
+});
+
+async function renderWorkspace(project: Project) {
+  const storage = await openStorage(indexedDB);
+  render(<Workspace id="p1" initial={project} notices={[]} storage={storage} workerFactory={inProcessWorkers().factory} onHome={() => undefined} />);
+}
+
+const tab = (name: string) => screen.getByRole("tab", { name });
+const selectedTab = () => document.querySelector('[role="tab"][aria-selected="true"]')!.id;
+
+describe("a new project", () => {
+  it("opens on the Design tab, and each empty state links to the tab that fixes it", async () => {
+    await renderWorkspace(createProject("New", "in"));
+    expect(selectedTab()).toBe("tab-design");
+    await userEvent.click(tab("Layout"));
+    await userEvent.click(screen.getByRole("button", { name: "Parts tab" }));
+    expect(selectedTab()).toBe("tab-parts");
+    await userEvent.click(tab("Layout"));
+    await userEvent.click(screen.getByRole("button", { name: "Design tab" }));
+    expect(selectedTab()).toBe("tab-design");
+    await userEvent.click(tab("Shop"));
+    await userEvent.click(screen.getByRole("button", { name: "Layout tab" }));
+    expect(selectedTab()).toBe("tab-layout");
+    await userEvent.click(tab("Reports"));
+    await userEvent.click(screen.getByRole("button", { name: "Layout tab" }));
+    expect(selectedTab()).toBe("tab-layout");
+  });
+
+  it("links the Layout tab to the Stock tab when there is no stock", async () => {
+    const project = sampleProject();
+    await renderWorkspace({ ...project, stock: [], plan: undefined });
+    await userEvent.click(screen.getByRole("button", { name: "Stock tab" }));
+    expect(selectedTab()).toBe("tab-stock");
+  });
+});
+
+describe("the materials with no stock on the Parts tab and the Stock tab", () => {
+  it("names each material that parts use and that has no enabled stock, and adds its suggested sheet", async () => {
+    await renderWorkspace(stocklessProject());
+    await userEvent.click(tab("Parts"));
+    expect(screen.getByText(/MDF has no stock\./)).toBeTruthy();
+    await userEvent.click(tab("Stock"));
+    await userEvent.click(screen.getByRole("button", { name: "Add stock for MDF" }));
+    expect(screen.queryByText(/MDF has no stock\./)).toBeNull();
+    expect(screen.getByLabelText("Length of stock mdf-96x48")).toBeTruthy();
   });
 });

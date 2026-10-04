@@ -2,6 +2,7 @@ import {
   addMaterial,
   errorMessage,
   addStock,
+  addSuggestedStock,
   DEFAULT_TRIM,
   formatLength,
   materialInUse,
@@ -17,6 +18,7 @@ import { useState } from "react";
 import { CatalogDialog } from "../components/CatalogDialog.tsx";
 import { CsvImportDialog } from "../components/CsvImportDialog.tsx";
 import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
+import { StocklessNotes } from "../components/StockNote.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
 import { chooseFile } from "../storage/files.ts";
 import { isTableText } from "./PartsTab.tsx";
@@ -163,6 +165,7 @@ export function StockTab({ store }: { store: ProjectStore }) {
             ✖ {readError}
           </p>
         )}
+        <StocklessNotes project={project} onAdd={(material) => edit((p) => addSuggestedStock(p, material).project)} />
         {project.stock.length === 0 ? (
           <p className="muted">No stock yet. Add the sheets you can buy and the offcuts you own, or add common sheet goods from the catalogue.</p>
         ) : (

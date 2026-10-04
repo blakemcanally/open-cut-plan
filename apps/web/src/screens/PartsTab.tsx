@@ -1,5 +1,6 @@
 import {
   addPart,
+  addSuggestedStock,
   errorMessage,
   factoryEdgeRequest,
   isFactoryEdgeChoice,
@@ -17,6 +18,8 @@ import {
 import { useState, type ClipboardEvent } from "react";
 import { CsvImportDialog } from "../components/CsvImportDialog.tsx";
 import { ColorChoice, LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
+import { StocklessNotes } from "../components/StockNote.tsx";
+import { TabLink } from "../components/TabLink.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
 import { chooseFile } from "../storage/files.ts";
 
@@ -107,8 +110,11 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
           ✖ {readError}
         </p>
       )}
+      <StocklessNotes project={project} onAdd={(material) => edit((p) => addSuggestedStock(p, material).project)} />
       {project.parts.length === 0 ? (
-        <p className="muted">No parts yet. Add a part, or paste rows from a spreadsheet (name, length, width, quantity…).</p>
+        <p className="muted">
+          No parts yet. Add a part, paste rows from a spreadsheet (name, length, width, quantity…), or add a design on the <TabLink tab="design">Design tab</TabLink>.
+        </p>
       ) : (
         <div className="table-wrap">
           <table className="grid">
