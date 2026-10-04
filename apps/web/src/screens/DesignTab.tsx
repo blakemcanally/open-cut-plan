@@ -10,7 +10,9 @@ import {
   designElevationSvg,
   designUnitLabel,
   designGeometry,
+  designParts,
   detachDesign,
+  fitCombined,
   formatLength,
   isDesignMount,
   isDesignSystem,
@@ -34,6 +36,7 @@ import {
 } from "@opencutplan/core";
 import { useState, type InputHTMLAttributes } from "react";
 import { ColorChoice, LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
+import { CellGrid } from "../design/CellGrid.tsx";
 import { addDesign, axisMode, CATALOG_VALUE, openingsText, parseOpenings, pickMaterial, tryDesign, withCells, withMode, withSystem, type AxisMode } from "../design/form.ts";
 import type { ProjectStore } from "../state/useProject.ts";
 
@@ -175,7 +178,7 @@ function DesignEditor({ store, design, issues }: EditorProps) {
   const live = (change: (design: Design, text: string) => Design | null): Pick<InputHTMLAttributes<HTMLInputElement>, "onInput" | "onBlur" | "onKeyDown"> => ({
     onInput: (event) => {
       const next = change(design, event.currentTarget.value);
-      if (next && tryDesign(project, next).ok) setTyping(next);
+      if (next && tryDesign(project, next).ok) setTyping(fitCombined(next));
     },
     onBlur: () => setTyping(null),
     onKeyDown: (event) => {
@@ -198,6 +201,8 @@ function DesignEditor({ store, design, issues }: EditorProps) {
 
   const shown = typing ? { ...project, designs: (project.designs ?? []).map((item) => (item.id === design.id ? typing : item)) } : project;
   const svg = designElevationSvg(shown, design.id);
+  const parts = designParts(shown, typing ?? design);
+  const show = (value: number) => formatLength(value, units, display);
 
   const axisFields = (which: Which) => {
     const axis = design[which];
@@ -307,6 +312,7 @@ function DesignEditor({ store, design, issues }: EditorProps) {
         </fieldset>
         {axisFields("width")}
         {axisFields("height")}
+        <CellGrid design={design} columns={geometry?.columns ?? null} rows={geometry?.rows ?? null} disabled={locked !== null} onEdit={(change) => apply("cells", change)} />
         <fieldset disabled={locked !== null}>
           <legend>Box</legend>
           <label className="stack">
@@ -422,6 +428,33 @@ function DesignEditor({ store, design, issues }: EditorProps) {
             <p className="muted">The design has an error, so there is no drawing.</p>
           )}
         </section>
+        {parts && (
+          <section aria-labelledby="design-parts-title">
+            <h3 id="design-parts-title">Parts</h3>
+            <div className="table-wrap">
+              <table className="grid">
+                <thead>
+                  <tr>
+                    <th scope="col">Part</th>
+                    <th scope="col">Size</th>
+                    <th scope="col">Quantity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {parts.map((part) => (
+                    <tr key={part.id}>
+                      <td>{part.name}</td>
+                      <td>
+                        {show(part.length)} × {show(part.width)}
+                      </td>
+                      <td>{part.quantity}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
         <section aria-labelledby="design-checks-title">
           <h3 id="design-checks-title">Checks</h3>
           {issues.length === 0 ? (

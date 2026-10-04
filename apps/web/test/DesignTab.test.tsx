@@ -1,4 +1,4 @@
-import { analyzeProject, createProject, PART_PALETTE, regenerateDesigns, type Project } from "@opencutplan/core";
+import { analyzeProject, createProject, PART_PALETTE, regenerateDesigns, type CombinedCell, type Project } from "@opencutplan/core";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
@@ -229,5 +229,117 @@ describe("DesignTab", () => {
     await userEvent.click(screen.getByRole("button", { name: "Delete design" }));
     expect(current().project.parts).toEqual([]);
     expect(current().project.plan!.sheets[0]!.placements).toEqual([]);
+  });
+});
+
+function kallax4x2(combined?: CombinedCell[]): Project {
+  const project = designProject();
+  const hall = { ...project.designs![0]!, width: { openings: [335, 335, 335, 335] }, ...(combined ? { combined } : {}) };
+  return regenerateDesigns({ ...project, designs: [hall] });
+}
+
+const cell = (name: string) => screen.getByRole("gridcell", { name });
+const button = (name: string) => screen.getByRole("button", { name });
+const partRows = () =>
+  within(screen.getByRole("region", { name: "Parts" }))
+    .getAllByRole("row")
+    .slice(1)
+    .map((row) => within(row).getAllByRole("cell").map((td) => td.textContent));
+
+describe("DesignTab cells", () => {
+  it("combines two cells with a click and a shift-click, lists the new parts, and undoes it in one step", async () => {
+    const user = userEvent.setup();
+    const current = renderDesign(kallax4x2());
+    expect(screen.getAllByRole("gridcell")).toHaveLength(8);
+    expect(button("Combine").matches(":disabled")).toBe(true);
+    await user.click(cell("Column 1, row 1"));
+    expect(cell("Column 1, row 1").getAttribute("aria-selected")).toBe("true");
+    expect(button("Combine").matches(":disabled")).toBe(true);
+    await user.keyboard("{Shift>}");
+    await user.click(cell("Column 2, row 1"));
+    await user.keyboard("{/Shift}");
+    expect(cell("Column 2, row 1").getAttribute("aria-selected")).toBe("true");
+    await user.click(button("Combine"));
+    expect(design(current).combined).toEqual([{ column: 1, row: 1, columns: 2, rows: 1 }]);
+    expect(screen.getAllByRole("gridcell")).toHaveLength(7);
+    expect(cell("Columns 1–2, row 1").getAttribute("aria-selected")).toBe("true");
+    expect(current().project.parts.map((part) => [part.id, part.length, part.quantity])).toEqual([
+      ["hall-top", 1430, 1],
+      ["hall-bottom", 1430, 1],
+      ["hall-side", 688, 2],
+      ["hall-divider", 688, 2],
+      ["hall-divider-rows-2", 335, 1],
+      ["hall-shelf", 335, 2],
+      ["hall-shelf-cols-1-2", 688, 1],
+    ]);
+    expect(partRows()).toEqual([
+      ["Top", "1430 mm × 390 mm", "1"],
+      ["Bottom", "1430 mm × 390 mm", "1"],
+      ["Side", "688 mm × 390 mm", "2"],
+      ["Divider", "688 mm × 390 mm", "2"],
+      ["Divider, row 2", "335 mm × 390 mm", "1"],
+      ["Shelf", "335 mm × 390 mm", "2"],
+      ["Shelf, columns 1–2", "688 mm × 390 mm", "1"],
+    ]);
+    expect(button("Combine").matches(":disabled")).toBe(true);
+    act(() => current().undo());
+    expect(design(current)).not.toHaveProperty("combined");
+    expect(current().project.parts.map((part) => part.id)).toEqual(["hall-top", "hall-bottom", "hall-side", "hall-divider", "hall-shelf"]);
+  });
+
+  it("splits a combined cell", async () => {
+    const user = userEvent.setup();
+    const current = renderDesign(kallax4x2([{ column: 2, row: 1, columns: 2, rows: 2 }]));
+    expect(button("Split").matches(":disabled")).toBe(true);
+    await user.click(cell("Columns 2–3, rows 1–2"));
+    expect(button("Combine").matches(":disabled")).toBe(true);
+    await user.click(button("Split"));
+    expect(design(current)).not.toHaveProperty("combined");
+    expect(screen.getAllByRole("gridcell")).toHaveLength(8);
+  });
+
+  it("selects a rectangle with a drag, and with Shift and the arrow keys, and grows it to hold a combined cell", async () => {
+    const user = userEvent.setup();
+    const current = renderDesign(kallax4x2([{ column: 3, row: 2, columns: 2, rows: 1 }]));
+    await user.pointer([{ keys: "[MouseLeft>]", target: cell("Column 1, row 1") }, { target: cell("Column 2, row 2") }, { keys: "[/MouseLeft]" }]);
+    expect(screen.getAllByRole("gridcell").filter((item) => item.getAttribute("aria-selected") === "true")).toHaveLength(4);
+    await user.click(button("Combine"));
+    expect(design(current).combined).toEqual([
+      { column: 3, row: 2, columns: 2, rows: 1 },
+      { column: 1, row: 1, columns: 2, rows: 2 },
+    ]);
+    await user.click(cell("Column 3, row 1"));
+    await user.keyboard("{Shift>}{ArrowDown}{/Shift}");
+    expect(cell("Columns 3–4, row 2").getAttribute("aria-selected")).toBe("true");
+    expect(cell("Column 4, row 1").getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(cell("Columns 3–4, row 2"));
+    await user.click(button("Combine"));
+    expect(design(current).combined).toEqual([
+      { column: 1, row: 1, columns: 2, rows: 2 },
+      { column: 3, row: 1, columns: 2, rows: 2 },
+    ]);
+    await user.click(cell("Columns 1–2, rows 1–2"));
+    await user.keyboard("{ArrowRight}");
+    expect(document.activeElement).toBe(cell("Columns 3–4, rows 1–2"));
+  });
+
+  it("removes a combined cell that a smaller grid cuts to one cell", async () => {
+    const user = userEvent.setup();
+    const current = renderDesign(kallax4x2([{ column: 3, row: 1, columns: 2, rows: 1 }]));
+    const columns = screen.getByLabelText("Columns");
+    await user.clear(columns);
+    await user.type(columns, "3{Enter}");
+    expect(design(current).width).toEqual({ openings: [335, 335, 335] });
+    expect(design(current)).not.toHaveProperty("combined");
+    expect(screen.getAllByRole("gridcell")).toHaveLength(6);
+  });
+
+  it("shows the cells of a locked design, and disables the buttons", async () => {
+    const user = userEvent.setup();
+    const project = kallax4x2([{ column: 1, row: 1, columns: 2, rows: 1 }]);
+    renderDesign({ ...project, designs: [{ ...project.designs![0]!, system: "pax" }] });
+    await user.click(cell("Columns 1–2, row 1"));
+    expect(button("Combine").matches(":disabled")).toBe(true);
+    expect(button("Split").matches(":disabled")).toBe(true);
   });
 });

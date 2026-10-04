@@ -6,6 +6,7 @@ import {
   designErrors,
   EPSILON,
   ensureMaterial,
+  fitCombined,
   formatLength,
   isPresetSystem,
   MAX_DESIGN_CELLS,
@@ -47,10 +48,11 @@ function withDesign(project: Project, design: Design): Project {
   return { ...project, designs: known ? designs.map((item) => (item.id === design.id ? design : item)) : [...designs, design] };
 }
 
-/** The project with the design, or the errors that refuse it (spec §10). The project store makes its parts. */
+/** The project with the design, its combined cells fitted to its grid, or the errors that refuse it (spec §10). The project store makes its parts. */
 export function tryDesign(project: Project, design: Design): DesignEdit {
-  const next = withDesign(project, design);
-  const issues = designErrors(next, design);
+  const fitted = fitCombined(design);
+  const next = withDesign(project, fitted);
+  const issues = designErrors(next, fitted);
   return issues.length > 0 ? { ok: false, issues } : { ok: true, project: next };
 }
 
