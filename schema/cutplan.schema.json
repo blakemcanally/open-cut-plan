@@ -680,6 +680,10 @@
               "type": "number",
               "minimum": 0,
               "maximum": 100
+            },
+            "keepGroupsTogether": {
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": {}

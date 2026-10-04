@@ -125,15 +125,35 @@ describe("parseProject", () => {
     expect(result.ok && result.project.settings.features.cutOrder).toBe(true);
   });
 
-  it.each(["1.0", "1.1"])("loads a %s file as version 1.4 with the default goal and no warnings", (version) => {
+  it.each(["1.0", "1.1"])("loads a %s file as version 1.5 with the default goal and no warnings", (version) => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = version;
     delete doc.settings.optimizer.goal;
     delete doc.settings.optimizer.extraCostPercent;
+    delete doc.settings.optimizer.keepGroupsTogether;
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.4");
-    expect(result.ok && result.project.settings.optimizer).toMatchObject({ goal: "cost", extraCostPercent: 10 });
+    expect(result.ok && result.project.version).toBe("1.5");
+    expect(result.ok && result.project.settings.optimizer).toMatchObject({ goal: "cost", extraCostPercent: 10, keepGroupsTogether: true });
     expect(result.warnings).toEqual([]);
+  });
+
+  it("loads a 1.4 file as version 1.5 and keeps the groups together by default", () => {
+    const doc = JSON.parse(serializeProject(sampleProject()));
+    doc.version = "1.4";
+    delete doc.settings.optimizer.keepGroupsTogether;
+    const result = parseProject(doc);
+    expect(result.ok && result.project.version).toBe("1.5");
+    expect(result.ok && result.project.settings.optimizer.keepGroupsTogether).toBe(true);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("keeps the setting to keep groups together off, and refuses a value that is not true or false", () => {
+    const doc = JSON.parse(serializeProject(sampleProject()));
+    doc.settings.optimizer.keepGroupsTogether = false;
+    const result = parseProject(doc);
+    expect(result.ok && result.project.settings.optimizer.keepGroupsTogether).toBe(false);
+    doc.settings.optimizer.keepGroupsTogether = "yes";
+    expect(parseProject(doc).ok).toBe(false);
   });
 
   it("keeps an optimizer goal that it does not know, and writes it back", () => {
@@ -154,7 +174,7 @@ describe("parseProject", () => {
   it("loads a newer minor version with a warning and keeps every unknown field on re-save", () => {
     const project = sampleProject();
     const doc = JSON.parse(serializeProject(project));
-    doc.version = "1.5";
+    doc.version = "1.6";
     doc.future = { x: 1 };
     doc.parts[0].edgeBanding = { top: "birch", bottom: null };
     doc.stock[0].supplier = "Local yard";
@@ -169,7 +189,7 @@ describe("parseProject", () => {
       {
         severity: "warning",
         code: "newer-minor",
-        message: "This file uses format version 1.5, which is newer than this app (1.4). Unknown fields are kept but ignored.",
+        message: "This file uses format version 1.6, which is newer than this app (1.5). Unknown fields are kept but ignored.",
         path: ["version"],
       },
     ]);

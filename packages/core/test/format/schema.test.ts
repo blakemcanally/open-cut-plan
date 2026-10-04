@@ -6,14 +6,14 @@ describe("createProject", () => {
   it("fills every default", () => {
     const project = createProject("Shelf", "in");
     expect(project.format).toBe("opencutplan");
-    expect(project.version).toBe("1.4");
+    expect(project.version).toBe("1.5");
     expect(project.project).toEqual({ name: "Shelf", units: "in" });
     expect(project.settings).toEqual({
       features: Object.fromEntries(FEATURE_KEYS.map((key) => [key, true])),
       orderMode: "sheet",
       trim: 0,
       display: { inch: 32, mm: 0.5 },
-      optimizer: { timeLimitMs: 2000, goal: "cost", extraCostPercent: 10 },
+      optimizer: { timeLimitMs: 2000, goal: "cost", extraCostPercent: 10, keepGroupsTogether: true },
       currency: "USD",
     });
   });

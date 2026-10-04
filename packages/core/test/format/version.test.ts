@@ -18,7 +18,7 @@ describe("parseVersion", () => {
 
 describe("migrate", () => {
   it("leaves a current document unchanged", () => {
-    const doc = { version: "1.4", a: 1 };
+    const doc = { version: "1.5", a: 1 };
     expect(migrate(doc)).toEqual(doc);
   });
 
@@ -31,6 +31,6 @@ describe("migrate", () => {
   });
 
   it("leaves a newer minor version alone", () => {
-    expect(migrate({ version: "1.5", a: 1 })).toEqual({ version: "1.5", a: 1 });
+    expect(migrate({ version: "1.6", a: 1 })).toEqual({ version: "1.6", a: 1 });
   });
 });
