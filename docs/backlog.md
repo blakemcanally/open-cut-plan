@@ -69,6 +69,8 @@ A design with a quantity of 2 doubles the quantity of each part, so both cabinet
 
 ## 5. Choose the cut that is shortest across waste
 
+**Status:** Done.
+
 **Request:** The cut plan chooses the cuts with the least total cut length, and also the fewest cuts.
 
 Example: one part on a sheet. The plan now makes a long rip along the full sheet, then a crosscut. A crosscut across the

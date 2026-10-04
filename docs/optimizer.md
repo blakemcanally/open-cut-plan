@@ -73,7 +73,8 @@ For the goal `cost`, candidates are compared per material, in this order:
    or any enabled sheet stock of the material has no `cost`, the stock area is used in place of the cost.
 3. **Largest offcut** area: bigger is better (0 when the `offcuts` feature is off).
 4. **Cut steps**, including trims: fewer is better.
-5. **Sheets**: fewer is better.
+5. **Cut length**: the total length of the cut lines of those steps. Shorter is better.
+6. **Sheets**: fewer is better.
 
 For the goals `offcuts` and `cuts`, the search chooses a plan for each material with this rule:
 
@@ -81,7 +82,8 @@ For the goals `offcuts` and `cuts`, the search chooses a plan for each material 
 2. C is the lowest cost of those candidates. It keeps the candidates that cost at most
    C × (1 + `extraCostPercent` / 100). `extraCostPercent` defaults to `settings.optimizer.extraCostPercent`.
 3. It chooses by the goal. For `offcuts`, the offcut areas compare largest first: the larger first area wins, then
-   the larger second area, and so on, and a list that ends first loses. For `cuts`, fewer cut steps win.
+   the larger second area, and so on, and a list that ends first loses. For `cuts`, fewer cut steps win, and of
+   two candidates with the same number of cut steps, the shorter cut length wins.
 4. When candidates are still equal, the order of the goal `cost` decides. Of two equal candidates, the first found
    stays.
 
@@ -96,9 +98,9 @@ limit stays. C can only go down, so the search drops a candidate when its cost g
 - `sheets`: the pinned sheets, then the new sheets of each material, in project material order;
 - `unplaced`: `{ part, copy, reason }` for each copy with no place, grouped by material in project material order,
   and in part order, then copy order, within each material;
-- `materials`: `{ material, score, cheapestCost }`. The `score` has the measures above, with `offcuts`: the area of
-  every offcut, largest first. `cheapestCost` is C for the goals `offcuts` and `cuts`, and the cost of the chosen plan
-  for the goal `cost`;
+- `materials`: `{ material, score, cheapestCost }`. The `score` has the measures above (`unplaced`, `cost`,
+  `largestOffcut`, `cuts`, `cutLength`, and `sheets`), with `offcuts`: the area of every offcut, largest first.
+  `cheapestCost` is C for the goals `offcuts` and `cuts`, and the cost of the chosen plan for the goal `cost`;
 - `iterations`: the candidates tried, over all materials, including those of a `start` result.
 
 | `reason` | Meaning |

@@ -39,12 +39,31 @@ trims.
 
 1. With trim on, four trim cuts come first: the two long edges, then the two short edges. Each kerf lies inside the
    trim, against the usable area. When the trim is narrower than the kerf, the trim strip has zero size.
-2. Every other piece is cut recursively. A cut line must run across the whole piece without touching a part. At the
-   first stage the tree tries rips before crosscuts; each deeper stage tries the other direction first.
-3. All cuts in one direction are made at once, in ascending position. A cut's kerf sits against a part edge:
+2. Every other piece is cut recursively. A cut line must run across the whole piece without touching a part. The tree
+   tries rips and crosscuts. In each direction, the cuts of one split are made at once, in ascending position. A
+   cut's kerf sits against a part edge:
    - after the last part before a gap, and again before the next part when the gap is wider than one kerf;
    - before the first part when there is waste at the start, and after the last part when there is waste at the end.
-   A gap between one and two kerfs wide gives a second cut that removes a sliver narrower than the blade.
+
+   A gap between one and two kerfs wide gives a second cut that removes a sliver narrower than the blade. A split can
+   also make only one cut at a gap. The waste of the gap then stays on the piece on the other side of the cut, and a
+   deeper cut removes it. The waste at each end of the piece can also stay on the end piece. A split must divide the
+   piece.
+3. The tree chooses the split whose subtree (the split and all the cuts below it) has, in this order:
+   1. the fewest stuck parts;
+   2. the fewest cuts that no enabled tool can make (only with `toolLimits` on, see below);
+   3. the least total cut length;
+   4. the fewest cuts.
+
+   When two subtrees are equal, the tree keeps the earlier split in this order: at the first stage rips before
+   crosscuts, and at each deeper stage the other direction first; in each direction, a cut at each side of every gap
+   first. For example, a 20" × 10" part in a corner of a 96" × 48" sheet gets a 48" crosscut and then a 20" rip
+   (68" of cuts). Rips first would give a 96" rip and then a 10" crosscut (106").
+
+   With `toolLimits` on, the tree is first built with no tool check. When an enabled tool can make every cut of that
+   tree, the tree stays. Otherwise the tree is built again, and this time it counts the cuts that no enabled tool can
+   make, with the piece and the stage that the cut has in the sequence. So a tree can be longer than the shortest
+   tree when that is necessary to keep a cut in the limits of a tool, for example `maxStages` of a panel saw.
 4. A piece is a part when it is exactly one part, waste when it has no parts, and stuck when no cut is possible.
    A part that lies wholly outside the usable area lands in a zero-size piece. That piece is stuck and is not cut
    again; the validator reports the part as `off-sheet`.
@@ -119,6 +138,8 @@ projects and to 0.1 mm in mm projects.
 - `shoppingList`: per material and stock, the sheets used, the count to buy (owned offcuts are not bought), unit and line
   cost, and the total. The total is null when the `cost` feature is off or a stock to buy has no price
   (`missingPrices` lists those). Utilization is part area over stock area, per sheet and per material.
+- `totalCutLength(steps)`: the sum of the lengths of the cut lines of the steps, trims included. The CLI `show` and
+  `report sequence` commands and the Reports tab of the web app give it next to the count of cut steps.
 - `partLabels`: one label per part copy with its name, group, size, material, grain (`none` when grain does not
   constrain the part), sheet number, and the step that cuts it free. A stuck part has no such step. `analyzeProject`
   returns no labels when the `labels` feature is off.
