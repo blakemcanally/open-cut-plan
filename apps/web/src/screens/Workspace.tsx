@@ -59,6 +59,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
   const [printJob, setPrintJob] = useState<PrintJob | null>(null);
   const [designFocus, setDesignFocus] = useState<string | null>(null);
   const [settingsSection, setSettingsSection] = useState<SettingsSectionId>("units");
+  const [shopStep, setShopStep] = useState<number | null>(null);
   const endPrint = useCallback(() => setPrintJob(null), []);
   const saveError = useAutosave(storage, id, project, stored);
 
@@ -87,12 +88,17 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
     }
   };
 
+  const showTab = (next: TabId) => {
+    setShopStep(null);
+    setTab(next);
+  };
+
   const onTabKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     const index = TABS.findIndex((t) => t.id === tab);
     const next = event.key === "ArrowRight" ? index + 1 : event.key === "ArrowLeft" ? index - 1 : null;
     if (next === null) return;
     const target = TABS[(next + TABS.length) % TABS.length]!;
-    setTab(target.id);
+    showTab(target.id);
     document.getElementById(`tab-${target.id}`)?.focus();
     event.preventDefault();
   };
@@ -158,7 +164,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
             aria-selected={tab === t.id}
             aria-controls={`panel-${t.id}`}
             tabIndex={tab === t.id ? 0 : -1}
-            onClick={() => setTab(t.id)}
+            onClick={() => showTab(t.id)}
           >
             {t.label}
           </button>
@@ -182,14 +188,19 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
             store={store}
             analysis={analysis}
             prefs={prefs}
+            onPrefs={setPrefs}
             runs={runs}
             onShowSettings={() => {
               setSettingsSection("optimizer");
               setTab("settings");
             }}
+            onOpenStep={(step) => {
+              setShopStep(step);
+              setTab("shop");
+            }}
           />
         )}
-        {tab === "shop" && <ShopTab store={store} analysis={analysis} onPrint={setPrintJob} />}
+        {tab === "shop" && <ShopTab store={store} analysis={analysis} onPrint={setPrintJob} openStep={shopStep} cutColors={prefs.cutColors} />}
         {tab === "reports" && <ReportsTab store={store} analysis={analysis} prefs={prefs} onPrefs={setPrefs} onPrint={setPrintJob} />}
         {tab === "settings" && <SettingsTab store={store} prefs={prefs} onPrefs={setPrefs} section={settingsSection} onSection={setSettingsSection} />}
       </div>

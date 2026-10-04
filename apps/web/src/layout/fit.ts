@@ -3,9 +3,9 @@ export interface Size {
   width: number;
 }
 
-/** The space between two sheet cards, and the padding and header of a card, in px. These match `.sheets` and `.sheet` in styles.css. */
+/** The space between two sheet cards, and the padding, header, stock line, and a two-line summary of a card, in px. These match `.sheets` and `.sheet` in styles.css. */
 export const SHEET_GAP = 24;
-export const SHEET_CHROME = { x: 22, y: 56 };
+export const SHEET_CHROME = { x: 22, y: 108 };
 /** The part of the window height that the app bar, the tabs, and a margin take. */
 export const WINDOW_ALLOWANCE = 140;
 const MIN_LONG_PX = 200;

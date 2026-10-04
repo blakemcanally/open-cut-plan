@@ -21,6 +21,7 @@ import {
   setPinned,
   sheetRects,
   stockLabel,
+  toolColors,
   unplacedCopies,
   usableRect,
   type CopyRef,
@@ -34,9 +35,11 @@ import type { OptimizeRuns } from "../optimizer/useOptimizeRuns.ts";
 import type { ViewPrefs } from "../state/prefs.ts";
 import type { ProjectStore } from "../state/useProject.ts";
 import { ColorLegend } from "./ColorLegend.tsx";
+import { CutLegend } from "./CutLegend.tsx";
 import { fitScale, WINDOW_ALLOWANCE } from "./fit.ts";
 import { Inspector } from "./Inspector.tsx";
 import { IssueList } from "./IssueList.tsx";
+import { sheetSummary } from "./sheetSummary.ts";
 import { copyKey, SheetView, type DropPreview } from "./SheetView.tsx";
 import { snapPosition, type Snapped } from "./snap.ts";
 import { Tray } from "./Tray.tsx";
@@ -67,8 +70,10 @@ interface LayoutTabProps {
   store: ProjectStore;
   analysis: ProjectAnalysis;
   prefs: ViewPrefs;
+  onPrefs(prefs: ViewPrefs): void;
   runs: OptimizeRuns;
   onShowSettings(): void;
+  onOpenStep(step: number): void;
 }
 
 /** The nudge step: one display step, or 1 in / 25 mm with Shift. */
@@ -82,7 +87,7 @@ function isEditable(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName));
 }
 
-export function LayoutTab({ store, analysis, prefs, runs, onShowSettings }: LayoutTabProps) {
+export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSettings, onOpenStep }: LayoutTabProps) {
   const { project, edit } = store;
   const ctx = analysis.context;
   const busy = runs.running !== null;
@@ -100,6 +105,7 @@ export function LayoutTab({ store, analysis, prefs, runs, onShowSettings }: Layo
 
   const sheets = project.plan?.sheets ?? [];
   const colors = useMemo(() => partColors(project), [project]);
+  const tools = useMemo(() => toolColors(ctx.tools), [ctx.tools]);
   const unplaced = useMemo(() => unplacedCopies(project), [project]);
   const enabledStock = project.stock.filter((stock) => stock.enabled !== false);
   const chosenStock = enabledStock.find((stock) => stock.id === stockChoice) ?? enabledStock[0];
@@ -189,7 +195,7 @@ export function LayoutTab({ store, analysis, prefs, runs, onShowSettings }: Layo
       else select(null);
       return;
     }
-    if (!(event.target instanceof Element) || !event.target.closest("[data-copy-key], svg[data-sheet]")) return;
+    if (!(event.target instanceof Element) || !event.target.closest("[data-copy-key], svg[data-sheet]") || event.target.closest("[data-step]")) return;
     if (!selected || busy || !findCopy(project, selected)) return;
     const step = nudgeStep(analysis, event.shiftKey);
     const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
@@ -411,6 +417,10 @@ export function LayoutTab({ store, analysis, prefs, runs, onShowSettings }: Layo
                   scale={scale}
                   steps={analysis.steps.filter((step) => step.sheet === sheet.id)}
                   colors={colors}
+                  summary={sheetSummary(analysis, sheet.id)}
+                  currency={project.settings.currency}
+                  cutColors={prefs.cutColors}
+                  tools={tools}
                   errors={errorsBySheet.get(sheet.id) ?? new Set()}
                   selected={selected}
                   dragging={dragging}
@@ -423,6 +433,7 @@ export function LayoutTab({ store, analysis, prefs, runs, onShowSettings }: Layo
                   onSelect={select}
                   onTogglePin={() => edit((p) => setPinned(p, sheet.id, !sheet.pinned))}
                   onRemove={() => edit((p) => removeSheet(p, sheet.id))}
+                  onOpenStep={onOpenStep}
                 />
               );
             })}
@@ -430,6 +441,9 @@ export function LayoutTab({ store, analysis, prefs, runs, onShowSettings }: Layo
         </div>
         <aside className="layout-side">
           <ColorLegend colors={colors} />
+          {prefs.showCuts && ctx.features.cutOrder && (
+            <CutLegend coloring={prefs.cutColors} tools={tools} steps={analysis.steps} onColoring={(cutColors) => onPrefs({ ...prefs, cutColors })} />
+          )}
           <Inspector
             ctx={ctx}
             project={project}

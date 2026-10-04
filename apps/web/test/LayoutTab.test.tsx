@@ -1,4 +1,4 @@
-import { analyzeProject, createProject, PART_PALETTE, partColors, regenerateDesigns, type Project } from "@opencutplan/core";
+import { analyzeProject, createProject, PART_PALETTE, partColors, regenerateDesigns, toolColors, type Project } from "@opencutplan/core";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
@@ -19,7 +19,7 @@ function renderLayout(initial: Project = sampleProject(), factory: WorkerFactory
     latest = store;
     const analysis = useMemo(() => analyzeProject(store.project), [store.project]);
     const runs = useOptimizeRuns(store, factory);
-    return <LayoutTab store={store} analysis={analysis} prefs={DEFAULT_PREFS} runs={runs} onShowSettings={onShowSettings} />;
+    return <LayoutTab store={store} analysis={analysis} prefs={DEFAULT_PREFS} onPrefs={() => {}} runs={runs} onShowSettings={onShowSettings} onOpenStep={() => {}} />;
   }
   render(<Harness />);
   return () => latest!;
@@ -39,6 +39,10 @@ describe("SheetView", () => {
         scale={4}
         steps={[]}
         colors={partColors(project)}
+        summary={{ tools: [], utilization: 0, cost: null }}
+        currency="USD"
+        cutColors="stage"
+        tools={toolColors(project.tools)}
         errors={new Set()}
         selected={null}
         dragging={null}
@@ -51,6 +55,7 @@ describe("SheetView", () => {
         onSelect={() => undefined}
         onTogglePin={() => undefined}
         onRemove={() => undefined}
+        onOpenStep={() => undefined}
       />,
     );
     return container;

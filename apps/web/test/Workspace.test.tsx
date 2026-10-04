@@ -36,6 +36,30 @@ describe("Workspace", () => {
     expect(screen.getByRole("tab", { name: TABS.at(-1)!.label }).getAttribute("aria-selected")).toBe("true");
   });
 
+  it("opens the step of a cut number on the Shop tab, and a later visit to the Shop tab starts at the first open step", async () => {
+    await renderWorkspace();
+    await userEvent.click(screen.getByRole("button", { name: /^Step 3, / }));
+    expect(screen.getByRole("tab", { name: "Shop" }).getAttribute("aria-selected")).toBe("true");
+    const title = screen.getByRole("heading", { level: 2 });
+    expect(title.textContent).toMatch(/^Step 3 · /);
+    expect(document.activeElement).toBe(title);
+    await userEvent.click(screen.getByRole("tab", { name: "Layout" }));
+    screen.getByRole("button", { name: /^Step 4, / }).focus();
+    await userEvent.keyboard("{Enter}");
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toMatch(/^Step 4 · /);
+    await userEvent.click(screen.getByRole("tab", { name: "Layout" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Shop" }));
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toMatch(/^Step 1 · /);
+  });
+
+  it("keeps the choice of cut colours from the Layout tab", async () => {
+    await renderWorkspace();
+    await userEvent.click(screen.getByRole("radio", { name: "Tool" }));
+    expect(screen.getByRole("list", { name: "Cut colours" }).textContent).toBe("Table saw");
+    expect(JSON.parse(localStorage.getItem("opencutplan.view")!).cutColors).toBe("tool");
+    localStorage.clear();
+  });
+
   it("undoes and redoes layout edits with the keyboard and the buttons", async () => {
     await renderWorkspace();
     part("Side 2").focus();

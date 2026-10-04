@@ -2,20 +2,27 @@ import {
   copyLabel,
   formatSize,
   grainOk,
+  LIMIT_WORDS,
   NO_GROUP_COLOR,
   placedRect,
   sameCopy,
   stageColor,
   stockLabel,
+  TOOL_WARNING_COLOR,
+  TOOL_WARNING_FILL,
+  toolWarning,
   usableRect,
   type CopyRef,
+  type CutColoring,
   type PartColors,
   type PlanContext,
   type PlanSheet,
   type Rect,
   type Step,
+  type ToolColors,
 } from "@opencutplan/core";
-import { useId, type PointerEvent } from "react";
+import { Fragment, useId, type PointerEvent } from "react";
+import { summaryItems, type SheetSummary } from "./sheetSummary.ts";
 import type { Snapped } from "./snap.ts";
 
 export interface DropPreview {
@@ -31,6 +38,10 @@ interface SheetViewProps {
   scale: number;
   steps: readonly Step[];
   colors: PartColors;
+  summary: SheetSummary;
+  currency: string;
+  cutColors: CutColoring;
+  tools: ToolColors;
   /** Placement indices that an error refers to. */
   errors: ReadonlySet<number>;
   selected: CopyRef | null;
@@ -45,6 +56,7 @@ interface SheetViewProps {
   onSelect(ref: CopyRef): void;
   onTogglePin(): void;
   onRemove(): void;
+  onOpenStep(step: number): void;
 }
 
 const GRID_MIN_PX = 6;
@@ -53,8 +65,14 @@ export function copyKey(ref: CopyRef): string {
   return `${ref.part}#${ref.copy}`;
 }
 
+/** The accessible name of a cut number, for example "Step 5, Table saw rip". */
+export function cutName(step: Step): string {
+  const what = step.tool ? `${step.tool.name} ${step.kind}` : `no tool, ${step.kind}`;
+  return `Step ${step.step}, ${what}${step.overLimit ? `, over its ${LIMIT_WORDS[step.overLimit]}` : ""}`;
+}
+
 export function SheetView(props: SheetViewProps) {
-  const { ctx, sheet, number, scale, steps, colors, errors, selected, dragging, preview, showCuts, showKerf, grid, busy } = props;
+  const { ctx, sheet, number, scale, steps, colors, summary, currency, cutColors, tools, errors, selected, dragging, preview, showCuts, showKerf, grid, busy } = props;
   const uid = useId();
   const stock = ctx.stock.get(sheet.stock);
   const px = (value: number) => value * scale;
@@ -81,9 +99,6 @@ export function SheetView(props: SheetViewProps) {
     <section className="sheet" aria-label={`Sheet ${number}: ${stockLabel(ctx, stock)}`}>
       <header className="sheet-head">
         <span className="name">Sheet {number}</span>
-        <span className="meta" title={stockLabel(ctx, stock)}>
-          {stockLabel(ctx, stock)}
-        </span>
         <button type="button" aria-pressed={sheet.pinned === true} onClick={props.onTogglePin} disabled={busy} title="A pinned sheet keeps its layout when you optimize.">
           {sheet.pinned ? "📌 Pinned" : "Pin"}
         </button>
@@ -91,6 +106,22 @@ export function SheetView(props: SheetViewProps) {
           Remove
         </button>
       </header>
+      <p className="sheet-stock" title={stockLabel(ctx, stock)}>
+        {stockLabel(ctx, stock)}
+      </p>
+      <p className="sheet-summary">
+        {summaryItems(summary, currency).map((item, index) => (
+          <Fragment key={index}>
+            {index > 0 && " · "}
+            <span>
+              {cutColors === "tool" && item.tool !== undefined && (
+                <span className="swatch" style={{ background: (item.tool !== null && tools.colorOf(item.tool)) || TOOL_WARNING_COLOR }} />
+              )}
+              {item.text}
+            </span>
+          </Fragment>
+        ))}
+      </p>
       <svg
         className="sheet-area"
         data-sheet={sheet.id}
@@ -168,12 +199,14 @@ export function SheetView(props: SheetViewProps) {
         {showCuts &&
           steps.map((step) => {
             const [x1, y1, x2, y2] = step.axis === "x" ? [step.at, step.from, step.at, step.to] : [step.from, step.at, step.to, step.at];
-            const color = stageColor(step.stage);
+            const byTool = cutColors === "tool";
+            const color = byTool ? tools.cutColor(step) : stageColor(step.stage);
+            const name = cutName(step);
             const mx = px((x1 + x2) / 2);
             const my = px((y1 + y2) / 2);
+            const open = () => props.onOpenStep(step.step);
             return (
-              <g key={step.step} className="cut" aria-hidden="true">
-                <title>{`Step ${step.step}: ${step.kind}, stage ${step.stage}`}</title>
+              <g key={step.step} className="cut" data-step={step.step}>
                 <line
                   x1={px(x1)}
                   y1={px(y1)}
@@ -184,10 +217,24 @@ export function SheetView(props: SheetViewProps) {
                   strokeOpacity={showKerf ? 0.55 : 0.9}
                   strokeDasharray={step.kind === "trim" ? "4 3" : undefined}
                 />
-                <circle cx={mx} cy={my} r={8} fill="#fff" stroke={color} />
-                <text x={mx} y={my} fontSize={9} textAnchor="middle" dominantBaseline="central" fill={color}>
-                  {step.step}
-                </text>
+                <g
+                  className="cut-number"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={name}
+                  onClick={open}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    open();
+                  }}
+                >
+                  <title>{`${name}, stage ${step.stage}. Open it on the Shop tab.`}</title>
+                  <circle cx={mx} cy={my} r={8} fill={byTool && toolWarning(step) ? TOOL_WARNING_FILL : "#fff"} stroke={color} />
+                  <text x={mx} y={my} fontSize={9} textAnchor="middle" dominantBaseline="central" fill={color}>
+                    {step.step}
+                  </text>
+                </g>
               </g>
             );
           })}
