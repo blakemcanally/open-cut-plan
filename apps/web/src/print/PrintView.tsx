@@ -4,7 +4,7 @@ import {
   designElevationSvg,
   formatSize,
   grainOk,
-  groupColors,
+  partColors,
   hardwareList,
   labelLayout,
   labelPages,
@@ -188,7 +188,7 @@ function keyRows(analysis: ProjectAnalysis, sheet: SheetAnalysis): KeyRow[] {
 
 function SheetPages({ analysis }: { analysis: ProjectAnalysis }) {
   const ctx = analysis.context;
-  const colors = useMemo(() => groupColors(ctx.project), [ctx.project]);
+  const colors = useMemo(() => partColors(ctx.project), [ctx.project]);
   return (
     <>
       {analysis.sheets.map((sheet) => {
@@ -232,7 +232,7 @@ function SheetPages({ analysis }: { analysis: ProjectAnalysis }) {
 
 function SequencePages({ analysis }: { analysis: ProjectAnalysis }) {
   const ctx = analysis.context;
-  const colors = useMemo(() => groupColors(ctx.project), [ctx.project]);
+  const colors = useMemo(() => partColors(ctx.project), [ctx.project]);
   return (
     <section className="print-page">
       <h1>{ctx.project.project.name}: cut sequence</h1>

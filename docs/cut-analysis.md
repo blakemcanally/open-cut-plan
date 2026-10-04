@@ -140,15 +140,24 @@ projects and to 0.1 mm in mm projects.
   (`missingPrices` lists those). Utilization is part area over stock area, per sheet and per material.
 - `totalCutLength(steps)`: the sum of the lengths of the cut lines of the steps, trims included. The CLI `show` and
   `report sequence` commands and the Reports tab of the web app give it next to the count of cut steps.
-- `partLabels`: one label per part copy with its name, group, size, material, grain (`none` when grain does not
+- `partLabels`: one label per part copy with its name, colour key (the group, or the design and its unit, for example
+  "Hall KALLAX 2 of 3"), size, material, grain (`none` when grain does not
   constrain the part), sheet number, and the step that cuts it free. A stuck part has no such step. `analyzeProject`
   returns no labels when the `labels` feature is off.
-- `sheetSvg`: a standalone SVG drawing of one sheet in project units, with the parts in their group colours, grain
-  stripes and arrows, the trim zone, and numbered cut lines in stage colours. Options pick the group colours, the
+- `sheetSvg`: a standalone SVG drawing of one sheet in project units, with the parts in their colours, grain
+  stripes and arrows, the trim zone, and numbered cut lines in stage colours. Options pick the part colours, the
   `width` and `height` attributes, a step to draw stronger, and the steps to draw as done. `sheetSvgExtent` gives the
   area it draws: the sheet and a margin on every side, so the numbers on edge cuts are not clipped. All text is
   escaped, so the result is safe to put in a page.
-- `groupColors` and `stageColor` give the colours that the drawings use. A part without a group is `NO_GROUP_COLOR`.
+- `partColors(project)` gives the colour of each part copy. Each unit of a design is one colour key, and each group of
+  parts without a design is one key (see [format.md](format.md#colours-added-in-14)). `colorOf(part, copy)` gives the
+  colour, `keyOf(part, copy)` gives the key with its label, and `legend` lists the keys in the order that they first
+  occur. A chosen colour replaces the automatic colour of its key. The automatic colours come from `PART_PALETTE`
+  (12 light colours with a contrast of 7 or more against black text). A part without a design or a group is
+  `NO_GROUP_COLOR`. `designUnit(project, part, copy)` gives the unit of a design part copy.
+- `setDesignColor(project, design, unit, color)` and `setGroupColor(project, group, color)` set a chosen colour, or
+  make it automatic again with `null`. `detachDesign` keeps the colour of the first unit as the colour of the group.
+- `stageColor` gives the colour of the cut lines of a stage.
 - `LABEL_LAYOUTS` has the label sheets: Avery 5160 (US Letter, 3 × 10), Avery L7160 (A4, 3 × 7), and a 4 × 2 in
   thermal label. `labelPages(labels, layout, start)` puts the labels on pages from a start position (1 is the top
   left, then along the row) and fills the rest of the last page with `null`.

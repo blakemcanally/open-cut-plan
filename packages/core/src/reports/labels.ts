@@ -2,11 +2,13 @@ import type { Grain } from "../format/schema.ts";
 import { canRotate, copyLabel, materialName, type PlanContext } from "../plan/context.ts";
 import type { SheetAnalysis } from "../plan/sheets.ts";
 import type { Step } from "../sequence/sequence.ts";
+import { partColors } from "./colors.ts";
 
 export interface PartLabel {
   part: string;
   copy: number;
   name: string;
+  /** The colour key: the group, or the design with its unit, such as "Hall KALLAX 2 of 3". */
   group: string | null;
   length: number;
   width: number;
@@ -38,6 +40,7 @@ export function partLabels(ctx: PlanContext, sheets: readonly SheetAnalysis[], s
     free(step, step.remainderPlacements, step.remainderNext);
   }
 
+  const colors = partColors(ctx.project);
   const labels: PartLabel[] = [];
   for (const part of ctx.project.parts) {
     for (let copy = 0; copy < part.quantity; copy++) {
@@ -46,7 +49,7 @@ export function partLabels(ctx: PlanContext, sheets: readonly SheetAnalysis[], s
         part: part.id,
         copy,
         name: copyLabel(part, copy),
-        group: part.group ?? null,
+        group: colors.keyOf(part, copy)?.label ?? null,
         length: part.length,
         width: part.width,
         material: materialName(ctx, part.material),

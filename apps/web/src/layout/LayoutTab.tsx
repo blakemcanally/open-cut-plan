@@ -7,7 +7,7 @@ import {
   extraCostPercent,
   findCopy,
   findFreeSpot,
-  groupColors,
+  partColors,
   moveCopyTo,
   moveToTray,
   nudgeCopy,
@@ -97,7 +97,7 @@ export function LayoutTab({ store, analysis, prefs, runs, onShowSettings }: Layo
   dragRef.current = drag;
 
   const sheets = project.plan?.sheets ?? [];
-  const colors = useMemo(() => groupColors(project), [project]);
+  const colors = useMemo(() => partColors(project), [project]);
   const unplaced = useMemo(() => unplacedCopies(project), [project]);
   const enabledStock = project.stock.filter((stock) => stock.enabled !== false);
   const chosenStock = enabledStock.find((stock) => stock.id === stockChoice) ?? enabledStock[0];

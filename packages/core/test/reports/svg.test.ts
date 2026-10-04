@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { analyzeProject, escapeXml, groupColors, sheetSvg, sheetSvgExtent, stageColor, type Project } from "../../src/index.ts";
-import { sampleProject } from "../helpers.ts";
+import { analyzeProject, escapeXml, PART_PALETTE, partColors, regenerateDesigns, sheetSvg, sheetSvgExtent, stageColor, type Project } from "../../src/index.ts";
+import { designProject, kallaxDesign, sampleProject } from "../helpers.ts";
 
 function drawn(project: Project, options?: Parameters<typeof sheetSvg>[3]) {
   const analysis = analyzeProject(project);
@@ -82,10 +82,29 @@ describe("sheetSvg", () => {
     const project = sampleProject();
     project.parts[0]!.group = "Case";
     project.settings.features.grain = false;
-    const { svg } = drawn(project, { colors: groupColors(project) });
-    expect(svg).toContain(`fill="${groupColors(project).get("Case")}"`);
+    const { svg } = drawn(project, { colors: partColors(project) });
+    expect(svg).toContain(`fill="${PART_PALETTE[0]}"`);
     expect(svg).not.toContain("<pattern");
     expect(svg).toContain(">Side 1</text>");
+  });
+
+  it("colours each unit of a design in its own colour", () => {
+    const project = regenerateDesigns(designProject([kallaxDesign({ quantity: 2, colors: ["", "#123456"] })]));
+    project.plan = {
+      sheets: [
+        {
+          id: "s1",
+          stock: "ply18-sheet",
+          placements: [
+            { part: "kx-top", copy: 0, x: 0, y: 0, rotated: false },
+            { part: "kx-top", copy: 1, x: 0, y: 400, rotated: false },
+          ],
+        },
+      ],
+    };
+    const { svg } = drawn(project, { colors: partColors(project) });
+    expect(svg).toMatch(new RegExp(`data-part="kx-top#0"[^>]*>\\n<rect [^>]*fill="${PART_PALETTE[0]}"`));
+    expect(svg).toMatch(/data-part="kx-top#1"[^>]*>\n<rect [^>]*fill="#123456"/);
   });
 
   it("highlights one step, greys the steps that are done, and can leave out the cuts", () => {
@@ -101,13 +120,5 @@ describe("sheetSvg", () => {
 describe("escapeXml", () => {
   it("escapes the five XML characters", () => {
     expect(escapeXml(`<a href="x">'&'</a>`)).toBe("&lt;a href=&quot;x&quot;&gt;&apos;&amp;&apos;&lt;/a&gt;");
-  });
-});
-
-describe("groupColors", () => {
-  it("gives each group a colour in the order the groups first appear", () => {
-    const project = sampleProject();
-    project.parts.push({ ...project.parts[0]!, id: "a", group: "B" }, { ...project.parts[0]!, id: "b", group: "A" }, { ...project.parts[0]!, id: "c", group: "B" });
-    expect([...groupColors(project).keys()]).toEqual(["B", "A"]);
   });
 });

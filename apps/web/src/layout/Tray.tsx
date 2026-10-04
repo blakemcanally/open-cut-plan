@@ -2,9 +2,9 @@ import {
   copyLabel,
   formatSize,
   materialName,
-  NO_GROUP_COLOR,
   sameCopy,
   type CopyRef,
+  type PartColors,
   type PlanContext,
   type UnplacedReason,
 } from "@opencutplan/core";
@@ -21,7 +21,7 @@ export const REASON_TEXT: Readonly<Record<UnplacedReason, string>> = {
 interface TrayProps {
   ctx: PlanContext;
   copies: readonly CopyRef[];
-  colors: ReadonlyMap<string, string>;
+  colors: PartColors;
   reasons: ReadonlyMap<string, UnplacedReason>;
   selected: CopyRef | null;
   dropping: boolean;
@@ -59,7 +59,7 @@ export function Tray({ ctx, copies, colors, reasons, selected, dropping, onPoint
                     onClick={() => onSelect(ref)}
                     onFocus={() => onSelect(ref)}
                   >
-                    <span className="swatch" style={{ background: (part.group !== undefined && colors.get(part.group)) || NO_GROUP_COLOR }} />
+                    <span className="swatch" style={{ background: colors.colorOf(part, ref.copy) }} />
                     <b>{copyLabel(part, ref.copy)}</b> <span>{formatSize(ctx, part)}</span>
                     {reason && <span className="reason"> ⚠ {REASON_TEXT[reason]}</span>}
                   </button>

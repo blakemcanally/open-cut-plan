@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { analyzeProject, fileBase, groupColors, serializeProject, sheetSvg, withCuts } from "@opencutplan/core";
+import { analyzeProject, fileBase, partColors, serializeProject, sheetSvg, withCuts } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, loadProject, warningLines, writeOutput } from "../project.ts";
 import { CliError, EXIT, usageError, type CommandSpec, type GroupSpec } from "../spec.ts";
@@ -35,7 +35,7 @@ const svg: CommandSpec = {
     const sheets = analysis.sheets.filter((sheet) => chosen === null || sheet.sheet.id === chosen.sheet.id);
     if (chosen && sheets.length === 0) throw new CliError(EXIT.failed, "missing-stock", `Sheet ${chosen.number} uses the unknown stock ${chosen.sheet.stock}, so it cannot be drawn.`, { sheet: chosen.sheet.id });
     if (sheets.length === 0) throw new CliError(EXIT.failed, "no-sheets", "The plan has no sheets to draw. Run optimize first.");
-    const colors = groupColors(project);
+    const colors = partColors(project);
     const draw = (sheet: (typeof sheets)[number]) => sheetSvg(analysis.context, sheet, analysis.steps, { colors, showCuts: !flag(options, "no-cuts") });
     if (out === "-") {
       if (sheets.length > 1) throw usageError("--out - needs --sheet: standard output takes one sheet.", "invalid-option", { option: "out" });

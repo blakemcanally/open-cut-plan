@@ -2,13 +2,13 @@ import {
   copyLabel,
   formatSize,
   grainOk,
-  NO_GROUP_COLOR,
   placedRect,
   sameCopy,
   stageColor,
   stockLabel,
   usableRect,
   type CopyRef,
+  type PartColors,
   type PlanContext,
   type PlanSheet,
   type Rect,
@@ -29,7 +29,7 @@ interface SheetViewProps {
   number: number;
   scale: number;
   steps: readonly Step[];
-  colors: ReadonlyMap<string, string>;
+  colors: PartColors;
   /** Placement indices that an error refers to. */
   errors: ReadonlySet<number>;
   selected: CopyRef | null;
@@ -143,7 +143,7 @@ export function SheetView(props: SheetViewProps) {
               onPointerDown={(event) => props.onPartPointerDown(event, ref)}
               onFocus={() => props.onSelect(ref)}
             >
-              <rect className="fill" width={w} height={h} fill={(part.group !== undefined && colors.get(part.group)) || NO_GROUP_COLOR} />
+              <rect className="fill" width={w} height={h} fill={colors.colorOf(part, placement.copy)} />
               {striped && <rect width={w} height={h} fill={`url(#${uid}-${horizontal ? "h" : "v"})`} />}
               <rect className="outline" width={w} height={h} />
               {w > 28 && h > 14 && (

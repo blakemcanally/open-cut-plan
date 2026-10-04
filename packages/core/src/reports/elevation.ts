@@ -6,7 +6,7 @@ import { designGeometry, materialsById } from "../design/geometry.ts";
 import { railsFor } from "../design/hardware.ts";
 import { designPanels } from "../design/panels.ts";
 import { DEFAULT_DESIGN_MOUNT } from "../design/systems.ts";
-import { groupColors, NO_GROUP_COLOR } from "./colors.ts";
+import { designColorKey, NO_GROUP_COLOR, partColors } from "./colors.ts";
 import { escapeXml } from "./svg.ts";
 
 const LEG_HEIGHT_MM = 100;
@@ -32,7 +32,7 @@ export function designElevationSvg(project: Project, designId: string): string |
   const unit = Math.max(width, height) / 40;
   const below = mount === "legs" ? fromMm(LEG_HEIGHT_MM) : mount === "feet" ? fromMm(FOOT_HEIGHT_MM) : 0;
   const margin = unit * 4;
-  const fill = groupColors(project).get(design.name) ?? NO_GROUP_COLOR;
+  const fill = partColors(project).get(designColorKey(design.id, 1))?.color ?? NO_GROUP_COLOR;
   const stroke = `stroke="#333" stroke-width="${num(unit * 0.08)}"`;
   const font = (scale: number) => `font-size="${num(unit * scale)}"`;
   const viewWidth = width + 2 * margin;

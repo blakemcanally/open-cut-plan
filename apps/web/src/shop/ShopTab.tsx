@@ -1,4 +1,4 @@
-import { describeStep, groupColors, LIMIT_WORDS, resultLabel, sequencePlan, sheetSvg, stockLabel, toolLimit, type ProjectAnalysis, type Step, type Tool } from "@opencutplan/core";
+import { describeStep, partColors, LIMIT_WORDS, resultLabel, sequencePlan, sheetSvg, stockLabel, toolLimit, type ProjectAnalysis, type Step, type Tool } from "@opencutplan/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PrintJob } from "../print/PrintView.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
@@ -32,7 +32,7 @@ export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
   const { project, edit } = store;
   const { steps, context: ctx } = analysis;
   const state = useMemo(() => shopState(project, steps), [project, steps]);
-  const colors = useMemo(() => groupColors(project), [project]);
+  const colors = useMemo(() => partColors(project), [project]);
   const [chosen, setChosen] = useState<number | null>(null);
   const list = useRef<HTMLElement>(null);
   const runs = useMemo(() => sheetRuns(steps), [steps]);

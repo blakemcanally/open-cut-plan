@@ -24,9 +24,11 @@ describe("designElevationSvg", () => {
     expect(svg).toContain(">Depth 390 mm</text>");
   });
 
-  it("fills the panels with the colour of the design group", () => {
+  it("fills the panels with the colour of the first unit of the design", () => {
     expect(designElevationSvg(project, "kx")).toContain('fill="#9cc3e6"');
     expect(designElevationSvg(project, "ek")).toContain('fill="#f2c27b"');
+    const chosen = { ...project, designs: project.designs!.map((design) => (design.id === "ek" ? { ...design, colors: ["#abcdef"] } : design)) };
+    expect(designElevationSvg(chosen, "ek")).toContain('fill="#abcdef"');
   });
 
   it("draws the rail behind an EKET on the wall, and the legs under a unit on legs", () => {

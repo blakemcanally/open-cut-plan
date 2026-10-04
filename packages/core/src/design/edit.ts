@@ -1,3 +1,4 @@
+import { setGroupColor } from "../edit/colors.ts";
 import { withoutPlacements } from "../edit/parts.ts";
 import type { Design, DesignAxis, Project } from "../format/schema.ts";
 import type { DesignSystem } from "./systems.ts";
@@ -24,14 +25,17 @@ export function removeDesign(project: Project, id: string): Project {
   return withoutPlacements(next, (placement) => gone.has(placement.part));
 }
 
-/** Removes the design and keeps its parts, and their copies on the sheets, as normal parts. */
+/** Removes the design and keeps its parts, and their copies on the sheets, as normal parts. The colour of its first unit becomes the colour of its group. */
 export function detachDesign(project: Project, id: string): Project {
   const parts = project.parts.map((part) => {
     if (part.design !== id) return part;
     const { design: _design, ...rest } = part;
     return rest;
   });
-  return withDesigns({ ...project, parts }, (project.designs ?? []).filter((design) => design.id !== id));
+  const next = withDesigns({ ...project, parts }, (project.designs ?? []).filter((design) => design.id !== id));
+  const design = project.designs?.find((candidate) => candidate.id === id);
+  const color = design?.colors?.[0];
+  return design && color && !project.groups?.[design.name]?.color ? setGroupColor(next, design.name, color) : next;
 }
 
 /** Changes the design id, and the ids of its parts and their copies, so the copies stay on their sheets. */

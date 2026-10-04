@@ -1,4 +1,4 @@
-import { analyzeProject, createProject, type Project } from "@opencutplan/core";
+import { analyzeProject, createProject, PART_PALETTE, partColors, regenerateDesigns, type Project } from "@opencutplan/core";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
@@ -10,7 +10,7 @@ import { useOptimizeRuns } from "../src/optimizer/useOptimizeRuns.ts";
 import type { WorkerFactory, WorkerLike } from "../src/optimizer/useOptimizer.ts";
 import { DEFAULT_PREFS } from "../src/state/prefs.ts";
 import { useProject, type ProjectStore } from "../src/state/useProject.ts";
-import { inProcessWorkers, sampleProject } from "./helpers.ts";
+import { designProject, inProcessWorkers, sampleProject } from "./helpers.ts";
 
 function renderLayout(initial: Project = sampleProject(), factory: WorkerFactory = inProcessWorkers().factory, onShowSettings = () => {}) {
   let latest: ProjectStore | null = null;
@@ -38,7 +38,7 @@ describe("SheetView", () => {
         number={1}
         scale={4}
         steps={[]}
-        colors={new Map()}
+        colors={partColors(project)}
         errors={new Set()}
         selected={null}
         dragging={null}
@@ -83,6 +83,22 @@ describe("SheetView", () => {
 });
 
 describe("LayoutTab", () => {
+  it("shows each unit of a design in its own colour, on the sheets and in the tray", () => {
+    const base = designProject();
+    const project = regenerateDesigns({ ...base, designs: [{ ...base.designs![0]!, quantity: 2, colors: ["", "#123456"] }] });
+    project.plan!.sheets[0]!.placements = [
+      { part: "hall-top", copy: 0, x: 0, y: 0, rotated: false },
+      { part: "hall-top", copy: 1, x: 0, y: 400, rotated: false },
+    ];
+    renderLayout(project);
+    const fill = (key: string) => document.querySelector(`[data-copy-key="${key}"] rect.fill`)?.getAttribute("fill");
+    expect(fill("hall-top#0")).toBe(PART_PALETTE[0]);
+    expect(fill("hall-top#1")).toBe("#123456");
+    const swatch = (key: string) => (document.querySelector(`.tray [data-copy-key="${key}"] .swatch`) as HTMLElement).style.background;
+    expect(swatch("hall-side#1")).toBe("rgb(156, 195, 230)");
+    expect(swatch("hall-side#2")).toBe("rgb(18, 52, 86)");
+  });
+
   it("fits the sheets in the window height at 100 % and follows a resize of the window", () => {
     const saved = window.innerHeight;
     const setHeight = (value: number) => Object.defineProperty(window, "innerHeight", { value, configurable: true });

@@ -5,7 +5,7 @@ import {
   fileBase,
   formatIn,
   formatSize,
-  groupColors,
+  partColors,
   hardwareList,
   LABEL_LAYOUTS,
   labelLayout,
@@ -42,7 +42,7 @@ export function ReportsTab({ store, analysis, prefs, onPrefs, onPrint }: Reports
   const ctx = analysis.context;
   const planned = analysis.sheets.length > 0;
   const base = fileBase(project.project.name);
-  const colors = useMemo(() => groupColors(project), [project]);
+  const colors = useMemo(() => partColors(project), [project]);
   const unsaved = useMemo(() => unsavedOffcuts(project, analysis.offcuts), [project, analysis.offcuts]);
   const [offcutStatus, setOffcutStatus] = useState<string | null>(null);
   const [layoutId, setLayoutId] = useState<LabelLayoutId>(ctx.units === "in" ? "avery-5160" : "avery-l7160");

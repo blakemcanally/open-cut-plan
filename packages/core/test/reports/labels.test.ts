@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../../../examples/builders/index.ts";
-import { analyzeProject, analyzeSheets, parseProject, partLabels, planContext, sequenceCuts, type Project } from "../../src/index.ts";
-import { sampleProject } from "../helpers.ts";
+import { analyzeProject, analyzeSheets, parseProject, partLabels, planContext, regenerateDesigns, sequenceCuts, type Project } from "../../src/index.ts";
+import { designProject, kallaxDesign, sampleProject } from "../helpers.ts";
 
 function labelsOf(project: Project) {
   const ctx = planContext(project);
@@ -24,6 +24,20 @@ describe("partLabels", () => {
     project.settings.features.grain = false;
     const labels = labelsOf(project);
     expect(labels[1]).toMatchObject({ name: "Side 2", sheetNumber: null, step: null, grain: "none" });
+  });
+
+  it("names the group, and the unit of a design with more than one unit", () => {
+    const project = regenerateDesigns(designProject([kallaxDesign({ quantity: 2 })]));
+    const tops = labelsOf(project).filter((label) => label.part === "kx-top");
+    expect(tops.map((label) => [label.name, label.group])).toEqual([
+      ["Top 1", "Hall KALLAX 1 of 2"],
+      ["Top 2", "Hall KALLAX 2 of 2"],
+    ]);
+    const single = labelsOf(regenerateDesigns(designProject([kallaxDesign()])));
+    expect(single[0]!.group).toBe("Hall KALLAX");
+    const grouped = sampleProject();
+    grouped.parts[0]!.group = "Case";
+    expect(labelsOf(grouped)[1]!.group).toBe("Case");
   });
 
   it("frees a part that fills the trimmed sheet at the last trim cut", () => {

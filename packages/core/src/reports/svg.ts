@@ -1,11 +1,11 @@
 import { copyLabel, formatSize, grainOk, stockLabel, usableRect, type PlanContext } from "../plan/context.ts";
 import type { SheetAnalysis } from "../plan/sheets.ts";
 import type { Step } from "../sequence/sequence.ts";
-import { NO_GROUP_COLOR, stageColor } from "./colors.ts";
+import { NO_GROUP_COLOR, stageColor, type PartColors } from "./colors.ts";
 
 export interface SheetSvgOptions {
-  /** Fill colour for each part group; see `groupColors`. */
-  colors?: ReadonlyMap<string, string>;
+  /** The fill of each part copy; see `partColors`. Without it, every part is `NO_GROUP_COLOR`. */
+  colors?: PartColors;
   /** The `width` and `height` attributes. They default to the real size of `sheetSvgExtent`, such as `99.2in` and `51.2in` for a 96 × 48 sheet. */
   width?: string;
   height?: string;
@@ -83,7 +83,7 @@ export function sheetSvg(ctx: PlanContext, sheet: SheetAnalysis, steps: readonly
     const placement = sheet.sheet.placements[item.index]!;
     const part = ctx.parts.get(placement.part)!;
     const { rect } = item;
-    const fill = (part.group !== undefined && options.colors?.get(part.group)) || NO_GROUP_COLOR;
+    const fill = options.colors?.colorOf(part, placement.copy) ?? NO_GROUP_COLOR;
     const striped = grained && part.grain !== "none";
     const horizontal = (part.grain === "length") !== placement.rotated;
     const cross = striped && !grainOk(ctx, part, placement.rotated);
