@@ -122,6 +122,31 @@ describe("partColors", () => {
     expect(colors.colorOf(shelf, 6)).toBe(PART_PALETTE[1]);
   });
 
+  it("gives the long shelves and short dividers of combined cells the colour of their unit", () => {
+    const design = kallaxDesign({
+      quantity: 2,
+      width: { openings: [335, 335, 335, 335] },
+      height: { openings: [335, 335] },
+      combined: [{ column: 1, row: 1, columns: 2, rows: 1 }],
+      colors: ["", "#123456"],
+    });
+    const project = regenerateDesigns(designProject([design]));
+    const colors = partColors(project);
+    expect(colors.legend.map((key) => [key.label, key.color])).toEqual([
+      ["Hall KALLAX 1 of 2", PART_PALETTE[0]],
+      ["Hall KALLAX 2 of 2", "#123456"],
+    ]);
+    for (const [id, name] of [
+      ["kx-shelf-cols-1-2", "Shelf, columns 1–2"],
+      ["kx-divider-rows-2", "Divider, row 2"],
+    ]) {
+      const combined = part(project, id!);
+      expect(combined).toMatchObject({ name, quantity: 2, design: "kx" });
+      expect([0, 1].map((copy) => colors.colorOf(combined, copy))).toEqual([PART_PALETTE[0], "#123456"]);
+      expect([0, 1].map((copy) => colors.keyOf(combined, copy)?.key)).toEqual([designColorKey("kx", 1), designColorKey("kx", 2)]);
+    }
+  });
+
   it("uses a chosen colour in place of the automatic colour, and keeps the automatic colours of the other keys", () => {
     const project = regenerateDesigns(designProject([kallaxDesign({ quantity: 3, colors: ["", "#FF0000"] })]));
     const { design: _design, ...manual } = project.parts[0]!;

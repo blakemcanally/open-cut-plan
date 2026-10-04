@@ -10,6 +10,7 @@ import {
   hasFactoryEdges,
   planContext,
   pushToFactoryEdges,
+  regenerateDesigns,
   sheetFactoryEdgeMisses,
   sideLine,
   validatePlan,
@@ -17,6 +18,7 @@ import {
   type Placement,
   type Project,
 } from "../../src/index.ts";
+import { designProject, kallaxDesign } from "../helpers.ts";
 
 /** An inch project with factory edges: an unlimited 96 × 48 sheet and a 40 × 12 part that asks for a long factory edge. */
 function edgeProject(placements: Placement[] = []): Project {
@@ -61,6 +63,24 @@ describe("factoryEdgeRequest", () => {
     expect(factoryEdgeRequest(withRule(40), part({}))).toBe("long");
     expect(factoryEdgeRequest(withRule(40.5), part({}))).toBeNull();
     expect(factoryEdgeRequest(withRule(40), part({ length: 12, width: 40 }))).toBe("long");
+  });
+
+  it("applies the rule to the long shelves of combined cells like the other design parts", () => {
+    const design = kallaxDesign({ width: { openings: [335, 335, 335, 335] }, height: { openings: [335, 335] }, combined: [{ column: 1, row: 1, columns: 2, rows: 1 }] });
+    const project = regenerateDesigns(designProject([design]));
+    project.settings.factoryEdge = { minLength: 600 };
+    const asks = Object.fromEntries(project.parts.map((p) => [p.id, factoryEdgeRequest(project, p)]));
+    expect(asks).toEqual({
+      "kx-top": "long",
+      "kx-bottom": "long",
+      "kx-side": "long",
+      "kx-divider": "long",
+      "kx-divider-rows-2": null,
+      "kx-shelf": null,
+      "kx-shelf-cols-1-2": "long",
+    });
+    const shelf = project.parts.find((p) => p.id === "kx-shelf-cols-1-2")!;
+    expect(factoryEdgeRequest(project, { ...shelf, factoryEdge: "none" })).toBeNull();
   });
 
   it("uses the rule for a choice that it does not know", () => {
