@@ -73,6 +73,8 @@ parts from the design, and the Parts tab lists them. The file format is in [form
   material, the app adds nothing.
 - A KALLAX or EKET width or height takes its size from the cells. A custom axis is sized by the outside size, or by
   the list of openings (`335, 335`). Changing the count of a custom axis sized by openings repeats the last opening.
+- **Size by** comes from the design in the file, so the choice stays after a reload. A new count of KALLAX or EKET
+  cells keeps the **Size by** choice of the axis.
 - Changing the system to KALLAX or EKET applies its cell sizes and depth. Changing it to Custom keeps the sizes.
 - **Cells** shows the grid of cells, to scale. Click a cell to select it. Shift-click a second cell, or drag over the
   cells, to select the rectangle between them. The arrow keys move between the cells, and Shift with an arrow key makes
@@ -113,9 +115,11 @@ parts from the design, and the Parts tab lists them. The file format is in [form
 
 An editable table: name, length, width, quantity, material, grain, factory edge, group, and notes. Lengths accept fractions and
 feet (`2' 3 1/2`), decimals, and millimetres. A field keeps text it cannot read, marks it, and restores the last good
-value when the focus leaves; Escape restores it at once.
+value when the focus leaves; Escape restores it at once. Under a length or number field with a bad value, a message
+tells the user what to type, for example "Type a length, for example 24 1/2, 2' 3", or 600 mm." Screen readers read
+the message as the description of the field.
 
-- **Add part** adds a part and puts the focus in its name.
+- **Add part** adds a part, puts the focus in its name, and selects the name, so that typing replaces it.
 - Pasting rows from a spreadsheet anywhere on the tab opens the import dialog. **Paste rows…** and **Import CSV…** open
   the same dialog. The dialog guesses the columns from the header; when it cannot, the user picks them. Rows with
   errors are listed and left out. The dialog names the materials that are new; **Import** adds them.

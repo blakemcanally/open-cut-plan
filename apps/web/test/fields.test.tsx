@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { LengthInput, NumberInput, TextInput } from "../src/components/fields.tsx";
+import { description } from "./helpers.ts";
 
 const display = { inch: 32, mm: 0.5 } as const;
 
@@ -29,6 +30,44 @@ describe("LengthInput", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("says under the field why it cannot read the text, and removes the message when the focus leaves", async () => {
+    render(<LengthInput aria-label="Length" value={10} units="in" display={display} onChange={vi.fn()} />);
+    const input = screen.getByLabelText("Length");
+    expect(input.getAttribute("aria-describedby")).toBeNull();
+    await userEvent.clear(input);
+    await userEvent.type(input, "abc{Enter}");
+    const message = 'Type a length, for example 24 1/2, 2\' 3", or 600 mm.';
+    expect(description(input)).toBe(message);
+    expect(screen.getByText(message).className).toBe("field-error");
+    await userEvent.clear(input);
+    await userEvent.type(input, "0{Enter}");
+    expect(description(input)).toBe("Type a length of more than 0.");
+    await userEvent.type(input, "1");
+    expect(screen.queryByText("Type a length of more than 0.")).toBeNull();
+    await userEvent.clear(input);
+    await userEvent.type(input, "{Enter}");
+    expect(description(input)).toBe("Type a length.");
+    await userEvent.tab();
+    expect(input.getAttribute("aria-describedby")).toBeNull();
+    expect(screen.queryByText("Type a length.")).toBeNull();
+  });
+
+  it("gives millimetre examples in a millimetre project, and keeps its own description", async () => {
+    render(
+      <>
+        <LengthInput aria-label="Length" aria-describedby="hint" value={10} units="mm" display={display} onChange={vi.fn()} />
+        <span id="hint">The inside size.</span>
+      </>,
+    );
+    const input = screen.getByLabelText("Length");
+    await userEvent.clear(input);
+    await userEvent.type(input, "0{Enter}");
+    expect(description(input)).toBe("The inside size. Type a length of more than 0.");
+    await userEvent.clear(input);
+    await userEvent.type(input, "x{Enter}");
+    expect(description(input)).toBe('The inside size. Type a length, for example 600, 600 mm, or 24 1/2".');
+  });
+
   it("keeps the text marked when onChange refuses the value", async () => {
     const onChange = vi.fn(() => false);
     render(<LengthInput aria-label="Width" value={700} units="mm" display={display} onChange={onChange} />);
@@ -37,6 +76,7 @@ describe("LengthInput", () => {
     await userEvent.type(input, "20{Enter}");
     expect(onChange).toHaveBeenCalledWith(20);
     expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect(input.getAttribute("aria-describedby")).toBeNull();
     expect(input).toHaveProperty("value", "20");
     await userEvent.tab();
     expect(input).toHaveProperty("value", "700 mm");
@@ -62,6 +102,7 @@ describe("NumberInput and TextInput", () => {
     await userEvent.clear(input);
     await userEvent.type(input, "0{Enter}");
     expect(onChange).not.toHaveBeenCalled();
+    expect(description(input)).toBe("Type a whole number of 1 or more.");
     await userEvent.clear(input);
     await userEvent.type(input, "4{Enter}");
     expect(onChange).toHaveBeenCalledWith(4);
@@ -76,6 +117,7 @@ describe("NumberInput and TextInput", () => {
       await userEvent.type(input, `${text}{Enter}`);
     }
     expect(onChange).not.toHaveBeenCalled();
+    expect(description(input)).toBe("Type a whole number from 1 to 100.");
     await userEvent.clear(input);
     await userEvent.type(input, "100{Enter}");
     expect(onChange).toHaveBeenCalledWith(100);

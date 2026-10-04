@@ -85,3 +85,9 @@ export function inProcessWorkers(): { factory: WorkerFactory; created: WorkerLik
   };
   return { factory, created };
 }
+
+/** The text of the elements that aria-describedby names, joined with spaces. */
+export function description(element: Element): string {
+  const ids = (element.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
+  return ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
+}
