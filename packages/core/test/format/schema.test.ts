@@ -6,7 +6,7 @@ describe("createProject", () => {
   it("fills every default", () => {
     const project = createProject("Shelf", "in");
     expect(project.format).toBe("opencutplan");
-    expect(project.version).toBe("1.6");
+    expect(project.version).toBe("1.7");
     expect(project.project).toEqual({ name: "Shelf", units: "in" });
     expect(project.settings).toEqual({
       features: Object.fromEntries(FEATURE_KEYS.map((key) => [key, true])),
@@ -83,6 +83,13 @@ describe("designs", () => {
     expect(result.ok && result.project).toEqual(project);
   });
 
+  it("round-trips the combined cells of a design", () => {
+    const project = designProject([kallaxDesign({ combined: [{ column: 1, row: 1, columns: 2, rows: 1 }] })]);
+    const result = parseProject(serializeProject(project));
+    expect(result.ok && result.warnings).toEqual([]);
+    expect(result.ok && result.project.designs![0]!.combined).toEqual([{ column: 1, row: 1, columns: 2, rows: 1 }]);
+  });
+
   it.each([
     ["an empty openings list", { width: { openings: [] } }],
     ["a zero opening", { width: { openings: [335, 0] } }],
@@ -92,6 +99,9 @@ describe("designs", () => {
     ["a quantity of 0", { quantity: 0 }],
     ["an axis with neither form", { height: { size: 700 } }],
     ["a zero depth", { depth: 0 }],
+    ["a combined cell with 0 columns", { combined: [{ column: 1, row: 1, columns: 0, rows: 1 }] }],
+    ["a combined cell at column 1.5", { combined: [{ column: 1.5, row: 1, columns: 2, rows: 1 }] }],
+    ["a combined cell with no rows", { combined: [{ column: 1, row: 1, columns: 2 }] }],
   ])("refuses %s", (_name, patch) => {
     const project = designProject([{ ...kallaxDesign(), ...patch } as Design]);
     expect(parseProject(JSON.parse(serializeProject(project))).ok).toBe(false);

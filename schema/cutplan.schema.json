@@ -348,6 +348,42 @@
                 }
               ]
             }
+          },
+          "combined": {
+            "maxItems": 1250,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "column": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 50
+                },
+                "row": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 50
+                },
+                "columns": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 50
+                },
+                "rows": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 50
+                }
+              },
+              "required": [
+                "column",
+                "row",
+                "columns",
+                "rows"
+              ],
+              "additionalProperties": {}
+            }
           }
         },
         "required": [

@@ -125,24 +125,24 @@ describe("parseProject", () => {
     expect(result.ok && result.project.settings.features.cutOrder).toBe(true);
   });
 
-  it.each(["1.0", "1.1"])("loads a %s file as version 1.6 with the default goal and no warnings", (version) => {
+  it.each(["1.0", "1.1"])("loads a %s file as version 1.7 with the default goal and no warnings", (version) => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = version;
     delete doc.settings.optimizer.goal;
     delete doc.settings.optimizer.extraCostPercent;
     delete doc.settings.optimizer.keepGroupsTogether;
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.6");
+    expect(result.ok && result.project.version).toBe("1.7");
     expect(result.ok && result.project.settings.optimizer).toMatchObject({ goal: "cost", extraCostPercent: 10, keepGroupsTogether: true });
     expect(result.warnings).toEqual([]);
   });
 
-  it("loads a 1.4 file as version 1.6 and keeps the groups together by default", () => {
+  it("loads a 1.4 file as version 1.7 and keeps the groups together by default", () => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = "1.4";
     delete doc.settings.optimizer.keepGroupsTogether;
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.6");
+    expect(result.ok && result.project.version).toBe("1.7");
     expect(result.ok && result.project.settings.optimizer.keepGroupsTogether).toBe(true);
     expect(result.warnings).toEqual([]);
   });
@@ -156,13 +156,21 @@ describe("parseProject", () => {
     expect(parseProject(doc).ok).toBe(false);
   });
 
-  it("loads a 1.5 file as version 1.6 with no factory edge requests", () => {
+  it("loads a 1.5 file as version 1.7 with no factory edge requests", () => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = "1.5";
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.6");
+    expect(result.ok && result.project.version).toBe("1.7");
     expect(result.ok && result.project.settings.factoryEdge).toBeUndefined();
     expect(result.ok && result.project.parts.map((part) => part.factoryEdge)).toEqual([undefined]);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("loads a 1.6 file as version 1.7 with no warnings", () => {
+    const doc = JSON.parse(serializeProject(sampleProject()));
+    doc.version = "1.6";
+    const result = parseProject(doc);
+    expect(result.ok && result.project.version).toBe("1.7");
     expect(result.warnings).toEqual([]);
   });
 
@@ -213,7 +221,7 @@ describe("parseProject", () => {
   it("loads a newer minor version with a warning and keeps every unknown field on re-save", () => {
     const project = sampleProject();
     const doc = JSON.parse(serializeProject(project));
-    doc.version = "1.7";
+    doc.version = "1.8";
     doc.future = { x: 1 };
     doc.parts[0].edgeBanding = { top: "birch", bottom: null };
     doc.stock[0].supplier = "Local yard";
@@ -228,7 +236,7 @@ describe("parseProject", () => {
       {
         severity: "warning",
         code: "newer-minor",
-        message: "This file uses format version 1.7, which is newer than this app (1.6). Unknown fields are kept but ignored.",
+        message: "This file uses format version 1.8, which is newer than this app (1.7). Unknown fields are kept but ignored.",
         path: ["version"],
       },
     ]);

@@ -1,4 +1,4 @@
-# The OpenCutPlan file format (`.cutplan.json`), version 1.6
+# The OpenCutPlan file format (`.cutplan.json`), version 1.7
 
 An OpenCutPlan file describes a sheet-goods cutting project: the parts to cut, the stock to cut them from, the tools
 available, settings, and optionally a layout of parts on sheets with an ordered list of cuts.
@@ -21,7 +21,7 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | Always `"opencutplan"`. |
-| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.6"`. |
+| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.7"`. |
 | `project` | yes | `name` (text), `units` (`"in"` or `"mm"`), optional `notes`, `created`, `modified` (should be ISO 8601 date-times; readers accept any string). |
 | `materials` | yes | Materials; see below. |
 | `stock` | yes | Stock pieces available for cutting. |
@@ -94,11 +94,18 @@ stored parts as normal parts.
 | `back` | no | `{ "material": <id> }`: a back on the rear edges. No field means no back. |
 | `mount` | no | `"floor"`, `"legs"`, `"feet"`, or `"wall-rail"`. Default `"floor"`. Other values can come in later minor versions. |
 | `colors` | no | The chosen colour of each unit, 0 to 100 values (added in 1.4). See [Colours](#colours-added-in-14). |
+| `combined` | no | Cells that are combined into one larger cell (added in 1.7): a list of spans. No field means no combined cells. |
 
 An **axis** is one of:
 
 - `{ "openings": [335, 335] }`: the size of each cell, 1 to 50 values.
 - `{ "outside": 700, "cells": 2 }`: the outside size, divided into 1 to 50 equal cells.
+
+A **span** in `combined` is `{ "column": 1, "row": 1, "columns": 2, "rows": 1 }`: the top-left cell of the combined
+cell (1-based, columns from the left and rows from the top) and its size in cells. Each number is a whole number from
+1 to 50, and the list has at most 1250 spans. A span must be in the grid, must have 2 cells or more, and must not
+overlap another span; otherwise the design has the error `design-combined` and makes no parts. A span can cover the
+full grid.
 
 **Generated parts.** With *t* the material thickness, *n* columns, *m* rows, and *q* the quantity:
 

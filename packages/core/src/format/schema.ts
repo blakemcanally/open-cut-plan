@@ -2,11 +2,12 @@ import { z } from "zod";
 import { INCH_PRECISIONS, MM_PRECISIONS } from "../geometry/format.ts";
 
 export const FORMAT_ID = "opencutplan";
-export const FORMAT_VERSION = "1.6";
+export const FORMAT_VERSION = "1.7";
 /** Analysis and the editor work per copy, so a larger quantity would freeze them. */
 export const MAX_PART_QUANTITY = 10_000;
 export const MAX_DESIGN_CELLS = 50;
 export const MAX_DESIGN_QUANTITY = 100;
+export const MAX_COMBINED_CELLS = (MAX_DESIGN_CELLS * MAX_DESIGN_CELLS) / 2;
 
 const id = z.string().min(1);
 const positive = z.number().positive();
@@ -66,6 +67,8 @@ export const DesignAxisSchema = z.union([
   z.object({ outside: positive, cells }).loose(),
 ]);
 
+export const CombinedCellSchema = z.object({ column: cells, row: cells, columns: cells, rows: cells }).loose();
+
 export const DesignSchema = z
   .object({
     id,
@@ -79,6 +82,7 @@ export const DesignSchema = z
     back: z.object({ material: id }).loose().optional(),
     mount: z.string().min(1).optional(),
     colors: z.array(z.union([HexColorSchema, z.literal("")])).max(MAX_DESIGN_QUANTITY).optional(),
+    combined: z.array(CombinedCellSchema).max(MAX_COMBINED_CELLS).optional(),
   })
   .loose();
 
@@ -253,6 +257,7 @@ export type Stock = StripIndex<z.output<typeof StockSchema>>;
 export type StockKind = Stock["kind"];
 export type Part = StripIndex<z.output<typeof PartSchema>>;
 export type DesignAxis = StripIndex<z.output<typeof DesignAxisSchema>>;
+export type CombinedCell = StripIndex<z.output<typeof CombinedCellSchema>>;
 export type Design = StripIndex<z.output<typeof DesignSchema>>;
 export type Group = StripIndex<z.output<typeof GroupSchema>>;
 export type Tool = StripIndex<z.output<typeof ToolSchema>>;

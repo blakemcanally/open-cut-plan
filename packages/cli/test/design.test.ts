@@ -159,11 +159,11 @@ describe("design add", () => {
   it("refuses a file from a newer minor version", async () => {
     const io = await hall();
     editFile(io, F, (file) => {
-      file.version = "1.7";
+      file.version = "1.8";
     });
     const result = await cli(["design", "add", F, "--system", "kallax", "--cols", "1", "--rows", "1", "--material", "b18", "--json"], io);
     expect(result.code).toBe(1);
-    expect(result.json().error).toMatchObject({ code: "newer-version", version: "1.7" });
+    expect(result.json().error).toMatchObject({ code: "newer-version", version: "1.8" });
   });
 });
 
