@@ -56,7 +56,15 @@ candidates that keep the groups together use group affinity.
    - When the groups stay together and the copies make two or more runs, some changes move whole groups. Such a
      change puts the copies of each group together, and then moves one group to the start, swaps two groups, or
      gives one group a new order by area with random noise. A change can also turn group affinity on or off.
-3. It stops at `timeLimitMs` (default `settings.optimizer.timeLimitMs`), but only after every material has at least
+3. When a candidate has [factory edge misses](#objective), and its unplaced copies and cost can still win, the
+   search also tries the **pushed** copy of the candidate. The push moves the pieces of each sheet against the factory
+   edges with `pushToFactoryEdges` (see [Factory edges](cut-analysis.md#factory-edges)). The cuts stay the same, and
+   no part turns. The pushed copy goes through the validator and the objective like any candidate, but it does not
+   count against `iterations`.
+   - The random changes start from the chosen candidate when the misses do not count. So the search tries the same
+     candidates as for the same project with no requests, and the misses never make a plan cost more or leave more
+     copies unplaced.
+4. It stops at `timeLimitMs` (default `settings.optimizer.timeLimitMs`), but only after every material has at least
    one candidate. With `iterations`, it runs exactly that many candidates per material and ignores the time.
 
 The random numbers come from `seed` (default `settings.optimizer.seed`, else 1). The same seed and iteration count
@@ -84,11 +92,18 @@ For the goal `cost`, candidates are compared per material, in this order:
 1. **Unplaced copies**: fewer is better.
 2. **Cost**: the sum of the stock `cost` of the sheets used. Owned offcuts count as 0. When the `cost` feature is off,
    or any enabled sheet stock of the material has no `cost`, the stock area is used in place of the cost.
-3. **Group spread**, only when the groups stay together (see below): fewer is better.
-4. **Largest offcut** area: bigger is better (0 when the `offcuts` feature is off).
-5. **Cut steps**, including trims: fewer is better.
-6. **Cut length**: the total length of the cut lines of those steps. Shorter is better.
-7. **Sheets**: fewer is better.
+3. **Factory edge misses**: the placed copies that ask for a factory edge and do not get one. Fewer is better.
+4. **Group spread**, only when the groups stay together (see below): fewer is better.
+5. **Largest offcut** area: bigger is better (0 when the `offcuts` feature is off).
+6. **Cut steps**, including trims: fewer is better.
+7. **Cut length**: the total length of the cut lines of those steps. Shorter is better.
+8. **Sheets**: fewer is better.
+
+**Factory edges.** A copy asks for a factory edge by its `factoryEdge` value or by the rule
+`settings.factoryEdge.minLength` (see [Factory edges](format.md#factory-edges-added-in-16)). The copy gets a factory
+edge when a long edge of the copy is on the edge of a sheet with factory edges: sheet stock with no trim. The misses
+come after the cost, so they never make a plan cost more or leave more copies unplaced. When no copy asks for a
+factory edge, the misses are always 0, and the search gives the same plans as before.
 
 **Groups.** A group is a colour key (see [Colours](format.md#colours-added-in-14)): one unit of a design, or one group
 of parts without a design. A copy with no colour key is in no group. The **group spread** of a material is the number
@@ -104,11 +119,12 @@ For the goals `offcuts` and `cuts`, the search chooses a plan for each material 
 1. It keeps the candidates with the fewest unplaced copies.
 2. C is the lowest cost of those candidates. It keeps the candidates that cost at most
    C × (1 + `extraCostPercent` / 100). `extraCostPercent` defaults to `settings.optimizer.extraCostPercent`.
-3. When the groups stay together, it chooses the smallest group spread.
-4. It chooses by the goal. For `offcuts`, the offcut areas compare largest first: the larger first area wins, then
+3. It chooses the fewest factory edge misses.
+4. When the groups stay together, it chooses the smallest group spread.
+5. It chooses by the goal. For `offcuts`, the offcut areas compare largest first: the larger first area wins, then
    the larger second area, and so on, and a list that ends first loses. For `cuts`, fewer cut steps win, and of
    two candidates with the same number of cut steps, the shorter cut length wins.
-5. When candidates are still equal, the order of the goal `cost` decides. Of two equal candidates, the first found
+6. When candidates are still equal, the order of the goal `cost` decides. Of two equal candidates, the first found
    stays.
 
 Costs and areas that differ by less than a small relative tolerance are equal, so a candidate that costs exactly the
@@ -126,8 +142,8 @@ limit stays. C can only go down, so the search drops a candidate when its cost g
 - `unplaced`: `{ part, copy, reason }` for each copy with no place, grouped by material in project material order,
   and in part order, then copy order, within each material;
 - `materials`: `{ material, score, cheapestCost }`. The `score` has the measures above (`unplaced`, `cost`,
-  `groupSpread`, `largestOffcut`, `cuts`, `cutLength`, and `sheets`), with `offcuts`: the area of every offcut, largest
-  first. The score gives the group spread also when the groups need not stay together.
+  `factoryEdgeMisses`, `groupSpread`, `largestOffcut`, `cuts`, `cutLength`, and `sheets`), with `offcuts`: the area of
+  every offcut, largest first. The score gives the group spread also when the groups need not stay together.
   `cheapestCost` is C for the goals `offcuts` and `cuts`, and the cost of the chosen plan for the goal `cost`;
 - `iterations`: the candidates tried, over all materials, including those of a `start` result.
 

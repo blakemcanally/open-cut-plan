@@ -1,6 +1,7 @@
 import type { Part, PlanSheet, Project, Stock } from "../format/schema.ts";
 import { EPSILON, type Size } from "../geometry/rect.ts";
 import { grainOk, planContext, usableRect, type PlanContext } from "../plan/context.ts";
+import { factoryEdgeRequest } from "../plan/factoryEdges.ts";
 import { partColors } from "../reports/colors.ts";
 
 export interface Copy {
@@ -38,6 +39,8 @@ export interface MaterialProblem {
   groups: ReadonlyMap<string, string>;
   /** The number of pinned sheets of this material that hold each group. */
   pinnedGroups: ReadonlyMap<string, number>;
+  /** The ids of the parts of this material that ask for a factory edge, by their own choice or by the rule of the settings. */
+  factoryEdgeParts: ReadonlySet<string>;
 }
 
 export function copyKey(part: string, copy: number): string {
@@ -98,8 +101,10 @@ export function buildProblem(project: Project): Problem {
     const copies: Copy[] = [];
     const tooLarge: UnplacedCopy[] = [];
     const groups = new Map<string, string>();
+    const factoryEdgeParts = new Set<string>();
     for (const part of project.parts) {
       if (part.material !== material.id) continue;
+      if (factoryEdgeRequest(project, part) !== null) factoryEdgeParts.add(part.id);
       const orientations = [false, true].filter((r) => grainOk(ctx, part, r));
       for (let copy = 0; copy < part.quantity; copy++) {
         if (placed.has(copyKey(part.id, copy))) continue;
@@ -111,7 +116,7 @@ export function buildProblem(project: Project): Problem {
       }
     }
     if (copies.length > 0 || tooLarge.length > 0) {
-      materials.push({ material: material.id, copies, stock, available, tooLarge, groups, pinnedGroups: pinnedGroups.get(material.id) ?? new Map() });
+      materials.push({ material: material.id, copies, stock, available, tooLarge, groups, pinnedGroups: pinnedGroups.get(material.id) ?? new Map(), factoryEdgeParts });
     }
   }
   return { ctx, pinned, materials };

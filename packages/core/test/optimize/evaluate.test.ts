@@ -3,7 +3,7 @@ import { compareScores, evaluate, type Score } from "../../src/optimize/evaluate
 import { buildProblem } from "../../src/optimize/problem.ts";
 import { sampleProject } from "../helpers.ts";
 
-const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 50, offcuts: [50], cuts: 10, cutLength: 500, sheets: 2, groupSpread: 0, ...over });
+const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 50, offcuts: [50], cuts: 10, cutLength: 500, sheets: 2, groupSpread: 0, factoryEdgeMisses: 0, ...over });
 
 describe("compareScores", () => {
   it("compares unplaced, then cost, then largest offcut (bigger wins), then cuts, then cut length, then sheets", () => {
@@ -25,6 +25,14 @@ describe("compareScores", () => {
     expect(compareScores(score({ groupSpread: 0, unplaced: 1 }), base, true)).toBeGreaterThan(0);
     expect(compareScores(score({ groupSpread: 0, largestOffcut: 0 }), base)).toBeGreaterThan(0);
     expect(compareScores(score({ groupSpread: 5 }), base)).toBe(0);
+  });
+
+  it("compares the factory edge misses after the cost, before the group spread and the largest offcut", () => {
+    const base = score({ factoryEdgeMisses: 2 });
+    expect(compareScores(score({ factoryEdgeMisses: 1, largestOffcut: 0, groupSpread: 3 }), base, true)).toBeLessThan(0);
+    expect(compareScores(score({ factoryEdgeMisses: 1, largestOffcut: 0 }), base)).toBeLessThan(0);
+    expect(compareScores(score({ factoryEdgeMisses: 0, cost: 101 }), base)).toBeGreaterThan(0);
+    expect(compareScores(score({ factoryEdgeMisses: 0, unplaced: 1 }), base)).toBeGreaterThan(0);
   });
 });
 
@@ -94,6 +102,22 @@ describe("evaluate", () => {
     ];
     expect(evaluate(problem, material, { sheets, unplaced: [] }, "t").score.groupSpread).toBe(3);
     expect(evaluate(problem, material, { sheets: sheets.slice(0, 1), unplaced: [] }, "t").score.groupSpread).toBe(1);
+  });
+
+  it("counts the kept copies that ask for a factory edge and do not get one", () => {
+    const project = sampleProject();
+    project.settings.trim = 0;
+    const side = { ...project.parts[0]!, factoryEdge: "long" };
+    project.parts[0] = side;
+    const { problem, material } = packing(project);
+    const stock = material.stock[0]!;
+    const placements = [
+      { part: "side", copy: 0, x: 0, y: 0, rotated: false },
+      { part: "side", copy: 1, x: 0, y: 12.125, rotated: false },
+    ];
+    expect(evaluate(problem, material, { sheets: [{ stock, placements }], unplaced: [] }, "t").score.factoryEdgeMisses).toBe(1);
+    const { problem: plain, material: plainMaterial } = packing({ ...project, parts: [{ ...side, factoryEdge: "none" }] });
+    expect(evaluate(plain, plainMaterial, { sheets: [{ stock, placements }], unplaced: [] }, "t").score.factoryEdgeMisses).toBe(0);
   });
 
   it("keeps sheets when no tool is enabled at all", () => {

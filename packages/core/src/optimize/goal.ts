@@ -21,9 +21,10 @@ export function compareOffcuts(a: readonly number[], b: readonly number[]): numb
   return 0;
 }
 
-/** The order in which the search chooses among the plans within the cost limit. `groups` compares the group spread first. */
+/** The order in which the search chooses among the plans within the cost limit: the factory edge misses first, then the group spread when `groups`, then the goal. */
 export function compareChoice(goal: OptimizerGoal, a: Score, b: Score, groups = false): number {
   if (goal === "cost") return compareScores(a, b, groups);
+  if (a.factoryEdgeMisses !== b.factoryEdgeMisses) return a.factoryEdgeMisses - b.factoryEdgeMisses;
   if (groups && a.groupSpread !== b.groupSpread) return a.groupSpread - b.groupSpread;
   const byGoal = goal === "offcuts" ? compareOffcuts(a.offcuts, b.offcuts) : goal === "cuts" ? compareCuts(a, b) : 0;
   return byGoal || compareScores(a, b, groups);

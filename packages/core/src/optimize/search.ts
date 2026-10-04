@@ -1,8 +1,9 @@
-import type { PlanSheet, Project, Stock } from "../format/schema.ts";
+import type { Part, PlanSheet, Project, Stock } from "../format/schema.ts";
 import { uniqueId } from "../format/ids.ts";
+import { pushToFactoryEdges } from "../plan/factoryEdges.ts";
 import { compareScores, evaluate, type Evaluated, type Score } from "./evaluate.ts";
 import { projectGoal, type OptimizerGoal } from "./goal-setting.ts";
-import { createTradeOffs, type TradeOffs } from "./goal.ts";
+import { costLimit, createTradeOffs, withinLimit, type TradeOffs } from "./goal.ts";
 import { guillotinePack, SPLIT_RULES, type SplitRule } from "./guillotine.ts";
 import type { Packing, RotationPolicy } from "./pack.ts";
 import { orderByGroup } from "./groups.ts";
@@ -73,6 +74,11 @@ interface MaterialSearch {
   best: Planned | null;
   /** Null for the goal `cost`, which keeps only the best plan. */
   trade: TradeOffs<Planned> | null;
+  /**
+   * The best plan when the factory edge misses do not count, from the candidates only; null when no copy asks for a
+   * factory edge. The random moves start from it, so the candidates are the same as with no requests.
+   */
+  blind: Blind | null;
   groups: boolean;
   /** True when the groups stay together and the copies form at least two blocks (each group, and the copies with no group). */
   grouping: boolean;
@@ -81,6 +87,11 @@ interface MaterialSearch {
 interface Planned {
   candidate: Candidate;
   result: Evaluated;
+}
+
+interface Blind {
+  best: Planned | null;
+  trade: TradeOffs<Planned> | null;
 }
 
 const ORDERS: readonly ((a: Copy, b: Copy) => number)[] = [
@@ -107,7 +118,8 @@ export function createSearch(project: Project, options: OptimizeOptions = {}): S
   const tradeOffs = (cheapest?: number) => (goal === "cost" ? null : createTradeOffs<Planned>(goal, extra, cheapest, groups));
   const searches = problem.materials.map((m): MaterialSearch => {
     const grouping = groups && blocks(m.copies).length >= 2;
-    return { problem: m, base: baseCandidates(m, grouping), next: 0, evaluated: 0, rerun: 0, best: null, trade: tradeOffs(), groups, grouping };
+    const blind = m.factoryEdgeParts.size > 0 ? { best: null, trade: tradeOffs() } : null;
+    return { problem: m, base: baseCandidates(m, grouping), next: 0, evaluated: 0, rerun: 0, best: null, trade: tradeOffs(), blind, groups, grouping };
   });
   if (options.start) seedFrom(problem, searches, options.start, tradeOffs);
   let iterations = options.start?.iterations ?? 0;
@@ -126,11 +138,16 @@ export function createSearch(project: Project, options: OptimizeOptions = {}): S
     const search = pending.find((s) => s.best === null) ?? pending[turn++ % pending.length];
     if (!search) return;
     const candidate = search.next < search.base.length ? search.base[search.next++]! : randomCandidate(random, search);
-    const result = evaluate(problem, search.problem, pack(problem, search.problem, candidate), `${search.problem.material}:`);
+    const packing = pack(problem, search.problem, candidate);
+    const prefix = `${search.problem.material}:`;
+    const result = evaluate(problem, search.problem, packing, prefix);
     if (search.rerun > 0) search.rerun--;
     else search.evaluated++;
     iterations++;
     record(search, { candidate, result });
+    if (result.score.factoryEdgeMisses === 0 || !contends(search, result.score, extra)) return;
+    const pushed = pushPacking(problem, search.problem, packing);
+    if (pushed) record(search, { candidate, result: evaluate(problem, search.problem, pushed, prefix) }, false);
   };
 
   return {
@@ -163,13 +180,40 @@ export function applyOptimizeResult(project: Project, result: OptimizeResult): P
   return { ...project, plan: { ...project.plan, sheets: result.sheets } };
 }
 
-function record(search: MaterialSearch, planned: Planned) {
-  if (!search.trade) {
-    if (!search.best || compareScores(planned.result.score, search.best.result.score, search.groups) < 0) search.best = planned;
+/** Records a plan in the result, and the plan of a candidate also in the blind best. */
+function record(search: MaterialSearch, planned: Planned, candidate = true) {
+  keep(search, planned, false, search.groups);
+  if (search.blind && candidate) keep(search.blind, planned, true, search.groups);
+}
+
+function keep(target: Blind, planned: Planned, blind: boolean, groups: boolean) {
+  const scoreOf = (p: Planned): Score => (blind ? { ...p.result.score, factoryEdgeMisses: 0 } : p.result.score);
+  if (!target.trade) {
+    if (!target.best || compareScores(scoreOf(planned), scoreOf(target.best), groups) < 0) target.best = planned;
     return;
   }
-  search.trade.add(planned.result.score, planned);
-  search.best = search.trade.chosen()!.item;
+  target.trade.add(scoreOf(planned), planned);
+  target.best = target.trade.chosen()!.item;
+}
+
+/** False when the unplaced copies or the cost of a plan keep it out of the result, so that a pushed copy of it cannot win. */
+function contends(search: MaterialSearch, score: Score, extra: number): boolean {
+  const best = search.best!.result.score;
+  if (score.unplaced !== best.unplaced) return score.unplaced < best.unplaced;
+  return withinLimit(score.cost, search.trade ? costLimit(search.trade.cheapest, extra) : best.cost);
+}
+
+/** The packing with the pieces of each sheet pushed against the factory edges, or null when no sheet changes. */
+function pushPacking(problem: Problem, material: MaterialProblem, packing: Packing): Packing | null {
+  const requested = (part: Part) => material.factoryEdgeParts.has(part.id);
+  let changed = false;
+  const sheets = packing.sheets.map((sheet, i) => {
+    const pushed = pushToFactoryEdges(problem.ctx, { id: `${i}`, stock: sheet.stock.id, placements: sheet.placements }, requested);
+    if (!pushed) return sheet;
+    changed = true;
+    return { ...sheet, placements: pushed.placements };
+  });
+  return changed ? { ...packing, sheets } : null;
 }
 
 function pack(problem: Problem, material: MaterialProblem, candidate: Candidate): Packing {
@@ -250,7 +294,7 @@ function groupMove(random: Random, order: readonly Copy[]): Copy[] {
 
 function randomCandidate(random: Random, search: MaterialSearch): Candidate {
   const material = search.problem;
-  const from = search.best?.candidate ?? search.base[0]!;
+  const from = (search.blind ? search.blind.best : search.best)?.candidate ?? search.base[0]!;
   let order = [...from.order];
   if (search.grouping && random() < GROUP_MOVE) {
     order = groupMove(random, order);
@@ -308,6 +352,7 @@ function seedFrom(problem: Problem, searches: MaterialSearch[], start: OptimizeR
     const unplaced = [...copies.values()].map((c) => ({ part: c.part.id, copy: c.copy, reason: reasons.get(`${c.part.id}#${c.copy}`) ?? ("no-stock" as const) }));
     const cheapest = start.materials.find((m) => m.material === search.problem.material)?.cheapestCost;
     search.trade = tradeOffs(cheapest);
+    if (search.blind) search.blind.trade = tradeOffs(cheapest);
     record(search, { candidate: { ...base, order }, result: evaluate(problem, search.problem, { sheets, unplaced }, `${search.problem.material}:`) });
     search.next = search.trade && cheapest === undefined ? 0 : search.base.length;
     search.rerun = search.base.length - search.next;

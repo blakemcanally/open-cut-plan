@@ -454,3 +454,116 @@ describe("keeping groups together", () => {
     expect(worse).toEqual([]);
   });
 });
+
+describe("factory edges", () => {
+  /** An inch sheet with no trim: two 90 × 15 parts pack first, so the 90 × 10 part that asks for a factory edge lands in the middle strip. */
+  function stripsProject(): Project {
+    const base = createProject("Edges", "in");
+    return {
+      ...base,
+      materials: [{ id: "m", name: "M", thickness: 0.75, grained: false }],
+      stock: [{ id: "sheet", material: "m", length: 96, width: 48, quantity: null, cost: 60, kind: "sheet" }],
+      parts: [
+        { id: "wide", name: "Wide", material: "m", length: 90, width: 15, quantity: 2, grain: "none" },
+        { id: "long", name: "Long", material: "m", length: 90, width: 10, quantity: 1, grain: "none", factoryEdge: "long" },
+      ],
+      tools: [{ id: "t", name: "T", type: "table-saw", kerf: 0.125, enabled: true }],
+    };
+  }
+  const edgeWarnings = (project: Project, result: OptimizeResult) => validatePlan(applyOptimizeResult(project, result)).filter((issue) => issue.code === "factory-edge");
+  const withoutRequests = (project: Project): Project => {
+    const { factoryEdge: _rule, ...settings } = project.settings;
+    return { ...project, settings, parts: project.parts.map(({ factoryEdge: _edge, ...part }) => part) };
+  };
+  const factory = (project: Project): Project => ({ ...project, settings: { ...project.settings, trim: 0 }, stock: project.stock.map(({ trim: _trim, ...stock }) => stock) });
+  const rules: Record<string, number> = { "living-room-shelf": 36, "simple-bookcase-mm": 900, "kallax-2x4-mm": 900, "eket-wall-in": 24 };
+
+  it("puts a long part that asks for a factory edge against the edge of the sheet at the same cost", () => {
+    const project = stripsProject();
+    const plain = optimize(withoutRequests(project), { iterations: 60, seed: 1 });
+    expect(edgeWarnings(project, plain)).toHaveLength(1);
+    const result = optimize(project, { iterations: 60, seed: 1 });
+    expect(edgeWarnings(project, result)).toEqual([]);
+    expect(result.materials[0]!.score).toMatchObject({ factoryEdgeMisses: 0, cost: plain.materials[0]!.score.cost, unplaced: 0 });
+    expect(errors(applyOptimizeResult(project, result))).toEqual([]);
+  });
+
+  it("gives the same plans as before when no part asks for a factory edge", () => {
+    for (const name of ["living-room-shelf", "eket-wall-in"]) {
+      const project = factory(load(name));
+      const before = optimize(project, { iterations: 80, seed: 2 });
+      const noMatch = { ...project, settings: { ...project.settings, factoryEdge: { minLength: 1e6 } } };
+      expect(optimize(noMatch, { iterations: 80, seed: 2 })).toEqual(before);
+      const refused = { ...project, settings: { ...project.settings, factoryEdge: { minLength: 1 } }, parts: project.parts.map((part) => ({ ...part, factoryEdge: "none" })) };
+      expect(optimize(refused, { iterations: 80, seed: 2 })).toEqual(before);
+      const trimmed = { ...load(name), settings: { ...load(name).settings, trim: 5, factoryEdge: { minLength: 1 } } };
+      expect(optimize(trimmed, { iterations: 80, seed: 2 }).sheets).toEqual(optimize({ ...trimmed, settings: { ...trimmed.settings, factoryEdge: undefined } }, { iterations: 80, seed: 2 }).sheets);
+    }
+  });
+
+  it("never costs more or leaves more copies unplaced, and never misses more factory edges, than the same search with no requests", () => {
+    const worse: string[] = [];
+    for (const name of Object.keys(rules)) {
+      const project = factory(load(name));
+      const ruled = { ...project, settings: { ...project.settings, factoryEdge: { minLength: rules[name]! } } };
+      for (const seed of [1, 2]) {
+        for (const goal of ["cost", "offcuts", "cuts"] as const) {
+          const off = optimize(project, { iterations: 80, seed, goal });
+          const on = optimize(ruled, { iterations: 80, seed, goal });
+          const missesOff = edgeWarnings(ruled, off).length;
+          on.materials.forEach((m, i) => {
+            const before = off.materials[i]!;
+            const limit = goal === "cost" ? before.score.cost : costLimit(before.cheapestCost, 10);
+            const ok = m.score.unplaced < before.score.unplaced || (m.score.unplaced === before.score.unplaced && withinLimit(m.cheapestCost, before.cheapestCost) && withinLimit(m.score.cost, limit));
+            if (!ok) worse.push(`${name} ${seed} ${goal} ${m.material}`);
+          });
+          if (goal === "cost" && edgeWarnings(ruled, on).length > missesOff) worse.push(`${name} ${seed} misses`);
+          if (errors(applyOptimizeResult(ruled, on)).length > 0) worse.push(`${name} ${seed} ${goal} errors`);
+        }
+      }
+    }
+    expect(worse).toEqual([]);
+  });
+
+  it("returns valid plans on random projects with requests, never worse on cost than with no requests, the same for the same seed", () => {
+    const arb = fc.record({
+      kerf: fc.constantFrom(0, 0.125, 0.25),
+      trim: fc.constantFrom(0, 0, 0.25),
+      offcut: fc.boolean(),
+      stock: fc.array(fc.record({ length: fc.integer({ min: 30, max: 120 }), width: fc.integer({ min: 20, max: 60 }), cost: fc.integer({ min: 5, max: 60 }), quantity: fc.option(fc.integer({ min: 1, max: 3 })) }), { minLength: 1, maxLength: 2 }),
+      parts: fc.array(
+        fc.record({ length: fc.integer({ min: 2, max: 80 }), width: fc.integer({ min: 2, max: 30 }), quantity: fc.integer({ min: 1, max: 4 }), grain: fc.constantFrom("length" as const, "none" as const), factoryEdge: fc.constantFrom("long", "none", undefined) }),
+        { minLength: 1, maxLength: 6 },
+      ),
+      rule: fc.option(fc.integer({ min: 10, max: 80 })),
+      seed: fc.integer(),
+    });
+    fc.assert(
+      fc.property(arb, (a) => {
+        const base = createProject("Random", "in");
+        const project: Project = {
+          ...base,
+          settings: { ...base.settings, trim: a.trim, ...(a.rule === null ? {} : { factoryEdge: { minLength: a.rule } }) },
+          materials: [{ id: "m", name: "M", thickness: 0.75, grained: true }],
+          stock: [
+            ...a.stock.map((s, i) => ({ id: `st${i}`, material: "m", ...s, kind: "sheet" as const })),
+            ...(a.offcut ? [{ id: "off", material: "m", length: 40, width: 30, quantity: 1, kind: "offcut" as const }] : []),
+          ],
+          parts: a.parts.map(({ factoryEdge, ...p }, i) => ({ id: `p${i}`, name: `P${i}`, material: "m", ...p, ...(factoryEdge === undefined ? {} : { factoryEdge }) })),
+          tools: [{ id: "t", name: "T", type: "table-saw", kerf: a.kerf, enabled: true }],
+        };
+        const result = optimize(project, { iterations: 30, seed: a.seed });
+        expect(errors(applyOptimizeResult(project, result))).toEqual([]);
+        const placed = result.sheets.reduce((n, s) => n + s.placements.length, 0);
+        expect(placed + result.unplaced.length).toBe(a.parts.reduce((n, p) => n + p.quantity, 0));
+        expect(optimize(project, { iterations: 30, seed: a.seed })).toEqual(result);
+        expect(result.materials[0]!.score.factoryEdgeMisses).toBe(edgeWarnings(project, result).length);
+        const plain = optimize(withoutRequests(project), { iterations: 30, seed: a.seed }).materials[0]!.score;
+        const score = result.materials[0]!.score;
+        expect(score.unplaced).toBeLessThanOrEqual(plain.unplaced);
+        expect(score.unplaced < plain.unplaced || withinLimit(score.cost, plain.cost)).toBe(true);
+      }),
+      { numRuns: 80 },
+    );
+  });
+});

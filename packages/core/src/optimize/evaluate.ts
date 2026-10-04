@@ -1,6 +1,7 @@
-import type { PlanSheet, Project } from "../format/schema.ts";
+import type { Part, PlanSheet, Project } from "../format/schema.ts";
 import { area } from "../geometry/rect.ts";
-import { planContext } from "../plan/context.ts";
+import { planContext, type PlanContext } from "../plan/context.ts";
+import { sheetFactoryEdgeMisses } from "../plan/factoryEdges.ts";
 import type { PlanIssue } from "../plan/issues.ts";
 import { checkLayout } from "../plan/layout.ts";
 import { analyzeSheets } from "../plan/sheets.ts";
@@ -27,6 +28,8 @@ export interface Score {
   sheets: number;
   /** For each group, the sheets of the material that hold its copies (pinned sheets included) minus 1, summed. Fewer is better. */
   groupSpread: number;
+  /** Placed copies that ask for a factory edge and do not get one. Fewer is better. */
+  factoryEdgeMisses: number;
 }
 
 export interface Evaluated {
@@ -46,10 +49,11 @@ function differ(a: number, b: number): boolean {
   return !sameNumber(a, b);
 }
 
-/** Negative when `a` is better than `b`, positive when worse, 0 when equal. `groups` compares the group spread after the cost. */
+/** Negative when `a` is better than `b`, positive when worse, 0 when equal. `groups` compares the group spread after the factory edge misses. */
 export function compareScores(a: Score, b: Score, groups = false): number {
   if (a.unplaced !== b.unplaced) return a.unplaced - b.unplaced;
   if (differ(a.cost, b.cost)) return a.cost - b.cost;
+  if (a.factoryEdgeMisses !== b.factoryEdgeMisses) return a.factoryEdgeMisses - b.factoryEdgeMisses;
   if (groups && a.groupSpread !== b.groupSpread) return a.groupSpread - b.groupSpread;
   if (differ(a.largestOffcut, b.largestOffcut)) return b.largestOffcut - a.largestOffcut;
   if (a.cuts !== b.cuts) return a.cuts - b.cuts;
@@ -116,6 +120,7 @@ export function evaluate(problem: Problem, material: MaterialProblem, packing: P
       cutLength: totalCutLength(keptSteps),
       sheets: kept.length,
       groupSpread: groupSpread(material, kept),
+      factoryEdgeMisses: factoryEdgeMisses(ctx, material, kept),
     },
   };
 }
@@ -133,6 +138,12 @@ function groupSpread(material: MaterialProblem, sheets: readonly PlanSheet[]): n
   let spread = 0;
   for (const count of counts.values()) spread += count - 1;
   return spread;
+}
+
+function factoryEdgeMisses(ctx: PlanContext, material: MaterialProblem, sheets: readonly PlanSheet[]): number {
+  if (material.factoryEdgeParts.size === 0) return 0;
+  const requested = (part: Part) => material.factoryEdgeParts.has(part.id);
+  return sheets.reduce((sum, sheet) => sum + sheetFactoryEdgeMisses(ctx, sheet, requested), 0);
 }
 
 function sheetsOf(issue: PlanIssue): string[] {

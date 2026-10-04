@@ -86,3 +86,17 @@ describe("the groups of the copies", () => {
     expect([...mdf!.pinnedGroups]).toEqual([]);
   });
 });
+
+describe("the factory edge requests of the copies", () => {
+  it("lists the parts of each material that ask for a factory edge, by their choice or by the rule", () => {
+    const project = sampleProject();
+    project.parts.push(
+      { id: "long", name: "Long", material: "ply", length: 40, width: 10, quantity: 1, grain: "none" },
+      { id: "kept", name: "Kept", material: "ply", length: 10, width: 10, quantity: 1, grain: "none", factoryEdge: "long" },
+      { id: "plain", name: "Plain", material: "ply", length: 50, width: 10, quantity: 1, grain: "none", factoryEdge: "none" },
+    );
+    expect([...buildProblem(project).materials[0]!.factoryEdgeParts]).toEqual(["kept"]);
+    project.settings.factoryEdge = { minLength: 30 };
+    expect([...buildProblem(project).materials[0]!.factoryEdgeParts]).toEqual(["side", "long", "kept"]);
+  });
+});
