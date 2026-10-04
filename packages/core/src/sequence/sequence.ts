@@ -54,6 +54,11 @@ export function sequencePlan(project: Project): Step[] {
   return sequenceCuts(ctx, analyzeSheets(ctx));
 }
 
+/** The sum of the cut lines of the steps, trims included. */
+export function totalCutLength(steps: readonly Pick<Step, "from" | "to">[]): number {
+  return steps.reduce((sum, step) => sum + (step.to - step.from), 0);
+}
+
 export function matchesChoice(cut: Pick<Step, "axis" | "at" | "from" | "to">, choice: CutToolChoice): boolean {
   return cut.axis === choice.axis && Math.abs(cut.at - choice.at) <= EPSILON && Math.abs(cut.from - choice.from) <= EPSILON && Math.abs(cut.to - choice.to) <= EPSILON;
 }

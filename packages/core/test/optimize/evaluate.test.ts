@@ -3,15 +3,17 @@ import { compareScores, evaluate, type Score } from "../../src/optimize/evaluate
 import { buildProblem } from "../../src/optimize/problem.ts";
 import { sampleProject } from "../helpers.ts";
 
-const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 50, offcuts: [50], cuts: 10, sheets: 2, ...over });
+const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 50, offcuts: [50], cuts: 10, cutLength: 500, sheets: 2, ...over });
 
 describe("compareScores", () => {
-  it("compares unplaced, then cost, then largest offcut (bigger wins), then cuts, then sheets", () => {
+  it("compares unplaced, then cost, then largest offcut (bigger wins), then cuts, then cut length, then sheets", () => {
     const base = score({});
     expect(compareScores(score({ unplaced: 1, cost: 0 }), base)).toBeGreaterThan(0);
     expect(compareScores(score({ cost: 90, largestOffcut: 0 }), base)).toBeLessThan(0);
     expect(compareScores(score({ largestOffcut: 60, cuts: 99 }), base)).toBeLessThan(0);
-    expect(compareScores(score({ cuts: 9, sheets: 9 }), base)).toBeLessThan(0);
+    expect(compareScores(score({ cuts: 9, cutLength: 999 }), base)).toBeLessThan(0);
+    expect(compareScores(score({ cutLength: 499, sheets: 9 }), base)).toBeLessThan(0);
+    expect(compareScores(score({ cutLength: 500 + 1e-10 }), base)).toBe(0);
     expect(compareScores(score({ sheets: 1 }), base)).toBeLessThan(0);
     expect(compareScores(score({ cost: 100 + 1e-12 }), base)).toBe(0);
   });
@@ -25,11 +27,11 @@ describe("evaluate", () => {
     return { problem, material, packing: { sheets: [{ stock, placements: project.plan!.sheets[0]!.placements }], unplaced: [] } };
   };
 
-  it("scores a valid packing by price, offcut, cuts, and sheets", () => {
+  it("scores a valid packing by price, offcut, cuts, cut length, and sheets", () => {
     const { problem, material, packing: p } = packing(sampleProject());
     const result = evaluate(problem, material, p, "t");
     expect(result.sheets.map((s) => s.id)).toEqual(["t1"]);
-    expect(result.score).toMatchObject({ unplaced: 0, cost: 60, cuts: 7, sheets: 1 });
+    expect(result.score).toMatchObject({ unplaced: 0, cost: 60, cuts: 7, cutLength: 2 * 96 + 2 * 47.5 + 47.5 + 2 * 30, sheets: 1 });
     expect(result.score.largestOffcut).toBeGreaterThan(0);
   });
 

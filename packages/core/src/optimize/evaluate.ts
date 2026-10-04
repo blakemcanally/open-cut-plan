@@ -6,7 +6,7 @@ import { checkLayout } from "../plan/layout.ts";
 import { analyzeSheets } from "../plan/sheets.ts";
 import { checkCuts } from "../plan/validate.ts";
 import { listOffcuts } from "../reports/offcuts.ts";
-import { sequenceCuts } from "../sequence/sequence.ts";
+import { sequenceCuts, totalCutLength } from "../sequence/sequence.ts";
 import type { Packing } from "./pack.ts";
 import type { MaterialProblem, Problem, UnplacedCopy } from "./problem.ts";
 
@@ -22,6 +22,8 @@ export interface Score {
   offcuts: number[];
   /** Cut steps, including trims. Fewer is better. */
   cuts: number;
+  /** Total length of the cut lines of those steps. Shorter is better. */
+  cutLength: number;
   sheets: number;
 }
 
@@ -48,6 +50,7 @@ export function compareScores(a: Score, b: Score): number {
   if (differ(a.cost, b.cost)) return a.cost - b.cost;
   if (differ(a.largestOffcut, b.largestOffcut)) return b.largestOffcut - a.largestOffcut;
   if (a.cuts !== b.cuts) return a.cuts - b.cuts;
+  if (differ(a.cutLength, b.cutLength)) return a.cutLength - b.cutLength;
   return a.sheets - b.sheets;
 }
 
@@ -97,6 +100,7 @@ export function evaluate(problem: Problem, material: MaterialProblem, packing: P
     .sort((a, b) => b - a);
   const order = new Map(problem.ctx.project.parts.map((p, i) => [p.id, i]));
   unplaced.sort((a, b) => (order.get(a.part) ?? 0) - (order.get(b.part) ?? 0) || a.copy - b.copy);
+  const keptSteps = steps.filter((s) => keptIds.has(s.sheet));
   return {
     sheets: kept,
     unplaced,
@@ -105,7 +109,8 @@ export function evaluate(problem: Problem, material: MaterialProblem, packing: P
       cost,
       largestOffcut: offcuts[0] ?? 0,
       offcuts,
-      cuts: steps.filter((s) => keptIds.has(s.sheet)).length,
+      cuts: keptSteps.length,
+      cutLength: totalCutLength(keptSteps),
       sheets: kept.length,
     },
   };

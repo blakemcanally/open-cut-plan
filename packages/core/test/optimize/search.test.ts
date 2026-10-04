@@ -8,6 +8,7 @@ import { parseProject } from "../../src/format/parse.ts";
 import { costLimit, withinLimit } from "../../src/optimize/goal.ts";
 import { applyOptimizeResult, createSearch, optimize, type OptimizeResult } from "../../src/optimize/search.ts";
 import { validatePlan } from "../../src/plan/validate.ts";
+import { sequencePlan, totalCutLength } from "../../src/sequence/sequence.ts";
 import { sampleProject } from "../helpers.ts";
 
 function load(name: string): Project {
@@ -28,6 +29,18 @@ describe("optimize", () => {
       ["bb6", 2],
     ]);
     expect(errors(applyOptimizeResult(project, result))).toEqual([]);
+  });
+
+  it("gives the cut steps and the total cut length of each material in the score", () => {
+    const project = load("living-room-shelf");
+    const result = optimize(project, { iterations: 20 });
+    const planned = applyOptimizeResult(project, result);
+    const materialOf = new Map(planned.plan!.sheets.map((sheet) => [sheet.id, planned.stock.find((stock) => stock.id === sheet.stock)!.material]));
+    for (const { material, score } of result.materials) {
+      const steps = sequencePlan(planned).filter((step) => materialOf.get(step.sheet) === material);
+      expect(score.cuts).toBe(steps.length);
+      expect(score.cutLength).toBeCloseTo(totalCutLength(steps), 6);
+    }
   });
 
   it("plans the mm bookcase with its own saws and uses the owned offcut", () => {
@@ -261,7 +274,7 @@ describe("the optimizer goal", () => {
     );
     expect(fingerprints).toEqual({
       "living-room-shelf": "33a240fe9e5d1e9c",
-      "simple-bookcase-mm": "f5da80086c18d5be",
+      "simple-bookcase-mm": "d9bf137a3ac8f8cc",
       "kallax-2x4-mm": "df858571c0e70e17",
       "eket-wall-in": "252be793e5f5e0fa",
     });

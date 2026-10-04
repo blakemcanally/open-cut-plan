@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../../../examples/builders/index.ts";
-import { defaultTools, describeStep, EPSILON, formatLength, parseProject, planContext, sequencePlan, withCuts, type Project, type Step } from "../../src/index.ts";
+import { defaultTools, describeStep, EPSILON, formatLength, parseProject, planContext, sequencePlan, totalCutLength, withCuts, type Project, type Step } from "../../src/index.ts";
 import { sampleProject, stripProject } from "../helpers.ts";
 
 function shelf(): Project {
@@ -158,6 +158,14 @@ describe("sequencePlan", () => {
     const empty = sampleProject();
     empty.plan!.sheets[0]!.placements = [];
     expect(sequencePlan(empty)).toEqual([]);
+  });
+});
+
+describe("totalCutLength", () => {
+  it("adds the length of every step, trims included", () => {
+    expect(totalCutLength(sequencePlan(sampleProject()))).toBe(2 * 96 + 2 * 47.5 + 47.5 + 2 * 30);
+    expect(totalCutLength(sequencePlan(stripProject()))).toBe(2 * 96 + 2 * 47.5 + 2 * 95.5 + 2 * 12);
+    expect(totalCutLength([])).toBe(0);
   });
 });
 

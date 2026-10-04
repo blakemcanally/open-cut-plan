@@ -6,7 +6,7 @@ import { projectGoal } from "../../src/optimize/goal-setting.ts";
 import { validatePlan } from "../../src/plan/validate.ts";
 import { sampleProject } from "../helpers.ts";
 
-const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 0, offcuts: [], cuts: 10, sheets: 1, ...over });
+const score = (over: Partial<Score>): Score => ({ unplaced: 0, cost: 100, largestOffcut: 0, offcuts: [], cuts: 10, cutLength: 500, sheets: 1, ...over });
 
 describe("compareOffcuts", () => {
   it("prefers the larger first area, then the larger second area, then the longer list", () => {
@@ -61,6 +61,15 @@ describe("createTradeOffs", () => {
     expect(list.chosen()?.item).toBe("first");
     list.add(score({ cuts: 5, cost: 99 }), "cheaper");
     expect(list.chosen()?.item).toBe("cheaper");
+  });
+
+  it("chooses fewer cut steps, then the shorter cut length, for the goal cuts", () => {
+    const list = createTradeOffs<string>("cuts", 10);
+    list.add(score({ cuts: 5, cutLength: 300, largestOffcut: 90 }), "long");
+    list.add(score({ cuts: 5, cutLength: 200 }), "short");
+    expect(list.chosen()?.item).toBe("short");
+    list.add(score({ cuts: 4, cutLength: 900 }), "fewer");
+    expect(list.chosen()?.item).toBe("fewer");
   });
 
   it("starts from a given cheapest cost, and keeps a plan when no plan reaches that cost", () => {

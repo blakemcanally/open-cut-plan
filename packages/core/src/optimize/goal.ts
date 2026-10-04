@@ -23,8 +23,13 @@ export function compareOffcuts(a: readonly number[], b: readonly number[]): numb
 
 /** The order in which the search chooses among the plans within the cost limit. */
 export function compareChoice(goal: OptimizerGoal, a: Score, b: Score): number {
-  const byGoal = goal === "offcuts" ? compareOffcuts(a.offcuts, b.offcuts) : goal === "cuts" ? a.cuts - b.cuts : 0;
+  const byGoal = goal === "offcuts" ? compareOffcuts(a.offcuts, b.offcuts) : goal === "cuts" ? compareCuts(a, b) : 0;
   return byGoal || compareScores(a, b);
+}
+
+function compareCuts(a: Score, b: Score): number {
+  if (a.cuts !== b.cuts) return a.cuts - b.cuts;
+  return sameNumber(a.cutLength, b.cutLength) ? 0 : a.cutLength - b.cutLength;
 }
 
 export function costLimit(cheapest: number, extra: number): number {
