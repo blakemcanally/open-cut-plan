@@ -40,8 +40,8 @@ is `#/project/<id>`, so a reload opens the same project.
   use **Save file**.
 - **Save file** writes the project with its computed cut sequence (`plan.cuts`), so other tools can read the cuts.
 
-The tabs are **Design**, **Parts**, **Stock**, **Tools**, **Layout**, **Shop**, **Reports**, and **Settings**. The
-left and right arrow keys move between tabs.
+The tabs are **Design**, **Parts**, **Stock**, **Tools**, **Layout**, **Cut**, **Assembly**, **Reports**, and
+**Settings**. The left and right arrow keys move between tabs.
 
 - On a narrow screen, such as a phone, the tab bar scrolls sideways. A shadow at the left or right end shows that
   more tabs are there. The tab bar scrolls to show the chosen tab, also when a link opens a tab.
@@ -50,12 +50,13 @@ left and right arrow keys move between tabs.
 
 - When the plan has errors, the **Layout** tab shows the number of errors in a red badge.
 - An empty tab tells the user what to do, with a link to the tab that does it. For example, the Layout tab with no
-  parts links to the Design tab and the Parts tab, and with no stock it links to the Stock tab. The Shop tab and the
-  Reports tab with no plan link to the Layout tab.
-- The **Shop** tab and the **Reports** tab show a banner when the plan is not ready to cut: the plan has an error, or
+  parts links to the Design tab and the Parts tab, and with no stock it links to the Stock tab. The Cut tab and the
+  Reports tab with no plan link to the Layout tab. The Assembly tab with no designs links to the Design tab.
+- The **Cut** tab and the **Reports** tab show a banner when the plan is not ready to cut: the plan has an error, or
   a part is not on a sheet. The banner names the parts, for example "✖ The plan is not ready to cut. 2 parts have a
   layout error: Side 1 and Side 2. 1 part is not on a sheet: Shelf." **Show the problems on the Layout tab** opens the
-  Layout tab and puts the focus on the **Problems** list. The banner only warns: the tabs stay usable.
+  Layout tab and puts the focus on the **Problems** list. The banner only warns: the tabs stay usable. The
+  **Assembly** tab has no banner, because the assembly steps do not use the plan.
 
 ### Design
 
@@ -198,10 +199,10 @@ millimetre profile in an inch project converts the kerf and limits.
 Sheets are drawn to scale. Parts have their colour, grain stripes, and a ⟂ mark when they lie across the grain. Each
 unit of a design has its own colour, and each group of parts without a design has one colour. A part without a design
 or a group is grey. The **Colours** list beside the sheets names each colour, for example "Hall KALLAX 2 of 2". The
-user chooses the colours on the Design tab and the Parts tab. The Shop tab, the Reports tab, the printed booklet, and
+user chooses the colours on the Design tab and the Parts tab. The Cut tab, the Reports tab, the printed booklet, and
 the SVG files use the same colours. See [format.md](format.md#colours-added-in-14). The trim zone is dashed. Cut lines are numbered in sequence order. A part with a problem
 turns red and has a ⚠ mark; the **Problems** list names each problem, and **Show** selects the part. A part that asks
-for a factory edge has a thick black line on each long edge that is on a factory edge. The Shop tab, the printed
+for a factory edge has a thick black line on each long edge that is on a factory edge. The Cut tab, the printed
 booklet, and the SVG files show the same lines. The Problems list names each
 part that asks for a factory edge and does not get one.
 
@@ -220,9 +221,9 @@ part that asks for a factory edge and does not get one.
   in profile order. A cut with no tool, or with a chosen tool that is over one of its limits, is red, and its number
   has a light red fill. The legend then has the item "No tool, or over a tool limit". The choice belongs to the
   browser, not to the project file. **Cut lines** shows only when the sheets show cut lines.
-- Each cut line has a white edge on each side, so that it shows on every part colour. The Shop tab, the printed
+- Each cut line has a white edge on each side, so that it shows on every part colour. The Cut tab, the printed
   booklet, and the SVG files draw the cut lines in the same way.
-- A click on a cut number opens its step on the Shop tab. Tab moves the focus to the cut numbers after the parts of
+- A click on a cut number opens its step on the Cut tab. Tab moves the focus to the cut numbers after the parts of
   the sheet; Enter or Space opens the step. Each cut number has a name such as "Step 5, Table saw rip". The name of
   a cut with a problem adds "no tool" or the limit, for example "Step 1, Table saw trim, over its largest piece".
   While the focus is on a cut number, the part keys (**R**, **Delete**, and the arrow keys) do not act.
@@ -275,7 +276,7 @@ a part. The side panel shows the selected part, a **Location** list to move it t
 
 A layout with problems is never blocked: the user can keep editing, and the Problems list updates after each change.
 
-### Shop
+### Cut
 
 The cut sequence as a checklist for use at the saw. It works on a phone: the step and its sheet come first, and the
 list follows.
@@ -299,8 +300,8 @@ list follows.
   Each step shows its sheet. When the setup of the current step is not the setup of the step before, a note above
   the **Tool** list says "New setup: …".
 - The drawing colours the cuts as the **Colour cuts by** choice on the Layout tab does.
-- A cut number on the Layout tab opens the Shop tab at its step, and puts the focus on the step title. A later
-  visit to the Shop tab starts at the first step that is not done again.
+- A cut number on the Layout tab opens the Cut tab at its step, and puts the focus on the step title. A later
+  visit to the Cut tab starts at the first step that is not done again.
 - **Mark done** ticks the current step and goes to the next step that is not done. **← Previous** and **Next →** move
   without a tick. A click on a step in the list makes it current, and its box ticks it.
 - The ticks are saved in the project (`extensions["opencutplan.app"].progress`), so they stay after a reload and go
@@ -312,11 +313,31 @@ list follows.
 - **Reset progress** clears every tick after a confirmation. After **Reset progress** or **Start over**, the first
   step is current. **Print cut sequence** prints the checklist.
 - When the `cutOrder` feature is off, the tab has no steps. It tells the user to turn on **Cut order** in Settings.
-- **Assembly** follows the cut steps. It lists the assembly steps of each design, numbered from 1 across all the
-  designs. The ticks are saved apart from the cut ticks (`extensions["opencutplan.app"].assemblyProgress`). When a
-  design change changes the steps, the same **Start over** and **Keep my ticks** banner shows for the assembly steps
-  only. **Reset assembly** clears the assembly ticks after a confirmation. The list shows also when there are no cut
-  steps.
+- The assembly steps are on the **Assembly** tab.
+
+### Assembly
+
+The assembly steps of each design as a checklist, with a drawing for each step. The tab does not need a plan, so it
+works before the first optimize run.
+
+- Each design has a heading and its list of steps. The steps are numbered from 1 across all the designs. Each step
+  has a box to tick, its title, its text, and a small front view of the design.
+- In each drawing, the boards of the step are blue. The boards of earlier steps have the colour of the design. The
+  boards of later steps are grey outlines. A key above the lists says this. Orange lines show the marks to make on
+  the boards, and the drawings also show the spacers, the two diagonals to measure, the back, the anti-tip fitting,
+  the wall rail, and the legs or feet. A drawing for a combined cell names the boards that the cell makes.
+- The current step is the first step that is not done. Its drawing is larger. On a phone, the drawing of the current
+  step goes under its text, at the full width of the screen.
+- A click on a drawing opens it in a dialog, with the step title and text. **← Previous** and **Next →** move between
+  the steps, across the designs. Escape closes the dialog.
+- Each drawing has a text alternative, for example "Front view with the marks on the top and the bottom." A screen
+  reader reads it with the button that enlarges the drawing.
+- The ticks are saved apart from the cut ticks (`extensions["opencutplan.app"].assemblyProgress`). A tick is an edit,
+  so **Undo** removes it. When a design change changes the steps, the same **Start over** and **Keep my ticks** banner
+  as on the Cut tab shows for the assembly steps. **Reset assembly** clears the assembly ticks after a confirmation.
+- **Print assembly steps** prints a booklet with only the assembly steps.
+- A design that makes no parts has no steps. A note names it and links to the Design tab. With no designs, the tab
+  links to the Design tab.
 
 ### Reports
 
@@ -344,7 +365,7 @@ and is a region, so a screen reader can go from section to section. The plan pro
 - **Build** (when there are designs): **Hardware** gives the screws, rails, legs, and glue to buy, with the design
   that needs each item. The **IKEA article** column shows only when an item has an article number. The article
   numbers are for IKEA in Great Britain. For each design, a part gives the front view and the titles of its assembly
-  steps, with a link to the checklist on the Shop tab.
+  steps, with a link to the checklist on the Assembly tab.
 - **Print and export**:
   - **Print booklet**: a checkbox for each section of the booklet: **Title page**, **Shopping list**, **Sheet
     diagrams**, **Cut sequence**, and **Assembly steps** (when there are designs). A section with no content has its
@@ -367,15 +388,16 @@ placed".
 
 ### Printing
 
-**Print booklet**, **Print labels**, and **Print cut sequence** on the Shop tab open the browser's print dialog with
-only that output; the app is hidden on paper. Use the dialog's "Save as PDF" for a PDF.
+**Print booklet** and **Print labels** on the Reports tab, **Print cut sequence** on the Cut tab, and **Print
+assembly steps** on the Assembly tab open the browser's print dialog with only that output; the app is hidden on
+paper. Use the dialog's "Save as PDF" for a PDF.
 
 The booklet has its sections in the order of the list below, and each section starts on a new page. The sheet
 diagrams and the cut sequence are landscape pages with margins of 10 mm; the other pages are portrait. **Print cut
-sequence** on the Shop tab prints a booklet with only the cut sequence. It uses the **Detailed steps** choice of the
-Reports tab.
+sequence** on the Cut tab prints a booklet with only the cut sequence. It uses the **Detailed steps** choice of the
+Reports tab. **Print assembly steps** on the Assembly tab prints a booklet with only the assembly steps.
 
-- When the plan is not ready to cut, the first page of the booklet starts with the text of the banner on the Shop tab,
+- When the plan is not ready to cut, the first page of the booklet starts with the text of the banner on the Cut tab,
   and "See the Problems list on the Layout tab."
 - **Title page**: the project name, the date, and a list of the other sections in the booklet.
 - **Shopping list**: the **Buy** tables from the Reports tab, with the hardware.
@@ -393,7 +415,8 @@ Reports tab.
   beside the drawing. When the table leaves the drawing at less than 75% of its full-page size, the drawing fills
   the page and the table starts on the next page, under the sheet name and the step numbers. With **Detailed
   steps**, the drawing fills the page and the full text of each step starts on the next page.
-- **Assembly steps**: one page for each design, with its front view and a box to tick for each step.
+- **Assembly steps**: one page for each design, with its front view and a box to tick for each step. Each step has a
+  small drawing beside its text, as on the Assembly tab. The drawings have no board names.
 
 The drawings colour the cuts as the **Colour cuts by** choice on the Layout tab does: by stage or by tool. Under each
 drawing, a line explains the cut numbers and lists the colours of the stages or the tools on that sheet. With
@@ -424,7 +447,7 @@ The sections put the common settings first:
   parts off the edges. The rule can change only while the plan uses the factory edges.
 - **Snapping**: the snapping switch and the grid size. A grid of 0 turns the grid off. The default grid is 1" or
   25 mm.
-- **Plan**: the cut order (**By sheet** or **By saw setting**, the same choice as **Order** on the Shop tab) and the
+- **Plan**: the cut order (**By sheet** or **By saw setting**, the same choice as **Order** on the Cut tab) and the
   smallest useful offcut.
 - **Optimizer**: the **Goal** ("Lowest cost", "Best offcuts", or "Fewest cuts"), **Extra cost allowed (%)** (0 to
   100; off for "Lowest cost"), **Keep each unit and group together** (on by default), the search time (up to 3600
@@ -447,8 +470,8 @@ inside it.
 The optimizer tests run the real worker protocol in the test thread.
 
 `npm run e2e` runs the Playwright tests in `apps/web/e2e` in Chromium against a production build. They cover a new
-project from CSV through optimize, the Shop checklist across a reload and at a phone width, printing the booklet
+project from CSV through optimize, the Cut checklist across a reload and at a phone width, printing the booklet
 (with a PDF that has landscape sheet and cut sequence pages), and the SVG and CSV downloads; drag, rotate, and undo in the layout
-editor; and a design through optimize, the assembly checklist across a reload, and the assembly print. Install the
-browser once with `npm run e2e:install`. `npm run check` does not run them; CI runs both
+editor; and a design through optimize, the assembly checklist on the Assembly tab across a reload, a step drawing
+and its dialog, and the assembly print with its drawings. Install the browser once with `npm run e2e:install`. `npm run check` does not run them; CI runs both
 (`.github/workflows/ci.yml`).

@@ -20,10 +20,11 @@ save.
   pin a sheet, plan only the parts that are not on a sheet, keep searching, and undo a run.
 - **Layout editor.** Drag parts between sheets, with snapping. Turn and move parts with the keyboard. The problems
   list names each overlap, each part past the edge of the sheet, and each cut that no saw can make.
-- **Cut sequence.** Follow the cuts at the saw, step by step, in the order of the sheets or in the order of the saw
-  settings. Each step tells which piece to pick up, which tool to use, and where each piece goes. Your ticks stay in
-  the project file.
-- **Assembly steps.** Each design gives a list of assembly steps, with a box to tick for each step.
+- **Cut sequence.** On the Cut tab, follow the cuts at the saw, step by step, in the order of the sheets or in the
+  order of the saw settings. Each step tells which piece to pick up, which tool to use, and where each piece goes.
+  Your ticks stay in the project file.
+- **Assembly steps.** On the Assembly tab, each design gives a list of assembly steps, with a box to tick for each
+  step. A front view for each step shows the boards of the step and the marks to make.
 - **Reports.** A summary of the plan, a shopping list with costs, a cut list, the offcuts, and the hardware to buy.
 - **Printing.** Print a booklet with a shopping list, sheet diagrams, the cut sequence, and the assembly steps. Print
   part labels. Export CSV files and SVG drawings.

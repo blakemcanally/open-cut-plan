@@ -98,7 +98,7 @@ trims.
    minimum offcut, as in the offcut list (see [Offcuts](#offcuts)). Each piece keeps the largest
    offcut that it can, so a tree can have longer cuts than necessary for the largest offcut of the sheet. With other
    goals, or with the `offcuts` feature off, the tree does not compare offcuts. The goal comes from the settings, so
-   the validator, the sequence, the Shop tab, the reports, and the optimizer all use the same tree for a project.
+   the validator, the sequence, the Cut tab, the reports, and the optimizer all use the same tree for a project.
 
    With `toolLimits` on, the tree is first built with no tool check. When an enabled tool can make every cut of that
    tree, the tree stays. Otherwise the tree is built again, and this time it counts the cuts that no enabled tool can

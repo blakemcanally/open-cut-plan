@@ -171,7 +171,7 @@ the shelves between the sides and the dividers, all joined with pocket screws. T
 | `design split <file> <id>` | Splits combined cells into single cells again. | `opencutplan design split hall.cutplan.json kallax-4x2 --cell 1,1` |
 | `design remove <file> <id>...` | Removes designs, their parts, and the copies on the sheets. | `opencutplan design remove hall.cutplan.json kallax-2x4` |
 | `design detach <file> <id>` | Keeps the parts as normal parts, and removes the design. | `opencutplan design detach hall.cutplan.json kallax-2x4` |
-| `design drawing <file> <id>` | Draws the front view as SVG, to `--out` or to stdout. | `opencutplan design drawing hall.cutplan.json kallax-2x4 --out hall.svg` |
+| `design drawing <file> <id>` | Draws the front view as SVG, to `--out` or to stdout. `--step <n>` draws assembly step n of the design, as the Assembly tab does: the boards of the step are blue, the boards of earlier steps have the colour of the design, and the boards of later steps are grey outlines. The JSON then also has `step`, `title`, and `description` (a text alternative for the drawing). | `opencutplan design drawing hall.cutplan.json kallax-2x4 --step 5 --out step-5.svg` |
 
 The flags of `design add` and `design set`:
 
@@ -310,17 +310,24 @@ The reports do not change the file.
 | Command | What it does | Example |
 | ------- | ------------ | ------- |
 | `report shopping <file>` | What to buy, the cost, and the use of each sheet. | `opencutplan report shopping shelf.cutplan.json` |
-| `report sequence <file>` | The cut steps in shop order, with the text of the Shop mode, and the total cut length. Each step has its `setup`. With `orderMode setup`, a "Setup: …" line starts each group of steps with the same setup. | `opencutplan report sequence shelf.cutplan.json --sheet 1` |
+| `report sequence <file>` | The cut steps in shop order, with the text of the Cut tab, and the total cut length. Each step has its `setup`. With `orderMode setup`, a "Setup: …" line starts each group of steps with the same setup. | `opencutplan report sequence shelf.cutplan.json --sheet 1` |
 | `report offcuts <file>` | The usable offcuts, and if the stock has them. | `opencutplan report offcuts shelf.cutplan.json --json` |
 | `report labels <file>` | One label for each copy, with `factoryEdge` (true when the copy asks for a factory edge). `--layout` splits them into pages. | `opencutplan report labels shelf.cutplan.json --layout avery-5160` |
 | `report cutlist <file>` | All parts with the size, count, factory edge request (`long` or `null`), and sheet numbers. | `opencutplan report cutlist shelf.cutplan.json` |
-| `report assembly <file>` | The steps to build each design. `--design <id>` selects one. | `opencutplan report assembly hall.cutplan.json --json` |
+| `report assembly <file>` | The steps to build each design. `--design <id>` selects one. In `--json`, each step has its `action` and its `boards` (see below). | `opencutplan report assembly hall.cutplan.json --json` |
+
+In `report assembly --json`, the `action` of a step is `drill`, `mark`, `spacers`, `subassembly`, `join`, `square`,
+`mount`, or `anchor`. The `boards` list gives the boards that the step works on. A `join` step lists only the boards
+that it adds to the unit. A board is `{ kind: "top" | "bottom" | "back" }`, `{ kind: "side", side: "left" | "right" }`,
+or `{ kind: "divider" | "shelf", line, from, to }`. For a divider, `line` is the column line, and for a shelf, it is
+the row line. Line j is between the cells j and j + 1, counted from 1. `from` and `to` are the first and the last cell
+along the line, counted from 0. The step numbers of `design drawing --step` are the positions in this list, from 1.
 
 `report shopping` also lists the hardware for the designs in `hardware`: the pocket screws, the back screws, the
 glue, and the IKEA legs, feet, or rails, with the IKEA article numbers. The hardware has no prices.
 
 When the plan has an error, or a part is not on a sheet, `report shopping`, `report sequence`, `report offcuts`,
-`report labels`, and `report cutlist` give a warning, as the Shop and Reports tabs do. The warning names the parts,
+`report labels`, and `report cutlist` give a warning, as the Cut and Reports tabs do. The warning names the parts,
 for example `warning: The plan is not ready to cut. 1 part is not on a sheet: Door. Run 'opencutplan validate
 shelf.cutplan.json' to list the problems.` The report is still complete.
 
@@ -374,6 +381,7 @@ opencutplan optimize $F --iterations 200 --seed 1 --strict --json
 opencutplan report assembly $F --json                                   # .designs[].steps[]
 opencutplan report shopping $F --json                                   # .hardware[]
 opencutplan design drawing $F kallax-2x4 --out hall.svg
+opencutplan design drawing $F kallax-2x4 --step 1 --json                # .description
 ```
 
 Some rules help an agent:

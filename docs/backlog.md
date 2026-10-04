@@ -571,3 +571,33 @@ checks, the front view, and the Design tab. Next:
   marks the selected cells of the Cells grid in blue.
 - `apps/web/e2e/plan.e2e.ts` combines two cells, checks the parts list and the front view, and optimizes from
   **Optimize now**.
+
+## 22. Split the Cut and Assembly tabs, with a drawing for each assembly step
+
+**Status:** Done.
+
+**Size:** M.
+
+**Problem:** The Shop tab has the cut steps and the assembly steps on one page. The assembly steps come after a long
+list of cuts, and they are text only. The text names boards such as "the shelf under row 1", but the user must find
+the board on the front view of the Design tab.
+
+**Idea:** Put the assembly steps on their own tab. Give each step a small front view that shows its boards.
+
+**Chosen approach:**
+
+- The Shop tab is now the **Cut** tab (its id stays `shop`). The new **Assembly** tab comes after it. The project file
+  does not change, and the old assembly ticks stay on their steps.
+- The core gives each `AssemblyStep` an optional `action` and `boards`. A join step lists only the boards that it adds
+  to the unit, so each box board joins once. `report assembly --json` includes them.
+- The core `assemblyDrawings` draws a front view for each step: the boards of the step are blue, earlier boards have
+  the colour of the design, and later boards are grey outlines. The drawings show the marks, the spacers, the
+  diagonals, the back, the legs or feet, the wall rail, and the anti-tip fitting. Each drawing has a text alternative.
+- Each step has a small drawing. The current step has a larger drawing. A click opens the drawing in a dialog with
+  **← Previous** and **Next →**.
+- The printed assembly steps have a 30 mm drawing beside each step, so no content is wider than the page.
+- `design drawing --step <n>` writes the drawing of one step as SVG.
+- The Assembly tab has no plan banner, because the assembly steps do not use the plan.
+
+**Files:** `packages/core/src/design/assembly.ts`, `reports/elevation.ts`, `apps/web/src/shop/AssemblyTab.tsx`,
+`screens/Workspace.tsx`, `print/PrintView.tsx`, `styles.css`, `packages/cli/src/commands/design.ts`, `report.ts`.
