@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { SettingsTab } from "../src/screens/SettingsTab.tsx";
+import { SettingsTab, type SettingsSectionId } from "../src/screens/SettingsTab.tsx";
 import { StockTab } from "../src/screens/StockTab.tsx";
 import { ToolsTab } from "../src/screens/ToolsTab.tsx";
 import { DEFAULT_PREFS, type ViewPrefs } from "../src/state/prefs.ts";
@@ -115,9 +115,87 @@ describe("SettingsTab", () => {
   let prefs: ViewPrefs = DEFAULT_PREFS;
   function WithPrefs({ store }: { store: Parameters<typeof SettingsTab>[0]["store"] }) {
     const [value, setValue] = useState(DEFAULT_PREFS);
+    const [section, setSection] = useState<SettingsSectionId>("units");
     prefs = value;
-    return <SettingsTab store={store} prefs={value} onPrefs={setValue} />;
+    return <SettingsTab store={store} prefs={value} onPrefs={setValue} section={section} onSection={setSection} />;
   }
+  const sections = () => within(screen.getByRole("navigation", { name: "Settings sections" }));
+  const showSection = (name: string) => userEvent.click(sections().getByRole("button", { name }));
+  const shownGroups = () => screen.queryAllByRole("group").map((group) => group.querySelector("legend")?.textContent);
+
+  it("lists the sections and shows one section at a time, the first by default", async () => {
+    renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
+    expect(sections().getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Units and precision",
+      "Factory edges",
+      "Snapping",
+      "Plan",
+      "Optimizer",
+      "Money",
+      "View (this browser only)",
+      "Features",
+    ]);
+    expect(sections().getByRole("button", { name: "Units and precision" }).getAttribute("aria-current")).toBe("true");
+    expect(shownGroups()).toEqual(["Units and precision"]);
+    await showSection("Optimizer");
+    expect(sections().getByRole("button", { name: "Optimizer" }).getAttribute("aria-current")).toBe("true");
+    expect(sections().getByRole("button", { name: "Units and precision" }).getAttribute("aria-current")).toBe("false");
+    expect(shownGroups()).toEqual(["Optimizer"]);
+    expect(screen.queryByLabelText("Units")).toBeNull();
+  });
+
+  it("shows the section that it is given", () => {
+    renderWithStore(sampleProject(), (store) => <SettingsTab store={store} prefs={DEFAULT_PREFS} onPrefs={() => {}} section="optimizer" onSection={() => {}} />);
+    expect(sections().getByRole("button", { name: "Optimizer" }).getAttribute("aria-current")).toBe("true");
+    expect(screen.getByRole("combobox", { name: "Goal" })).toBeTruthy();
+  });
+
+  it("shows the settings that match a search from all sections, under their section names", async () => {
+    renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search settings" }), "KERF");
+    expect(shownGroups()).toEqual(["View (this browser only)", "Features"]);
+    const view = within(screen.getByRole("group", { name: "View (this browser only)" }));
+    expect(view.getAllByRole("checkbox").map((box) => box.closest("label")?.querySelector("b")?.textContent)).toEqual(["Draw cut lines at kerf width"]);
+    const features = within(screen.getByRole("group", { name: "Features" }));
+    expect(features.getAllByRole("checkbox").map((box) => box.closest("label")?.querySelector("b")?.textContent)).toEqual(["Kerf"]);
+  });
+
+  it("shows a whole section when the search matches its name", async () => {
+    renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search settings" }), "optim");
+    expect(shownGroups()).toEqual(["Optimizer"]);
+    expect(screen.getByRole("combobox", { name: "Goal" })).toBeTruthy();
+    expect(screen.getByLabelText("Seed (blank for the default)")).toBeTruthy();
+  });
+
+  it("finds a setting of a group of choices by any of its names", async () => {
+    const { current } = renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search settings" }), "trim width");
+    expect(shownGroups()).toEqual(["Factory edges"]);
+    await userEvent.click(screen.getByRole("radio", { name: /^Use the factory edges/ }));
+    expect(current().project.settings.trim).toBe(0);
+  });
+
+  it("says when no setting matches the search", async () => {
+    renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search settings" }), "zebra");
+    expect(shownGroups()).toEqual([]);
+    expect(screen.getByText('No setting matches "zebra".')).toBeTruthy();
+  });
+
+  it("goes back to the chosen section when the search is cleared or a section is clicked", async () => {
+    renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
+    await showSection("Snapping");
+    const search = screen.getByRole("searchbox", { name: "Search settings" });
+    await userEvent.type(search, "grain");
+    expect(shownGroups()).toEqual(["Features"]);
+    await userEvent.clear(search);
+    expect(shownGroups()).toEqual(["Snapping"]);
+    await userEvent.type(search, "grain");
+    await showSection("Money");
+    expect(search).toHaveProperty("value", "");
+    expect(shownGroups()).toEqual(["Money"]);
+  });
 
   it("converts the project to millimetres and turns a feature off", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
@@ -125,6 +203,7 @@ describe("SettingsTab", () => {
     expect(current().project.project.units).toBe("mm");
     expect(current().project.parts[0]!.length).toBe(762);
     expect(current().project.tools[0]!.kerf).toBe(3.175);
+    await showSection("Features");
     await userEvent.click(screen.getByRole("checkbox", { name: /^Grain/ }));
     expect(current().project.settings.features.grain).toBe(false);
   });
@@ -144,6 +223,7 @@ describe("SettingsTab", () => {
 
   it("switches between the factory edges and a trim", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
+    await showSection("Factory edges");
     const edges = within(screen.getByRole("group", { name: "Factory edges" }));
     expect(edges.getByRole("radio", { name: /^Trim each edge/ })).toHaveProperty("checked", true);
     expect(edges.getByLabelText("Trim width")).toHaveProperty("value", '1/4"');
@@ -157,16 +237,19 @@ describe("SettingsTab", () => {
   it("shows the factory edges when an old file turned the trim feature off", async () => {
     const project = sampleProject();
     const { current } = renderWithStore({ ...project, settings: { ...project.settings, features: { ...project.settings.features, trim: false } } }, (store) => <WithPrefs store={store} />);
+    await showSection("Factory edges");
     const edges = within(screen.getByRole("group", { name: "Factory edges" }));
     expect(edges.getByRole("radio", { name: /^Use the factory edges/ })).toHaveProperty("checked", true);
     await userEvent.click(edges.getByRole("radio", { name: /^Trim each edge/ }));
     expect(current().project.settings.features.trim).toBe(true);
     expect(current().project.settings.trim).toBe(0.25);
+    await showSection("Features");
     expect(screen.queryByRole("checkbox", { name: /^Edge trim/ })).toBeNull();
   });
 
   it("sets the optimizer goal, and allows extra cost only for a goal other than the lowest cost", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
+    await showSection("Optimizer");
     const goal = screen.getByRole("combobox", { name: "Goal" });
     expect(within(goal).getAllByRole("option").map((option) => option.textContent)).toEqual(["Lowest cost", "Best offcuts", "Fewest cuts"]);
     expect(goal).toHaveProperty("value", "cost");
@@ -190,20 +273,24 @@ describe("SettingsTab", () => {
       { ...project, settings: { ...project.settings, optimizer: { ...project.settings.optimizer, goal: "time" } } },
       (store) => <WithPrefs store={store} />,
     );
+    await showSection("Optimizer");
     const goal = screen.getByRole("combobox", { name: "Goal" });
     expect(goal).toHaveProperty("value", "time");
     expect(within(goal).getByRole("option", { name: "time (unknown)" })).toBeTruthy();
     expect(screen.getByLabelText("Extra cost allowed (%)")).toHaveProperty("disabled", true);
     await userEvent.selectOptions(goal, "Best offcuts");
     expect(screen.queryByText(/The Offcuts feature is off/)).toBeNull();
+    await showSection("Features");
     await userEvent.click(screen.getByRole("checkbox", { name: /^Offcuts/ }));
     expect(current().project.settings.features.offcuts).toBe(false);
+    await showSection("Optimizer");
     expect(screen.getByText("The Offcuts feature is off, so this goal gives the same plan as the lowest cost.")).toBeTruthy();
-    expect(within(goal).queryByRole("option", { name: "time (unknown)" })).toBeNull();
+    expect(within(screen.getByRole("combobox", { name: /^Goal/ })).queryByRole("option", { name: "time (unknown)" })).toBeNull();
   });
 
   it("keeps the snap switch and the grid together, and the grid in this browser", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <WithPrefs store={store} />);
+    await showSection("Snapping");
     const snapping = within(screen.getByRole("group", { name: "Snapping" }));
     await userEvent.click(snapping.getByRole("checkbox", { name: /^Snapping/ }));
     expect(current().project.settings.features.snapping).toBe(false);

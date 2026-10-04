@@ -14,7 +14,7 @@ import type { Storage } from "../storage/db.ts";
 import { saveProjectFile } from "../storage/files.ts";
 import { DesignTab } from "./DesignTab.tsx";
 import { PartsTab } from "./PartsTab.tsx";
-import { SettingsTab } from "./SettingsTab.tsx";
+import { SettingsTab, type SettingsSectionId } from "./SettingsTab.tsx";
 import { StockTab } from "./StockTab.tsx";
 import { ToolsTab } from "./ToolsTab.tsx";
 
@@ -58,6 +58,7 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
   const [fileStatus, setFileStatus] = useState<string | null>(null);
   const [printJob, setPrintJob] = useState<PrintJob | null>(null);
   const [designFocus, setDesignFocus] = useState<string | null>(null);
+  const [settingsSection, setSettingsSection] = useState<SettingsSectionId>("units");
   const endPrint = useCallback(() => setPrintJob(null), []);
   const saveError = useAutosave(storage, id, project, stored);
 
@@ -176,10 +177,21 @@ export function Workspace({ id, initial, notices: initialNotices, handle: initia
         )}
         {tab === "stock" && <StockTab store={store} />}
         {tab === "tools" && <ToolsTab store={store} storage={storage} />}
-        {tab === "layout" && <LayoutTab store={store} analysis={analysis} prefs={prefs} runs={runs} onShowSettings={() => setTab("settings")} />}
+        {tab === "layout" && (
+          <LayoutTab
+            store={store}
+            analysis={analysis}
+            prefs={prefs}
+            runs={runs}
+            onShowSettings={() => {
+              setSettingsSection("optimizer");
+              setTab("settings");
+            }}
+          />
+        )}
         {tab === "shop" && <ShopTab store={store} analysis={analysis} onPrint={setPrintJob} />}
         {tab === "reports" && <ReportsTab store={store} analysis={analysis} prefs={prefs} onPrefs={setPrefs} onPrint={setPrintJob} />}
-        {tab === "settings" && <SettingsTab store={store} prefs={prefs} onPrefs={setPrefs} />}
+        {tab === "settings" && <SettingsTab store={store} prefs={prefs} onPrefs={setPrefs} section={settingsSection} onSection={setSettingsSection} />}
       </div>
       {printJob && <PrintView job={printJob} analysis={analysis} onDone={endPrint} />}
     </div>

@@ -131,7 +131,19 @@ describe("Workspace", () => {
     await renderWorkspace();
     await userEvent.click(screen.getByRole("button", { name: "Change" }));
     expect(screen.getByRole("tab", { name: "Settings" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("button", { name: "Optimizer" }).getAttribute("aria-current")).toBe("true");
     expect(screen.getByRole("combobox", { name: "Goal" })).toBeTruthy();
+  });
+
+  it("shows the last settings section again after a visit to another tab", async () => {
+    await renderWorkspace();
+    await userEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(screen.getByRole("button", { name: "Units and precision" }).getAttribute("aria-current")).toBe("true");
+    await userEvent.click(screen.getByRole("button", { name: "Money" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Layout" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(screen.getByRole("button", { name: "Money" }).getAttribute("aria-current")).toBe("true");
+    expect(screen.getByLabelText("Currency (3-letter code)")).toBeTruthy();
   });
 
   it("stops drawing grain on the layout when the grain feature is turned off", async () => {
@@ -143,6 +155,7 @@ describe("Workspace", () => {
     expect(part("Side 2").getAttribute("aria-label")).toContain("across the grain");
     expect(stripes()).toBeGreaterThan(0);
     await userEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    await userEvent.click(screen.getByRole("button", { name: "Features" }));
     await userEvent.click(screen.getByRole("checkbox", { name: /^Grain/ }));
     await userEvent.click(screen.getByRole("tab", { name: "Layout" }));
     expect(screen.getByRole("group", { name: /^Sheet 1 layout/ }).querySelectorAll('rect:not(.grid)[fill^="url("]').length).toBe(0);
