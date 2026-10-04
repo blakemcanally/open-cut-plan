@@ -2,7 +2,7 @@ import { z } from "zod";
 import { INCH_PRECISIONS, MM_PRECISIONS } from "../geometry/format.ts";
 
 export const FORMAT_ID = "opencutplan";
-export const FORMAT_VERSION = "1.5";
+export const FORMAT_VERSION = "1.6";
 /** Analysis and the editor work per copy, so a larger quantity would freeze them. */
 export const MAX_PART_QUANTITY = 10_000;
 export const MAX_DESIGN_CELLS = 50;
@@ -55,6 +55,7 @@ export const PartSchema = z
     group: z.string().optional(),
     notes: z.string().optional(),
     design: id.optional(),
+    factoryEdge: z.string().min(1).optional(),
   })
   .loose();
 
@@ -139,6 +140,7 @@ export const SettingsSchema = z
     orderMode: OrderModeSchema.default("sheet"),
     trim: nonNegative.default(0),
     minOffcut: z.object({ length: positive, width: positive }).loose().optional(),
+    factoryEdge: z.object({ minLength: positive }).loose().optional(),
     display: DisplaySchema.prefault({}),
     optimizer: z
       .object({

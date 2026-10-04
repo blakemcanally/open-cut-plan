@@ -179,6 +179,13 @@ describe("convertProjectUnits", () => {
     expect(back.tools[0]!.kerf).toBe(0.125);
   });
 
+  it("converts the length of the factory edge rule", () => {
+    const project = sampleProject();
+    project.settings.factoryEdge = { minLength: 36 };
+    expect(convertProjectUnits(project, "mm").settings.factoryEdge).toEqual({ minLength: 914.4 });
+    expect(convertProjectUnits(sampleProject(), "mm").settings.factoryEdge).toBeUndefined();
+  });
+
   it("converts tool limits", () => {
     const project = { ...sampleProject(), tools: [{ id: "ts", name: "TS", type: "table-saw" as const, kerf: 0.125, enabled: true, maxRip: 30, maxPiece: { length: 48, width: 24 } }] };
     const tool = convertProjectUnits(project, "mm").tools[0]!;

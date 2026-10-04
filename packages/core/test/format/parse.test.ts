@@ -125,24 +125,24 @@ describe("parseProject", () => {
     expect(result.ok && result.project.settings.features.cutOrder).toBe(true);
   });
 
-  it.each(["1.0", "1.1"])("loads a %s file as version 1.5 with the default goal and no warnings", (version) => {
+  it.each(["1.0", "1.1"])("loads a %s file as version 1.6 with the default goal and no warnings", (version) => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = version;
     delete doc.settings.optimizer.goal;
     delete doc.settings.optimizer.extraCostPercent;
     delete doc.settings.optimizer.keepGroupsTogether;
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.5");
+    expect(result.ok && result.project.version).toBe("1.6");
     expect(result.ok && result.project.settings.optimizer).toMatchObject({ goal: "cost", extraCostPercent: 10, keepGroupsTogether: true });
     expect(result.warnings).toEqual([]);
   });
 
-  it("loads a 1.4 file as version 1.5 and keeps the groups together by default", () => {
+  it("loads a 1.4 file as version 1.6 and keeps the groups together by default", () => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = "1.4";
     delete doc.settings.optimizer.keepGroupsTogether;
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.5");
+    expect(result.ok && result.project.version).toBe("1.6");
     expect(result.ok && result.project.settings.optimizer.keepGroupsTogether).toBe(true);
     expect(result.warnings).toEqual([]);
   });
@@ -153,6 +153,45 @@ describe("parseProject", () => {
     const result = parseProject(doc);
     expect(result.ok && result.project.settings.optimizer.keepGroupsTogether).toBe(false);
     doc.settings.optimizer.keepGroupsTogether = "yes";
+    expect(parseProject(doc).ok).toBe(false);
+  });
+
+  it("loads a 1.5 file as version 1.6 with no factory edge requests", () => {
+    const doc = JSON.parse(serializeProject(sampleProject()));
+    doc.version = "1.5";
+    const result = parseProject(doc);
+    expect(result.ok && result.project.version).toBe("1.6");
+    expect(result.ok && result.project.settings.factoryEdge).toBeUndefined();
+    expect(result.ok && result.project.parts.map((part) => part.factoryEdge)).toEqual([undefined]);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("keeps the factory edge request of a part and the rule for long parts", () => {
+    const doc = JSON.parse(serializeProject(sampleProject()));
+    doc.parts[0].factoryEdge = "long";
+    doc.settings.factoryEdge = { minLength: 36 };
+    const result = parseProject(doc);
+    expect(result.ok && result.project.parts[0]!.factoryEdge).toBe("long");
+    expect(result.ok && result.project.settings.factoryEdge).toEqual({ minLength: 36 });
+    expect(result.ok && JSON.parse(serializeProject(result.project))).toEqual(doc);
+  });
+
+  it("keeps a factory edge request that it does not know, and writes it back", () => {
+    const doc = JSON.parse(serializeProject(sampleProject()));
+    doc.parts[0].factoryEdge = "both";
+    const result = parseProject(doc);
+    expect(result.ok && result.warnings).toEqual([]);
+    expect(result.ok && JSON.parse(serializeProject(result.project)).parts[0].factoryEdge).toBe("both");
+  });
+
+  it.each([
+    ["an empty factory edge request", (doc: { parts: Record<string, unknown>[] }) => (doc.parts[0]!.factoryEdge = "")],
+    ["a factory edge request that is not text", (doc: { parts: Record<string, unknown>[] }) => (doc.parts[0]!.factoryEdge = true)],
+    ["a rule with no length", (doc: { settings: Record<string, unknown> }) => (doc.settings.factoryEdge = {})],
+    ["a rule with a length of 0", (doc: { settings: Record<string, unknown> }) => (doc.settings.factoryEdge = { minLength: 0 })],
+  ])("refuses %s", (_name, change) => {
+    const doc = JSON.parse(serializeProject(sampleProject()));
+    change(doc);
     expect(parseProject(doc).ok).toBe(false);
   });
 
@@ -174,7 +213,7 @@ describe("parseProject", () => {
   it("loads a newer minor version with a warning and keeps every unknown field on re-save", () => {
     const project = sampleProject();
     const doc = JSON.parse(serializeProject(project));
-    doc.version = "1.6";
+    doc.version = "1.7";
     doc.future = { x: 1 };
     doc.parts[0].edgeBanding = { top: "birch", bottom: null };
     doc.stock[0].supplier = "Local yard";
@@ -189,7 +228,7 @@ describe("parseProject", () => {
       {
         severity: "warning",
         code: "newer-minor",
-        message: "This file uses format version 1.6, which is newer than this app (1.5). Unknown fields are kept but ignored.",
+        message: "This file uses format version 1.7, which is newer than this app (1.6). Unknown fields are kept but ignored.",
         path: ["version"],
       },
     ]);

@@ -186,6 +186,10 @@
           "design": {
             "type": "string",
             "minLength": 1
+          },
+          "factoryEdge": {
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": [
@@ -627,6 +631,19 @@
           "required": [
             "length",
             "width"
+          ],
+          "additionalProperties": {}
+        },
+        "factoryEdge": {
+          "type": "object",
+          "properties": {
+            "minLength": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "minLength"
           ],
           "additionalProperties": {}
         },

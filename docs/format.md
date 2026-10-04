@@ -1,4 +1,4 @@
-# The OpenCutPlan file format (`.cutplan.json`), version 1.5
+# The OpenCutPlan file format (`.cutplan.json`), version 1.6
 
 An OpenCutPlan file describes a sheet-goods cutting project: the parts to cut, the stock to cut them from, the tools
 available, settings, and optionally a layout of parts on sheets with an ordered list of cuts.
@@ -21,7 +21,7 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | Always `"opencutplan"`. |
-| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.5"`. |
+| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.6"`. |
 | `project` | yes | `name` (text), `units` (`"in"` or `"mm"`), optional `notes`, `created`, `modified` (should be ISO 8601 date-times; readers accept any string). |
 | `materials` | yes | Materials; see below. |
 | `stock` | yes | Stock pieces available for cutting. |
@@ -70,6 +70,7 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 | `group` | no | Assembly or cabinet name, used for colour and labels. |
 | `notes` | no | |
 | `design` | no | The id of the design that made this part (added in 1.1). Readers that do not know designs treat the part as a normal part. |
+| `factoryEdge` | no | `"long"` or `"none"` (added in 1.6): the factory edge request of the part. See [Factory edges](#factory-edges-added-in-16). |
 
 A part may be rotated on its stock when its `grain` is `"none"`, when its material is not `grained`, or when
 `settings.features.grain` is `false`.
@@ -146,6 +147,29 @@ A colour is `"#rrggbb"` (six hexadecimal digits, upper or lower case).
 - `groups` is an object keyed by the group name. Each value is an object with an optional `color`: the chosen colour of
   the parts without a design that have that group. An entry for a group that no part has has no effect.
 
+## Factory edges (added in 1.6)
+
+A factory edge is an edge of a new sheet as the mill made it. It is straighter than a saw cut, so it looks better on a
+long part. A part can ask for a factory edge on one of its long edges.
+
+- The long side of a part is the larger of `length` and `width`. A long edge is an edge along the long side. A square
+  part has four long edges.
+- `parts[].factoryEdge` is `"long"` or `"none"`. `"long"` asks for one long edge of each copy on a factory edge.
+  `"none"` asks for no factory edge, also when the rule below applies. When the part has no `factoryEdge`, the rule
+  decides.
+- `settings.factoryEdge.minLength` is a length greater than 0. Each part with no `factoryEdge` whose long side is at
+  least `minLength` asks for a factory edge on a long edge. When the settings have no `factoryEdge`, there is no rule.
+- A sheet has factory edges only when its stock `kind` is `"sheet"` and its trim is 0 (see Trim in
+  [`cut-analysis.md`](cut-analysis.md#terms)). Then all four edges of the stock are factory edges. An owned offcut
+  and a trimmed sheet have no factory edges.
+- A copy gets its factory edge when one of its long edges lies on an edge of a stock with factory edges.
+- A request is not a rule of the plan. A copy that does not get its factory edge is a warning (`factory-edge`), not an
+  error.
+
+The value set of `factoryEdge` is not fixed: a minor version can add values, for example `"short"` or `"both"`. A
+reader that does not know the value warns (`unknown-factory-edge`), uses the rule for that part, and writes the value
+back.
+
 ## Tools
 
 Every tool has `id`, `name`, `type`, `kerf` (blade width), and `enabled`. Limits are optional; a missing limit means
@@ -165,6 +189,7 @@ no limit.
 | `features` | all `true` | Switches: `grain`, `kerf`, `trim`, `cutOrder`, `toolLimits`, `offcuts`, `cost`, `labels`, `snapping`. |
 | `orderMode` | `"sheet"` | `"sheet"`: finish each sheet before the next. `"setup"`: group cuts that share a tool, cut kind, and displayed setting. |
 | `trim` | `0` | Edge trim on every edge of the stock. |
+| `factoryEdge` | none | `{ "minLength": <length> }` (added in 1.6): each part whose long side is at least `minLength` asks for a factory edge on a long edge. See [Factory edges](#factory-edges-added-in-16). |
 | `minOffcut` | none | {`length`, `width`}: waste at least this size, in either orientation, is kept as an offcut. Readers use 12 × 6 in or 300 × 150 mm when it is absent. |
 | `display` | `{ "inch": 32, "mm": 0.5 }` | Rounding for display: `inch` is `8`, `16`, `32`, `64`, or `"decimal"`; `mm` is `1`, `0.5`, or `0.1`. |
 | `optimizer` | `{ "timeLimitMs": 2000, "goal": "cost", "extraCostPercent": 10, "keepGroupsTogether": true }` | Search time, an optional integer `seed`, and the goal (added in 1.2). `goal` is `"cost"`, `"offcuts"`, or `"cuts"`; a reader that does not know the value warns (`unknown-goal`), uses `"cost"`, and writes the value back. `extraCostPercent` is a number from 0 to 100: the most extra cost that the goals `offcuts` and `cuts` can use, in percent of the cheapest plan found. `keepGroupsTogether` (added in 1.5) is `true` or `false`. When it is `true`, the optimizer puts the copies of each [colour key](#colours-added-in-14) on as few sheets as it can, but never at a higher cost. A missing value means `true`. See [`optimizer.md`](optimizer.md#objective). |
@@ -205,7 +230,8 @@ uses gets a new id (`s1` becomes `s1-2`) with a warning, because edits find a sh
 - Readers must load a file whose `plan` has invalid references, and report the problems as warnings.
 - The value sets of `type`, `grain`, `kind`, `units`, `orderMode`, `axis`, and `display.inch`/`display.mm` are fixed
   within a major version. Adding a value requires a new major version, so a reader can refuse a value it does not know.
-- `designs[].system`, `designs[].mount`, and `settings.optimizer.goal` are not fixed: a minor version can add values.
+- `designs[].system`, `designs[].mount`, `parts[].factoryEdge`, and `settings.optimizer.goal` are not fixed: a minor
+  version can add values.
 
 ## CSV part and stock lists
 

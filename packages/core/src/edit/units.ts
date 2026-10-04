@@ -40,6 +40,8 @@ export function convertProjectUnits(project: Project, units: Units): Project {
   const settings = { ...project.settings, trim: c(project.settings.trim) };
   const { minOffcut } = project.settings;
   if (minOffcut) settings.minOffcut = { ...minOffcut, length: c(minOffcut.length), width: c(minOffcut.width) };
+  const { factoryEdge } = project.settings;
+  if (factoryEdge) settings.factoryEdge = { ...factoryEdge, minLength: c(factoryEdge.minLength) };
   const next: Project = {
     ...project,
     project: { ...project.project, units },
