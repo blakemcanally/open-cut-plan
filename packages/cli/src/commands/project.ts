@@ -1,8 +1,7 @@
-import { buildJsonSchema, createProject, defaultTools, errorMessage, parseProject, serializeProject, UnitsSchema, validatePlan, type Issue, type PlanIssue } from "@opencutplan/core";
+import { buildJsonSchema, createProject, defaultTools, errorMessage, parseProject, planStats, serializeProject, UnitsSchema, validatePlan, type Issue, type PlanIssue } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, issueText, loadProject, readSource, warningLines } from "../project.ts";
 import { CliError, EXIT, usageError, type CommandSpec } from "../spec.ts";
-import { planStats } from "../stats.ts";
 import { len, money, percent, plural } from "../text.ts";
 import { choiceValue, flag, str } from "../values.ts";
 

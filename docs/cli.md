@@ -217,7 +217,8 @@ a long side of at least that length asks for a long edge on a factory edge of th
 - `--rest-only` keeps all sheets and plans only the copies in the tray.
 - `--continue` starts from the current plan. For the goal `cost`, the result is not worse than the current plan. For
   the goals `offcuts` and `cuts`, the search first tries its fixed candidates again to find the cheapest cost, so the
-  result can cost less and have a worse goal measure than the current plan.
+  result can cost less and have a worse goal measure than the current plan. When the search finds no better plan, the
+  text output says `The search found no better plan. The plan did not change.`
 - `--time <seconds>` sets the search time. `--seed <n>` sets the random seed.
 - `--goal <goal>` and `--extra-cost <percent>` set the goal and the extra cost for this run only. The stored settings
   do not change. See [`optimizer.md`](optimizer.md#objective).
@@ -239,7 +240,8 @@ The `--json` output has `goal`, `extraCostPercent` (the limit of the run), `keep
 that the plan uses, rounded to one decimal (0 when `cheapestCost` is 0). The `score` has `groupSpread`: for each unit
 or group, the sheets of the material that hold it minus 1, summed, and `factoryEdgeMisses`: the placed copies that
 ask for a factory edge and do not get one. `groups` lists `{ key, label, material, sheets }`
-for each unit or group that is on more than one sheet of a material.
+for each unit or group that is on more than one sheet of a material. `planChanged` is false when the plan is the same
+as before the run.
 
 ```bash
 opencutplan optimize shelf.cutplan.json --iterations 200 --seed 1 --strict

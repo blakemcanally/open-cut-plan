@@ -168,6 +168,19 @@ describe("optimize", () => {
     expect(result.json().after.sheetsToBuy).toBeLessThanOrEqual(result.json().before.sheetsToBuy);
   });
 
+  it("says when --continue finds no better plan", async () => {
+    const io = withExamples();
+    const first = await cli(["optimize", BOOKCASE, "--iterations", "20", "--json"], io);
+    expect(first.json().planChanged).toBe(true);
+    expect(first.stdout).not.toContain("no better plan");
+    const before = io.files.get(BOOKCASE);
+    const result = await cli(["optimize", BOOKCASE, "--iterations", "1", "--continue", "--json"], io);
+    expect(result.json()).toMatchObject({ continued: true, planChanged: false });
+    expect(JSON.parse(io.files.get(BOOKCASE)!).plan).toEqual(JSON.parse(before!).plan);
+    const text = await cli(["optimize", BOOKCASE, "--iterations", "1", "--continue"], io);
+    expect(text.stdout).toContain("The search found no better plan. The plan did not change.");
+  });
+
   it("fails with --strict when copies cannot be placed", async () => {
     const io = withExamples();
     await cli(["parts", "add", BOOKCASE, "--name", "Huge", "--length", "3000", "--width", "1000", "--material", "mdf18"], io);

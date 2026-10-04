@@ -10,18 +10,20 @@ import {
   optimize,
   optimizeRequest,
   planContext,
+  planStats,
   projectGoal,
   regenerateDesigns,
+  samePlan,
   sheetFactoryEdgeMisses,
   spreadGroups,
   type OptimizeOptions,
   type OptimizeResult,
+  type PlanStats,
   type Project,
 } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { FILE_ARG, finishMutation, loadProject, OUTPUT_OPTIONS } from "../project.ts";
 import { usageError, type CommandSpec } from "../spec.ts";
-import { planStats, type PlanStats } from "../stats.ts";
 import { money, plural } from "../text.ts";
 import { flag, integerValue, numberValue, optionalBoolean, optionalChoice, str } from "../values.ts";
 
@@ -76,7 +78,7 @@ export const optimizeCommand: CommandSpec = {
     { command: `${PROGRAM} optimize shelf.cutplan.json --time 10 --continue --json`, description: "Search 10 more seconds from the current plan." },
   ],
   output:
-    'mode ("all" or "rest"), continued, goal, extraCostPercent (the limit of the run), keepGroupsTogether, seed, timeLimitMs (null with --iterations), iterations (candidates tried), deterministic, before and after { sheets, placedCopies, unplacedCopies, sheetsToBuy, cost, errors }, unplaced [{ part, copy, name, reason }] (reason: too-large, no-stock, no-tool, not-guillotine), materials [{ material, score (with groupSpread: the sheets past the first that hold each unit or group, summed; factoryEdgeMisses: the placed copies that ask for a factory edge and do not get one), cheapestCost, extraCostPercent (the extra cost that the plan uses) }], groups [{ key, label, material, sheets }] (the units and groups on more than one sheet of a material), changes, validation, written, dryRun. With --strict, unplaced copies also give exit 1.',
+    'mode ("all" or "rest"), continued, goal, extraCostPercent (the limit of the run), keepGroupsTogether, seed, timeLimitMs (null with --iterations), iterations (candidates tried), deterministic, planChanged (false when the plan is the same as before the run), before and after { sheets, placedCopies, unplacedCopies, sheetsToBuy, cost, errors }, unplaced [{ part, copy, name, reason }] (reason: too-large, no-stock, no-tool, not-guillotine), materials [{ material, score (with groupSpread: the sheets past the first that hold each unit or group, summed; factoryEdgeMisses: the placed copies that ask for a factory edge and do not get one), cheapestCost, extraCostPercent (the extra cost that the plan uses) }], groups [{ key, label, material, sheets }] (the units and groups on more than one sheet of a material), changes, validation, written, dryRun. With --strict, unplaced copies also give exit 1.',
   async run(invocation) {
     const { args, options, io } = invocation;
     if (flag(options, "rest-only") && flag(options, "keep-pinned")) throw usageError("Give --keep-pinned or --rest-only, not both.", "conflict");
@@ -114,6 +116,7 @@ export const optimizeCommand: CommandSpec = {
     const next = applyRun(request, result);
     const before = planStats(project);
     const after = planStats(next);
+    const planChanged = !samePlan(project, next);
     const parts = new Map(project.parts.map((part) => [part.id, part]));
     const unplaced = result.unplaced.map((u) => ({ ...u, name: copyLabel(parts.get(u.part)!, u.copy) }));
     const deterministic = opts.iterations !== undefined;
@@ -125,6 +128,7 @@ export const optimizeCommand: CommandSpec = {
     const details = [
       `Before: ${statsLine(before)}.`,
       `After: ${statsLine(after)}.`,
+      ...(continued && !planChanged ? ["The search found no better plan. The plan did not change."] : []),
       `Goal: ${describeGoal(goal, extra)}.`,
       ...materials
         .filter((m) => m.extraCostPercent > 0)
@@ -147,6 +151,7 @@ export const optimizeCommand: CommandSpec = {
         timeLimitMs: deterministic ? null : (opts.timeLimitMs ?? settings.timeLimitMs),
         iterations: result.iterations,
         deterministic,
+        planChanged,
         before: brief(before),
         after: brief(after),
         unplaced,

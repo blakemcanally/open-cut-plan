@@ -1,4 +1,7 @@
-import { analyzeProject, totalCutLength, unplacedCopies, type Project } from "@opencutplan/core";
+import { analyzeProject, type ProjectAnalysis } from "../analysis.ts";
+import { unplacedCopies } from "../edit/layout.ts";
+import type { Project } from "../format/schema.ts";
+import { totalCutLength } from "../sequence/sequence.ts";
 
 export interface PlanStats {
   sheets: number;
@@ -16,11 +19,13 @@ export interface PlanStats {
   cost: number | null;
   sheetsToBuy: number;
   missingPrices: string[];
+  /** The area of the stock of all the sheets in the plan. */
+  stockArea: number;
   utilization: number;
 }
 
-export function planStats(project: Project): PlanStats {
-  const analysis = analyzeProject(project);
+/** `analysis` must be the analysis of `project`; give it when you have it already. */
+export function planStats(project: Project, analysis: ProjectAnalysis = analyzeProject(project)): PlanStats {
   const sheets = project.plan?.sheets ?? [];
   const copies = project.parts.reduce((sum, part) => sum + part.quantity, 0);
   const unplaced = unplacedCopies(project).length;
@@ -41,6 +46,12 @@ export function planStats(project: Project): PlanStats {
     cost: shopping.total,
     sheetsToBuy: shopping.materials.flatMap((material) => material.lines).reduce((sum, line) => sum + line.buy, 0),
     missingPrices: shopping.missingPrices,
+    stockArea,
     utilization: stockArea > 0 ? partArea / stockArea : 0,
   };
+}
+
+/** True when both projects have the same sheets, in the same order, with the same placements. */
+export function samePlan(a: Project, b: Project): boolean {
+  return JSON.stringify(a.plan?.sheets ?? []) === JSON.stringify(b.plan?.sheets ?? []);
 }
