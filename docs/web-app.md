@@ -178,8 +178,8 @@ part that asks for a factory edge and does not get one.
   same, and **Redo** puts the new plan back. The button shows while the project is still the one the run produced.
 - When a run does not change the plan, the line says so, for example "Keep searching found no better plan, so the
   plan did not change." The run then adds no undo step.
-- While the optimizer runs, the toolbar shows **Stop**, the progress bar, and the count of plans tried. The toolbar
-  keeps the space for them when no search runs, so the buttons do not move.
+- While the optimizer runs, **Stop**, the progress bar, and the count of plans tried show at the end of the goal line.
+  The toolbar does not change, so its buttons do not move.
 - A line under the buttons names the optimizer goal, for example "Goal: best offcuts, up to 10 % extra cost.", and
   **Change** opens the Optimizer section of the Settings tab. After a search, the line names each material whose plan
   costs more than the cheapest plan found, for example "Plywood: 4 % more cost than the cheapest plan found." When

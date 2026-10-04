@@ -214,6 +214,19 @@ is that the material has no stock.
 
 ## 10. Show the result of an optimize run, and undo it
 
+**Status:** Done.
+
+**Chosen approach:**
+
+- After **Optimize**, **Optimize the rest**, or **Keep searching**, the banner has two lines, for example "Before: 4
+  sheets, $260.00, 2 parts unplaced, 1344" of cuts." and "After: …". The line gives the cost, or the stock area when
+  the cost is not known. The cut length shows when the `cutOrder` feature is on.
+- **Undo optimize** is the undo step of the run. It shows while the project is still the one the run produced.
+- A run that does not change the plan adds no undo step. For **Keep searching**, the banner says "Keep searching
+  found no better plan, so the plan did not change." The CLI says the same for `optimize --continue`, and its
+  `--json` output has `planChanged`.
+- `planStats` moved from the CLI to the core, so the CLI and the app count the plan in the same way.
+
 **Size:** S.
 
 **Problem:** After a run, the Layout tab says "Tried 192,031 plans. The best uses 3 sheets." It does not give the cost
@@ -225,6 +238,17 @@ searching** finds no better plan, say so.
 **Files:** `apps/web/src/optimizer/useOptimizeRuns.ts`, `layout/LayoutTab.tsx`.
 
 ## 11. Draw overlaps and small parts clearly
+
+**Status:** Done.
+
+**Chosen approach:**
+
+- Overlapping parts are see-through and have a red dashed outline on top. The area that they share has red hatching.
+- The label of a part is the largest that fits: the name and the size, the name, or the size, from 12 px down to
+  7 px. A tall narrow part has a turned label. A part that is too small has no label. Each part has a tooltip with
+  its name and size.
+- **Stop**, the progress bar, and the count of plans tried show at the end of the goal line, so the toolbar does not
+  change while the optimizer runs.
 
 **Size:** S.
 
@@ -345,7 +369,8 @@ columns.
   cut tree compares the largest offcut before the cut length.
 - **Tool colours (item 7):** The table saw is dark blue and the track saw is dark green. A cut can be hard to see on a
   part with a blue or green fill. Idea: give the cut lines a white outline, or choose tool colours far from the part
-  colours.
+  colours. **Status:** Done. Each cut line has a white halo under it (`CUT_HALO_COLOR`), on the Layout tab and in
+  `sheetSvg`, for both "stage" and "tool". The tool colours did not change.
 - **Print and export (item 7):** The booklet and the "Sheet N as SVG" export colour the cuts by stage only. Idea: use
   the choice from the Layout tab.
 - **Typical price (item 4):** The typical price is the lowest listing. Some low prices come from old search results.
