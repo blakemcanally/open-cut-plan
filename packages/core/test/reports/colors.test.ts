@@ -4,6 +4,8 @@ import {
   designUnit,
   groupColorKey,
   isHexColor,
+  MATERIAL_PALETTE,
+  materialColor,
   NO_GROUP_COLOR,
   PART_PALETTE,
   partColors,
@@ -45,6 +47,25 @@ describe("PART_PALETTE", () => {
   it("keeps black text readable on every colour (contrast of 7 or more)", () => {
     const text = luminance("#222222");
     for (const color of PART_PALETTE) expect((luminance(color) + 0.05) / (text + 0.05)).toBeGreaterThanOrEqual(7);
+  });
+});
+
+describe("MATERIAL_PALETTE and materialColor", () => {
+  it("has different colours that are not part colours", () => {
+    expect(new Set(MATERIAL_PALETTE).size).toBe(MATERIAL_PALETTE.length);
+    for (const color of MATERIAL_PALETTE) expect([...PART_PALETTE, NO_GROUP_COLOR]).not.toContain(color);
+  });
+
+  it("gives each material its chosen colour, or the palette colour of its place in the list", () => {
+    const project = sampleProject();
+    project.materials = [
+      { id: "a", name: "A", thickness: 1, grained: true },
+      { id: "b", name: "B", thickness: 1, grained: true, color: "#123456" },
+      { id: "c", name: "C", thickness: 1, grained: true },
+    ];
+    expect(project.materials.map((material) => materialColor(project, material.id))).toEqual([MATERIAL_PALETTE[0], "#123456", MATERIAL_PALETTE[2]]);
+    project.materials = Array.from({ length: MATERIAL_PALETTE.length + 1 }, (_, index) => ({ id: `m${index}`, name: `M${index}`, thickness: 1, grained: true }));
+    expect(materialColor(project, `m${MATERIAL_PALETTE.length}`)).toBe(MATERIAL_PALETTE[0]);
   });
 });
 

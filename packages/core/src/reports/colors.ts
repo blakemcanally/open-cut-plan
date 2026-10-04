@@ -18,6 +18,8 @@ export const PART_PALETTE: readonly string[] = [
   "#a9b4f2",
 ];
 export const NO_GROUP_COLOR = "#d9d4c7";
+/** Wood and board tones for the materials, apart from the part colours. */
+export const MATERIAL_PALETTE: readonly string[] = ["#d9c9a3", "#8b5e3c", "#7d8b99", "#c4703f", "#8a9a5b", "#9c4a3a", "#5f8a8b", "#555b61"];
 export const STAGE_COLORS = ["#c0392b", "#1a5fd0", "#7a4bb5", "#1e8449", "#b9770e"];
 /** Cut line and number colours with a contrast of 4.5 or more against white. Red is only for `TOOL_WARNING_COLOR`. */
 export const TOOL_COLORS: readonly string[] = ["#1a5fd0", "#1e8449", "#a35c00", "#7a4bb5", "#0b7285", "#a61e6a"];
@@ -165,4 +167,11 @@ export function toolColors(tools: readonly Tool[]): ToolColors {
     colorOf,
     cutColor: (step) => (toolWarning(step) ? TOOL_WARNING_COLOR : (colorOf(step.tool!.id) ?? TOOL_WARNING_COLOR)),
   };
+}
+
+/** The chosen colour of the material, or the palette colour of its place in the materials list. */
+export function materialColor(project: Project, material: string): string {
+  const index = project.materials.findIndex((item) => item.id === material);
+  const chosen = project.materials[index]?.color;
+  return chosen ?? MATERIAL_PALETTE[Math.max(index, 0) % MATERIAL_PALETTE.length]!;
 }
