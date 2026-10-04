@@ -1,6 +1,6 @@
 import { convertLength } from "../geometry/units.ts";
 import { formatLength } from "../geometry/format.ts";
-import type { Project } from "../format/schema.ts";
+import type { CombinedCell, Project } from "../format/schema.ts";
 import { designParts } from "../design/generate.ts";
 import { designGeometry, materialsById } from "../design/geometry.ts";
 import { railsFor } from "../design/hardware.ts";
@@ -19,8 +19,17 @@ function num(value: number): string {
   return String(Math.round(value * 1000) / 1000);
 }
 
-/** A front view of one unit of a design, to scale in project units, or null when the design does not exist or cannot make parts. */
-export function designElevationSvg(project: Project, designId: string): string | null {
+export interface ElevationOptions {
+  /** Cells to mark, with columns and rows from 1 as in `combined`. */
+  highlight?: CombinedCell | null;
+}
+
+/**
+ * A front view of one unit of a design, to scale in project units, or null when the design does not exist or cannot
+ * make parts. Each board has its part name as a title; the boards whose name differs from the plain grid name (the
+ * boards that a combined cell makes) also get a label.
+ */
+export function designElevationSvg(project: Project, designId: string, options: ElevationOptions = {}): string | null {
   const design = project.designs?.find((candidate) => candidate.id === designId);
   if (!design || designParts(project, design) === null) return null;
   const geometry = designGeometry(design, materialsById(project))!;
@@ -42,15 +51,39 @@ export function designElevationSvg(project: Project, designId: string): string |
     `<title>${escapeXml(`${design.name}: ${show(width)} × ${show(height)} × ${show(geometry.depth)}`)}</title>`,
     `<g data-design="${escapeXml(design.id)}">`,
   ];
-  const panel = (kind: string, x: number, y: number, w: number, h: number) =>
-    out.push(`<rect data-panel="${kind}" x="${num(x)}" y="${num(y)}" width="${num(w)}" height="${num(h)}" fill="${escapeXml(fill)}" ${stroke}/>`);
-
   const { panels, cells } = designPanels(geometry);
-  for (const p of panels) panel(p.kind, p.x, p.y, p.width, p.height);
+  for (const p of panels) {
+    out.push(
+      `<rect data-panel="${p.kind}" x="${num(p.x)}" y="${num(p.y)}" width="${num(p.width)}" height="${num(p.height)}" fill="${escapeXml(fill)}" ${stroke}><title>${escapeXml(p.name)}</title></rect>`,
+    );
+  }
+  const highlight = options.highlight;
+  const marked = highlight
+    ? cells.filter((cell) => cell.column + 1 >= highlight.column && cell.column < highlight.column - 1 + highlight.columns && cell.row + 1 >= highlight.row && cell.row < highlight.row - 1 + highlight.rows)
+    : [];
+  if (marked.length > 0) {
+    const left = Math.min(...marked.map((cell) => cell.x));
+    const top = Math.min(...marked.map((cell) => cell.y));
+    const right = Math.max(...marked.map((cell) => cell.x + cell.width));
+    const bottom = Math.max(...marked.map((cell) => cell.y + cell.height));
+    out.push(
+      `<rect data-highlight x="${num(left)}" y="${num(top)}" width="${num(right - left)}" height="${num(bottom - top)}" fill="#1a5fd0" fill-opacity="0.15" stroke="#1a5fd0" stroke-width="${num(unit * 0.15)}"/>`,
+    );
+  }
   for (const cell of cells) {
     const size = `${show(cell.width)} × ${show(cell.height)}`;
     const scale = Math.min(0.9, cell.width / (0.62 * size.length + 1) / unit);
     out.push(`<text x="${num(cell.x + cell.width / 2)}" y="${num(cell.y + cell.height / 2)}" ${font(scale)} text-anchor="middle" dominant-baseline="middle" fill="#555">${escapeXml(size)}</text>`);
+  }
+  for (const p of panels.filter((candidate) => candidate.name.includes(","))) {
+    const upright = p.kind === "divider";
+    const length = upright ? p.height : p.width;
+    const scale = Math.min(0.7, length / (0.6 * p.name.length + 1) / unit);
+    const x = num(p.x + p.width / 2);
+    const y = num(p.y + p.height / 2);
+    out.push(
+      `<text data-label="${p.kind}" x="${x}" y="${y}" ${font(scale)} text-anchor="middle" dominant-baseline="middle" fill="#222" stroke="#fff" stroke-width="${num(unit * scale * 0.25)}" paint-order="stroke"${upright ? ` transform="rotate(-90 ${x} ${y})"` : ""}>${escapeXml(p.name)}</text>`,
+    );
   }
 
   if (mount === "legs" || mount === "feet") {

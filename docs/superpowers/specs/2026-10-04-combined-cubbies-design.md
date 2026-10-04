@@ -411,6 +411,12 @@ The board names in the text are the part names of §6, so the text matches the l
 - A combined cell is one cell, with its opening size as the label (for example "688 mm × 335 mm"). The `Cell` type
   gets the optional fields `columns` and `rows` for a combined cell.
 - With no combined cells, the panels and the cells, and their order, are those of today.
+- Each `Panel` has the `name` of its part, as in the parts list. The drawing gives each board its name as a `<title>`.
+  A board whose name is not the plain grid name (a long shelf such as "Shelf, columns 1–2", or a short divider such as
+  "Divider, row 2") also gets a label on the board, with `data-label`. A plain grid gets no labels, so that the drawing
+  stays clear.
+- `designElevationSvg(project, id, { highlight })` marks a rectangle of cells (columns and rows from 1) with
+  `data-highlight`. The Design tab gives it the selection of the Cells grid. Cells outside the grid are ignored.
 
 ## 12. Web app (Design tab)
 
@@ -437,6 +443,9 @@ The board names in the text are the part names of §6, so the text matches the l
 - `design get` and `design list` show `combined`. `design set` applies `fitCombined` when `--cols`, `--rows`, or the
   openings change. (The prototype does this part already, so `design set` cannot make a bad file.)
 - `docs/cli.md` gets the commands and an agent recipe step.
+- `--cell` is required and `--to` is optional, in the form `<column>,<row>`, from 1. A cell outside the grid is
+  refused with exit 2 and `invalid-value`. `design combine` with one cell, and `design split` on a cell that is not in
+  a combined cell, are refused in the same way, so that a command that changes nothing does not write the file.
 
 ## 14. Worked examples
 

@@ -26,6 +26,7 @@ import {
   partColors,
   removeDesign,
   setDesignColor,
+  type CombinedCell,
   type Design,
   type DesignAxis,
   type DesignMount,
@@ -166,6 +167,7 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
   const display = project.settings.display;
   const [refused, setRefused] = useState<{ field: string; message: string } | null>(null);
   const [typing, setTyping] = useState<Design | null>(null);
+  const [selected, setSelected] = useState<CombinedCell | null>(null);
   const geometry = designGeometry(design, materialsById(project));
   const locked = isNewerMinor(project.version)
     ? `This file has the format version ${project.version}, from a newer OpenCutPlan. Update the app to change its designs.`
@@ -212,7 +214,7 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
   });
 
   const shown = typing ? { ...project, designs: (project.designs ?? []).map((item) => (item.id === design.id ? typing : item)) } : project;
-  const svg = designElevationSvg(shown, design.id);
+  const svg = designElevationSvg(shown, design.id, { highlight: selected });
   const parts = designParts(shown, typing ?? design);
   const show = (value: number) => formatLength(value, units, display);
 
@@ -324,7 +326,14 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
         </fieldset>
         {axisFields("width")}
         {axisFields("height")}
-        <CellGrid design={design} columns={geometry?.columns ?? null} rows={geometry?.rows ?? null} disabled={locked !== null} onEdit={(change) => apply("cells", change)} />
+        <CellGrid
+          design={design}
+          columns={geometry?.columns ?? null}
+          rows={geometry?.rows ?? null}
+          disabled={locked !== null}
+          onEdit={(change) => apply("cells", change)}
+          onSelect={setSelected}
+        />
         <fieldset disabled={locked !== null}>
           <legend>Box</legend>
           <label className="stack">

@@ -6,22 +6,22 @@ import { legacyDesignPanels } from "./legacy.ts";
 
 const geometryOf = (design: Design) => designGeometry(design, materialsById(designProject()))!;
 const area = (r: { width: number; height: number }) => r.width * r.height;
-const overlap = (a: Panel, b: Panel) =>
+const overlap = (a: Pick<Panel, "x" | "y" | "width" | "height">, b: Pick<Panel, "x" | "y" | "width" | "height">) =>
   Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > 1e-6 && Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y) > 1e-6;
 
 describe("designPanels", () => {
   it("puts the top and the bottom across the full width, and the sides, the divider, and the shelves between them", () => {
     const { panels, cells } = designPanels(geometryOf(kallaxDesign()));
     const of = (kind: Panel["kind"]) => panels.filter((panel) => panel.kind === kind);
-    expect(of("top")).toEqual([{ kind: "top", x: 0, y: 0, width: 724, height: 18 }]);
-    expect(of("bottom")).toEqual([{ kind: "bottom", x: 0, y: 1412, width: 724, height: 18 }]);
+    expect(of("top")).toEqual([{ kind: "top", name: "Top", x: 0, y: 0, width: 724, height: 18 }]);
+    expect(of("bottom")).toEqual([{ kind: "bottom", name: "Bottom", x: 0, y: 1412, width: 724, height: 18 }]);
     expect(of("side")).toEqual([
-      { kind: "side", x: 0, y: 18, width: 18, height: 1394 },
-      { kind: "side", x: 706, y: 18, width: 18, height: 1394 },
+      { kind: "side", name: "Side", x: 0, y: 18, width: 18, height: 1394 },
+      { kind: "side", name: "Side", x: 706, y: 18, width: 18, height: 1394 },
     ]);
-    expect(of("divider")).toEqual([{ kind: "divider", x: 353, y: 18, width: 18, height: 1394 }]);
+    expect(of("divider")).toEqual([{ kind: "divider", name: "Divider", x: 353, y: 18, width: 18, height: 1394 }]);
     expect(of("shelf")).toHaveLength(6);
-    expect(of("shelf")[0]).toEqual({ kind: "shelf", x: 18, y: 353, width: 335, height: 18 });
+    expect(of("shelf")[0]).toEqual({ kind: "shelf", name: "Shelf", x: 18, y: 353, width: 335, height: 18 });
     expect(cells).toHaveLength(8);
     expect(cells[0]).toEqual({ column: 0, row: 0, x: 18, y: 18, width: 335, height: 335 });
   });
@@ -80,7 +80,8 @@ describe("designPanels", () => {
     fc.assert(
       fc.property(axis, axis, fc.constantFrom(12, 18, 19.05), (width, height, thickness) => {
         const geometry = { ...geometryOf(kallaxDesign({ system: "custom", width, height })), thickness };
-        expect(designPanels(geometry)).toEqual(legacyDesignPanels(geometry));
+        const { panels, cells } = designPanels(geometry);
+        expect({ panels: panels.map(({ name: _name, ...panel }) => panel), cells }).toEqual(legacyDesignPanels(geometry));
       }),
       { numRuns: 200 },
     );
@@ -90,16 +91,16 @@ describe("designPanels", () => {
     const design = kallaxDesign({ width: { openings: [335, 335, 335, 335] }, height: { openings: [335, 335] }, combined: [{ column: 1, row: 1, columns: 2, rows: 1 }] });
     const { panels, cells } = designPanels(geometryOf(design));
     expect(panels).toEqual([
-      { kind: "top", x: 0, y: 0, width: 1430, height: 18 },
-      { kind: "bottom", x: 0, y: 706, width: 1430, height: 18 },
-      { kind: "side", x: 0, y: 18, width: 18, height: 688 },
-      { kind: "shelf", x: 18, y: 353, width: 688, height: 18 },
-      { kind: "divider", x: 353, y: 371, width: 18, height: 335 },
-      { kind: "divider", x: 706, y: 18, width: 18, height: 688 },
-      { kind: "shelf", x: 724, y: 353, width: 335, height: 18 },
-      { kind: "divider", x: 1059, y: 18, width: 18, height: 688 },
-      { kind: "shelf", x: 1077, y: 353, width: 335, height: 18 },
-      { kind: "side", x: 1412, y: 18, width: 18, height: 688 },
+      { kind: "top", name: "Top", x: 0, y: 0, width: 1430, height: 18 },
+      { kind: "bottom", name: "Bottom", x: 0, y: 706, width: 1430, height: 18 },
+      { kind: "side", name: "Side", x: 0, y: 18, width: 18, height: 688 },
+      { kind: "shelf", name: "Shelf, columns 1–2", x: 18, y: 353, width: 688, height: 18 },
+      { kind: "divider", name: "Divider, row 2", x: 353, y: 371, width: 18, height: 335 },
+      { kind: "divider", name: "Divider", x: 706, y: 18, width: 18, height: 688 },
+      { kind: "shelf", name: "Shelf", x: 724, y: 353, width: 335, height: 18 },
+      { kind: "divider", name: "Divider", x: 1059, y: 18, width: 18, height: 688 },
+      { kind: "shelf", name: "Shelf", x: 1077, y: 353, width: 335, height: 18 },
+      { kind: "side", name: "Side", x: 1412, y: 18, width: 18, height: 688 },
     ]);
     expect(cells).toHaveLength(7);
     expect(cells[0]).toEqual({ column: 0, row: 0, x: 18, y: 18, width: 688, height: 335, columns: 2, rows: 1 });
@@ -171,6 +172,11 @@ describe("designPanels", () => {
           expected.set(key, (expected.get(key) ?? 0) + part.quantity);
         }
         expect(drawn).toEqual(expected);
+
+        const named = new Map<string, number>();
+        for (const panel of panels) named.set(panel.name, (named.get(panel.name) ?? 0) + 1);
+        const parts = new Map(buildDesignParts(design, geometry).map((part) => [part.name, part.quantity]));
+        expect(named).toEqual(parts);
       }),
       { numRuns: 300 },
     );

@@ -525,7 +525,7 @@ const drawing: CommandSpec = {
   name: "design drawing",
   summary: "Draw the front view of a design as SVG.",
   description:
-    "Draw one unit of a design from the front, to scale: the panels at their true thickness, each opening size, the outside width and height, the depth, and the legs, feet, or wall rail. The default target is standard output. A design with an error has no drawing (exit 1, design-invalid).",
+    "Draw one unit of a design from the front, to scale: the panels at their true thickness, each opening size, the outside width and height, the depth, and the legs, feet, or wall rail. Each board has the name of its part as its title, and the boards that a combined cell makes also have a label. The default target is standard output. A design with an error has no drawing (exit 1, design-invalid).",
   args: [FILE_ARG, DESIGN_ARG],
   options: [{ name: "out", type: "string", value: "<path|->", description: "The SVG file to write, or - for standard output. Default: standard output." }],
   examples: [

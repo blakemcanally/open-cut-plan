@@ -81,6 +81,8 @@ parts from the design, and the Parts tab lists them. The file format is in [form
   one long board. **Split** makes each combined cell in the selection into single cells again. Each one is one undo
   step. When the columns or rows change, a combined cell that is now outside the grid gets smaller, and a combined cell
   of one cell goes.
+- The front view marks the selected cells in blue. Each board shows its part name when the pointer is on it. The boards
+  that a combined cell makes, for example "Shelf, columns 1–2" and "Divider, row 2", also have a label with the name.
 - **Parts** under the front view lists the parts of the design, with their sizes and quantities.
 - **Sheets** under the parts gives an estimate of the sheets for each material of the design, for example "About 2
   sheets of Plywood (18 mm), 2440 mm × 1220 mm." The estimate is a short optimizer run on the parts of this design

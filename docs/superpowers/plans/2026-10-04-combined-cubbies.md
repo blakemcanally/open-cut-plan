@@ -220,9 +220,13 @@ const shelf = (i, c) => !same(i - 1, c, i, c);    // the segment of row line i i
 
 ### Task 11 (later phase): CLI commands
 
+Done: `design combine` and `design split` in `packages/cli/src/commands/design.ts`, with the tests in `packages/cli/test/design.test.ts` and the recipe step in `docs/cli.md`.
+
 - `design combine <file> <id> --cell <column>,<row> --to <column>,<row>` and `design split <file> <id> --cell <column>,<row>`, with `--json` output in the style of `design set` (`design`, `parts`, `partChanges`, `removedPlacements`), help text, tests, and `docs/cli.md`.
 
 ### Task 12 (later phase): Polish
+
+Done: the assembly text names each board and joins each short divider to its long shelf first (`shelfAssemblies`), the front view names each board and labels the boards of a combined cell, the Design tab marks the selected cells in the front view, and `apps/web/e2e/plan.e2e.ts` combines two cells and optimizes.
 
 - Assembly text with the part names on each board, and one step for each through member when it reads better.
 - A highlight of the selected cells in the front view, and labels with the part names on the boards.

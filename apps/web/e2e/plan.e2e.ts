@@ -239,6 +239,38 @@ test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware
   await expect(page.locator(".print-root")).toHaveCount(0);
 });
 
+test("combines two cells on the Design tab, and optimizes from the sheet estimate", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Name").fill("E2E cells");
+  await page.getByRole("combobox", { name: "Units" }).selectOption("mm");
+  await page.getByRole("button", { name: "Create project" }).click();
+
+  await page.getByRole("tab", { name: "Design" }).click();
+  await page.getByRole("button", { name: "Add design" }).click();
+  const sheets = page.getByRole("region", { name: "Sheets" });
+  await expect(sheets.getByRole("listitem").first()).toContainText("The project has no sheet stock of Plywood (18 mm).");
+  await sheets.getByRole("button", { name: "Add 2440 mm × 1220 mm sheets" }).click();
+  await expect(sheets.getByRole("listitem").first()).toHaveText("About 1 sheet of Plywood (18 mm), 2440 mm × 1220 mm.");
+
+  const cells = page.getByRole("grid", { name: "Cells" });
+  await cells.getByRole("gridcell", { name: "Column 1, row 1" }).click();
+  await cells.getByRole("gridcell", { name: "Column 2, row 1" }).click({ modifiers: ["Shift"] });
+  const front = page.getByRole("img", { name: /^Front view of KALLAX 2x2: / });
+  await expect(front.locator("[data-highlight]")).toHaveAttribute("width", "688");
+  await page.getByRole("button", { name: "Combine" }).click();
+  await expect(cells.getByRole("gridcell")).toHaveCount(3);
+  const parts = page.getByRole("region", { name: "Parts" });
+  await expect(parts.getByRole("row", { name: /^Shelf, columns 1–2/ })).toContainText("688 mm × 384 mm");
+  await expect(parts.getByRole("row", { name: /^Divider, row 2/ })).toContainText("335 mm × 384 mm");
+  await expect(front.locator("text", { hasText: "688 mm × 335 mm" })).toHaveCount(1);
+  await expect(front.locator("[data-label]")).toHaveText(["Shelf, columns 1–2", "Divider, row 2"]);
+
+  await sheets.getByRole("button", { name: "Optimize now" }).click();
+  await expect(page.getByRole("tab", { name: "Layout" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.locator('[data-copy-key^="kallax-2x2-shelf-cols-1-2#"]').first()).toBeVisible();
+});
+
 async function readDownload(download: { createReadStream(): Promise<NodeJS.ReadableStream> }): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of await download.createReadStream()) chunks.push(Buffer.from(chunk));

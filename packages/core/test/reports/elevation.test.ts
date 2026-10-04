@@ -37,6 +37,32 @@ describe("designElevationSvg", () => {
     expect(svg).toContain('<rect data-panel="divider" x="353" y="371" width="18" height="335"');
   });
 
+  it("names the part of each board, and labels the boards that a combined cell makes", () => {
+    const plain = designElevationSvg(project, "kx")!;
+    expect(plain).toContain('<rect data-panel="shelf" x="18" y="353" width="335" height="18"');
+    expect(count(plain, /<title>Shelf<\/title>/g)).toBe(6);
+    expect(count(plain, /<title>Side<\/title>/g)).toBe(2);
+    expect(plain).not.toContain("data-label");
+    const combined = regenerateDesigns(
+      designProject([kallaxDesign({ width: { openings: [335, 335, 335, 335] }, height: { openings: [335, 335] }, combined: [{ column: 1, row: 1, columns: 2, rows: 1 }] })]),
+    );
+    const svg = designElevationSvg(combined, "kx")!;
+    expect(svg).toMatch(/<rect data-panel="shelf" x="18" y="353" width="688" height="18"[^>]*><title>Shelf, columns 1–2<\/title><\/rect>/);
+    expect(svg).toMatch(/<text data-label="shelf" x="362" y="362" [^>]*>Shelf, columns 1–2<\/text>/);
+    expect(svg).toMatch(/<text data-label="divider" x="362" y="538.5" [^>]*transform="rotate\(-90 362 538.5\)"[^>]*>Divider, row 2<\/text>/);
+    expect(count(svg, /data-label=/g)).toBe(2);
+  });
+
+  it("marks the selected cells, and ignores a selection outside the grid", () => {
+    const combined = regenerateDesigns(
+      designProject([kallaxDesign({ width: { openings: [335, 335, 335, 335] }, height: { openings: [335, 335] }, combined: [{ column: 1, row: 1, columns: 2, rows: 1 }] })]),
+    );
+    expect(designElevationSvg(combined, "kx")).not.toContain("data-highlight");
+    expect(designElevationSvg(combined, "kx", { highlight: { column: 2, row: 2, columns: 1, rows: 1 } })).toContain('<rect data-highlight x="371" y="371" width="335" height="335"');
+    expect(designElevationSvg(combined, "kx", { highlight: { column: 1, row: 1, columns: 3, rows: 2 } })).toContain('<rect data-highlight x="18" y="18" width="1041" height="688"');
+    expect(designElevationSvg(combined, "kx", { highlight: { column: 5, row: 1, columns: 1, rows: 1 } })).not.toContain("data-highlight");
+  });
+
   it("fills the panels with the colour of the first unit of the design", () => {
     expect(designElevationSvg(project, "kx")).toContain('fill="#9cc3e6"');
     expect(designElevationSvg(project, "ek")).toContain('fill="#f2c27b"');

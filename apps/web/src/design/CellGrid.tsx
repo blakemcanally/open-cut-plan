@@ -1,5 +1,5 @@
 import { axisCells, combinedAt, combineCells, expandSelection, splitCells, type CombinedCell, type Design } from "@opencutplan/core";
-import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 
 interface Point {
   column: number;
@@ -13,6 +13,7 @@ interface CellGridProps {
   rows: readonly number[] | null;
   disabled: boolean;
   onEdit: (change: (design: Design) => Design) => boolean;
+  onSelect?: (selection: CombinedCell | null) => void;
 }
 
 const STEPS: Readonly<Record<string, Point>> = {
@@ -38,7 +39,7 @@ function overlaps(a: CombinedCell, b: CombinedCell): boolean {
   return a.column < b.column + b.columns && b.column < a.column + a.columns && a.row < b.row + b.rows && b.row < a.row + a.rows;
 }
 
-export function CellGrid({ design, columns: columnSizes, rows: rowSizes, disabled, onEdit }: CellGridProps) {
+export function CellGrid({ design, columns: columnSizes, rows: rowSizes, disabled, onEdit, onSelect }: CellGridProps) {
   const columns = axisCells(design.width);
   const rows = axisCells(design.height);
   const [anchor, setAnchor] = useState<Point | null>(null);
@@ -49,6 +50,12 @@ export function CellGrid({ design, columns: columnSizes, rows: rowSizes, disable
   const selection = anchor && inGrid(anchor) ? expandSelection(design, rectangle(anchor, at)) : null;
   const spanOf = (point: Point): CombinedCell => combinedAt(design, point.column, point.row) ?? { ...point, columns: 1, rows: 1 };
   const current = spanOf(at);
+  const chosen = selection ? `${selection.column},${selection.row},${selection.columns},${selection.rows}` : "";
+  useEffect(() => {
+    if (!onSelect) return;
+    const [column, row, wide, tall] = chosen.split(",").map(Number);
+    onSelect(chosen ? { column: column!, row: row!, columns: wide!, rows: tall! } : null);
+  }, [chosen, onSelect]);
 
   const tiles: CombinedCell[] = [];
   for (let row = 1; row <= rows; row++) {

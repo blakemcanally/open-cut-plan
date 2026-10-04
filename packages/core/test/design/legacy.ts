@@ -41,10 +41,10 @@ export function legacyDesignParts(design: Design, geometry: DesignGeometry): Par
 }
 
 /** The front view of a design as main drew it before combined cells. */
-export function legacyDesignPanels(geometry: DesignGeometry): { panels: Panel[]; cells: Cell[] } {
+export function legacyDesignPanels(geometry: DesignGeometry): { panels: Omit<Panel, "name">[]; cells: Cell[] } {
   const { thickness: t, columns, rows, outsideWidth: width, outsideHeight: height } = geometry;
   const inner = roundLength(height - 2 * t);
-  const panels: Panel[] = [
+  const panels: Omit<Panel, "name">[] = [
     { kind: "top", x: 0, y: 0, width, height: t },
     { kind: "bottom", x: 0, y: roundLength(height - t), width, height: t },
   ];
