@@ -6,6 +6,7 @@ import {
   assemblyGroups,
   assemblyKey,
   assemblyState,
+  chooseOrder,
   chooseTool,
   keepAssemblyProgress,
   keepProgress,
@@ -145,5 +146,31 @@ describe("chooseTool", () => {
     const next = chooseTool(ticked, steps, steps[4]!, "track");
     expect(readProgress(next)).toEqual({ sequence: "0-old", done: [1] });
     expect(next.plan!.sheets[0]!.toolChoices).toHaveLength(1);
+  });
+});
+
+describe("chooseOrder", () => {
+  it("sets the order and keeps each tick on its cut", () => {
+    const parsed = parseProject(EXAMPLES[0]!.text);
+    if (!parsed.ok) throw new Error("example did not load");
+    const project = parsed.project;
+    const before = sequencePlan(project);
+    const ticked = setStepDone(setStepDone(project, before, 5, true), before, 6, true);
+    const cutKey = (s: (typeof before)[number]) => [s.sheet, s.kind, s.axis, s.at, s.from, s.to].join(",");
+    const cuts = new Set([before[4]!, before[5]!].map(cutKey));
+    const next = chooseOrder(ticked, "setup");
+    expect(next.settings.orderMode).toBe("setup");
+    const after = sequencePlan(next);
+    const done = after.filter((s) => cuts.has(cutKey(s))).map((s) => s.step);
+    expect(done).not.toEqual([5, 6]);
+    expect(readProgress(next)!.done).toEqual(done);
+    expect(shopState(next, after).stale).toBe(false);
+    expect(readProgress(chooseOrder(next, "sheet"))!.done).toEqual([5, 6]);
+  });
+
+  it("leaves the ticks as they are when there are none", () => {
+    const next = chooseOrder(sampleProject(), "setup");
+    expect(next.settings.orderMode).toBe("setup");
+    expect(readProgress(next)).toBeNull();
   });
 });

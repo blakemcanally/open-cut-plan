@@ -4,6 +4,9 @@ import {
   LIMIT_WORDS,
   resultLabel,
   sequencePlan,
+  setupKey,
+  setupLabel,
+  setupRuns,
   sheetSvg,
   stockLabel,
   TOOL_WARNING_COLOR,
@@ -11,15 +14,16 @@ import {
   toolLimit,
   type CutColoring,
   type ProjectAnalysis,
+  type Settings,
   type Step,
   type Tool,
 } from "@opencutplan/core";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { TabLink } from "../components/TabLink.tsx";
 import type { PrintJob } from "../print/PrintView.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
 import { AssemblyChecklist } from "./AssemblyChecklist.tsx";
-import { chooseTool, cutKey, keepProgress, setStepDone, shopState, writeProgress } from "./progress.ts";
+import { chooseOrder, chooseTool, cutKey, keepProgress, setStepDone, shopState, writeProgress } from "./progress.ts";
 
 interface ShopTabProps {
   store: ProjectStore;
@@ -41,6 +45,11 @@ function sheetRuns(steps: readonly Step[]): Step[][] {
   }
   return runs;
 }
+
+const ORDERS: readonly { value: Settings["orderMode"]; label: string }[] = [
+  { value: "sheet", label: "By sheet" },
+  { value: "setup", label: "By saw setting" },
+];
 
 function ToolName({ color, name }: { color: string; name: string }) {
   return (
@@ -66,7 +75,9 @@ export function ShopTab({ store, analysis, onPrint, openStep = null, cutColors =
   const [chosen, setChosen] = useState<number | null>(openStep);
   const list = useRef<HTMLElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
-  const runs = useMemo(() => sheetRuns(steps), [steps]);
+  const orderName = useId();
+  const bySetup = project.settings.orderMode === "setup";
+  const runs = useMemo(() => (bySetup ? setupRuns(ctx, steps) : sheetRuns(steps)), [bySetup, ctx, steps]);
 
   const nextUndone = (after: number) => steps.find((s) => s.step > after && !state.done.has(s.step))?.step ?? null;
   const firstUndone = nextUndone(0);
@@ -110,6 +121,8 @@ export function ShopTab({ store, analysis, onPrint, openStep = null, cutColors =
   const text = describeStep(ctx, step);
   const sheet = analysis.sheets.find((s) => s.index === step.sheetNumber - 1);
   const isDone = state.done.has(current);
+  const previous = steps[current - 2];
+  const newSetup = bySetup && previous !== undefined && setupKey(ctx, previous) !== setupKey(ctx, step);
 
   const tick = (number: number, done: boolean) => {
     edit((p) => setStepDone(p, steps, number, done));
@@ -117,6 +130,11 @@ export function ShopTab({ store, analysis, onPrint, openStep = null, cutColors =
   };
   const changeTool = (tool: string) => {
     const next = chooseTool(project, steps, step, tool);
+    edit(next);
+    setChosen(sequencePlan(next).find((s) => cutKey(s) === cutKey(step))?.step ?? current);
+  };
+  const changeOrder = (orderMode: Settings["orderMode"]) => {
+    const next = chooseOrder(project, orderMode);
     edit(next);
     setChosen(sequencePlan(next).find((s) => cutKey(s) === cutKey(step))?.step ?? current);
   };
@@ -160,6 +178,7 @@ export function ShopTab({ store, analysis, onPrint, openStep = null, cutColors =
           <h2 id="shop-current-title" ref={title} tabIndex={-1}>
             {text.title}
           </h2>
+          {newSetup && <p className="shop-setup">{`New setup: ${setupLabel(ctx, step)}.`}</p>}
           {ctx.tools.length > 0 && (
             <label className="shop-tool">
               Tool
@@ -226,17 +245,36 @@ export function ShopTab({ store, analysis, onPrint, openStep = null, cutColors =
         </section>
         <section className="shop-steps" aria-labelledby="shop-steps-title" ref={list}>
           <h3 id="shop-steps-title">Cut sequence</h3>
+          <fieldset className="choice">
+            <legend>Order</legend>
+            {ORDERS.map((order) => (
+              <label key={order.value}>
+                <input type="radio" name={orderName} checked={project.settings.orderMode === order.value} onChange={() => changeOrder(order.value)} />
+                {order.label}
+              </label>
+            ))}
+          </fieldset>
           {runs.map((run) => {
-            const oneTool = new Set(run.map((s) => s.tool?.id ?? null)).size === 1;
+            const oneTool = bySetup || new Set(run.map((s) => s.tool?.id ?? null)).size === 1;
             const runTool = run[0]!.tool;
+            const runColor = (runTool && tools.colorOf(runTool.id)) ?? TOOL_WARNING_COLOR;
             return (
               <div key={run[0]!.step}>
                 <h4>
-                  {`Sheet ${run[0]!.sheetNumber}`}
-                  {oneTool && (
+                  {bySetup ? (
                     <>
-                      {" · "}
-                      <ToolName color={(runTool && tools.colorOf(runTool.id)) ?? TOOL_WARNING_COLOR} name={runTool?.name ?? "No tool"} />
+                      <ToolName color={runColor} name={setupLabel(ctx, run[0]!)} />
+                      {` · ${run.length} ${run.length === 1 ? "cut" : "cuts"}`}
+                    </>
+                  ) : (
+                    <>
+                      {`Sheet ${run[0]!.sheetNumber}`}
+                      {oneTool && (
+                        <>
+                          {" · "}
+                          <ToolName color={runColor} name={runTool?.name ?? "No tool"} />
+                        </>
+                      )}
                     </>
                   )}
                 </h4>
@@ -248,6 +286,7 @@ export function ShopTab({ store, analysis, onPrint, openStep = null, cutColors =
                         <input type="checkbox" checked={done} onChange={(event) => tick(s.step, event.target.checked)} disabled={state.stale} aria-label={`Step ${s.step} done`} />
                         <button type="button" className="link" onClick={() => setChosen(s.step)}>
                           {s.step}. {describeStep(ctx, s).headline}
+                          {bySetup && ` · Sheet ${s.sheetNumber}`}
                           {!oneTool && (
                             <>
                               {" · "}

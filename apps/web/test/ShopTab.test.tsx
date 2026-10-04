@@ -294,6 +294,54 @@ describe("ShopTab", () => {
     expect(screen.getByLabelText<HTMLSelectElement>("Tool").value).toBe(other(moving));
   });
 
+  it("orders the steps by saw setting from the list, under a heading for each setup, and stays on the same cut", async () => {
+    const { current } = renderShop();
+    const list = screen.getByRole("region", { name: "Cut sequence" });
+    const order = within(list).getByRole("group", { name: "Order" });
+    expect(within(order).getByRole("radio", { name: "By sheet" })).toHaveProperty("checked", true);
+    await userEvent.click(within(list).getByRole("button", { name: /^6\. / }));
+    await userEvent.click(within(order).getByRole("radio", { name: "By saw setting" }));
+    expect(current().project.settings.orderMode).toBe("setup");
+    expect(within(list).getAllByRole("heading", { level: 4 }).map((h) => h.textContent)).toEqual([
+      'Table saw · trim 1/4" · 4 cuts',
+      'Table saw · stop at 30" · 1 cut',
+      'Table saw · fence at 12" · 2 cuts',
+    ]);
+    expect(within(list).getByRole("button", { name: /^6\. / }).textContent).toMatch(/ · Sheet 1$/);
+    expect(heading()).toMatch(/^Step 6 · /);
+    await userEvent.click(within(order).getByRole("radio", { name: "By sheet" }));
+    expect(current().project.settings.orderMode).toBe("sheet");
+    expect(within(list).getAllByRole("heading", { level: 4 }).map((h) => h.textContent)).toEqual(["Sheet 1 · Table saw"]);
+  });
+
+  it("keeps the current cut when the order changes its step number", async () => {
+    const parsed = parseProject(EXAMPLES[0]!.text);
+    if (!parsed.ok) throw new Error("example did not load");
+    renderShop(parsed.project);
+    const list = screen.getByRole("region", { name: "Cut sequence" });
+    await userEvent.click(within(list).getByRole("button", { name: /^5\. / }));
+    const title = heading().replace(/^Step 5/, "");
+    await userEvent.click(within(list).getByRole("radio", { name: "By saw setting" }));
+    expect(heading()).not.toMatch(/^Step 5 · /);
+    expect(heading().replace(/^Step \d+/, "")).toBe(title);
+  });
+
+  it("says when the setup changes from the step before, in the order by saw setting", async () => {
+    const project = sampleProject();
+    project.settings.orderMode = "setup";
+    renderShop(project, undefined, { openStep: 5 });
+    expect(screen.getByText(/^New setup: /).textContent).toBe('New setup: Table saw · stop at 30".');
+    await userEvent.click(screen.getByRole("button", { name: "Next →" }));
+    expect(screen.getByText(/^New setup: /).textContent).toBe('New setup: Table saw · fence at 12".');
+    await userEvent.click(screen.getByRole("button", { name: "Next →" }));
+    expect(screen.queryByText(/^New setup: /)).toBeNull();
+  });
+
+  it("shows no setup note in the order by sheet", () => {
+    renderShop(sampleProject(), undefined, { openStep: 5 });
+    expect(screen.queryByText(/^New setup: /)).toBeNull();
+  });
+
   it("opens the step that it is given and puts the focus on its title", () => {
     renderShop(sampleProject(), undefined, { openStep: 4 });
     expect(heading()).toMatch(/^Step 4 · /);

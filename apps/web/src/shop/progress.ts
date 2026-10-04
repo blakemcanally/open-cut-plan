@@ -1,4 +1,4 @@
-import { assemblySteps, sequencePlan, setToolChoice, type AssemblyStep, type Project, type Step } from "@opencutplan/core";
+import { assemblySteps, sequencePlan, setToolChoice, type AssemblyStep, type Project, type Settings, type Step } from "@opencutplan/core";
 
 export const APP_EXTENSION = "opencutplan.app";
 
@@ -138,12 +138,20 @@ export function keepAssemblyProgress(project: Project, groups: readonly Assembly
 
 export const cutKey = (s: Step): string => [s.sheet, s.kind, s.axis, round(s.at), round(s.from), round(s.to)].join(",");
 
-/** Sets the tool of a cut and moves the ticks to the new step numbers of their cuts. Old ticks that are out of date stay as they are. */
-export function chooseTool(project: Project, steps: readonly Step[], step: Step, tool: string): Project {
+function moveTicks(project: Project, steps: readonly Step[], next: Project): Project {
   const state = shopState(project, steps);
-  const next = setToolChoice(project, step, tool);
   if (state.stale || state.done.size === 0) return next;
   const ticked = new Set(steps.filter((s) => state.done.has(s.step)).map(cutKey));
   const after = sequencePlan(next);
   return writeProgress(next, { sequence: sequenceKey(after), done: after.filter((s) => ticked.has(cutKey(s))).map((s) => s.step) });
+}
+
+/** Sets the tool of a cut and moves the ticks to the new step numbers of their cuts. Old ticks that are out of date stay as they are. */
+export function chooseTool(project: Project, steps: readonly Step[], step: Step, tool: string): Project {
+  return moveTicks(project, steps, setToolChoice(project, step, tool));
+}
+
+/** Sets the cut order and moves the ticks to the new step numbers of their cuts, as `chooseTool` does. */
+export function chooseOrder(project: Project, orderMode: Settings["orderMode"]): Project {
+  return moveTicks(project, sequencePlan(project), { ...project, settings: { ...project.settings, orderMode } });
 }

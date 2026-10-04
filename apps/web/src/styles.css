@@ -164,6 +164,7 @@ fieldset.choice label { display: inline-flex; align-items: center; gap: 4px; }
 .shop-current h2 { font-size: 20px; }
 .shop-tool { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; margin: 0 0 4px; }
 .shop-method { margin: 0 0 8px; font-size: 13px; }
+.shop-setup { margin: 0 0 8px; padding: 6px 10px; border-left: 4px solid var(--focus); background: #eaf1fb; font-weight: 600; }
 .shop-pickup { font-size: 16px; margin: 0 0 6px; }
 .shop-actions { font-size: 17px; margin: 0 0 10px; padding-left: 24px; max-width: 60ch; }
 .shop-actions li { margin: 0 0 4px; }

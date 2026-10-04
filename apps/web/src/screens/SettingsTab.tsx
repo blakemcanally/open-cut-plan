@@ -18,6 +18,7 @@ import {
 import { Fragment, useState, type ReactNode } from "react";
 import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
 import type { ViewPrefs } from "../state/prefs.ts";
+import { chooseOrder } from "../shop/progress.ts";
 import type { ProjectStore } from "../state/useProject.ts";
 
 export const FEATURE_TEXT: Readonly<Record<keyof Features, { label: string; detail: string }>> = {
@@ -261,9 +262,9 @@ export function SettingsTab({ store, prefs, onPrefs, section: current, onSection
           node: (
             <label className="stack">
               Cut order
-              <select value={settings.orderMode} onChange={(event) => set((s) => ({ ...s, orderMode: event.target.value as Settings["orderMode"] }))}>
-                <option value="sheet">Sheet by sheet</option>
-                <option value="setup">Group cuts with the same saw setting</option>
+              <select value={settings.orderMode} onChange={(event) => edit((p) => chooseOrder(p, event.target.value as Settings["orderMode"]))}>
+                <option value="sheet">By sheet</option>
+                <option value="setup">By saw setting</option>
               </select>
             </label>
           ),
