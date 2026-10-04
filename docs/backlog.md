@@ -375,6 +375,8 @@ narrow strips. Add help text and presets for common saws.
 
 ## 15. Put the Reports tab in three sections: Buy, Cut, and Build
 
+**Status:** Done.
+
 **Size:** M.
 
 **Problem:** The Reports tab is one long page (about 2000 px) with no structure. Buttons, SVG exports, and tables are
@@ -385,10 +387,24 @@ view caption says "Garage cabinet Garage cabinet as SVG". The app has no cut lis
 (sheet use and a new cut list), and a **Build** section (hardware and assembly). One panel for print and export.
 Remove the repeated column and the empty column.
 
+**Chosen approach:**
+
+- A summary at the top gives the sheets, the cost (or the stock area), the cut steps, the cut length, and the parts
+  placed. The core `planStats` gives the values.
+- **Buy** has the shopping list. **Cut** has the sheet use, a new cut list, and the offcuts. **Build** has the
+  hardware and, for each design, the front view and the titles of its assembly steps.
+- The CLI `cutList` moved to the core (`packages/core/src/reports/cutList.ts`). The app and `report cutlist` use it.
+- The **Print and export** panel is at the side of the sections. It has the booklet, the labels, and the exports.
+- The Stock column gives the size, so the Size column is gone. The IKEA article column shows only when an item has an
+  article. The front view export is "<name> front view as SVG".
+- Each section is a region with a heading.
+
 **Files:** `apps/web/src/reports/ReportsTab.tsx`, `reports/ShoppingTables.tsx`, `reports/HardwareTable.tsx`,
 `packages/core/src/reports/`.
 
 ## 16. Print the cut sequence for use at the saw
+
+**Status:** Done.
 
 **Size:** M.
 
@@ -397,6 +413,19 @@ diagram uses only about 60% of the landscape page.
 
 **Idea:** One sheet for each page, with a large drawing. Under it, a short table: a tick box, the step, the tool, the
 setting, and the part. The diagram fills the page. The print can use the tool colours from item 7.
+
+**Chosen approach:**
+
+- Each sheet with cuts has a landscape page with a large drawing and a short table: a tick box, the step, the tool
+  with its colour, the setting (for example "Fence 15 3/8""), and the finished parts. The core `sequenceRows` gives
+  the rows.
+- The table goes under the drawing, or beside the drawing of an almost square sheet. When the table leaves the drawing
+  at less than 75% of its full-page size, the table starts on the next page.
+- **Detailed steps** in the Print and export panel prints the full text of each step on the next page.
+- The sheet diagram page is landscape. The key goes beside the drawing when that gives a larger drawing.
+- A drawing uses a standard scale only when that scale gives at least 90% of the largest drawing. Otherwise it fills
+  the space, and the page says "Not to scale".
+- No printed content is wider than the page, because Chromium then makes every page of the print smaller.
 
 **Files:** `apps/web/src/print/PrintView.tsx`, `print/scale.ts`, `styles.css`.
 
@@ -490,7 +519,8 @@ columns.
   colours. **Status:** Done. Each cut line has a white halo under it (`CUT_HALO_COLOR`), on the Layout tab and in
   `sheetSvg`, for both "stage" and "tool". The tool colours did not change.
 - **Print and export (item 7):** The booklet and the "Sheet N as SVG" export colour the cuts by stage only. Idea: use
-  the choice from the Layout tab.
+  the choice from the Layout tab. **Status:** Done. The booklet, the "Sheet N as SVG" export, and the print legend
+  follow the **Colour cuts by** choice. The CLI `export svg` has `--cut-colors <stage|tool>`.
 - **Typical price (item 4):** The typical price is the lowest listing. Some low prices come from old search results.
   Idea: use the median, or the newest listing. **Status:** Done. The typical price is the median of the priced
   listings, because all the listings have the same check date. The catalogue shows the store and the date of the

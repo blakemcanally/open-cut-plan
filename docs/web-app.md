@@ -320,32 +320,50 @@ list follows.
 
 ### Reports
 
-- **Print and export**: the **Print booklet** group, **Export parts CSV**, **Export stock CSV**, and one **Sheet N as
-  SVG** button for each sheet. File names start with the project name: `Shelf-parts.csv`, `Shelf-stock.csv`,
-  `Shelf-sheet-1.svg`.
-- **Print booklet**: a checkbox for each section of the booklet: **Title page**, **Shopping list**, **Sheet
-  diagrams**, **Cut sequence**, and **Assembly steps** (when there are designs). A section with no content has its
-  checkbox off and disabled, with a note that says why. **Print booklet** prints the checked sections as one
-  document. It needs at least one section other than the title page. The choice is kept in this browser, not in the
-  project file. All sections are on at first.
-- **Shopping list**: for each material, the stock, its size, the sheets in the plan, the count to buy (owned offcuts
-  are not bought), the unit cost, the cost, and a subtotal; then the share of the stock that parts use, and the waste.
-  The total follows, or a warning that names the stock with no price. The cost columns are hidden when the `cost`
-  feature is off. A second table gives the use of each sheet. When the plan has cut steps, a line gives their count
-  and the total cut length.
-- **Hardware** (when there are designs): the screws, rails, legs, and glue to buy, with the IKEA article number and the
-  design that needs each item. The article numbers are for IKEA in Great Britain.
-- **Front views**: the drawing of each design, and a **<name> as SVG** button that downloads `Shelf-<design id>.svg`.
-- **Offcuts** (when the `offcuts` feature is on) lists the waste pieces that are at least the smallest useful offcut.
+The Reports tab starts with a summary of the plan. The **Buy**, **Cut**, and **Build** sections follow, and the **Print
+and export** panel is at the side. On a narrow screen, the panel comes before the sections. Each section has a heading
+and is a region, so a screen reader can go from section to section. The plan problem banner stays at the top.
+
+- **Summary** (when there is a plan): the number of sheets, the cost, the number of cut steps, the total cut length,
+  and the parts placed, for example "2 of 3". When the cost is not known, or the `cost` feature is off, the summary
+  gives the stock area in place of the cost. The cut steps and the cut length show when the `cutOrder` feature is
+  on. The core `planStats` gives the values, as for the line after an optimize run.
+- **Buy** (when there is a plan): for each material, the stock, the sheets in the plan, the count to buy (owned
+  offcuts are not bought), the unit cost, the cost, and a subtotal; then the share of the stock that parts use, and
+  the waste. The **Stock** column gives the size. It adds the name of a stock that has its own name. The total
+  follows, or a warning that names the stock with no price. The cost columns are hidden when the `cost` feature is
+  off.
+- **Cut**: **Sheet use** (when there is a plan) gives the use of each sheet. **Cut list** gives each part with its
+  size, quantity, the copies placed, the material, the factory edge request, and the sheets, as `report cutlist`
+  does in the CLI. Under the table, a line for each material gives the count of parts, the count of copies, and the
+  part area. The **Factory edge** column shows only when a part asks for a factory edge. **Offcuts** (when there is
+  a plan and the `offcuts` feature is on) lists the waste pieces that are at least the smallest useful offcut.
   **Save offcuts to stock** adds them to the Stock tab as owned offcuts. It adds each offcut once: an offcut that is
   already in stock from the same sheet number, with the same material and size (to within 1/64" or 0.1 mm), is not
   added again. This also holds after a unit change or a project rename.
-- **Labels** (when the `labels` feature is on): pick the label sheet and the first free label on it, then **Print
-  labels**. Each label has the part name, size, material, group (with the unit of a design that has more than one,
-  for example "Hall KALLAX 2 of 2"), grain arrow (↔ along the length, ↕ along the width), "Factory edge" when
-  the part asks for one, and the sheet and step that cut it, or "Not placed".
+- **Build** (when there are designs): **Hardware** gives the screws, rails, legs, and glue to buy, with the design
+  that needs each item. The **IKEA article** column shows only when an item has an article number. The article
+  numbers are for IKEA in Great Britain. For each design, a part gives the front view and the titles of its assembly
+  steps, with a link to the checklist on the Shop tab.
+- **Print and export**:
+  - **Print booklet**: a checkbox for each section of the booklet: **Title page**, **Shopping list**, **Sheet
+    diagrams**, **Cut sequence**, and **Assembly steps** (when there are designs). A section with no content has its
+    checkbox off and disabled, with a note that says why. **Detailed steps** under **Cut sequence** prints the full
+    text of each step in place of the short table. **Print booklet** prints the checked sections as one document. It
+    needs at least one section other than the title page. The choices are kept in this browser, not in the project
+    file. All sections are on at first, and **Detailed steps** is off.
+  - **Labels** (when the `labels` feature is on): pick the label sheet and the first free label on it, then **Print
+    labels**. Each label has the part name, size, material, group (with the unit of a design that has more than one,
+    for example "Hall KALLAX 2 of 2"), grain arrow (↔ along the length, ↕ along the width), "Factory edge" when the
+    part asks for one, and the sheet and step that cut it, or "Not placed".
+  - **Export**: **Export parts CSV**, **Export stock CSV**, one **Sheet N as SVG** button for each sheet, and one
+    **<name> front view as SVG** button for each design. File names start with the project name:
+    `Shelf-parts.csv`, `Shelf-stock.csv`, `Shelf-sheet-1.svg`, and `Shelf-<design id>.svg`. The cuts in the sheet
+    SVG files and in print have the colours of the **Colour cuts by** choice on the Layout tab. A line under the
+    buttons tells which choice applies.
 
-With no plan, the tab says so. It keeps the CSV exports and the labels, and each label says "Not placed".
+With no plan, the tab says so. It keeps the CSV exports, the cut list, and the labels, and each label says "Not
+placed".
 
 ### Printing
 
@@ -353,21 +371,33 @@ With no plan, the tab says so. It keeps the CSV exports and the labels, and each
 only that output; the app is hidden on paper. Use the dialog's "Save as PDF" for a PDF.
 
 The booklet has its sections in the order of the list below, and each section starts on a new page. The sheet
-diagrams are landscape pages; the other pages are portrait. **Print cut sequence** on the Shop tab prints a booklet
-with only the cut sequence.
+diagrams and the cut sequence are landscape pages with margins of 10 mm; the other pages are portrait. **Print cut
+sequence** on the Shop tab prints a booklet with only the cut sequence. It uses the **Detailed steps** choice of the
+Reports tab.
 
 - When the plan is not ready to cut, the first page of the booklet starts with the text of the banner on the Shop tab,
   and "See the Problems list on the Layout tab."
 - **Title page**: the project name, the date, and a list of the other sections in the booklet.
-- **Shopping list**: the tables from the Reports tab, with the hardware.
-- **Sheet diagrams**: one landscape page per sheet with the sheet number, the stock, and the scale. The drawing uses
-  the largest of 1:1, 1:2, 1:4, 1:5, 1:8, 1:10, 1:12, 1:16, 1:20, 1:25, and 1:50 that fits; the page says "Scale
-  1:12", or "Not to scale" when none fits. The key lists the parts with their sizes and grain, and explains the cut
-  numbers and stage colours. The key has one row for each part and orientation on the sheet, in the order of the
-  parts list. A row for more than one copy shows the part name and the count, for example "Side ×4". The key goes
-  beside the drawing when that gives a larger scale.
-- **Cut sequence**: portrait pages with a small drawing of each sheet and a box to tick for each step.
+- **Shopping list**: the **Buy** tables from the Reports tab, with the hardware.
+- **Sheet diagrams**: one landscape page per sheet with the sheet number, the stock, and the scale. The drawing is as
+  large as the page allows. When one of 1:1, 1:2, 1:4, 1:5, 1:8, 1:10, 1:12, 1:16, 1:20, 1:25, and 1:50 gives at
+  least 90% of that size, the drawing uses the largest such scale, and the page says "Scale 1:10". Otherwise the
+  drawing fills the space, and the page says "Not to scale". The key lists the parts with their sizes and grain, and
+  explains the cut numbers and colours. The key has one row for each part and orientation on the sheet, in the order
+  of the parts list. A row for more than one copy shows the part name and the count, for example "Side ×4". The key
+  goes beside the drawing when that gives a larger drawing.
+- **Cut sequence**: one landscape page for each sheet that has cuts, with a large drawing of the sheet and a table of
+  its steps. Each row has a box to tick, the step number, the tool with its colour box, the setting (for example
+  "Fence 15 3/8"", "Stop 24"", or "Mark 12" from the top"), and the parts that the cut finishes. A ⚠ follows a tool
+  that cannot make the cut. The table goes under the drawing. For a sheet that is almost square, the table goes
+  beside the drawing. When the table leaves the drawing at less than 75% of its full-page size, the drawing fills
+  the page and the table starts on the next page, under the sheet name and the step numbers. With **Detailed
+  steps**, the drawing fills the page and the full text of each step starts on the next page.
 - **Assembly steps**: one page for each design, with its front view and a box to tick for each step.
+
+The drawings colour the cuts as the **Colour cuts by** choice on the Layout tab does: by stage or by tool. Under each
+drawing, a line explains the cut numbers and lists the colours of the stages or the tools on that sheet. With
+**Tool**, the line also has "no tool, or over a tool limit" when a cut on the sheet has that problem.
 
 **Print labels** prints the labels alone, on the page size of the label sheet with no margins. Print at 100% ("Actual
 size"), not "Fit to page".
@@ -416,7 +446,7 @@ The optimizer tests run the real worker protocol in the test thread.
 
 `npm run e2e` runs the Playwright tests in `apps/web/e2e` in Chromium against a production build. They cover a new
 project from CSV through optimize, the Shop checklist across a reload and at a phone width, printing the booklet
-(with a PDF that has landscape sheet pages), and the SVG and CSV downloads; drag, rotate, and undo in the layout
+(with a PDF that has landscape sheet and cut sequence pages), and the SVG and CSV downloads; drag, rotate, and undo in the layout
 editor; and a design through optimize, the assembly checklist across a reload, and the assembly print. Install the
 browser once with `npm run e2e:install`. `npm run check` does not run them; CI runs both
 (`.github/workflows/ci.yml`).

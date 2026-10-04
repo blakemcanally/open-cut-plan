@@ -331,7 +331,7 @@ known.
 
 | Command | What it does | Example |
 | ------- | ------------ | ------- |
-| `export svg <file>` | Draws the sheets as SVG. A directory gets one `<name>-sheet-N.svg` file for each sheet. | `opencutplan export svg shelf.cutplan.json --out svg/` |
+| `export svg <file>` | Draws the sheets as SVG. A directory gets one `<name>-sheet-N.svg` file for each sheet. `--cut-colors tool` colours the cuts by tool, as the **Colour cuts by** choice of the app does. The default is `stage`. | `opencutplan export svg shelf.cutplan.json --out svg/` |
 | `export parts-csv <file>` | Writes the parts as CSV. | `opencutplan export parts-csv shelf.cutplan.json --out parts.csv` |
 | `export stock-csv <file>` | Writes the stock as CSV. | `opencutplan export stock-csv shelf.cutplan.json --out stock.csv` |
 | `export plan <file>` | Writes the project with the cut list of each sheet. `--plan-only` writes only the plan. | `opencutplan export plan shelf.cutplan.json --out shelf-cuts.cutplan.json` |

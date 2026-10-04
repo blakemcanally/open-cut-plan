@@ -194,6 +194,15 @@ projects and to 0.1 mm in mm projects.
   (`missingPrices` lists those). Utilization is part area over stock area, per sheet and per material.
 - `totalCutLength(steps)`: the sum of the lengths of the cut lines of the steps, trims included. The CLI `show` and
   `report sequence` commands and the Reports tab of the web app give it next to the count of cut steps.
+- `cutList(project, analysis)`: every part with its size, material, thickness, quantity, grain, factory edge request,
+  group, the copies on a sheet, and the numbers of the sheets that have a copy. Then, for each material that parts
+  use, the count of parts, the count of copies, and the part area. The CLI `report cutlist` command and the Cut
+  section of the Reports tab use it.
+- `sequenceRows(ctx, steps)`: one short row for each step, for the printed cut sequence: the step, the sheet, the
+  tool (or "No tool"), the setting, the part copies that the cut makes free, and a warning flag for a cut with no
+  tool or over a tool limit. The setting is "Fence 15 3/8"" for a rip on a table saw, "Stop 24"" for another cut on
+  a table saw or a panel saw, "Mark 12" from the top" for a track saw or a circular saw, and "Trim 1/4" off the
+  left" for a trim.
 - `partLabels`: one label per part copy with its name, colour key (the group, or the design and its unit, for example
   "Hall KALLAX 2 of 3"), size, material, grain (`none` when grain does not
   constrain the part), sheet number, and the step that cuts it free. A stuck part has no such step. `analyzeProject`
