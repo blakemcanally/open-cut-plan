@@ -52,20 +52,23 @@ A design with a quantity of 2 doubles the quantity of each part, so both cabinet
 
 ## 4. A full catalogue of materials and stock
 
+**Status:** Done.
+
 **Request:** The app has a large list of common materials and sheet sizes, from big box stores. Examples: Baltic birch
 (5' × 5'), 3/4" plywood, 1/2" plywood, MDF, melamine, hardboard.
 
 **Now:** A new project has no materials. The Design tab makes one 1/4" (6 mm) plywood when it needs a back panel
 (`apps/web/src/design/form.ts`).
 
-**Possible approach:**
+**Chosen approach:**
 
-- Make a catalogue file in the repo with each material: name, thickness (nominal and actual), grain, sheet sizes, and
-  a typical price with the date of the price.
-- Let the user add a material and its stock from the catalogue in the Stock tab.
-- Collect the data from the websites of Home Depot and Lowe's one time, with a script, and check it by hand. Do not
-  scrape at run time, because the pages change and the terms of the sites can forbid it.
-- Give inch and mm versions.
+- A catalogue in core (`packages/core/src/catalog/`) with 33 materials and 64 sheet sizes. Each size has its listings:
+  the store, the price or none, the page, and the date. See [catalog.md](catalog.md).
+- **Add from catalogue…** in the Stock tab, and the catalogue materials in the Material and Back lists of the Design
+  tab.
+- `catalog list`, `materials add --catalog`, and `stock add --catalog` in the CLI.
+- We collected the data one time and checked it by hand. The app does not read the store web sites.
+- The file format does not change.
 
 ## 5. Choose the cut that is shortest across waste
 

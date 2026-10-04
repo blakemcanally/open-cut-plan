@@ -54,6 +54,9 @@ parts from the design, and the Parts tab lists them. The file format is in [form
   and no cost. Choose "No back" to remove the back.
 - The list on the left selects a design. The form has the name, the system, how many to build, the columns and rows,
   the depth, the material, the back, and the mount.
+- The **Material** and **Back** lists also show the [catalogue](catalog.md) materials that the project does not have,
+  in groups by family. A catalogue material adds the material, and its largest sheet size as stock when the project
+  has no sheet of it. When the design refuses the material, the app adds nothing.
 - A KALLAX or EKET width or height takes its size from the cells. A custom axis is sized by the outside size, or by
   the list of openings (`335, 335`). Changing the count of a custom axis sized by openings repeats the last opening.
 - Changing the system to KALLAX or EKET applies its cell sizes and depth. Changing it to Custom keeps the sizes.
@@ -88,6 +91,16 @@ A materials table (name, thickness, grain, colour) and a stock table (name, mate
 cost, kind, edges, and whether to use it). Stock also has a CSV import. **Edges** is the project choice, **Use factory
 edges**, or **Trim** with a width for that stock. A material that parts, stock, or designs use cannot
 be deleted. Deleting stock also removes its sheets from the plan.
+
+**Add from catalogue…** opens the [catalogue of sheet goods](catalog.md).
+
+- Choose a family, then a material. The dialog shows the actual thickness, the nominal thickness, and the notes.
+- Choose one or more sheet sizes. Each size shows its actual size and its typical price, with the store and the date of
+  the price. A size with no price says "No price found." A size that the project has says "In the project", and you
+  cannot choose it.
+- **Add** adds the material when the project does not have it, and adds each size as unlimited sheet stock. The cost
+  is the typical price when the project currency is USD. In other currencies, the stock has no cost.
+- The prices are typical and dated. Check the price before you buy.
 
 ### Tools
 

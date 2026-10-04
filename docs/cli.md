@@ -111,7 +111,7 @@ files.
 | `parts export <file>` | Writes the parts as CSV. | `opencutplan parts export shelf.cutplan.json --out parts.csv` |
 | `stock list <file>` | Lists the stock and the sheets cut from each item. | `opencutplan stock list shelf.cutplan.json` |
 | `stock get <file> <id>` | Shows one stock item. | `opencutplan stock get shelf.cutplan.json bb18-5x5` |
-| `stock add <file>` | Adds a sheet size or an owned offcut. | `opencutplan stock add shelf.cutplan.json --material bb18 --length "8'" --width "4'" --cost 65` |
+| `stock add <file>` | Adds a sheet size or an owned offcut. `--catalog <size id>` adds a catalogue size. | `opencutplan stock add shelf.cutplan.json --material bb18 --length "8'" --width "4'" --cost 65` |
 | `stock set <file> <id>` | Changes a stock item. `--trim` is a length, `factory`, or `project`. | `opencutplan stock set shelf.cutplan.json bb18-5x5 --quantity 4 --factory-edges` |
 | `stock remove <file> <id>...` | Removes stock and the sheets cut from it. | `opencutplan stock remove shelf.cutplan.json bb6-5x5` |
 | `stock import <file> <csv>` | Adds the stock in a CSV file. | `opencutplan stock import shelf.cutplan.json stock.csv` |
@@ -119,7 +119,7 @@ files.
 | `stock save-offcuts <file>` | Adds the usable offcuts of the plan to the stock. | `opencutplan stock save-offcuts shelf.cutplan.json` |
 | `materials list <file>` | Lists the materials and the parts and stock that use them. | `opencutplan materials list shelf.cutplan.json` |
 | `materials get <file> <id>` | Shows one material. | `opencutplan materials get shelf.cutplan.json bb18` |
-| `materials add <file>` | Adds a material. | `opencutplan materials add shelf.cutplan.json --name "MDF 3/4" --thickness 3/4 --grained false` |
+| `materials add <file>` | Adds a material. `--catalog <id>` adds a catalogue material. | `opencutplan materials add shelf.cutplan.json --name "MDF 3/4" --thickness 3/4 --grained false` |
 | `materials set <file> <id>` | Changes a material. | `opencutplan materials set shelf.cutplan.json bb18 --color "#d9b98c"` |
 | `materials remove <file> <id>...` | Removes materials. A material in use gives exit 1. | `opencutplan materials remove shelf.cutplan.json mdf-3-4` |
 | `tools list <file>` | Lists the saws in preference order. | `opencutplan tools list shelf.cutplan.json` |
@@ -128,6 +128,23 @@ files.
 | `tools set <file> <id>` | Changes a saw. | `opencutplan tools set shelf.cutplan.json table-saw --max-rip 30` |
 | `tools remove <file> <id>...` | Removes saws. | `opencutplan tools remove shelf.cutplan.json track-saw` |
 | `tools move <file> <id>` | Changes the place of a saw in the preference order. | `opencutplan tools move shelf.cutplan.json track-saw --position 1` |
+
+### Catalogue
+
+The [catalogue](catalog.md) is a list of common sheet goods from Home Depot, Lowe's, and specialty sellers, with a
+typical price. The prices are approximate and dated.
+
+| Command | What it does | Example |
+| ------- | ------------ | ------- |
+| `catalog list` | Lists the catalogue materials and sizes, with the typical price, the store, and the date. It needs no file. `--family` selects one family, and `--units` selects `in` (the default) or `mm`. | `opencutplan catalog list --family mdf --units mm` |
+| `materials add <file> --catalog <id>` | Adds a catalogue material, with its name, its actual thickness, and its grain. | `opencutplan materials add shelf.cutplan.json --catalog baltic-birch-18mm` |
+| `stock add <file> --catalog <size id>` | Adds a catalogue sheet size as unlimited stock, and its material when the project does not have it. | `opencutplan stock add shelf.cutplan.json --catalog mdf-3-4-4x8 --quantity 2` |
+
+- With `--catalog`, `stock add` refuses `--material`, `--length`, `--width`, and `--kind`, and `materials add`
+  refuses `--name`, `--thickness`, and `--grained` (exit 2, `conflict`). An unknown id is exit 2, `not-found`.
+- The cost of the new stock is the typical price when the project currency is USD. `--cost` sets another cost.
+- When the project has the material or the sheet, the command changes nothing, and `added` is `false`.
+- The result has `added`. `stock add --catalog` also has `material` and `addedMaterial`.
 
 ### Designs
 

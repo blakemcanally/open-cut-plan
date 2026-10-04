@@ -13,6 +13,7 @@ sequence, a shopping list, and part labels.
 - **Web app:** [`docs/web-app.md`](docs/web-app.md) — the screens, the layout editor and its keys, the Shop
   checklist, reports, printing, and where projects are stored.
 - **Command line:** [`docs/cli.md`](docs/cli.md) — the `opencutplan` command for scripts and AI agents.
+- **Catalogue:** [`docs/catalog.md`](docs/catalog.md) — common sheet goods and sizes with typical, dated prices.
 - **Examples:** [`examples/`](examples/) — `living-room-shelf` (inches, with a full layout),
   `simple-bookcase-mm` (metric, with an owned offcut and two saws), `kallax-2x4-mm` (a KALLAX-style design), and
   `eket-wall-in` (two EKET-style wall units, in inches).
