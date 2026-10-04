@@ -9,8 +9,12 @@ export const CATALOG_FAMILIES: readonly string[] = [...new Set(CATALOG.map((mate
 
 export interface CatalogPrice {
   usd: number;
-  store: string;
-  source: string;
+  /** The listings of the size that have a price. */
+  count: number;
+  /** The listing that has the price; null when the price is the mean of the two middle prices. */
+  store: string | null;
+  source: string | null;
+  /** The date of the listing; for a mean, the newer date of the two middle listings. */
   checked: string;
 }
 
@@ -47,13 +51,21 @@ export interface CatalogAdd {
 const THICKNESS_TOLERANCE: Readonly<Record<Units, number>> = { in: 0.005, mm: 0.1 };
 const SIZE_TOLERANCE: Readonly<Record<Units, number>> = { in: 0.02, mm: 0.5 };
 
-/** The lowest price of the size, or null when no store has a price. */
+/**
+ * The median price of the listings of the size that have a price, or null when no store has a price. With an even
+ * number of prices, the price is the mean of the two middle prices, rounded to the cent, and no listing has it.
+ */
 export function typicalPrice(size: CatalogSize): CatalogPrice | null {
-  let best: CatalogPrice | null = null;
-  for (const { priceUsd, store, source, checked } of size.listings) {
-    if (priceUsd !== null && (best === null || priceUsd < best.usd)) best = { usd: priceUsd, store, source, checked };
+  const priced = size.listings.filter((listing): listing is CatalogListing & { priceUsd: number } => listing.priceUsd !== null).toSorted((a, b) => a.priceUsd - b.priceUsd);
+  if (priced.length === 0) return null;
+  const middle = Math.floor(priced.length / 2);
+  if (priced.length % 2 === 1) {
+    const { priceUsd, store, source, checked } = priced[middle]!;
+    return { usd: priceUsd, count: priced.length, store, source, checked };
   }
-  return best;
+  const [low, high] = [priced[middle - 1]!, priced[middle]!];
+  const cents = Math.round(low.priceUsd * 100) + Math.round(high.priceUsd * 100);
+  return { usd: Math.round(cents / 2) / 100, count: priced.length, store: null, source: null, checked: low.checked > high.checked ? low.checked : high.checked };
 }
 
 function sizeIn(size: CatalogSize, units: Units): { length: number; width: number } {

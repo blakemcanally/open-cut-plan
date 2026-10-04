@@ -28,7 +28,13 @@ of a material go from the largest to the smallest.
 ## Prices
 
 - The prices are approximate, and they get old. Each price has its store and its date. Check the price before you buy.
-- The typical price of a size is the lowest price of its listings.
+- The typical price of a size is the median price of its listings with a price:
+  - With an odd number of prices, it is the middle price. The app shows the store and the date of that listing.
+  - With an even number of prices, it is the mean of the two middle prices, to the cent. No listing has this price, so
+    the app shows "median of N listings" and the newer date of the two listings.
+- Why the median: a price from an old search result can be much too low or too high. The median does not use the
+  lowest or the highest price when a size has three or more prices, and it uses only half of each when a size has two.
+  The newest listing does not help, because we checked all listings on the same date.
 - Stock from the catalogue gets the typical price as its cost only when the project currency is USD. In other
   currencies, the stock has no cost.
 

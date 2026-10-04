@@ -30,11 +30,28 @@ describe("catalogFor", () => {
     expect(birch.sizes[0]).toMatchObject({ length: 2438, width: 1219 });
   });
 
-  it("gives the lowest price of each size as its typical price", () => {
+  it("gives the price and the listing of a size with one price", () => {
+    const size = catalogFor("in").find((material) => material.id === "mdf-3-4")!.sizes.find((s) => s.id === "mdf-3-4-2x4")!;
+    expect(size.price).toEqual({ usd: 32.44, count: 1, store: "Home Depot", source: expect.stringMatching(/^https:\/\/www\.homedepot\.com\//), checked: "2026-10-04" });
+  });
+
+  it("gives the median price of an odd number of listings, with the listing that has it", () => {
     const size = catalogFor("in").find((material) => material.id === "birch-ply-3-4")!.sizes.find((s) => s.id === "birch-ply-3-4-2x4")!;
-    expect(size.listings.length).toBeGreaterThan(1);
-    expect(size.price).toEqual({ usd: 29.72, store: "Home Depot", source: expect.stringMatching(/^https:\/\/www\.homedepot\.com\//), checked: "2026-10-04" });
-    expect(size.price!.usd).toBe(Math.min(...size.listings.flatMap((listing) => (listing.priceUsd === null ? [] : [listing.priceUsd]))));
+    expect(size.listings.map((listing) => listing.priceUsd)).toEqual([47, 29.72, 41.89]);
+    expect(size.price).toEqual({ usd: 41.89, count: 3, store: "Lowe's", source: expect.stringMatching(/^https:\/\/www\.lowes\.com\//), checked: "2026-10-04" });
+  });
+
+  it("gives the mean of the two middle prices of an even number of listings, to the cent, with no listing", () => {
+    const size = catalogSize("birch-ply-3-4-4x8")!.size;
+    expect(size.listings.map((listing) => listing.priceUsd)).toEqual([80.98, 76.83]);
+    expect(typicalPrice(size)).toEqual({ usd: 78.91, count: 2, store: null, source: null, checked: "2026-10-04" });
+  });
+
+  it("leaves out the listings with no price, and gives the date of the listing, or the newer date of the two middle listings", () => {
+    const listing = (store: string, priceUsd: number | null, checked: string) => ({ store, priceUsd, source: `https://example.com/${store}`, checked });
+    const size = { ...catalogSize("birch-ply-3-4-4x8")!.size, listings: [listing("A", 10, "2026-01-02"), listing("B", null, "2026-12-31"), listing("C", 30, "2026-03-01"), listing("D", 20, "2026-02-01"), listing("E", 5, "2026-12-01")] };
+    expect(typicalPrice(size)).toEqual({ usd: 15, count: 4, store: null, source: null, checked: "2026-02-01" });
+    expect(typicalPrice({ ...size, listings: size.listings.slice(0, 4) })).toEqual({ usd: 20, count: 3, store: "D", source: "https://example.com/D", checked: "2026-02-01" });
   });
 
   it("gives no price when no listing has one", () => {
@@ -103,7 +120,7 @@ describe("addCatalogStock", () => {
   it("adds the material and an unlimited sheet with the typical price in a USD project", () => {
     const result = addCatalogStock(project(), "birch-ply-3-4-2x4");
     expect(result).toMatchObject({ material: "birch-ply-3-4", stock: "birch-ply-3-4-2x4", addedMaterial: true, addedStock: true });
-    expect(result.project.stock).toEqual([{ id: "birch-ply-3-4-2x4", material: "birch-ply-3-4", length: 47.75, width: 23.75, quantity: null, kind: "sheet", cost: 29.72 }]);
+    expect(result.project.stock).toEqual([{ id: "birch-ply-3-4-2x4", material: "birch-ply-3-4", length: 47.75, width: 23.75, quantity: null, kind: "sheet", cost: 41.89 }]);
   });
 
   it("adds no cost in a project with another currency, and no cost when the size has no price", () => {

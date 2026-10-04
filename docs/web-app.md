@@ -132,7 +132,8 @@ that has no enabled stock gets a line with **Add stock**.
 
 - Choose a family, then a material. The dialog shows the actual thickness, the nominal thickness, and the notes.
 - Choose one or more sheet sizes. Each size shows its actual size and its typical price, with the store and the date of
-  the price. A size with no price says "No price found." A size that the project has says "In the project", and you
+  the price. When the price is the mean of two prices, the store is "median of N listings". A size with no price says
+  "No price found." A size that the project has says "In the project", and you
   cannot choose it.
 - **Add** adds the material when the project does not have it, and adds each size as unlimited sheet stock. The cost
   is the typical price when the project currency is USD. In other currencies, the stock has no cost.

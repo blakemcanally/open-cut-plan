@@ -18,7 +18,7 @@ describe("catalog list", () => {
     expect(data.families).toContain("Hardwood plywood");
     const birch = data.materials.find((m: { id: string }) => m.id === "birch-ply-3-4");
     expect(birch).toMatchObject({ family: "Hardwood plywood", name: 'Birch plywood 3/4"', thickness: 0.703 });
-    expect(birch.sizes[0]).toMatchObject({ id: "birch-ply-3-4-4x8", label: "4 × 8 ft", length: 96, width: 48, price: { usd: 76.83, store: "Lowe's", checked: "2026-10-04" } });
+    expect(birch.sizes[0]).toMatchObject({ id: "birch-ply-3-4-4x8", label: "4 × 8 ft", length: 96, width: 48, price: { usd: 78.91, count: 2, store: null, source: null, checked: "2026-10-04" } });
   });
 
   it("lists one family in millimetres, by its name or a slug", async () => {
@@ -29,12 +29,14 @@ describe("catalog list", () => {
     expect(bySlug.json().materials).toHaveLength(3);
   });
 
-  it("prints one row for each size, with the price, the store, and the date", async () => {
+  it("prints one row for each size, with the price, the store or the number of listings, and the date", async () => {
     const text = (await cli(["catalog", "list", "--family", "mdf"])).stdout;
     const lines = text.split("\n");
     expect(lines[0]).toMatch(/^size id\s+material\s+thickness\s+size\s+typical price/);
-    expect(text).toMatch(/mdf-3-4-4x8\s+MDF 3\/4"\s+0\.75"\s+4 × 8 ft: 97" × 49"\s+49\.98 USD \(Home Depot, checked 2026-10-04\)/);
-    expect(text).toContain("Prices are typical");
+    expect(text).toMatch(/mdf-3-4-4x8\s+MDF 3\/4"\s+0\.75"\s+4 × 8 ft: 97" × 49"\s+49\.98 USD \(median of 2 listings, checked 2026-10-04\)/);
+    expect(text).toMatch(/mdf-3-4-2x4\s.*32\.44 USD \(Home Depot, checked 2026-10-04\)/);
+    expect(text).toMatch(/mdf-1-2-4x8\s.*45\.49 USD \(median of 2 listings, checked 2026-10-04\)/);
+    expect(text).toContain("Prices are typical: the median price");
     const baltic = (await cli(["catalog", "list", "--family", "baltic birch plywood"])).stdout;
     expect(baltic).toMatch(/baltic-birch-18mm-5x5\s.*no price found/);
   });
@@ -86,7 +88,7 @@ describe("stock add --catalog", () => {
     const result = await cli(["stock", "add", "p.json", "--catalog", "birch-ply-3-4-4x8", "--json"], io);
     expect(result.code).toBe(0);
     expect(result.json()).toMatchObject({
-      stock: { id: "birch-ply-3-4-4x8", material: "birch-ply-3-4", length: 96, width: 48, quantity: null, kind: "sheet", cost: 76.83 },
+      stock: { id: "birch-ply-3-4-4x8", material: "birch-ply-3-4", length: 96, width: 48, quantity: null, kind: "sheet", cost: 78.91 },
       material: { id: "birch-ply-3-4", thickness: 0.703 },
       addedMaterial: true,
       added: true,

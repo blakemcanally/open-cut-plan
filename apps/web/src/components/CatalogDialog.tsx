@@ -3,7 +3,7 @@ import { useState } from "react";
 import { formatMoney } from "../reports/money.ts";
 import { Dialog } from "./Dialog.tsx";
 
-export const PRICE_NOTE = "Prices are typical: the lowest price on the store web sites on the date shown. Check the price before you buy.";
+export const PRICE_NOTE = "Prices are typical: the median price on the store web sites on the date shown. Check the price before you buy.";
 
 interface CatalogDialogProps {
   project: Project;
@@ -100,9 +100,13 @@ export function CatalogDialog({ project, onAdd, onClose }: CatalogDialogProps) {
                       {formatMoney(size.price.usd, "USD")}{" "}
                       <span className="muted">
                         (
-                        <a href={size.price.source} target="_blank" rel="noreferrer">
-                          {size.price.store}
-                        </a>
+                        {size.price.store !== null && size.price.source !== null ? (
+                          <a href={size.price.source} target="_blank" rel="noreferrer">
+                            {size.price.store}
+                          </a>
+                        ) : (
+                          `median of ${size.price.count} listings`
+                        )}
                         , checked {size.price.checked})
                       </span>
                     </>

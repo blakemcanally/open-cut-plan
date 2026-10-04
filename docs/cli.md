@@ -139,7 +139,7 @@ typical price. The prices are approximate and dated.
 
 | Command | What it does | Example |
 | ------- | ------------ | ------- |
-| `catalog list` | Lists the catalogue materials and sizes, with the typical price, the store, and the date. It needs no file. `--family` selects one family, and `--units` selects `in` (the default) or `mm`. | `opencutplan catalog list --family mdf --units mm` |
+| `catalog list` | Lists the catalogue materials and sizes, with the typical price, the store (or "median of N listings"), and the date. It needs no file. `--family` selects one family, and `--units` selects `in` (the default) or `mm`. | `opencutplan catalog list --family mdf --units mm` |
 | `materials add <file> --catalog <id>` | Adds a catalogue material, with its name, its actual thickness, and its grain. | `opencutplan materials add shelf.cutplan.json --catalog baltic-birch-18mm` |
 | `stock add <file> --catalog <size id>` | Adds a catalogue sheet size as unlimited stock, and its material when the project does not have it. | `opencutplan stock add shelf.cutplan.json --catalog mdf-3-4-4x8 --quantity 2` |
 
