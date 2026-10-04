@@ -70,3 +70,4 @@ export * from "./reports/elevation.ts";
 export * from "./catalog/types.ts";
 export * from "./catalog/data.ts";
 export * from "./catalog/catalog.ts";
+export * from "./catalog/suggest.ts";

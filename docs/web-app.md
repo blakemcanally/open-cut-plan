@@ -52,11 +52,15 @@ parts from the design, and the Parts tab lists them. The file format is in [form
 - The new design has a back of the first material that is too thin for pocket screws. With no such material, the app
   adds Plywood 1/4" (or Plywood 6 mm) and one sheet stock of it, with the size of the first sheet of the design material
   and no cost. Choose "No back" to remove the back.
+- When the design material or the back material has no enabled stock, **Add design** adds one sheet stock of it. This
+  is the [suggested sheet](catalog.md#suggested-sheet): the largest catalogue size of the catalogue material with the
+  same name, or a 96" × 48" (2440 × 1220 mm) sheet with no cost. So the first **Optimize** has stock for every part.
 - The list on the left selects a design. The form has the name, the system, how many to build, the columns and rows,
   the depth, the material, the back, and the mount.
 - The **Material** and **Back** lists also show the [catalogue](catalog.md) materials that the project does not have,
   in groups by family. A catalogue material adds the material, and its largest sheet size as stock when the project
-  has no sheet of it. When the design refuses the material, the app adds nothing.
+  has no sheet of it. A project material with no enabled stock gets the suggested sheet. When the design refuses the
+  material, the app adds nothing.
 - A KALLAX or EKET width or height takes its size from the cells. A custom axis is sized by the outside size, or by
   the list of openings (`335, 335`). Changing the count of a custom axis sized by openings repeats the last opening.
 - Changing the system to KALLAX or EKET applies its cell sizes and depth. Changing it to Custom keeps the sizes.

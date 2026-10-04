@@ -51,7 +51,10 @@ describe("DesignTab", () => {
       ["plywood", "Plywood", 18],
       ["plywood-6-mm", "Plywood 6 mm", 6],
     ]);
-    expect(current().project.stock).toEqual([{ id: "plywood-6-mm-2440x1220", material: "plywood-6-mm", length: 2440, width: 1220, quantity: null, kind: "sheet" }]);
+    expect(current().project.stock).toEqual([
+      { id: "plywood-2440x1220", material: "plywood", length: 2440, width: 1220, quantity: null, kind: "sheet" },
+      { id: "plywood-6-mm-2440x1220", material: "plywood-6-mm", length: 2440, width: 1220, quantity: null, kind: "sheet" },
+    ]);
     expect(design(current)).toMatchObject({ id: "kallax-2x2", name: "KALLAX 2x2", system: "kallax", material: "plywood", back: { material: "plywood-6-mm" } });
     expect(current().project.parts.map((part) => [part.id, part.quantity])).toEqual([
       ["kallax-2x2-top", 1],
@@ -67,17 +70,43 @@ describe("DesignTab", () => {
     expect(current().project.designs!.map((d) => d.id)).toEqual(["kallax-2x2", "kallax-2x2-2"]);
     expect(current().project.designs![1]!.back).toEqual({ material: "plywood-6-mm" });
     expect(current().project.materials).toHaveLength(2);
-    expect(current().project.stock).toHaveLength(1);
+    expect(current().project.stock).toHaveLength(2);
     expect(screen.getByRole("button", { name: /^KALLAX 2x2/, pressed: true })).toBe(screen.getAllByRole("button", { name: /^KALLAX 2x2/ })[1]);
   });
 
-  it("uses a thin material that the project has for the back, and adds no material or stock", async () => {
+  it("uses a thin material that the project has for the back, and adds a sheet only for the material that has no enabled stock", async () => {
     const project = designProject();
     const current = renderDesign({ ...project, designs: undefined, parts: [], plan: undefined });
     await userEvent.click(screen.getByRole("button", { name: "Add design" }));
     expect(design(current)).toMatchObject({ material: "ply18", back: { material: "ply6" } });
     expect(current().project.materials).toEqual(project.materials);
-    expect(current().project.stock).toEqual(project.stock);
+    expect(current().project.stock).toEqual([...project.stock, { id: "ply6-2440x1220", material: "ply6", length: 2440, width: 1220, quantity: null, kind: "sheet" }]);
+  });
+
+  it("adds the catalogue sheet for a design material with the catalogue name, and nothing for a material with stock", async () => {
+    const base = createProject("Shop", "in");
+    const current = renderDesign({
+      ...base,
+      materials: [
+        { id: "birch", name: 'Birch plywood 3/4"', thickness: 0.703, grained: true },
+        { id: "thin", name: "Thin", thickness: 0.25, grained: true },
+      ],
+      stock: [{ id: "thin-sheet", material: "thin", length: 48, width: 24, quantity: 1, kind: "sheet" }],
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Add design" }));
+    expect(design(current)).toMatchObject({ material: "birch", back: { material: "thin" } });
+    expect(current().project.stock.map((stock) => [stock.id, stock.material, stock.length, stock.width])).toEqual([
+      ["thin-sheet", "thin", 48, 24],
+      ["birch-ply-3-4-4x8", "birch", 96, 48],
+    ]);
+  });
+
+  it("adds a sheet when the user picks a project material that has no enabled stock", async () => {
+    const project = designProject();
+    const current = renderDesign({ ...project, materials: [...project.materials, { id: "oak", name: "Oak", thickness: 19, grained: true }] });
+    await userEvent.selectOptions(screen.getByLabelText("Material"), "oak");
+    expect(design(current).material).toBe("oak");
+    expect(current().project.stock.at(-1)).toEqual({ id: "oak-2440x1220", material: "oak", length: 2440, width: 1220, quantity: null, kind: "sheet" });
   });
 
   it("gives the new back stock the size of the first sheet of the carcass material, with no cost", async () => {

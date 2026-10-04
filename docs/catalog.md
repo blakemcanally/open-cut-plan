@@ -52,6 +52,17 @@ of a material go from the largest to the smallest.
 
 See [web-app.md](web-app.md#stock) and [cli.md](cli.md#catalogue).
 
+## Suggested sheet
+
+The app and the CLI add a suggested sheet for a material that has no enabled stock. The Design tab adds it for the
+materials of a new design. **Add stock** on the Layout, Parts, and Stock tabs adds it, and so does
+`stock add --suggested` in the CLI.
+
+- When the catalogue has a material with the same id, or the same name (without case), the sheet is its largest size.
+  The cost is the typical price when the project currency is USD.
+- Otherwise, the sheet is 96" × 48" (2440 × 1220 mm), with no cost. The app does not guess a price.
+- The sheet has unlimited quantity.
+
 ## Update the catalogue
 
 1. Edit `packages/core/src/catalog/data.ts`. Do not change an id that exists, because scripts can use it.

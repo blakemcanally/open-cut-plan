@@ -18,6 +18,7 @@ import {
   presetDesign,
   slugify,
   uniqueId,
+  withStockFor,
   type Design,
   type DesignAxis,
   type DesignSystem,
@@ -35,9 +36,13 @@ export type AxisMode = "outside" | "openings";
 
 export const CATALOG_VALUE = "catalog:";
 
-/** A material from a design select: a project material id, or a catalogue material, which is added with its largest sheet when the project has no sheet of it. */
+/**
+ * A material from a design select: a project material id, which gets the suggested sheet when it has no enabled stock, or
+ * a catalogue material, which is added with its largest sheet when the project has no sheet of it.
+ */
 export function pickMaterial(project: Project, value: string): { project: Project; material: string } {
-  if (!value.startsWith(CATALOG_VALUE) || project.materials.some((material) => material.id === value)) return { project, material: value };
+  if (project.materials.some((material) => material.id === value)) return { project: withStockFor(project, [value]), material: value };
+  if (!value.startsWith(CATALOG_VALUE)) return { project, material: value };
   const result = addCatalogMaterial(project, value.slice(CATALOG_VALUE.length), { sheet: true });
   return { project: result.project, material: result.material };
 }
@@ -80,11 +85,17 @@ function backMaterial(project: Project, carcass: string): { project: Project; ma
   return { project: { ...project, materials: [...project.materials, material], stock: [...project.stock, stock] }, material: material.id };
 }
 
-/** Adds a KALLAX 2x2 of the first material that is thick enough, with a back of the first thin material. Its id is not the id of a design, and no part names it or uses its part ids. */
+/**
+ * Adds a KALLAX 2x2 of the first material that is thick enough, with a back of the first thin material. Each of the two
+ * materials gets the suggested sheet when it has no enabled stock. Its id is not the id of a design, and no part names
+ * it or uses its part ids.
+ */
 export function addDesign(project: Project): { ok: true; project: Project; id: string } | { ok: false; issues: PlanIssue[] } {
-  const { project: withCarcass } = ensureMaterial(project);
-  const carcass = pocketMaterial(withCarcass);
-  const { project: base, material: back } = backMaterial(withCarcass, carcass);
+  const { project: withMaterial } = ensureMaterial(project);
+  const carcass = pocketMaterial(withMaterial);
+  const withCarcass = withStockFor(withMaterial, [carcass]);
+  const { project: withBack, material: back } = backMaterial(withCarcass, carcass);
+  const base = withStockFor(withBack, [back]);
   const name = defaultDesignName("kallax", 2, 2);
   const taken = new Set([...(base.designs ?? []).map((design) => design.id), ...base.parts.flatMap((part) => (part.design === undefined ? [] : [part.design]))]);
   for (;;) {
