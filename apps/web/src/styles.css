@@ -162,6 +162,8 @@ table.grid.catalog-sizes th[scope="row"] { font-size: inherit; color: inherit; f
 .shop-steps li[aria-current="step"] { background: #eaf1fb; outline: 1px solid var(--focus); }
 .shop-steps li.done button { color: var(--muted); text-decoration: line-through; }
 .shop-steps input[type="checkbox"] { width: 20px; height: 20px; flex: none; }
+.shop-steps .swatch { width: 9px; height: 9px; margin-right: 4px; }
+.tool-name { white-space: nowrap; }
 
 .design-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
 .design-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }

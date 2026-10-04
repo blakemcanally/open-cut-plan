@@ -1,4 +1,4 @@
-import { analyzeProject, defaultTools, parseProject, sequencePlan, setToolChoice, type Project, type Step } from "@opencutplan/core";
+import { analyzeProject, defaultTools, parseProject, sequencePlan, setToolChoice, TOOL_COLORS, TOOL_WARNING_COLOR, type CutColoring, type Project, type Step } from "@opencutplan/core";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
@@ -10,13 +10,13 @@ import { ShopTab } from "../src/shop/ShopTab.tsx";
 import { useProject, type ProjectStore } from "../src/state/useProject.ts";
 import { designProject, sampleProject, stripProject } from "./helpers.ts";
 
-function renderShop(initial: Project = sampleProject(), onPrint: (job: PrintJob) => void = () => undefined) {
+function renderShop(initial: Project = sampleProject(), onPrint: (job: PrintJob) => void = () => undefined, props: { openStep?: number; cutColors?: CutColoring } = {}) {
   let latest: ProjectStore | null = null;
   function Harness() {
     const store = useProject(initial);
     latest = store;
     const analysis = useMemo(() => analyzeProject(store.project), [store.project]);
-    return <ShopTab store={store} analysis={analysis} onPrint={onPrint} />;
+    return <ShopTab store={store} analysis={analysis} onPrint={onPrint} {...props} />;
   }
   const result = render(<Harness />);
   return { ...result, current: () => latest! };
@@ -70,6 +70,12 @@ describe("ShopTab", () => {
     expect(diagram.querySelector('[data-highlight="true"]')?.getAttribute("data-step")).toBe("2");
     expect(diagram.querySelector('[data-done="true"]')?.getAttribute("data-step")).toBe("1");
     expect(diagram.querySelector("pattern")?.id).toBe("shop-s1-h");
+  });
+
+  it("colours the cuts on the diagram by tool when the Layout tab does", () => {
+    renderShop(sampleProject(), undefined, { cutColors: "tool" });
+    const diagram = screen.getByRole("img", { name: /^Sheet 1: / });
+    expect(diagram.querySelector('[data-step="2"] line')?.getAttribute("stroke")).toBe(TOOL_COLORS[0]);
   });
 
   it("asks before it clears every tick", async () => {
@@ -286,6 +292,35 @@ describe("ShopTab", () => {
     expect(heading()).toMatch(new RegExp(`^Step ${newNumber(moving)} · `));
     expect(within(currentItem() as HTMLElement).getByRole("checkbox").getAttribute("aria-label")).toBe(`Step ${newNumber(moving)} done`);
     expect(screen.getByLabelText<HTMLSelectElement>("Tool").value).toBe(other(moving));
+  });
+
+  it("opens the step that it is given and puts the focus on its title", () => {
+    renderShop(sampleProject(), undefined, { openStep: 4 });
+    expect(heading()).toMatch(/^Step 4 · /);
+    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 2 }));
+    expect(within(currentItem() as HTMLElement).getByRole("checkbox").getAttribute("aria-label")).toBe("Step 4 done");
+  });
+
+  it("shows the colour of each tool, as on the Layout tab, beside the Tool list and the tool names in the list", async () => {
+    const project = sampleProject();
+    project.tools = defaultTools("in");
+    renderShop(setToolChoice(project, sequencePlan(project)[0]!, "table-saw"));
+    const hex = (color: string) => `rgb(${[1, 3, 5].map((i) => Number.parseInt(color.slice(i, i + 2), 16)).join(", ")})`;
+    const toolSwatch = () => (document.querySelector(".shop-tool .swatch") as HTMLElement).style.background;
+    expect(toolSwatch()).toBe(hex(TOOL_WARNING_COLOR));
+    await userEvent.click(screen.getByRole("button", { name: "Next →" }));
+    expect(toolSwatch()).toBe(hex(TOOL_COLORS[1]!));
+    const list = screen.getByRole("region", { name: "Cut sequence" });
+    const item = (step: number) => within(list).getByRole("button", { name: new RegExp(`^${step}\\. `) });
+    expect(item(1).textContent).toMatch(/ · Table saw$/);
+    expect((item(1).querySelector(".swatch") as HTMLElement).style.background).toBe(hex(TOOL_WARNING_COLOR));
+    expect((item(2).querySelector(".swatch") as HTMLElement).style.background).toBe(hex(TOOL_COLORS[1]!));
+  });
+
+  it("shows the tool colour in the sheet heading when all the steps of the sheet use one tool", () => {
+    renderShop();
+    const heading4 = within(screen.getByRole("region", { name: "Cut sequence" })).getByRole("heading", { name: "Sheet 1 · Table saw", level: 4 });
+    expect((heading4.querySelector(".swatch") as HTMLElement).style.background).toBe("rgb(26, 95, 208)");
   });
 
   it("shows No tool in the Tool list when no tool can make the cut", () => {

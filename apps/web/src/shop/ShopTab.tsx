@@ -1,4 +1,19 @@
-import { describeStep, partColors, LIMIT_WORDS, resultLabel, sequencePlan, sheetSvg, stockLabel, toolLimit, type ProjectAnalysis, type Step, type Tool } from "@opencutplan/core";
+import {
+  describeStep,
+  partColors,
+  LIMIT_WORDS,
+  resultLabel,
+  sequencePlan,
+  sheetSvg,
+  stockLabel,
+  TOOL_WARNING_COLOR,
+  toolColors,
+  toolLimit,
+  type CutColoring,
+  type ProjectAnalysis,
+  type Step,
+  type Tool,
+} from "@opencutplan/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PrintJob } from "../print/PrintView.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
@@ -9,6 +24,10 @@ interface ShopTabProps {
   store: ProjectStore;
   analysis: ProjectAnalysis;
   onPrint(job: PrintJob): void;
+  /** The step to show first, in place of the first step that is not done. */
+  openStep?: number | null;
+  /** The colours of the cuts on the diagram, as on the Layout tab. */
+  cutColors?: CutColoring;
 }
 
 /** Consecutive steps on the same sheet; in setup order the sequence can go back to an earlier sheet. */
@@ -22,19 +41,30 @@ function sheetRuns(steps: readonly Step[]): Step[][] {
   return runs;
 }
 
+function ToolName({ color, name }: { color: string; name: string }) {
+  return (
+    <span className="tool-name">
+      <span className="swatch" style={{ background: color }} />
+      {name}
+    </span>
+  );
+}
+
 function toolOption(step: Step, tool: Tool, limits: boolean): string {
   if (tool.id === step.recommended?.id) return `${tool.name} (recommended)`;
   const limit = toolLimit(tool, { ...step, length: step.to - step.from }, limits);
   return limit ? `${tool.name} (over its ${LIMIT_WORDS[limit]})` : tool.name;
 }
 
-export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
+export function ShopTab({ store, analysis, onPrint, openStep = null, cutColors = "stage" }: ShopTabProps) {
   const { project, edit } = store;
   const { steps, context: ctx } = analysis;
   const state = useMemo(() => shopState(project, steps), [project, steps]);
   const colors = useMemo(() => partColors(project), [project]);
-  const [chosen, setChosen] = useState<number | null>(null);
+  const tools = useMemo(() => toolColors(ctx.tools), [ctx.tools]);
+  const [chosen, setChosen] = useState<number | null>(openStep);
   const list = useRef<HTMLElement>(null);
+  const title = useRef<HTMLHeadingElement>(null);
   const runs = useMemo(() => sheetRuns(steps), [steps]);
 
   const nextUndone = (after: number) => steps.find((s) => s.step > after && !state.done.has(s.step))?.step ?? null;
@@ -51,6 +81,10 @@ export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
     if (top < box.scrollTop) box.scrollTop = top;
     else if (bottom > box.scrollTop + box.clientHeight) box.scrollTop = bottom - box.clientHeight;
   }, [current]);
+
+  useEffect(() => {
+    if (openStep !== null) title.current?.focus();
+  }, [openStep]);
 
   if (steps.length === 0) {
     return (
@@ -116,10 +150,13 @@ export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
       </div>
       <div className="shop-body">
         <section className="shop-current" aria-labelledby="shop-current-title">
-          <h2 id="shop-current-title">{text.title}</h2>
+          <h2 id="shop-current-title" ref={title} tabIndex={-1}>
+            {text.title}
+          </h2>
           {ctx.tools.length > 0 && (
             <label className="shop-tool">
               Tool
+              <span className="swatch" style={{ background: tools.cutColor(step) }} />
               <select value={step.tool?.id ?? ""} onChange={(event) => changeTool(event.target.value)}>
                 {step.tool === null && <option value="">No tool</option>}
                 {ctx.tools.map((tool) => (
@@ -172,7 +209,7 @@ export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
               <div
                 role="img"
                 aria-label={`Sheet ${step.sheetNumber}: ${stockLabel(ctx, sheet.stock)}, step ${current} marked`}
-                dangerouslySetInnerHTML={{ __html: sheetSvg(ctx, sheet, steps, { colors, highlight: current, focus: true, done: state.done, idPrefix: "shop" }) }}
+                dangerouslySetInnerHTML={{ __html: sheetSvg(ctx, sheet, steps, { colors, cutColors, highlight: current, focus: true, done: state.done, idPrefix: "shop" }) }}
               />
               <figcaption className="muted">
                 Sheet {step.sheetNumber} of {analysis.sheets.length}: {stockLabel(ctx, sheet.stock)}
@@ -183,11 +220,19 @@ export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
         <section className="shop-steps" aria-labelledby="shop-steps-title" ref={list}>
           <h3 id="shop-steps-title">Cut sequence</h3>
           {runs.map((run) => {
-            const tools = new Set(run.map((s) => s.tool?.name ?? "No tool"));
-            const oneTool = tools.size === 1 ? [...tools][0]! : null;
+            const oneTool = new Set(run.map((s) => s.tool?.id ?? null)).size === 1;
+            const runTool = run[0]!.tool;
             return (
               <div key={run[0]!.step}>
-                <h4>{oneTool ? `Sheet ${run[0]!.sheetNumber} · ${oneTool}` : `Sheet ${run[0]!.sheetNumber}`}</h4>
+                <h4>
+                  {`Sheet ${run[0]!.sheetNumber}`}
+                  {oneTool && (
+                    <>
+                      {" · "}
+                      <ToolName color={(runTool && tools.colorOf(runTool.id)) ?? TOOL_WARNING_COLOR} name={runTool?.name ?? "No tool"} />
+                    </>
+                  )}
+                </h4>
                 <ol start={run[0]!.step}>
                   {run.map((s) => {
                     const done = state.done.has(s.step);
@@ -196,7 +241,12 @@ export function ShopTab({ store, analysis, onPrint }: ShopTabProps) {
                         <input type="checkbox" checked={done} onChange={(event) => tick(s.step, event.target.checked)} disabled={state.stale} aria-label={`Step ${s.step} done`} />
                         <button type="button" className="link" onClick={() => setChosen(s.step)}>
                           {s.step}. {describeStep(ctx, s).headline}
-                          {oneTool ? "" : ` · ${s.tool?.name ?? "No tool"}`}
+                          {!oneTool && (
+                            <>
+                              {" · "}
+                              <ToolName color={tools.cutColor(s)} name={s.tool?.name ?? "No tool"} />
+                            </>
+                          )}
                         </button>
                       </li>
                     );
