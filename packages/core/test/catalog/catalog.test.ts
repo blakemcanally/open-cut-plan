@@ -20,7 +20,7 @@ function project(units: "in" | "mm" = "in", currency = "USD"): Project {
 describe("catalogFor", () => {
   it("gives the sizes and the thickness in inches", () => {
     const birch = catalogFor("in").find((material) => material.id === "birch-ply-3-4")!;
-    expect(birch).toMatchObject({ family: "Hardwood plywood", name: 'Birch plywood 3/4"', nominal: '3/4"', thickness: 0.703, grained: true });
+    expect(birch).toMatchObject({ family: "Hardwood plywood", name: 'Birch plywood 3/4"', nominal: '3/4"', thickness: 45 / 64, grained: true });
     expect(birch.sizes[0]).toMatchObject({ id: "birch-ply-3-4-4x8", label: "4 × 8 ft", length: 96, width: 48 });
   });
 

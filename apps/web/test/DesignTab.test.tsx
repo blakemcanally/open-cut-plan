@@ -89,7 +89,7 @@ describe("DesignTab", () => {
     const current = renderDesign({
       ...base,
       materials: [
-        { id: "birch", name: 'Birch plywood 3/4"', thickness: 0.703, grained: true },
+        { id: "birch", name: 'Birch plywood 3/4"', thickness: 45 / 64, grained: true },
         { id: "thin", name: "Thin", thickness: 0.25, grained: true },
       ],
       stock: [{ id: "thin-sheet", material: "thin", length: 48, width: 24, quantity: 1, kind: "sheet" }],

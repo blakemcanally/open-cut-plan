@@ -74,4 +74,12 @@ describe("catalogue data", () => {
     expect(names).toEqual(expect.arrayContaining(['Birch plywood 3/4"', 'Baltic birch 3/4" (18 mm)', 'MDF 3/4"', 'White melamine 3/4"', 'Tempered hardboard 1/8"']));
     expect(CATALOG.find((material) => material.id === "baltic-birch-18mm")!.sizes[0]).toMatchObject({ label: "5 × 5 ft", lengthMm: 1525, widthMm: 1525 });
   });
+
+  it("gives a thickness that is a rounded 64th of an inch as the exact 64th", () => {
+    for (const material of CATALOG) {
+      const t = material.thicknessIn;
+      const near = Math.round(t * 64) / 64;
+      if (Math.abs(t - near) <= 0.0005) expect(t, material.id).toBe(near);
+    }
+  });
 });

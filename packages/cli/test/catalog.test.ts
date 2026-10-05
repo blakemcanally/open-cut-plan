@@ -17,7 +17,7 @@ describe("catalog list", () => {
     expect(data.units).toBe("in");
     expect(data.families).toContain("Hardwood plywood");
     const birch = data.materials.find((m: { id: string }) => m.id === "birch-ply-3-4");
-    expect(birch).toMatchObject({ family: "Hardwood plywood", name: 'Birch plywood 3/4"', thickness: 0.703 });
+    expect(birch).toMatchObject({ family: "Hardwood plywood", name: 'Birch plywood 3/4"', thickness: 45 / 64 });
     expect(birch.sizes[0]).toMatchObject({ id: "birch-ply-3-4-4x8", label: "4 × 8 ft", length: 96, width: 48, price: { usd: 78.91, count: 2, store: null, source: null, checked: "2026-10-04" } });
   });
 
@@ -89,7 +89,7 @@ describe("stock add --catalog", () => {
     expect(result.code).toBe(0);
     expect(result.json()).toMatchObject({
       stock: { id: "birch-ply-3-4-4x8", material: "birch-ply-3-4", length: 96, width: 48, quantity: null, kind: "sheet", cost: 78.91 },
-      material: { id: "birch-ply-3-4", thickness: 0.703 },
+      material: { id: "birch-ply-3-4", thickness: 45 / 64 },
       addedMaterial: true,
       added: true,
     });

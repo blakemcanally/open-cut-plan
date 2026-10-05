@@ -42,6 +42,8 @@ of a material go from the largest to the smallest.
 
 - The thickness is the actual thickness from the store listing, not the nominal thickness. The notes tell when the
   thickness is not checked, for example when it comes from a similar product.
+- When the store gives a thickness that is a 64th of an inch rounded to 3 places, for example 0.703", the catalogue
+  stores the fraction (`45 / 64`). The data test checks this.
 - When the stores give different actual sizes for one nominal size, the catalogue uses the Home Depot size. The notes
   give the other size.
 
