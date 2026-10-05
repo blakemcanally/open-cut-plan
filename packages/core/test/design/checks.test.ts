@@ -117,3 +117,39 @@ describe("checkDesigns", () => {
     expect(validatePlan(project).map((issue) => issue.code)).toContain("design-too-small");
   });
 });
+
+describe("the nominal-thickness check", () => {
+  function inches(design: Design, materials: Record<string, { name: string; thickness: number; measured?: boolean }>): Project {
+    const project = convertProjectUnits(regenerateDesigns(designProject([design])), "in");
+    return regenerateDesigns({ ...project, materials: project.materials.map((m) => (materials[m.id] ? { ...m, ...materials[m.id] } : m)) });
+  }
+  const nominal = (project: Project) => checkDesigns(project).filter((issue) => issue.code === "nominal-thickness");
+
+  it("warns about the box material and gives the error across the axis with more panels", () => {
+    const issues = nominal(inches(kallaxDesign(), { ply18: { name: "Plywood 3/4", thickness: 0.75 } }));
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({ severity: "warning", refs: [{ kind: "design", design: "kx" }] });
+    expect(issues[0]!.message).toBe(
+      'Design "Hall KALLAX" uses Plywood 3/4 at 3/4", a nominal thickness. If the stock is 45/64", the error across the height adds up to 15/64". Measure the stock, or pick its thickness on the Stock tab.',
+    );
+  });
+
+  it("gives the error across the width for a design with outside sizes", () => {
+    const issues = nominal(inches(eketDesign(), { ply18: { name: "Plywood 3/4", thickness: 0.75 } }));
+    expect(issues[0]!.message).toContain("the error across the width adds up to 9/64\".");
+  });
+
+  it("warns about the back, with the error in the depth", () => {
+    const issues = nominal(inches(eketDesign(), { ply6: { name: "Back 1/4", thickness: 0.25 } }));
+    expect(issues).toHaveLength(1);
+    expect(issues[0]!.message).toBe(
+      'Design "Wall EKET" has a back of Back 1/4 at 1/4", a nominal thickness. If the stock is 3/16", the depth of the box is off by 1/16". Measure the stock, or pick its thickness on the Stock tab.',
+    );
+  });
+
+  it("gives nothing for measured stock, actual stock, or a millimetre project", () => {
+    expect(nominal(inches(kallaxDesign(), { ply18: { name: "Plywood 3/4", thickness: 0.75, measured: true } }))).toEqual([]);
+    expect(nominal(inches(kallaxDesign(), { ply18: { name: "Plywood 3/4", thickness: 45 / 64 } }))).toEqual([]);
+    expect(nominal(current(kallaxDesign()))).toEqual([]);
+  });
+});

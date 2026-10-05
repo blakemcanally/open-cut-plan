@@ -1,5 +1,7 @@
+import { nominalThickness } from "../catalog/nominal.ts";
 import type { Project } from "../format/schema.ts";
-import { formatLength } from "../geometry/format.ts";
+import { formatExactLength, formatLength } from "../geometry/format.ts";
+import { fromNm, toNm } from "../geometry/precision.ts";
 import { EPSILON } from "../geometry/rect.ts";
 import { convertLength } from "../geometry/units.ts";
 import { planWarning, type PlanIssue } from "../plan/issues.ts";
@@ -45,6 +47,32 @@ export function checkDesigns(project: Project): PlanIssue[] {
 
     if (geometry.thickness > mm(MAX_POCKET_CHART_MM) + EPSILON) {
       issues.push(planWarning("pocket-chart", `${name} uses stock thicker than 1 1/2" (38 mm). The pocket screw chart has no screw for it.`, ref));
+    }
+    const exact = (value: number) => formatExactLength(value, units);
+    const error = (a: number, b: number, panels: number) => fromNm(Math.abs(toNm(a, units) - toNm(b, units)) * panels, units);
+    const advice = "Measure the stock, or pick its thickness on the Stock tab.";
+    const boxNominal = nominalThickness(project, design.material);
+    if (boxNominal) {
+      const across = geometry.rows.length > geometry.columns.length ? "height" : "width";
+      const panels = (across === "height" ? geometry.rows.length : geometry.columns.length) + 1;
+      issues.push(
+        planWarning(
+          "nominal-thickness",
+          `${name} uses ${materials.get(design.material)!.name} at ${exact(geometry.thickness)}, a nominal thickness. If the stock is ${exact(boxNominal.likely[0]!)}, the error across the ${across} adds up to ${exact(error(geometry.thickness, boxNominal.likely[0]!, panels))}. ${advice}`,
+          ref,
+        ),
+      );
+    }
+    const backMaterial = design.back ? materials.get(design.back.material) : undefined;
+    const backNominal = backMaterial ? nominalThickness(project, backMaterial.id) : null;
+    if (backMaterial && backNominal) {
+      issues.push(
+        planWarning(
+          "nominal-thickness",
+          `${name} has a back of ${backMaterial.name} at ${exact(backMaterial.thickness)}, a nominal thickness. If the stock is ${exact(backNominal.likely[0]!)}, the depth of the box is off by ${exact(error(backMaterial.thickness, backNominal.likely[0]!, 1))}. ${advice}`,
+          ref,
+        ),
+      );
     }
     if (design.system === "kallax") {
       const needed = mm(KALLAX.insert.mm + KALLAX_CLEARANCE_MM);

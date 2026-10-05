@@ -26,6 +26,7 @@ export type PlanIssueCode =
   | "design-stale"
   | "design-unknown-system"
   | "design-unknown-mount"
+  | "nominal-thickness"
   | "unknown-goal"
   | "factory-edge"
   | "unknown-factory-edge";
