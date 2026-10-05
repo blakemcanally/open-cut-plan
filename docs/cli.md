@@ -125,9 +125,16 @@ files. `parts` also has `colors` and `group-color` for the colours of the layout
 | `stock save-offcuts <file>` | Adds the usable offcuts of the plan to the stock. | `opencutplan stock save-offcuts shelf.cutplan.json` |
 | `materials list <file>` | Lists the materials and the parts and stock that use them, with a status, for example "Used by 13 parts · 1 size · no price". | `opencutplan materials list shelf.cutplan.json` |
 | `materials get <file> <id>` | Shows one material. | `opencutplan materials get shelf.cutplan.json bb18` |
-| `materials add <file>` | Adds a material. `--catalog <id>` adds a catalogue material. | `opencutplan materials add shelf.cutplan.json --name "MDF 3/4" --thickness 3/4 --grained false` |
-| `materials set <file> <id>` | Changes a material. | `opencutplan materials set shelf.cutplan.json bb18 --color "#d9b98c"` |
+| `materials add <file>` | Adds a material. `--catalog <id>` adds a catalogue material. `--measured true` says the thickness is a measured, actual thickness. | `opencutplan materials add shelf.cutplan.json --name "MDF 3/4" --thickness 3/4 --grained false` |
+| `materials set <file> <id>` | Changes a material. `--measured true` says the thickness is a measured, actual thickness. | `opencutplan materials set shelf.cutplan.json bb18 --color "#d9b98c"` |
 | `materials remove <file> <id>...` | Removes materials. A material in use gives exit 1. | `opencutplan materials remove shelf.cutplan.json mdf-3-4` |
+
+A nominal thickness is a trade size, such as 3/4", that differs from the actual thickness of the stock. In an inch project:
+
+- `materials add` and `materials set` give the warning `nominal-thickness` when the thickness is a nominal value.
+- `materials list` and `materials get` give `nominal` for each material. It is `null` when the thickness is not nominal.
+- `--measured true` stops the warning.
+- A new `--thickness` with no `--measured` clears `measured`.
 | `tools list <file>` | Lists the saws in preference order. | `opencutplan tools list shelf.cutplan.json` |
 | `tools get <file> <id>` | Shows one saw. | `opencutplan tools get shelf.cutplan.json table-saw` |
 | `tools add <file>` | Adds a saw with its kerf and limits. `--type` is `table-saw`, `track-saw`, `circular-saw`, `panel-saw`, or `miter-saw`. `--preset` adds a common saw with typical values: `jobsite-table-saw`, `cabinet-saw-sled`, `track-saw-55`, `track-saw-118`, or `sliding-miter-saw`. Other options change the values. | `opencutplan tools add shelf.cutplan.json --type track-saw --max-cut 110 --position 1` |
@@ -358,7 +365,7 @@ This recipe makes a project, plans it, and draws it:
 ```bash
 F=desk.cutplan.json
 opencutplan new $F --name "Desk" --units in --json
-opencutplan materials add $F --name "Plywood 3/4" --thickness 3/4 --json
+opencutplan materials add $F --catalog birch-ply-3-4 --json
 opencutplan stock add $F --length "8'" --width "4'" --cost 60 --json
 opencutplan parts add $F --name Top --length 60 --width 30 --json
 opencutplan parts add $F --name "Leg panel" --length "28 1/2" --width 24 --quantity 2 --json

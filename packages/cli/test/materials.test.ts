@@ -60,3 +60,41 @@ describe("materials", () => {
     expect(io.files.get(SHELF)).toBe(before);
   });
 });
+
+describe("materials and nominal thickness", () => {
+  it("warns when a material is added at a nominal thickness, and not when it is measured", async () => {
+    const io = withExamples();
+    const added = await cli(["materials", "add", SHELF, "--name", "Plywood 3/4", "--thickness", "3/4", "--json"], io);
+    expect(added.code).toBe(0);
+    expect(added.json().warnings).toContainEqual(expect.stringContaining('nominal-thickness: 3/4" is a nominal thickness. Stock sold as 3/4" is often 45/64" or 11/16" thick.'));
+    const measured = await cli(["materials", "add", SHELF, "--name", "Shop MDF", "--thickness", "3/4", "--measured", "true", "--json"], io);
+    expect(measured.json().material).toMatchObject({ name: "Shop MDF", measured: true });
+    expect(measured.json().warnings ?? []).not.toContainEqual(expect.stringContaining("nominal-thickness"));
+  });
+
+  it("lists and gets the nominal result", async () => {
+    const io = withExamples();
+    await cli(["materials", "add", SHELF, "--name", "Plywood 3/4", "--thickness", "3/4", "--id", "p34"], io);
+    const list = (await cli(["materials", "list", SHELF, "--json"], io)).json();
+    expect(list.materials.find((m: { id: string }) => m.id === "p34")).toMatchObject({ nominal: { nominal: '3/4"', value: 0.75 } });
+    expect(list.materials.find((m: { id: string }) => m.id === "bb18").nominal).toBeNull();
+    const text = await cli(["materials", "get", SHELF, "p34"], io);
+    expect(text.stdout).toContain('Warning: 3/4" is a nominal thickness.');
+  });
+
+  it("sets measured, and clears it with a new thickness", async () => {
+    const io = withExamples();
+    expect((await cli(["materials", "set", SHELF, "bb6", "--thickness", "1/4", "--json"], io)).json().warnings).toContainEqual(expect.stringContaining("nominal-thickness: 1/4\""));
+    const measured = await cli(["materials", "set", SHELF, "bb6", "--measured", "true", "--json"], io);
+    expect(measured.json().material.measured).toBe(true);
+    expect(measured.json().warnings ?? []).not.toContainEqual(expect.stringContaining("nominal-thickness"));
+    const retyped = await cli(["materials", "set", SHELF, "bb6", "--thickness", "0.24", "--json"], io);
+    expect(retyped.json().material).not.toHaveProperty("measured");
+  });
+
+  it("refuses --measured with --catalog", async () => {
+    const result = await cli(["materials", "add", SHELF, "--catalog", "mdf-3-4", "--measured", "true", "--json"], withExamples());
+    expect(result.code).toBe(2);
+    expect(result.json().error.code).toBe("conflict");
+  });
+});

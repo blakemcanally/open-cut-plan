@@ -85,6 +85,8 @@ export interface Mutation {
   strictFailure?: string;
   /** Print every plan error in the readable output. */
   showIssues?: boolean;
+  /** Lines for `warnings`, after the file warnings, for example "warning: nominal-thickness: …". */
+  warnings?: string[];
 }
 
 function target(invocation: Invocation, loaded: Loaded): string {
@@ -143,7 +145,7 @@ export async function finishMutation(invocation: Invocation, loaded: Loaded, cha
   const outcome: Outcome = {
     data: { ...mutation.data, ...result, ...(sendsProject ? { project: output } : {}) },
     text: lines.join("\n"),
-    warnings: warningLines(loaded),
+    warnings: [...warningLines(loaded), ...(mutation.warnings ?? [])],
   };
   if (sendsProject) outcome.payload = text;
   if (strictFailure !== undefined) outcome.error = { code: "strict", message: strictFailure };

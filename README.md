@@ -56,7 +56,7 @@ command in a clone of this repository after `npm ci`. See [`docs/cli.md`](docs/c
 
 ```bash
 npx opencutplan new desk.cutplan.json --name "Desk" --units in
-npx opencutplan materials add desk.cutplan.json --name "Plywood 3/4" --thickness 3/4
+npx opencutplan materials add desk.cutplan.json --catalog birch-ply-3-4
 npx opencutplan stock add desk.cutplan.json --length "8'" --width "4'" --cost 60
 npx opencutplan parts add desk.cutplan.json --name Top --length 60 --width 30
 npx opencutplan optimize desk.cutplan.json --iterations 200
