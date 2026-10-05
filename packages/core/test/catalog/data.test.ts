@@ -3,6 +3,8 @@ import { CATALOG, CATALOG_FAMILIES } from "../../src/index.ts";
 
 const sizes = CATALOG.flatMap((material) => material.sizes.map((size) => ({ material, size })));
 
+const TRADE_WIDTHS: Readonly<Record<number, number>> = { 2: 1.5, 3: 2.5, 4: 3.5, 6: 5.5, 8: 7.25, 10: 9.25, 12: 11.25 };
+
 describe("catalogue data", () => {
   it("has unique material ids, size ids, and material names", () => {
     const ids = [...CATALOG.map((material) => material.id), ...sizes.map(({ size }) => size.id)];
@@ -88,5 +90,38 @@ describe("catalogue data", () => {
     expect(ids).toEqual(
       expect.arrayContaining(["birch-ply-1-8", "cdx-ply-11-32", "cdx-ply-19-32", "pine-ply-11-32", "pine-ply-19-32", "mdf-5-8", "particleboard-5-8", "hardboard-white-1-8"]),
     );
+  });
+
+  it("gives edges only as factory", () => {
+    for (const material of CATALOG) expect([undefined, "factory"], material.id).toContain(material.edges);
+  });
+
+  it("gives each board the actual width of its trade size, and a label and id from the trade size", () => {
+    for (const material of CATALOG.filter((entry) => entry.edges === "factory")) {
+      for (const size of material.sizes) {
+        const match = /^([12])x(\d+) × /.exec(size.label);
+        expect(match, size.id).not.toBeNull();
+        expect(`${match![1]}x`, size.id).toBe(material.nominal);
+        expect(TRADE_WIDTHS[Number(match![2])], size.id).toBe(Math.min(size.widthIn, size.lengthIn));
+        expect(size.id.startsWith(`${material.id}-${match![1]}x${match![2]}-`), size.id).toBe(true);
+      }
+    }
+  });
+
+  it("has common and select pine 1x boards from 1x2 to 1x12", () => {
+    for (const id of ["common-pine-1x", "select-pine-1x"]) {
+      const material = CATALOG.find((entry) => entry.id === id)!;
+      expect(material).toMatchObject({ family: "Pine boards", nominal: "1x", thicknessIn: 0.75, thicknessMm: 19.1, grained: true, edges: "factory" });
+      const trades = new Set(material.sizes.map((size) => size.label.split(" × ")[0]));
+      const expected = id === "select-pine-1x" ? ["1x2", "1x3", "1x4", "1x6", "1x8", "1x10", "1x12"] : ["1x2", "1x4", "1x6", "1x8", "1x10", "1x12"];
+      expect(trades, id).toEqual(new Set(expected));
+    }
+    expect(CATALOG.find((entry) => entry.id === "common-pine-1x")!.sizes.find((size) => size.id === "common-pine-1x-1x4-8ft")).toMatchObject({
+      label: "1x4 × 8 ft",
+      lengthIn: 96,
+      widthIn: 3.5,
+      lengthMm: 2438,
+      widthMm: 89,
+    });
   });
 });

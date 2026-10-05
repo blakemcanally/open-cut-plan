@@ -1,6 +1,7 @@
+import { PINE_BOARDS } from "./pine-boards.ts";
 import type { CatalogMaterial } from "./types.ts";
 
-export const CATALOG: readonly CatalogMaterial[] = [
+const SHEET_GOODS: readonly CatalogMaterial[] = [
   {
     id: "birch-ply-1-8",
     family: "Hardwood plywood",
@@ -1455,3 +1456,5 @@ export const CATALOG: readonly CatalogMaterial[] = [
     ],
   },
 ];
+
+export const CATALOG: readonly CatalogMaterial[] = [...SHEET_GOODS, ...PINE_BOARDS];

@@ -26,6 +26,8 @@ export interface CatalogMaterial {
   thicknessIn: number;
   thicknessMm: number;
   grained: boolean;
+  /** "factory" when each size has good, finished edges, as a board has. */
+  edges?: "factory";
   notes: string;
   /** Largest first. */
   sizes: readonly CatalogSize[];
