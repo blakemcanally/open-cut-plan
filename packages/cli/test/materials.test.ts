@@ -92,6 +92,16 @@ describe("materials and nominal thickness", () => {
     expect(retyped.json().material).not.toHaveProperty("measured");
   });
 
+  it("stores measured false, and refuses a value that is not true or false", async () => {
+    const io = withExamples();
+    const off = await cli(["materials", "set", SHELF, "bb6", "--measured", "false", "--json"], io);
+    expect(off.code).toBe(0);
+    expect(off.json().material.measured).toBe(false);
+    const bad = await cli(["materials", "set", SHELF, "bb6", "--measured", "yes", "--json"], io);
+    expect(bad.code).toBe(2);
+    expect(bad.json().error.message).toContain("true or false");
+  });
+
   it("refuses --measured with --catalog", async () => {
     const result = await cli(["materials", "add", SHELF, "--catalog", "mdf-3-4", "--measured", "true", "--json"], withExamples());
     expect(result.code).toBe(2);
