@@ -1,9 +1,9 @@
-# Catalogue of sheet goods
+# Catalogue of stock
 
 The catalogue is a list of common sheet goods, pine 1x boards, and 2x framing lumber, with their sizes. It has hardwood
-plywood, Baltic birch, construction plywood, underlayment, OSB, MDF, melamine, particleboard, hardboard, and pegboard.
-The web app and the CLI use it to add materials and stock to a project. The catalogue is a list to choose from. It does
-not tell what you own.
+plywood, Baltic birch, construction plywood, underlayment, OSB, MDF, melamine, particleboard, hardboard, pegboard, pine
+boards, and framing lumber. The web app and the CLI use it to add materials and stock to a project. The catalogue is a
+list to choose from. It does not tell what you own.
 
 ## The data
 
@@ -86,7 +86,8 @@ materials of a new design. **Add stock** on the Layout, Parts, and Stock tabs ad
 
 ## Update the catalogue
 
-1. Edit `packages/core/src/catalog/data.ts`. Do not change an id that exists, because scripts can use it.
+1. Edit `packages/core/src/catalog/data.ts` for sheet goods, `pine-boards.ts` for pine boards, or `framing-lumber.ts`
+   for framing lumber. Do not change an id that exists, because scripts can use it.
 2. Give each listing its store, the address of the page, and the date of the check. Use `null` as the price when
    the page has no price. Do not guess a price.
 3. Give the length before the width, and give each size in inches and in millimetres.
