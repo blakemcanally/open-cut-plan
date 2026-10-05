@@ -148,8 +148,9 @@ export function catalogThicknesses(units: Units): ThicknessGroup[];
 A new component, `ThicknessPicker`, goes beside each Thickness field on the Stock tab.
 
 - It is a native `<select>`, with an `<optgroup>` for each family. An option reads
-  `3/4" → 0.703" (birch, red oak, maple)`: the nominal value, the actual thickness in the display format of the
-  project, and short material names.
+  `3/4" → 0.703" (Birch, Red oak, Maple, Sanded)`: the nominal value, the actual thickness as a decimal (as the
+  catalogue dialog shows it), and the short material names (the name without its thickness and without the last word
+  of the family).
 - The first option is `Pick…`. The list shows the option whose thickness is equal to the thickness of the material,
   within the catalogue tolerance (0.005" or 0.1 mm). With no equal option, it shows `Pick…`. When two options in two
   families have the same thickness, it shows the first.
@@ -230,9 +231,10 @@ height it is (rows + 1) × the same difference. The message gives the larger of 
 > Design "Hall" uses Plywood 3/4 at 3/4", a nominal thickness. If the stock is 0.703", the error across the width
 > adds up to 0.235". Measure the stock, or pick its thickness on the Stock tab.
 
-For a back material, the message names the back and gives no error size, because the back does not change the box.
+For a back material, the message names the back and gives the error in the depth: the panels are the outside depth
+less the back, so the box depth is off by (value − first likely value).
 The warning shows where the design checks show now: the Design tab, the Cut tab, the Reports tab, the print, and
-`design get` and `check` in the CLI.
+`design get` and `validate` in the CLI.
 
 **CLI.**
 
