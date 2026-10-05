@@ -28,7 +28,8 @@ save.
 - **Reports.** A summary of the plan, a shopping list with costs, a cut list, the offcuts, and the hardware to buy.
 - **Printing.** Print a booklet with a shopping list, sheet diagrams, the cut sequence, and the assembly steps. Print
   part labels. Export CSV files and SVG drawings.
-- **Material catalogue.** Add common sheet goods and sizes, with typical, dated prices.
+- **Material catalogue.** Add common sheet goods, pine boards, and framing lumber, with their actual sizes and typical,
+  dated prices. Pick an actual thickness from a list. The app warns when a thickness looks nominal.
 - **Command line.** The `opencutplan` command does the same work in scripts and for AI agents.
 - **Phone.** The app works on a narrow screen, so you can use it at the saw.
 

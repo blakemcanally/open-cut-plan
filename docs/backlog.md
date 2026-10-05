@@ -601,3 +601,24 @@ the board on the front view of the Design tab.
 
 **Files:** `packages/core/src/design/assembly.ts`, `reports/elevation.ts`, `apps/web/src/shop/AssemblyTab.tsx`,
 `screens/Workspace.tsx`, `print/PrintView.tsx`, `styles.css`, `packages/cli/src/commands/design.ts`, `report.ts`.
+
+## 23. A stock library: more catalogue stock, a thickness picker, and a nominal warning
+
+**Status:** Done.
+
+**Size:** M.
+
+**Problem:** Most sheet goods and boards are thinner than their nominal size. A design makes its parts from the
+thickness of its material, so a typed nominal thickness adds an error at each panel. The user types each thickness by
+hand, and the catalogue has no boards and no 3/8" or 5/8" sheets.
+
+**Chosen approach:**
+
+- The catalogue has the missing sheet thicknesses, pine 1x boards (common and select), and 2x framing lumber. A board
+  is a narrow sheet with factory edges: stock from a board size gets `trim: 0`. See [catalog.md](catalog.md).
+- The Stock tab has a **Pick…** list beside each Thickness field, with the catalogue thicknesses by family.
+- In an inch project, a material at a nominal thickness gets a warning with the likely actual thicknesses, on the
+  Stock tab, in the design checks (`nominal-thickness`, with the size of the error), and in the CLI. File format 1.9
+  adds `measured` to a material; the **Measured** checkbox and `--measured` set it.
+- Not done: edge-glued panels, hardwood boards, plastics, a personal library across projects, and a rule that stops
+  rips on boards.
