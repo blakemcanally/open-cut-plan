@@ -200,7 +200,7 @@ test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware
   await expect(page.getByRole("img", { name: /^Front view of KALLAX 2x2: / })).toBeVisible();
   await page.getByLabel("Rows").fill("3");
   await page.getByLabel("Rows").press("Enter");
-  await expect(page.getByRole("img", { name: 'Front view of KALLAX 2x2: 28 5/8" × 42 9/16" × 15 11/32"' })).toBeVisible();
+  await expect(page.getByRole("img", { name: 'Front view of KALLAX 2x2: ~28 5/8" × ~42 9/16" × ~15 11/32"' })).toBeVisible();
   await page.getByLabel("How many to build").fill("2");
   await page.getByLabel("How many to build").press("Enter");
   await page.getByLabel("Colour of KALLAX 2x2 2 of 2").fill("#123456");

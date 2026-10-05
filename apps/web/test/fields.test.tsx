@@ -4,12 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { LengthInput, NumberInput, TextInput } from "../src/components/fields.tsx";
 import { description } from "./helpers.ts";
 
-const display = { inch: 32, mm: 0.5 } as const;
-
 describe("LengthInput", () => {
-  it("shows the value in the display precision and commits a parsed length on Enter", async () => {
+  it("shows the exact value and commits a parsed length on Enter", async () => {
     const onChange = vi.fn();
-    render(<LengthInput aria-label="Length" value={15.375} units="in" display={display} onChange={onChange} />);
+    render(<LengthInput aria-label="Length" value={15.375} units="in" onChange={onChange} />);
     const input = screen.getByLabelText("Length");
     expect(input).toHaveProperty("value", '15 3/8"');
     await userEvent.clear(input);
@@ -19,7 +17,7 @@ describe("LengthInput", () => {
 
   it("keeps rejected text marked on Enter and puts the old value back on blur", async () => {
     const onChange = vi.fn();
-    render(<LengthInput aria-label="Length" value={10} units="mm" display={display} onChange={onChange} />);
+    render(<LengthInput aria-label="Length" value={10} units="mm" onChange={onChange} />);
     const input = screen.getByLabelText("Length");
     await userEvent.clear(input);
     await userEvent.type(input, "abc{Enter}");
@@ -31,7 +29,7 @@ describe("LengthInput", () => {
   });
 
   it("says under the field why it cannot read the text, and removes the message when the focus leaves", async () => {
-    render(<LengthInput aria-label="Length" value={10} units="in" display={display} onChange={vi.fn()} />);
+    render(<LengthInput aria-label="Length" value={10} units="in" onChange={vi.fn()} />);
     const input = screen.getByLabelText("Length");
     expect(input.getAttribute("aria-describedby")).toBeNull();
     await userEvent.clear(input);
@@ -55,7 +53,7 @@ describe("LengthInput", () => {
   it("gives millimetre examples in a millimetre project, and keeps its own description", async () => {
     render(
       <>
-        <LengthInput aria-label="Length" aria-describedby="hint" value={10} units="mm" display={display} onChange={vi.fn()} />
+        <LengthInput aria-label="Length" aria-describedby="hint" value={10} units="mm" onChange={vi.fn()} />
         <span id="hint">The inside size.</span>
       </>,
     );
@@ -70,7 +68,7 @@ describe("LengthInput", () => {
 
   it("keeps the text marked when onChange refuses the value", async () => {
     const onChange = vi.fn(() => false);
-    render(<LengthInput aria-label="Width" value={700} units="mm" display={display} onChange={onChange} />);
+    render(<LengthInput aria-label="Width" value={700} units="mm" onChange={onChange} />);
     const input = screen.getByLabelText("Width");
     await userEvent.clear(input);
     await userEvent.type(input, "20{Enter}");
@@ -84,7 +82,7 @@ describe("LengthInput", () => {
 
   it("clears an optional value with blank text, and Escape cancels an edit", async () => {
     const onChange = vi.fn();
-    render(<LengthInput aria-label="Trim" value={6} units="mm" display={display} optional allowZero onChange={onChange} />);
+    render(<LengthInput aria-label="Trim" value={6} units="mm" optional allowZero onChange={onChange} />);
     const input = screen.getByLabelText("Trim");
     await userEvent.type(input, "9{Escape}");
     expect(input).toHaveProperty("value", "6 mm");
@@ -141,7 +139,7 @@ describe("NumberInput and TextInput", () => {
     const onText = vi.fn();
     render(
       <>
-        <LengthInput aria-label="Length" value={30} units="in" display={display} onChange={onLength} />
+        <LengthInput aria-label="Length" value={30} units="in" onChange={onLength} />
         <NumberInput aria-label="Qty" value={2} onChange={onNumber} />
         <TextInput aria-label="Name" value="Side" onChange={onText} />
       </>,

@@ -183,7 +183,7 @@ function collectSheet(ctx: PlanContext, analysis: SheetAnalysis, cuts: RawCut[])
 
 /** Cuts with the same key share a tool, a cut kind, and a displayed setting, so the saw does not change between them. */
 export function setupKey(ctx: PlanContext, cut: Pick<Step, "tool" | "kind" | "setting">): string {
-  return `${cut.tool?.id ?? ""}|${cut.kind}|${formatIn(ctx, cut.setting)}`;
+  return `${cut.tool?.id ?? ""}|${cut.kind}|${formatIn(ctx, cut.setting).replace(/^~/, "")}`;
 }
 
 /** Consecutive steps with the same setup. */

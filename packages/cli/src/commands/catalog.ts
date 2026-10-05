@@ -1,4 +1,4 @@
-import { CATALOG_FAMILIES, catalogFor, catalogMaterial, catalogSize, formatLength, slugify, UnitsSchema, type CatalogMaterial, type CatalogSize, type Units } from "@opencutplan/core";
+import { CATALOG_FAMILIES, catalogFor, catalogMaterial, catalogSize, formatExactLength, formatLength, slugify, UnitsSchema, type CatalogMaterial, type CatalogSize, type Units } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
 import { usageError, type CommandSpec, type GroupSpec, type OptionSpec, type OptionValues } from "../spec.ts";
 import { money, table } from "../text.ts";
@@ -69,7 +69,7 @@ const list: CommandSpec = {
       material.sizes.map((size) => [
         size.id,
         material.name,
-        show(material.thickness),
+        formatExactLength(material.thickness, units),
         `${size.label}: ${show(size.length)} × ${show(size.width)}`,
         size.price ? `${money(size.price.usd, "USD")} (${size.price.store ?? `median of ${size.price.count} listings`}, checked ${size.price.checked})` : "no price found",
       ]),

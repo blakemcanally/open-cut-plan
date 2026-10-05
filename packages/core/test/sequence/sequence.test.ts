@@ -111,9 +111,9 @@ describe("sequencePlan", () => {
       [5, "rip", '15 3/8"', 4, 8, 6],
       [6, "rip", '15 3/8"', 5, 9, 7],
       [7, "rip", '15 3/8"', 6, 10, null],
-      [8, "crosscut", '56 17/32"', 5, null, null],
-      [9, "crosscut", '56 17/32"', 6, null, null],
-      [10, "crosscut", '42 19/32"', 7, null, 11],
+      [8, "crosscut", '~56 17/32"', 5, null, null],
+      [9, "crosscut", '~56 17/32"', 6, null, null],
+      [10, "crosscut", '~42 19/32"', 7, null, 11],
       [11, "crosscut", '13 1/4"', 10, null, null],
     ]);
     expect(steps.map((step) => step.sheetNumber)).toEqual(steps.map((step) => step.sheetNumber).sort((a, b) => a - b));
@@ -143,6 +143,18 @@ describe("sequencePlan", () => {
       .filter((run) => run[0]!.tool?.id === "table-saw")
       .map((run) => setupKey(ctx, run[0]!));
     expect(keys).toEqual(['table-saw|crosscut|56 17/32"', 'table-saw|crosscut|42 19/32"', 'table-saw|crosscut|27 7/32"', 'table-saw|crosscut|13 1/4"']);
+  });
+
+  it("keeps two rip settings that show at the same mark in one setup group", () => {
+    const project = sampleProject();
+    const ctx = planContext(project);
+    const rip = sequencePlan(project).find((step) => step.kind === "rip")!;
+    const exact = { ...rip, step: 1, setting: 13.1875 };
+    const rounded = { ...rip, step: 2, setting: 13.188976378 };
+    expect(formatLength(exact.setting, "in")).toBe('13 3/16"');
+    expect(formatLength(rounded.setting, "in")).toBe('~13 3/16"');
+    expect(setupKey(ctx, exact)).toBe(setupKey(ctx, rounded));
+    expect(setupRuns(ctx, [exact, rounded])).toEqual([[exact, rounded]]);
   });
 
   it("keeps every cut in setup order, after the cut that makes its piece, with no more setup changes than sheet order", () => {

@@ -216,10 +216,10 @@ export function PartsTab({ store, onShowDesign }: PartsTabProps) {
                       />
                     </td>
                     <td data-label="Length">
-                      <LengthInput aria-label={`Length of ${part.name}`} value={part.length} units={units} display={display} onChange={(length) => length !== undefined && change({ length })} />
+                      <LengthInput aria-label={`Length of ${part.name}`} value={part.length} units={units} onChange={(length) => length !== undefined && change({ length })} />
                     </td>
                     <td data-label="Width">
-                      <LengthInput aria-label={`Width of ${part.name}`} value={part.width} units={units} display={display} onChange={(width) => width !== undefined && change({ width })} />
+                      <LengthInput aria-label={`Width of ${part.name}`} value={part.width} units={units} onChange={(width) => width !== undefined && change({ width })} />
                     </td>
                     <td data-label="Qty">
                       <NumberInput

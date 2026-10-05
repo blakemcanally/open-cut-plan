@@ -1,4 +1,4 @@
-import { addCatalogStock, CATALOG_FAMILIES, catalogFor, formatLength, projectStockFor, type Project } from "@opencutplan/core";
+import { addCatalogStock, CATALOG_FAMILIES, catalogFor, formatExactLength, formatLength, projectStockFor, type Project } from "@opencutplan/core";
 import { useState } from "react";
 import { formatMoney } from "../reports/money.ts";
 import { Dialog } from "./Dialog.tsx";
@@ -69,7 +69,7 @@ export function CatalogDialog({ project, onAdd, onClose }: CatalogDialogProps) {
         </label>
       </div>
       <p>
-        Actual thickness {formatLength(material.thickness, units, { inch: "decimal", mm: 0.1 })}, nominal {material.nominal}
+        Actual thickness {formatExactLength(material.thickness, units)}, nominal {material.nominal}
         {material.grained ? ", grained" : ", no grain"}. <span className="muted">{material.notes}</span>
       </p>
       <table className="grid catalog-sizes">

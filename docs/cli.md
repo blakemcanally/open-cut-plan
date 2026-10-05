@@ -76,6 +76,8 @@ node packages/cli/src/main.ts help parts add
 
 - A length is in the project units. You can write `18`, `18.5`, `18 1/2`, `3/4`, `1' 6"`, or `8'` for inches, and `18`
   or `18.5` for millimetres. You can also give a unit: `450mm`, `2.5cm`, or `18in`.
+- A length that the display rounds starts with `~`, for example `~13 3/16"`. A length field shows the exact value, as a
+  fraction to 1/64" or a decimal to 0.0001". You can write the `~` in a length that you give, and the command ignores it.
 - A switch that `set` can change is `true` or `false`, for example `--enabled false`.
 - `--unset <field>` removes an optional field, for example `parts set <file> side --unset group`.
 - `--material` takes a material id or a unique name. You can leave it out when the project has only one material.
@@ -188,7 +190,7 @@ The flags of `design add` and `design set`:
   count from 1, up to the quantity. `auto` gives the unit its automatic colour again. Give the flag one time for each
   unit.
 
-The IKEA numbers are in millimetres. The CLI converts them to the project units, so an inch project gets 13 3/16" for
+The IKEA numbers are in millimetres. The CLI converts them to the project units, so an inch project gets `~13 3/16"` for
 335 mm. Without `--name`, the name is the system and the grid, such as `KALLAX 2x4`, and the id comes from the name:
 `kallax-2x4`. A change that gives a design error, such as stock that is too thin for pocket screws, is refused with
 exit 1 and `invalid-value`, and `error.issues` lists the checks. `design set` gives `partChanges` (the parts that were

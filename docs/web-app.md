@@ -125,6 +125,9 @@ value when the focus leaves; Escape restores it at once. Under a length or numbe
 tells the user what to type, for example "Type a length, for example 24 1/2, 2' 3", or 600 mm." Screen readers read
 the message as the description of the field.
 
+A length that the display rounds starts with `~`, for example `~13 3/16"`. A length field shows the exact value, as a
+fraction to 1/64" or a decimal to 0.0001".
+
 - **Add part** adds a part, puts the focus in its name, and selects the name, so that typing replaces it.
 - Pasting rows from a spreadsheet anywhere on the tab opens the import dialog. **Paste rows…** and **Import CSV…** open
   the same dialog. The dialog guesses the columns from the header; when it cannot, the user picks them. Rows with
@@ -166,7 +169,7 @@ unlimited, cost, kind, edges, and whether to use it). Stock also has a CSV impor
 
 **Add from catalogue…** opens the [catalogue of sheet goods](catalog.md).
 
-- Choose a family, then a material. The dialog shows the actual thickness, the nominal thickness, and the notes.
+- Choose a family, then a material. The dialog shows the actual thickness (exact, as in a length field), the nominal thickness, and the notes.
 - Choose one or more sheet sizes. Each size shows its actual size and its typical price, with the store and the date of
   the price. When the price is the mean of two prices, the store is "median of N listings". A size with no price says
   "No price found." A size that the project has says "In the project", and you

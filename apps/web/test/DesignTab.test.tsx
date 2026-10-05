@@ -421,10 +421,10 @@ describe("DesignTab cells", () => {
       const current = renderDesign(
         regenerateDesigns({ ...base, materials: [...base.materials, birch], stock: [], designs: [{ ...base.designs![0]!, material: "birch" }] }),
       );
-      expect(lines()).toEqual(['⚠ The project has no sheet stock of Birch plywood 3/4" (18 mm). Add 4 × 8 ft sheets from the catalogue']);
+      expect(lines()).toEqual(['⚠ The project has no sheet stock of Birch plywood 3/4" (~18 mm). Add 4 × 8 ft sheets from the catalogue']);
       await userEvent.click(sheets().getByRole("button", { name: "Add 4 × 8 ft sheets from the catalogue" }));
       expect(current().project.stock).toMatchObject([{ material: "birch", length: 2438, width: 1219, kind: "sheet" }]);
-      expect(lines()).toEqual(['About 1 sheet of Birch plywood 3/4" (18 mm), 2438 mm × 1219 mm.']);
+      expect(lines()).toEqual(['About 1 sheet of Birch plywood 3/4" (~18 mm), 2438 mm × 1219 mm.']);
     });
 
     it("adds a sheet of a material of its own, and points to the catalogue materials", async () => {

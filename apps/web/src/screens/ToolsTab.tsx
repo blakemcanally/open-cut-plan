@@ -58,7 +58,6 @@ interface ToolsTabProps {
 export function ToolsTab({ store, storage }: ToolsTabProps) {
   const { project, edit } = store;
   const units = project.project.units;
-  const display = project.settings.display;
   const [type, setType] = useState<ToolType>("table-saw");
   const [preset, setPreset] = useState(TOOL_PRESETS[0]!.id);
   const [profiles, setProfiles] = useState<ToolProfile[]>([]);
@@ -160,7 +159,7 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
                     </label>
                     <label className="stack">
                       Kerf
-                      <LengthInput value={tool.kerf} units={units} display={display} allowZero onChange={(kerf) => kerf !== undefined && change((t) => ({ ...t, kerf }))} />
+                      <LengthInput value={tool.kerf} units={units} allowZero onChange={(kerf) => kerf !== undefined && change((t) => ({ ...t, kerf }))} />
                     </label>
                     {TYPE_LIMITS[tool.type].map(({ key, label }) => (
                       <label className="stack" key={key}>
@@ -168,7 +167,6 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
                         <LengthInput
                           value={(tool as Partial<Record<Limit, number>>)[key]}
                           units={units}
-                          display={display}
                           optional
                           placeholder="No limit"
                           onChange={(value) => change((t) => setLimit(t, key, value))}
@@ -185,7 +183,6 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
                               <LengthInput
                                 value={piece?.length}
                                 units={units}
-                                display={display}
                                 optional
                                 placeholder={placeholder}
                                 onChange={(length) => change((t) => setPiece(t, key, length, length === undefined ? undefined : (piece?.width ?? length)))}
@@ -196,7 +193,6 @@ export function ToolsTab({ store, storage }: ToolsTabProps) {
                               <LengthInput
                                 value={piece?.width}
                                 units={units}
-                                display={display}
                                 optional
                                 placeholder={placeholder}
                                 onChange={(width) => change((t) => setPiece(t, key, width === undefined ? undefined : (piece?.length ?? width), width))}

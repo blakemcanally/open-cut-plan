@@ -8,7 +8,7 @@ import {
   EPSILON,
   ensureMaterial,
   fitCombined,
-  formatLength,
+  formatExactLength,
   isPresetSystem,
   MAX_DESIGN_CELLS,
   MIN_POCKET_THICKNESS_MM,
@@ -24,7 +24,6 @@ import {
   type Design,
   type DesignAxis,
   type DesignSystem,
-  type DisplayPrecision,
   type Material,
   type PlanIssue,
   type Project,
@@ -147,8 +146,8 @@ export function withSystem(design: Design, system: DesignSystem, units: Units): 
   };
 }
 
-export function openingsText(openings: readonly number[], units: Units, display: DisplayPrecision): string {
-  return openings.map((opening) => formatLength(opening, units, display)).join(", ");
+export function openingsText(openings: readonly number[], units: Units): string {
+  return openings.map((opening) => formatExactLength(opening, units)).join(", ");
 }
 
 export function parseOpenings(text: string, units: Units): number[] | null {

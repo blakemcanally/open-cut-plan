@@ -220,7 +220,7 @@ means the same thing in 1.8.
 | `trim` | `0` | Edge trim on every edge of the stock. |
 | `factoryEdge` | none | `{ "minLength": <length> }` (added in 1.6): each part whose long side is at least `minLength` asks for a factory edge on a long edge. See [Factory edges](#factory-edges-added-in-16). |
 | `minOffcut` | none | {`length`, `width`}: waste at least this size, in either orientation, is kept as an offcut. Readers use 12 × 6 in or 300 × 150 mm when it is absent. |
-| `display` | `{ "inch": 32, "mm": 0.5 }` | Rounding for display: `inch` is `8`, `16`, `32`, `64`, or `"decimal"`; `mm` is `1`, `0.5`, or `0.1`. |
+| `display` | `{ "inch": 32, "mm": 0.5 }` | Rounding for display: `inch` is `8`, `16`, `32`, `64`, or `"decimal"`; `mm` is `1`, `0.5`, or `0.1`. A rounded value shows with `~`. |
 | `optimizer` | `{ "timeLimitMs": 2000, "goal": "cost", "extraCostPercent": 10, "keepGroupsTogether": true }` | Search time, an optional integer `seed`, and the goal (added in 1.2). `goal` is `"cost"`, `"offcuts"`, or `"cuts"`; a reader that does not know the value warns (`unknown-goal`), uses `"cost"`, and writes the value back. `extraCostPercent` is a number from 0 to 100: the most extra cost that the goals `offcuts` and `cuts` can use, in percent of the cheapest plan found. `keepGroupsTogether` (added in 1.5) is `true` or `false`. When it is `true`, the optimizer puts the copies of each [colour key](#colours-added-in-14) on as few sheets as it can, but never at a higher cost. A missing value means `true`. See [`optimizer.md`](optimizer.md#objective). |
 | `currency` | `"USD"` | ISO 4217 code for `cost`. |
 

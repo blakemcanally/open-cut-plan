@@ -33,7 +33,7 @@ describe("assemblySteps", () => {
     expect(steps[6]!.body).toBe(
       "Lay the frame on its back. Put the bottom on the lower ends of the sides and the dividers, with each divider on its mark, and screw it on through the pocket holes in their ends. Then fit the top the same way.",
     );
-    expect(steps[7]!.body).toContain("Both must be 1603 mm.");
+    expect(steps[7]!.body).toContain("Both must be ~1603 mm.");
   });
 
   it("says how many to build, fits the back, and hangs an EKET on the rail", () => {
@@ -44,7 +44,7 @@ describe("assemblySteps", () => {
     );
     expect(steps[1]!.body).toBe("Mark the left face of each divider on the top and the bottom at 341 mm from the left end.");
     expect(steps[2]!.body).toBe("Stand the sides and the dividers on the bottom, with each divider on its mark, and screw them to it through the pocket holes in their ends. Then fit the top the same way.");
-    expect(steps[3]!.body).toContain("Both must be 782.5 mm.");
+    expect(steps[3]!.body).toContain("Both must be ~782.5 mm.");
     expect(steps[4]!.body).toBe('Glue the back to the rear edges, then screw it on with 21 #6 × 3/4" (4 × 20 mm) flat head wood screws: 25 mm from the ends of each edge, and at most 150 mm apart.');
     expect(steps[5]!.body).toContain("(1 × EKET suspension rail, 70 cm)");
     expect(steps[5]!.body).toContain("AA-1912543-9");
@@ -100,9 +100,9 @@ describe("assemblySteps", () => {
 
   it("gives the lengths in the project units", () => {
     const steps = assemblySteps(convertProjectUnits(project, "in"), "ek")!;
-    expect(steps[0]!.body).toContain('for 23/32" stock');
-    expect(steps[1]!.body).toBe('Mark the left face of each divider on the top and the bottom at 13 7/16" from the left end.');
-    expect(steps[3]!.body).toContain('Both must be 30 13/16".');
+    expect(steps[0]!.body).toContain('for ~23/32" stock');
+    expect(steps[1]!.body).toBe('Mark the left face of each divider on the top and the bottom at ~13 7/16" from the left end.');
+    expect(steps[3]!.body).toContain('Both must be ~30 13/16".');
   });
 
   it("gives null for a missing design or a design with an error", () => {

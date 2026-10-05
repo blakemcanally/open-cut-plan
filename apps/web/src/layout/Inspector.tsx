@@ -74,11 +74,11 @@ export function Inspector({ ctx, project, selected, busy, message, onLocation, o
           <div className="pair">
             <label className="stack">
               X (from the left)
-              <LengthInput value={rect.x} units={ctx.units} display={ctx.display} allowZero disabled={busy} onChange={(x) => x !== undefined && onMove(x, rect.y)} />
+              <LengthInput value={rect.x} units={ctx.units} allowZero disabled={busy} onChange={(x) => x !== undefined && onMove(x, rect.y)} />
             </label>
             <label className="stack">
               Y (from the top)
-              <LengthInput value={rect.y} units={ctx.units} display={ctx.display} allowZero disabled={busy} onChange={(y) => y !== undefined && onMove(rect.x, y)} />
+              <LengthInput value={rect.y} units={ctx.units} allowZero disabled={busy} onChange={(y) => y !== undefined && onMove(rect.x, y)} />
             </label>
           </div>
           <div className="buttons">

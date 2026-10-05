@@ -141,7 +141,6 @@ export function StockTab({ store }: { store: ProjectStore }) {
                         aria-label={`Thickness of ${material.name}`}
                         value={material.thickness}
                         units={units}
-                        display={display}
                         onChange={(thickness) => thickness !== undefined && edit((p) => updateMaterial(p, material.id, { thickness }))}
                       />
                     </td>
@@ -246,10 +245,10 @@ export function StockTab({ store }: { store: ProjectStore }) {
                         </select>
                       </td>
                       <td data-label="Length">
-                        <LengthInput aria-label={`Length of stock ${label}`} value={stock.length} units={units} display={display} onChange={(length) => length !== undefined && change({ length })} />
+                        <LengthInput aria-label={`Length of stock ${label}`} value={stock.length} units={units} onChange={(length) => length !== undefined && change({ length })} />
                       </td>
                       <td data-label="Width">
-                        <LengthInput aria-label={`Width of stock ${label}`} value={stock.width} units={units} display={display} onChange={(width) => width !== undefined && change({ width })} />
+                        <LengthInput aria-label={`Width of stock ${label}`} value={stock.width} units={units} onChange={(width) => width !== undefined && change({ width })} />
                       </td>
                       <td data-label="Qty">
                         <NumberInput
@@ -291,7 +290,6 @@ export function StockTab({ store }: { store: ProjectStore }) {
                               className="narrow"
                               value={stock.trim}
                               units={units}
-                              display={display}
                               disabled={!features.trim}
                               onChange={(trim) => trim !== undefined && change({ trim })}
                             />

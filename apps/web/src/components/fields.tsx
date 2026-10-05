@@ -1,4 +1,4 @@
-import { formatLength, parseLength, parsePlainNumber, type DisplayPrecision, type Units } from "@opencutplan/core";
+import { formatExactLength, parseLength, parsePlainNumber, type Units } from "@opencutplan/core";
 import { useId, useState, type InputHTMLAttributes, type KeyboardEvent } from "react";
 
 type BaseProps = Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "defaultValue">;
@@ -92,7 +92,6 @@ export function TextInput({ value, onChange, required, valid, ...rest }: TextInp
 interface LengthInputProps extends BaseProps {
   value: number | undefined;
   units: Units;
-  display: DisplayPrecision;
   onChange: Change<number | undefined>;
   /** Blank clears the value. */
   optional?: boolean;
@@ -104,13 +103,13 @@ const LENGTH_EXAMPLES: Readonly<Record<Units, string>> = {
   mm: `600, 600 mm, or 24 1/2"`,
 };
 
-export function LengthInput({ value, units, display, onChange, optional, allowZero, ...rest }: LengthInputProps) {
+export function LengthInput({ value, units, onChange, optional, allowZero, ...rest }: LengthInputProps) {
   return (
     <DraftInput
       {...rest}
       type="text"
       inputMode="decimal"
-      value={value === undefined ? "" : formatLength(value, units, display)}
+      value={value === undefined ? "" : formatExactLength(value, units)}
       onCommit={(text) => {
         if (text.trim() === "") {
           if (!optional) return "Type a length.";

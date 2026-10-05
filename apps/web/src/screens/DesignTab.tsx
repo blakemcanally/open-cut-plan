@@ -259,7 +259,7 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
           <label className="stack">
             {text.openings}
             <TextInput
-              value={openingsText(axis.openings, units, display)}
+              value={openingsText(axis.openings, units)}
               valid={(value) => parseOpenings(value, units) !== null}
               onChange={(value) => apply(`${which}-openings`, put({ ...axis, openings: parseOpenings(value, units)! }))}
               {...live((d, t) => {
@@ -274,7 +274,6 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
             <LengthInput
               value={axis.outside}
               units={units}
-              display={display}
               onChange={(value) => value !== undefined && apply(`${which}-outside`, put({ ...axis, outside: value }))}
               {...live((d, t) => {
                 const value = parseLength(t, units);
@@ -341,7 +340,6 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
             <LengthInput
               value={design.depth}
               units={units}
-              display={display}
               onChange={(depth) => depth !== undefined && apply("depth", (d) => ({ ...d, depth }))}
               {...live((d, t) => {
                 const depth = parseLength(t, units);

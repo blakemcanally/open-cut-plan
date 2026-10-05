@@ -158,7 +158,7 @@ describe("describeStep", () => {
     const mm = texts(convertProjectUnits(example("living-room-shelf"), "mm"));
     expect(mm.length).toBeGreaterThan(0);
     expect(mm.every((text) => !text.body.includes("?") && !text.body.includes('"'))).toBe(true);
-    expect(mm.find((text) => !text.headline.startsWith("Trim"))!.headline).toMatch(/^Cut (the (sheet|panel) to )?\d+(\.\d+)? mm( off the (sheet|panel))?$/);
+    expect(mm.find((text) => !text.headline.startsWith("Trim"))!.headline).toMatch(/^Cut (the (sheet|panel) to )?~?\d+(\.\d+)? mm( off the (sheet|panel))?$/);
   });
 });
 

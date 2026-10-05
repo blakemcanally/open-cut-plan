@@ -78,10 +78,10 @@ describe("living-room-shelf", () => {
       const part = project.parts.find((p) => p.id === id)!;
       return `${formatLength(part.length, "in")} x ${formatLength(part.width, "in")}`;
     };
-    expect(size("a-top")).toBe('42 19/32" x 15 3/8"');
-    expect(size("b-top")).toBe('56 17/32" x 15 3/8"');
-    expect(size("a-side")).toBe('27 7/32" x 15 3/8"');
-    expect(size("b-back")).toBe('56 17/32" x 28 5/8"');
+    expect(size("a-top")).toBe('~42 19/32" x 15 3/8"');
+    expect(size("b-top")).toBe('~56 17/32" x 15 3/8"');
+    expect(size("a-side")).toBe('~27 7/32" x 15 3/8"');
+    expect(size("b-back")).toBe('~56 17/32" x ~28 5/8"');
   });
 
   it("keeps every placement inside its 60 x 60 sheet", () => {

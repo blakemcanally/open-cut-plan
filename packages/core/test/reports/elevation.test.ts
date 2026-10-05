@@ -81,7 +81,7 @@ describe("designElevationSvg", () => {
   it("uses the project units and the display precision", () => {
     const svg = designElevationSvg(convertProjectUnits(project, "in"), "kx")!;
     expect(svg).toContain('width="39.764in"');
-    expect(svg).toContain(">13 3/16&quot; × 13 3/16&quot;</text>");
+    expect(svg).toContain(">~13 3/16&quot; × ~13 3/16&quot;</text>");
   });
 
   it("gives null for a missing design or a design with an error", () => {

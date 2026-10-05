@@ -44,7 +44,7 @@ function resolveMaterials(project: Project, rows: readonly MaterialRow[]) {
     const exact = matches.find((material) => sameThickness(material, thickness));
     if (exact) return exact.id;
     if (matches.length === 0) return create(name, thickness);
-    const variant = `${name} (${formatLength(thickness, units, project.settings.display)})`;
+    const variant = `${name} (${formatLength(thickness, units, project.settings.display).replace(/^~/, "")})`;
     return named(variant).find((material) => sameThickness(material, thickness))?.id ?? create(variant, thickness);
   });
   return { materials, created, ids };

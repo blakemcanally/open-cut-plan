@@ -185,7 +185,7 @@ export function SettingsTab({ store, prefs, onPrefs, section: current, onSection
               {!factoryEdges && (
                 <label className="stack">
                   Trim width
-                  <LengthInput value={settings.trim} units={units} display={display} onChange={(trim) => trim !== undefined && set((s) => ({ ...s, trim }))} />
+                  <LengthInput value={settings.trim} units={units} onChange={(trim) => trim !== undefined && set((s) => ({ ...s, trim }))} />
                 </label>
               )}
               <p className="muted">A sheet on the Stock tab can make its own choice.</p>
@@ -219,7 +219,6 @@ export function SettingsTab({ store, prefs, onPrefs, section: current, onSection
                   <LengthInput
                     value={settings.factoryEdge.minLength}
                     units={units}
-                    display={display}
                     disabled={!factoryEdges}
                     onChange={(minLength) => minLength !== undefined && set((s) => ({ ...s, factoryEdge: { ...s.factoryEdge, minLength } }))}
                   />
@@ -244,7 +243,6 @@ export function SettingsTab({ store, prefs, onPrefs, section: current, onSection
               <LengthInput
                 value={prefs.grid[units]}
                 units={units}
-                display={display}
                 allowZero
                 onChange={(grid) => grid !== undefined && onPrefs({ ...prefs, grid: { ...prefs.grid, [units]: grid } })}
               />
@@ -278,7 +276,6 @@ export function SettingsTab({ store, prefs, onPrefs, section: current, onSection
                 <LengthInput
                   value={minOffcut.length}
                   units={units}
-                  display={display}
                   onChange={(length) => length !== undefined && set((s) => ({ ...s, minOffcut: { ...minOffcut, length } }))}
                 />
               </label>
@@ -287,7 +284,6 @@ export function SettingsTab({ store, prefs, onPrefs, section: current, onSection
                 <LengthInput
                   value={minOffcut.width}
                   units={units}
-                  display={display}
                   onChange={(width) => width !== undefined && set((s) => ({ ...s, minOffcut: { ...minOffcut, width } }))}
                 />
               </label>

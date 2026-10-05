@@ -33,7 +33,7 @@ describe("catalog list", () => {
     const text = (await cli(["catalog", "list", "--family", "mdf"])).stdout;
     const lines = text.split("\n");
     expect(lines[0]).toMatch(/^size id\s+material\s+thickness\s+size\s+typical price/);
-    expect(text).toMatch(/mdf-3-4-4x8\s+MDF 3\/4"\s+0\.75"\s+4 × 8 ft: 97" × 49"\s+49\.98 USD \(median of 2 listings, checked 2026-10-04\)/);
+    expect(text).toMatch(/mdf-3-4-4x8\s+MDF 3\/4"\s+3\/4"\s+4 × 8 ft: 97" × 49"\s+49\.98 USD \(median of 2 listings, checked 2026-10-04\)/);
     expect(text).toMatch(/mdf-3-4-2x4\s.*32\.44 USD \(Home Depot, checked 2026-10-04\)/);
     expect(text).toMatch(/mdf-1-2-4x8\s.*45\.49 USD \(median of 2 listings, checked 2026-10-04\)/);
     expect(text).toContain("Prices are typical: the median price");

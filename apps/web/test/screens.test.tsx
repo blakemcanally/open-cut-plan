@@ -121,7 +121,7 @@ describe("StockTab", () => {
     expect(dialog.textContent).toContain("Prices are typical: the median price");
     await userEvent.selectOptions(within(dialog).getByLabelText("Family"), "MDF");
     await userEvent.selectOptions(within(dialog).getByLabelText("Material"), 'MDF 3/4"');
-    expect(dialog.textContent).toContain('Actual thickness 0.75"');
+    expect(dialog.textContent).toContain('Actual thickness 3/4"');
     const big = within(dialog).getByRole("row", { name: /4 × 8 ft/ });
     expect(big.textContent).toContain("97\" × 49\"");
     expect(big.textContent).toContain("$49.98");
