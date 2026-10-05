@@ -69,6 +69,6 @@ describe("tool choices", () => {
     const old = JSON.parse(serializeProject(sampleProject()));
     old.version = "1.2";
     const result = parseProject(JSON.stringify(old));
-    expect(result.ok && result.project.version).toBe("1.8");
+    expect(result.ok && result.project.version).toBe("1.9");
   });
 });

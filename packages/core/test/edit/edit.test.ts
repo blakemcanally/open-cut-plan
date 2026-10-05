@@ -32,6 +32,7 @@ import {
   setPinned,
   unplacedCopies,
   updatePart,
+  updateMaterial,
   updateStock,
   validatePlan,
   type Project,
@@ -91,6 +92,31 @@ describe("stock and material edits", () => {
     const limited = updateStock(sampleProject(), "ply-4x8", { quantity: 3 });
     expect(limited.stock[0]!.quantity).toBe(3);
     expect(updateStock(limited, "ply-4x8", { quantity: null }).stock[0]!.quantity).toBeNull();
+  });
+});
+
+describe("updateMaterial and measured", () => {
+  const withMeasured = (): Project => {
+    const project = sampleProject();
+    return { ...project, materials: project.materials.map((m) => ({ ...m, measured: true })) };
+  };
+
+  it("clears measured when the thickness changes, and keeps it for the same thickness or another field", () => {
+    const id = withMeasured().materials[0]!.id;
+    expect(updateMaterial(withMeasured(), id, { thickness: 0.5 }).materials[0]).not.toHaveProperty("measured");
+    expect(updateMaterial(withMeasured(), id, { thickness: withMeasured().materials[0]!.thickness }).materials[0]!.measured).toBe(true);
+    expect(updateMaterial(withMeasured(), id, { name: "Shop ply" }).materials[0]!.measured).toBe(true);
+  });
+
+  it("keeps measured when the patch sets it with the thickness", () => {
+    const id = withMeasured().materials[0]!.id;
+    expect(updateMaterial(withMeasured(), id, { thickness: 45 / 64, measured: true }).materials[0]).toMatchObject({ thickness: 45 / 64, measured: true });
+  });
+
+  it("keeps measured through a change of units and back", () => {
+    const there = convertProjectUnits(withMeasured(), "mm");
+    expect(there.materials[0]!.measured).toBe(true);
+    expect(convertProjectUnits(there, "in").materials[0]!.measured).toBe(true);
   });
 });
 

@@ -18,8 +18,16 @@ export function addMaterial(project: Project): Project {
   return { ...project, materials: [...project.materials, material] };
 }
 
+/** A new thickness with no `measured` in the patch removes `measured`: nobody has checked the new value. */
 export function updateMaterial(project: Project, id: string, patch: Patch<Material>): Project {
-  return { ...project, materials: project.materials.map((material) => (material.id === id ? applyPatch(material, patch) : material)) };
+  return {
+    ...project,
+    materials: project.materials.map((material) => {
+      if (material.id !== id) return material;
+      const retyped = patch.thickness !== undefined && patch.thickness !== material.thickness && !("measured" in patch);
+      return applyPatch(material, retyped ? { ...patch, measured: undefined } : patch);
+    }),
+  };
 }
 
 export function materialInUse(project: Project, id: string): boolean {

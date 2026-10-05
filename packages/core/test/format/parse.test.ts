@@ -125,24 +125,24 @@ describe("parseProject", () => {
     expect(result.ok && result.project.settings.features.cutOrder).toBe(true);
   });
 
-  it.each(["1.0", "1.1"])("loads a %s file as version 1.8 with the default goal and no warnings", (version) => {
+  it.each(["1.0", "1.1"])("loads a %s file as version 1.9 with the default goal and no warnings", (version) => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = version;
     delete doc.settings.optimizer.goal;
     delete doc.settings.optimizer.extraCostPercent;
     delete doc.settings.optimizer.keepGroupsTogether;
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.8");
+    expect(result.ok && result.project.version).toBe("1.9");
     expect(result.ok && result.project.settings.optimizer).toMatchObject({ goal: "cost", extraCostPercent: 10, keepGroupsTogether: true });
     expect(result.warnings).toEqual([]);
   });
 
-  it("loads a 1.4 file as version 1.8 and keeps the groups together by default", () => {
+  it("loads a 1.4 file as version 1.9 and keeps the groups together by default", () => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = "1.4";
     delete doc.settings.optimizer.keepGroupsTogether;
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.8");
+    expect(result.ok && result.project.version).toBe("1.9");
     expect(result.ok && result.project.settings.optimizer.keepGroupsTogether).toBe(true);
     expect(result.warnings).toEqual([]);
   });
@@ -156,32 +156,52 @@ describe("parseProject", () => {
     expect(parseProject(doc).ok).toBe(false);
   });
 
-  it("loads a 1.5 file as version 1.8 with no factory edge requests", () => {
+  it("loads a 1.5 file as version 1.9 with no factory edge requests", () => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = "1.5";
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.8");
+    expect(result.ok && result.project.version).toBe("1.9");
     expect(result.ok && result.project.settings.factoryEdge).toBeUndefined();
     expect(result.ok && result.project.parts.map((part) => part.factoryEdge)).toEqual([undefined]);
     expect(result.warnings).toEqual([]);
   });
 
-  it("loads a 1.6 file as version 1.8 with no warnings", () => {
+  it("loads a 1.6 file as version 1.9 with no warnings", () => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = "1.6";
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.8");
+    expect(result.ok && result.project.version).toBe("1.9");
     expect(result.warnings).toEqual([]);
   });
 
-  it("loads a 1.7 file as version 1.8 with no warnings, and keeps its table saw as it was", () => {
+  it("loads a 1.7 file as version 1.9 with no warnings, and keeps its table saw as it was", () => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = "1.7";
     doc.tools[0].maxPiece = { length: 48, width: 24 };
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.8");
+    expect(result.ok && result.project.version).toBe("1.9");
     expect(result.ok && result.project.tools[0]).not.toHaveProperty("maxCrosscutPiece");
     expect(result.warnings).toEqual([]);
+  });
+
+  it("loads a 1.8 file as version 1.9 with no warnings, and keeps measured through a save and a load", () => {
+    const doc = JSON.parse(serializeProject(sampleProject()));
+    doc.version = "1.8";
+    const result = parseProject(doc);
+    expect(result.ok && result.project.version).toBe("1.9");
+    expect(result.warnings).toEqual([]);
+    const measured = JSON.parse(serializeProject(sampleProject()));
+    measured.materials[0].measured = true;
+    const loaded = parseProject(measured);
+    expect(loaded.ok && loaded.project.materials[0]!.measured).toBe(true);
+    const again = parseProject(serializeProject(loaded.ok ? loaded.project : sampleProject()));
+    expect(again.ok && again.project.materials[0]!.measured).toBe(true);
+  });
+
+  it("refuses a material whose measured is not a boolean", () => {
+    const doc = JSON.parse(serializeProject(sampleProject()));
+    doc.materials[0].measured = "yes";
+    expect(parseProject(doc).ok).toBe(false);
   });
 
   it("reads a mitre saw and the crosscut piece of a table saw, and refuses a crosscut piece with one size", () => {
@@ -241,7 +261,7 @@ describe("parseProject", () => {
   it("loads a newer minor version with a warning and keeps every unknown field on re-save", () => {
     const project = sampleProject();
     const doc = JSON.parse(serializeProject(project));
-    doc.version = "1.9";
+    doc.version = "1.10";
     doc.future = { x: 1 };
     doc.parts[0].edgeBanding = { top: "birch", bottom: null };
     doc.stock[0].supplier = "Local yard";
@@ -256,7 +276,7 @@ describe("parseProject", () => {
       {
         severity: "warning",
         code: "newer-minor",
-        message: "This file uses format version 1.9, which is newer than this app (1.8). Unknown fields are kept but ignored.",
+        message: "This file uses format version 1.10, which is newer than this app (1.9). Unknown fields are kept but ignored.",
         path: ["version"],
       },
     ]);

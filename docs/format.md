@@ -1,4 +1,4 @@
-# The OpenCutPlan file format (`.cutplan.json`), version 1.8
+# The OpenCutPlan file format (`.cutplan.json`), version 1.9
 
 An OpenCutPlan file describes a sheet-goods cutting project: the parts to cut, the stock to cut them from, the tools
 available, settings, and optionally a layout of parts on sheets with an ordered list of cuts.
@@ -22,7 +22,7 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | Always `"opencutplan"`. |
-| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.8"`. |
+| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.9"`. |
 | `project` | yes | `name` (text), `units` (`"in"` or `"mm"`), optional `notes`, `created`, `modified` (should be ISO 8601 date-times; readers accept any string). |
 | `materials` | yes | Materials; see below. |
 | `stock` | yes | Stock pieces available for cutting. |
@@ -40,9 +40,10 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 |---|---|---|
 | `id` | yes | |
 | `name` | yes | For example `"Baltic birch 18mm"`. |
-| `thickness` | yes | Actual thickness, not nominal. |
+| `thickness` | yes | Actual thickness, not nominal. See [Nominal thickness](#nominal-thickness-added-in-19). |
 | `grained` | yes | `true` when the face has a grain or pattern direction. |
 | `color` | no | Display colour (CSS colour string). |
+| `measured` | no | `true` when the thickness is an actual thickness: measured, or picked from the catalogue (added in 1.9). An app clears it when the user types a new thickness. |
 
 ## Stock
 
@@ -194,6 +195,11 @@ long part. A part can ask for a factory edge on one of its long edges.
 The value set of `factoryEdge` is not fixed: a minor version can add values, for example `"short"` or `"both"`. A
 reader that does not know the value warns (`unknown-factory-edge`), uses the rule for that part, and writes the value
 back.
+
+## Nominal thickness (added in 1.9)
+
+In an inch project, an app can warn when a thickness equals a nominal value of the catalogue. The warning applies when
+the material is not a catalogue material and is not `measured`. A 1.8 reader ignores `measured` and writes it back.
 
 ## Tools
 

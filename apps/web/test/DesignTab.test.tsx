@@ -254,7 +254,7 @@ describe("DesignTab", () => {
   });
 
   it("does not add a design to a file from a newer version", async () => {
-    const current = renderDesign({ ...designProject(), version: "1.9" });
+    const current = renderDesign({ ...designProject(), version: "1.10" });
     const before = current().project;
     const add = screen.getByRole("button", { name: "Add design" });
     expect(add.matches(":disabled")).toBe(true);

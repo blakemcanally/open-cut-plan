@@ -2,7 +2,7 @@ import { z } from "zod";
 import { INCH_PRECISIONS, MM_PRECISIONS } from "../geometry/format.ts";
 
 export const FORMAT_ID = "opencutplan";
-export const FORMAT_VERSION = "1.8";
+export const FORMAT_VERSION = "1.9";
 /** Analysis and the editor work per copy, so a larger quantity would freeze them. */
 export const MAX_PART_QUANTITY = 10_000;
 export const MAX_DESIGN_CELLS = 50;
@@ -26,6 +26,7 @@ export const MaterialSchema = z
     thickness: positive,
     grained: z.boolean(),
     color: z.string().optional(),
+    measured: z.boolean().optional(),
   })
   .loose();
 
