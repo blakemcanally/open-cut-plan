@@ -36,6 +36,8 @@ describe("catalogThicknesses", () => {
     const baltic = catalogThicknesses("mm").find((group) => group.family === "Baltic birch plywood")!;
     expect(baltic.options.map((option) => option.thickness)).toEqual(["baltic-birch-6mm", "baltic-birch-12mm", "baltic-birch-18mm"].map((id) => catalogMaterial(id)!.thicknessMm));
     expect(baltic.options[2]).toMatchObject({ nominal: "18 mm", materials: ["Baltic birch"] });
+    const hardwood = catalogThicknesses("mm").find((group) => group.family === "Hardwood plywood")!;
+    expect(hardwood.options).toContainEqual({ nominal: '3/4"', thickness: 17.9, materials: ["Birch", "Red oak", "Maple", "Sanded"] });
   });
 
   it("names every catalogue material once", () => {
@@ -45,6 +47,8 @@ describe("catalogThicknesses", () => {
 
 describe("sameThickness", () => {
   it("uses the catalogue tolerance", () => {
+    expect(sameThickness(0.75, 0.755, "in")).toBe(true);
+    expect(sameThickness(0.755, 0.75, "in")).toBe(true);
     expect(sameThickness(45 / 64, 0.707, "in")).toBe(true);
     expect(sameThickness(45 / 64, 0.709, "in")).toBe(false);
     expect(sameThickness(18, 18.1, "mm")).toBe(true);

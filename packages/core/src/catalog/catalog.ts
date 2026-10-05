@@ -2,6 +2,7 @@ import { idsOf } from "../edit/patch.ts";
 import { uniqueId } from "../format/ids.ts";
 import type { Material, Project, Stock } from "../format/schema.ts";
 import type { Units } from "../geometry/units.ts";
+import { toNm } from "../geometry/precision.ts";
 import { CATALOG } from "./data.ts";
 import type { CatalogListing, CatalogMaterial, CatalogSize } from "./types.ts";
 
@@ -48,11 +49,11 @@ export interface CatalogAdd {
   addedStock: boolean;
 }
 
-export const THICKNESS_TOLERANCE: Readonly<Record<Units, number>> = { in: 0.005, mm: 0.15 };
+const THICKNESS_TOLERANCE: Readonly<Record<Units, number>> = { in: 0.005, mm: 0.1 };
 const SIZE_TOLERANCE: Readonly<Record<Units, number>> = { in: 0.02, mm: 0.5 };
 
 export function sameThickness(a: number, b: number, units: Units): boolean {
-  return Math.abs(a - b) <= THICKNESS_TOLERANCE[units];
+  return Math.abs(toNm(a, units) - toNm(b, units)) <= toNm(THICKNESS_TOLERANCE[units], units);
 }
 
 /**
@@ -121,7 +122,7 @@ export function projectMaterialFor(project: Project, catalogId: string): Materia
   const name = entry.name.toLowerCase();
   return project.materials.find(
     (material) =>
-      (material.id === entry.id || material.name.trim().toLowerCase() === name) && Math.abs(material.thickness - thickness) <= THICKNESS_TOLERANCE[units],
+      (material.id === entry.id || material.name.trim().toLowerCase() === name) && sameThickness(material.thickness, thickness, units),
   );
 }
 
