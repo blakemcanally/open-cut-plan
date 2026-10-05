@@ -58,6 +58,22 @@ describe("StockTab", () => {
     expect(current().project.materials[0]!.thickness).toBe(18);
   });
 
+  it("shows the option with the same thickness in a metric project, not the first one within the tolerance", () => {
+    const mm = { ...createProject("Metric", "mm"), materials: [{ id: "ply", name: "Plywood", thickness: 18, grained: true }] };
+    renderWithStore(mm, (store) => <StockTab store={store} />);
+    const picker = screen.getByRole<HTMLSelectElement>("combobox", { name: "Pick the thickness of Plywood" });
+    expect(picker.selectedOptions[0]!.textContent.startsWith("18 mm → 18 mm")).toBe(true);
+  });
+
+  it("keeps the option that was picked when other options have the same thickness", async () => {
+    renderWithStore(sampleProject(), (store) => <StockTab store={store} />);
+    const picker = screen.getByRole<HTMLSelectElement>("combobox", { name: "Pick the thickness of Plywood" });
+    const melamine = within(within(picker).getByRole("group", { name: "Melamine" })).getAllByRole("option").find((item) => item.textContent.startsWith('3/4" → 3/4"'))!;
+    expect(melamine.textContent).not.toBe(within(picker).getAllByRole("option").find((item) => item.textContent.includes("(MDF)"))!.textContent);
+    await userEvent.selectOptions(picker, melamine);
+    expect(screen.getByRole<HTMLSelectElement>("combobox", { name: "Pick the thickness of Plywood" }).selectedOptions[0]!.textContent).toBe(melamine.textContent);
+  });
+
   it("keeps a material that parts use and says why, and deleting stock removes its sheets", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <StockTab store={store} />);
     const remove = screen.getByRole("button", { name: "Delete material Plywood" });

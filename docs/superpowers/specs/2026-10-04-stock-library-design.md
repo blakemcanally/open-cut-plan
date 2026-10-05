@@ -151,9 +151,9 @@ A new component, `ThicknessPicker`, goes beside each Thickness field on the Stoc
   `3/4" → 45/64" (Birch, Red oak, Maple, Sanded)`: the nominal value, the actual thickness from
   `formatExactLength` (§6.4), and the short material names (the name without its thickness and without the last word
   of the family).
-- The first option is `Pick…`. The list shows the option whose thickness is equal to the thickness of the material,
-  within the catalogue tolerance (0.005" or 0.1 mm). With no equal option, it shows `Pick…`. When two options in two
-  families have the same thickness, it shows the first.
+- The first option is `Pick…`. The list shows the option with the same thickness as the material. After a pick, it
+  shows the picked option. When no option has the same thickness, it shows the first option within the catalogue
+  tolerance (0.005" or 0.1 mm). When no option is within the tolerance, it shows `Pick…`.
 - A pick sets the thickness and `measured: true` (§5.3) in one edit. It does not change the name, the grain, or the
   colour.
 - The accessible name is `Pick the thickness of <material name>`.

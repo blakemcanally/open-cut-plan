@@ -1,4 +1,5 @@
-import { catalogThicknesses, formatExactLength, sameThickness, type Units } from "@opencutplan/core";
+import { useState } from "react";
+import { catalogThicknesses, formatExactLength, sameThickness, toNm, type Units } from "@opencutplan/core";
 
 interface ThicknessPickerProps {
   /** The material name, for the accessible name. */
@@ -11,7 +12,14 @@ interface ThicknessPickerProps {
 export function ThicknessPicker({ name, value, units, onPick }: ThicknessPickerProps) {
   const groups = catalogThicknesses(units);
   const keyed = groups.flatMap((group, g) => group.options.map((option, o) => ({ key: `${g}-${o}`, option })));
-  const selected = value === undefined ? "" : (keyed.find(({ option }) => sameThickness(option.thickness, value, units))?.key ?? "");
+  const [picked, setPicked] = useState("");
+  const sameValue = (thickness: number) => value !== undefined && toNm(thickness, units) === toNm(value, units);
+  const selected =
+    value === undefined
+      ? ""
+      : (keyed.find(({ key, option }) => key === picked && sameValue(option.thickness)) ??
+          keyed.find(({ option }) => sameValue(option.thickness)) ??
+          keyed.find(({ option }) => sameThickness(option.thickness, value, units)))?.key ?? "";
   return (
     <select
       className="thickness-picker"
@@ -19,7 +27,9 @@ export function ThicknessPicker({ name, value, units, onPick }: ThicknessPickerP
       value={selected}
       onChange={(event) => {
         const found = keyed.find(({ key }) => key === event.target.value);
-        if (found) onPick(found.option.thickness);
+        if (!found) return;
+        setPicked(found.key);
+        onPick(found.option.thickness);
       }}
     >
       <option value="">Pick…</option>
