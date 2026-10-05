@@ -48,8 +48,12 @@ export interface CatalogAdd {
   addedStock: boolean;
 }
 
-const THICKNESS_TOLERANCE: Readonly<Record<Units, number>> = { in: 0.005, mm: 0.1 };
+export const THICKNESS_TOLERANCE: Readonly<Record<Units, number>> = { in: 0.005, mm: 0.15 };
 const SIZE_TOLERANCE: Readonly<Record<Units, number>> = { in: 0.02, mm: 0.5 };
+
+export function sameThickness(a: number, b: number, units: Units): boolean {
+  return Math.abs(a - b) <= THICKNESS_TOLERANCE[units];
+}
 
 /**
  * The median price of the listings of the size that have a price, or null when no store has a price. With an even

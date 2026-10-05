@@ -77,3 +77,4 @@ export * from "./catalog/data.ts";
 export * from "./catalog/catalog.ts";
 export * from "./catalog/suggest.ts";
 export * from "./catalog/nominal.ts";
+export * from "./catalog/thicknesses.ts";
