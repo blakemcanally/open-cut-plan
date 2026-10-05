@@ -161,4 +161,12 @@ describe("addCatalogStock", () => {
   it("throws for an unknown id", () => {
     expect(() => addCatalogStock(project(), "mdf-1-2")).toThrow(/mdf-1-2/);
   });
+
+  it("keeps the factory edges of a board, and trims a sheet as the project says", () => {
+    const board = addCatalogStock(project(), "common-pine-1x-1x4-8ft");
+    expect(board.project.stock[0]).toMatchObject({ id: "common-pine-1x-1x4-8ft", length: 96, width: 3.5, kind: "sheet", trim: 0 });
+    expect(board.project.materials[0]).toMatchObject({ id: "common-pine-1x", thickness: 0.75 });
+    const sheet = addCatalogStock(project(), "birch-ply-3-4-4x8");
+    expect(sheet.project.stock[0]).not.toHaveProperty("trim");
+  });
 });

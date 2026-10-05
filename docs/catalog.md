@@ -1,17 +1,20 @@
 # Catalogue of sheet goods
 
-The catalogue is a list of common sheet goods and their sheet sizes. It has hardwood plywood, Baltic birch,
-construction plywood, underlayment, OSB, MDF, melamine, particleboard, hardboard, and pegboard. The web app and the CLI
-use it to add materials and stock to a project. The catalogue is a list to choose from. It does not tell what you own.
+The catalogue is a list of common sheet goods, pine 1x boards, and 2x framing lumber, with their sizes. It has hardwood
+plywood, Baltic birch, construction plywood, underlayment, OSB, MDF, melamine, particleboard, hardboard, and pegboard.
+The web app and the CLI use it to add materials and stock to a project. The catalogue is a list to choose from. It does
+not tell what you own.
 
 ## The data
 
-The data is in [`packages/core/src/catalog/data.ts`](../packages/core/src/catalog/data.ts). It has 33 materials and
-64 sheet sizes.
+The sheet goods are in [`packages/core/src/catalog/data.ts`](../packages/core/src/catalog/data.ts). The pine boards
+are in [`packages/core/src/catalog/pine-boards.ts`](../packages/core/src/catalog/pine-boards.ts). The framing lumber
+is in [`packages/core/src/catalog/framing-lumber.ts`](../packages/core/src/catalog/framing-lumber.ts). The catalogue
+has 44 materials and 154 sizes.
 
 | Item | Fields |
 |---|---|
-| Material | `id`, `family`, `name` (for example `Birch plywood 3/4"`), `nominal` (the thickness that the store gives), `thicknessIn` and `thicknessMm` (the actual thickness), `grained`, `notes`, and `sizes`. |
+| Material | `id`, `family`, `name` (for example `Birch plywood 3/4"`), `nominal` (the thickness that the store gives), `thicknessIn` and `thicknessMm` (the actual thickness), `grained`, `edges` (`"factory"` when the edges of each size are good, as on a board), `notes`, and `sizes`. |
 | Sheet size | `id`, `label` (the nominal size, for example `4 × 8 ft`), `lengthIn`, `widthIn`, `lengthMm`, `widthMm` (the actual size), and `listings`. |
 | Listing | `store`, `priceUsd` (or `null` when no price was found), `source` (the address of the page), and `checked` (the date of the check). |
 
@@ -59,6 +62,16 @@ of a material go from the largest to the smallest.
   adds a number, as in `birch-ply-3-4-2`.
 
 See [web-app.md](web-app.md#stock) and [cli.md](cli.md#catalogue).
+
+## Boards
+
+A board is normal stock: a narrow sheet with grain. The optimizer can rip it.
+
+The label of a size is the trade size and the length, for example `1x4 × 8 ft`. The size is the actual size, for
+example 96" × 3.5".
+
+Stock that comes from a board size gets `trim: 0` ("use factory edges"), so the project trim does not cut the board.
+The suggested sheet of a board material does the same.
 
 ## Suggested sheet
 

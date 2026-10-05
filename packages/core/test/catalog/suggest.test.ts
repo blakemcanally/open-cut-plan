@@ -14,6 +14,13 @@ function project(units: "in" | "mm" = "in", currency = "USD"): Project {
 }
 
 describe("suggestedStock", () => {
+  it("keeps the factory edges of the largest board of a board material", () => {
+    const base = project();
+    const boards = { ...base, materials: [{ id: "whitewood-2x", name: "Studs", thickness: 1.5, grained: true }] };
+    expect(suggestedStock(boards, "whitewood-2x")).toMatchObject({ material: "whitewood-2x", trim: 0 });
+    expect(suggestedStock(project(), "birch")).not.toHaveProperty("trim");
+  });
+
   it("uses the largest catalogue size of the catalogue material with the same name, at the typical price in USD", () => {
     expect(suggestedStock(project(), "birch")).toEqual({ id: "birch-ply-3-4-4x8", material: "birch", length: 96, width: 48, quantity: null, kind: "sheet", cost: typicalPrice(catalogSize("birch-ply-3-4-4x8")!.size)!.usd });
   });

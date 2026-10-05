@@ -75,6 +75,7 @@ export function suggestedStock(project: Project, material: string): Stock {
     quantity: null,
     kind: "sheet",
   };
+  if (entry.edges === "factory") stock.trim = 0;
   const price = typicalPrice(size);
   if (price && project.settings.currency === "USD") stock.cost = price.usd;
   return stock;

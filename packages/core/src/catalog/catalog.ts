@@ -162,6 +162,7 @@ export function addCatalogStock(project: Project, sizeId: string, options: { qua
     quantity: options.quantity ?? null,
     kind: "sheet",
   };
+  if (found.material.edges === "factory") stock.trim = 0;
   const price = typicalPrice(found.size);
   if (price && project.settings.currency === "USD") stock.cost = price.usd;
   return { project: { ...withIt, stock: [...withIt.stock, stock] }, material, stock: stock.id, addedMaterial: added, addedStock: true };
