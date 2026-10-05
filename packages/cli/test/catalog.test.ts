@@ -23,8 +23,8 @@ describe("catalog list", () => {
 
   it("lists one family in millimetres, by its name or a slug", async () => {
     const byName = await cli(["catalog", "list", "--family", "MDF", "--units", "mm", "--json"]);
-    expect(byName.json().materials.map((m: { id: string }) => m.id)).toEqual(["mdf-1-4", "mdf-1-2", "mdf-3-4"]);
-    expect(byName.json().materials[2].sizes[0]).toMatchObject({ length: 2464, width: 1245 });
+    expect(byName.json().materials.map((m: { id: string }) => m.id)).toEqual(["mdf-1-4", "mdf-1-2", "mdf-5-8", "mdf-3-4"]);
+    expect(byName.json().materials[3].sizes[0]).toMatchObject({ length: 2464, width: 1245 });
     const bySlug = await cli(["catalog", "list", "--family", "baltic-birch-plywood", "--json"]);
     expect(bySlug.json().materials).toHaveLength(3);
   });

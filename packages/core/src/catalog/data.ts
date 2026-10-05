@@ -2,6 +2,29 @@ import type { CatalogMaterial } from "./types.ts";
 
 export const CATALOG: readonly CatalogMaterial[] = [
   {
+    id: "birch-ply-1-8",
+    family: "Hardwood plywood",
+    name: 'Birch plywood 1/8"',
+    nominal: '1/8"',
+    thicknessIn: 1 / 8,
+    thicknessMm: 3.2,
+    grained: true,
+    notes: "Home Depot R/C C-2 birch hardwood plywood, model 1400140; it lists 0.125 in. Lowe's has no 1/8 in birch plywood; its 4 × 8 ft 1/8 in panels are lauan. The Home Depot page may be old.",
+    sizes: [
+      {
+        id: "birch-ply-1-8-4x8",
+        label: "4 × 8 ft",
+        lengthIn: 96,
+        widthIn: 48,
+        lengthMm: 2438,
+        widthMm: 1219,
+        listings: [
+          { store: "Home Depot", priceUsd: null, source: "https://www.homedepot.com/p/1-8-in-x-4-ft-x-8-ft-R-C-C-2-Birch-Hardwood-Plywood-1400140/205215970", checked: "2026-10-04" },
+        ],
+      },
+    ],
+  },
+  {
     id: "birch-ply-1-4",
     family: "Hardwood plywood",
     name: 'Birch plywood 1/4"',
@@ -23,6 +46,17 @@ export const CATALOG: readonly CatalogMaterial[] = [
         ],
       },
       {
+        id: "birch-ply-1-4-2x8",
+        label: "2 × 8 ft",
+        lengthIn: 96,
+        widthIn: 24,
+        lengthMm: 2438,
+        widthMm: 610,
+        listings: [
+          { store: "Home Depot", priceUsd: 45.65, source: "https://www.homedepot.com/p/Columbia-Forest-Products-1-4-in-x-2-ft-x-8-ft-PureBond-Birch-Plywood-Project-Panel-4537/311925835", checked: "2026-10-04" },
+        ],
+      },
+      {
         id: "birch-ply-1-4-2x4",
         label: "2 × 4 ft",
         lengthIn: 47.75,
@@ -31,6 +65,7 @@ export const CATALOG: readonly CatalogMaterial[] = [
         widthMm: 603,
         listings: [
           { store: "Lowe's", priceUsd: 23, source: "https://www.lowes.com/pd/1-4-in-Birch-Plywood-Application-as-2-x-4/1000066175", checked: "2026-10-04" },
+          { store: "Home Depot", priceUsd: 22.22, source: "https://www.homedepot.com/p/Columbia-Forest-Products-1-4-in-x-2-ft-x-4-ft-PureBond-Birch-Plywood-Project-Panel-4377/311925828", checked: "2026-10-04" },
         ],
       },
     ],
@@ -43,7 +78,7 @@ export const CATALOG: readonly CatalogMaterial[] = [
     thicknessIn: 15 / 32,
     thicknessMm: 11.9,
     grained: true,
-    notes: "PureBond and ProWood birch. ProWood lists 0.47 in. Lowe's no longer sells a 4 × 8 ft sheet online.",
+    notes: "PureBond and ProWood birch. ProWood lists 0.47 in. Lowe's no longer sells 4 × 8 ft sheets online. The 2 × 8 ft and 4 × 4 ft PureBond project panel sizes are nominal.",
     sizes: [
       {
         id: "birch-ply-1-2-4x8",
@@ -65,6 +100,17 @@ export const CATALOG: readonly CatalogMaterial[] = [
         widthMm: 610,
         listings: [
           { store: "Home Depot", priceUsd: 51.85, source: "https://www.homedepot.com/p/Columbia-Forest-Products-1-2-in-x-2-ft-x-8-ft-PureBond-Birch-Plywood-Project-Panel-4568/311925831", checked: "2026-10-04" },
+        ],
+      },
+      {
+        id: "birch-ply-1-2-4x4",
+        label: "4 × 4 ft",
+        lengthIn: 48,
+        widthIn: 48,
+        lengthMm: 1219,
+        widthMm: 1219,
+        listings: [
+          { store: "Home Depot", priceUsd: 76.05, source: "https://www.homedepot.com/p/Columbia-Forest-Products-1-2-in-x-4-ft-x-4-ft-PureBond-Birch-Plywood-Project-Panel-4575/311925832", checked: "2026-10-04" },
         ],
       },
       {
@@ -90,7 +136,7 @@ export const CATALOG: readonly CatalogMaterial[] = [
     thicknessIn: 45 / 64,
     thicknessMm: 17.9,
     grained: true,
-    notes: "PureBond, ProWood, and Top Choice birch. Most listings give 0.703 in; some 2 × 4 ft panels give 0.72 in.",
+    notes: "PureBond, ProWood, and Top Choice birch. Most listings give 0.703 in; some 2 × 4 ft panels give 0.72 in. The 2 × 8 ft and 4 × 4 ft PureBond project panel sizes are nominal.",
     sizes: [
       {
         id: "birch-ply-3-4-4x8",
@@ -102,6 +148,28 @@ export const CATALOG: readonly CatalogMaterial[] = [
         listings: [
           { store: "Home Depot", priceUsd: 80.98, source: "https://www.homedepot.com/p/Columbia-Forest-Products-3-4-in-x-4-ft-x-8-ft-PureBond-Birch-Plywood-165921/100077837", checked: "2026-10-04" },
           { store: "Lowe's", priceUsd: 76.83, source: "https://www.lowes.com/pd/V-C-R-C-NAT-BIRCH-A-1-WPF/5001954649", checked: "2026-10-04" },
+        ],
+      },
+      {
+        id: "birch-ply-3-4-2x8",
+        label: "2 × 8 ft",
+        lengthIn: 96,
+        widthIn: 24,
+        lengthMm: 2438,
+        widthMm: 610,
+        listings: [
+          { store: "Home Depot", priceUsd: 56.7, source: "https://www.homedepot.com/p/Columbia-Forest-Products-3-4-in-x-2-ft-x-8-ft-PureBond-Birch-Plywood-Project-Panel-4599/311925838", checked: "2026-10-04" },
+        ],
+      },
+      {
+        id: "birch-ply-3-4-4x4",
+        label: "4 × 4 ft",
+        lengthIn: 48,
+        widthIn: 48,
+        lengthMm: 1219,
+        widthMm: 1219,
+        listings: [
+          { store: "Home Depot", priceUsd: 59.08, source: "https://www.homedepot.com/p/Columbia-Forest-Products-3-4-in-x-4-ft-x-4-ft-PureBond-Birch-Plywood-Project-Panel-4605/311925830", checked: "2026-10-04" },
         ],
       },
       {
@@ -138,8 +206,19 @@ export const CATALOG: readonly CatalogMaterial[] = [
     thicknessIn: 3 / 16,
     thicknessMm: 4.8,
     grained: true,
-    notes: 'Home Depot project panels only. The thickness comes from PureBond birch 1/4" and is not checked for oak.',
+    notes: 'Home Depot PureBond project panels and Lowe\'s SkyPly panels. The thickness comes from PureBond birch 1/4" and is not checked for oak. The Lowe\'s SkyPly 4 × 8 ft and 2 × 4 ft sizes are nominal. Lowe\'s 2 × 4 ft search results gave $25.88 and $28.98, so the price is not set.',
     sizes: [
+      {
+        id: "red-oak-ply-1-4-4x8",
+        label: "4 × 8 ft",
+        lengthIn: 96,
+        widthIn: 48,
+        lengthMm: 2438,
+        widthMm: 1219,
+        listings: [
+          { store: "Lowe's", priceUsd: null, source: "https://www.lowes.com/pd/Top-Choice-SkyPly-1-4-in-HPVA-Oak-Plywood-Application-as-4-x-8/1000083299", checked: "2026-10-04" },
+        ],
+      },
       {
         id: "red-oak-ply-1-4-2x8",
         label: "2 × 8 ft",
@@ -160,6 +239,17 @@ export const CATALOG: readonly CatalogMaterial[] = [
         widthMm: 1219,
         listings: [
           { store: "Home Depot", priceUsd: 39.52, source: "https://www.homedepot.com/b/Lumber-Composites-Plywood-Project-Panels/Red-Oak/N-5yc1vZc7hmZ1z11uq9", checked: "2026-10-04" },
+        ],
+      },
+      {
+        id: "red-oak-ply-1-4-2x4",
+        label: "2 × 4 ft",
+        lengthIn: 47.75,
+        widthIn: 23.75,
+        lengthMm: 1213,
+        widthMm: 603,
+        listings: [
+          { store: "Lowe's", priceUsd: null, source: "https://www.lowes.com/pd/1-4-in-Oak-Plywood-Application-as-2-x-4/1000066207", checked: "2026-10-04" },
         ],
       },
     ],
@@ -228,7 +318,7 @@ export const CATALOG: readonly CatalogMaterial[] = [
     thicknessIn: 45 / 64,
     thicknessMm: 17.9,
     grained: true,
-    notes: "Lowe's lists the 4 × 8 ft sheet as about 48 1/2 × 96 1/2 in; the catalogue uses the Home Depot size, 48 × 96 in.",
+    notes: "Home Depot PureBond project panels and Lowe's SkyPly panels. Lowe's oak plywood sizes are nominal. The catalogue uses the Home Depot size, 48 × 96 in for the 4 × 8 ft.",
     sizes: [
       {
         id: "red-oak-ply-3-4-4x8",
@@ -273,6 +363,17 @@ export const CATALOG: readonly CatalogMaterial[] = [
         widthMm: 603,
         listings: [
           { store: "Lowe's", priceUsd: 43.48, source: "https://www.lowes.com/pd/3-4-in-Oak-Plywood-Application-as-2-x-4/1000066231", checked: "2026-10-04" },
+        ],
+      },
+      {
+        id: "red-oak-ply-3-4-2x2",
+        label: "2 × 2 ft",
+        lengthIn: 23.75,
+        widthIn: 23.75,
+        lengthMm: 603,
+        widthMm: 603,
+        listings: [
+          { store: "Lowe's", priceUsd: null, source: "https://www.lowes.com/pd/3-4-in-Oak-Plywood-Application-as-2-x-2/1000066227", checked: "2026-10-04" },
         ],
       },
     ],
@@ -363,6 +464,7 @@ export const CATALOG: readonly CatalogMaterial[] = [
         widthMm: 603,
         listings: [
           { store: "Home Depot", priceUsd: 25.99, source: "https://www.homedepot.com/b/Lumber-Composites-Plywood/1-2/Maple/N-5yc1vZbqm7Z1z0mcqnZ1z11xzp", checked: "2026-10-04" },
+          { store: "Lowe's", priceUsd: 36.78, source: "https://www.lowes.com/pd/1-2-in-Maple-Plywood-Application-as-2-x-4/1000351269", checked: "2026-10-04" },
         ],
       },
     ],
@@ -409,6 +511,7 @@ export const CATALOG: readonly CatalogMaterial[] = [
         widthMm: 603,
         listings: [
           { store: "Home Depot", priceUsd: 32.94, source: "https://www.homedepot.com/b/Lumber-Composites-Plywood/Maple/N-5yc1vZbqm7Z1z11xzp", checked: "2026-10-04" },
+          { store: "Lowe's", priceUsd: 43.12, source: "https://www.lowes.com/pd/3-4-in-Maple-Plywood-Application-as-2-x-4/1000351291", checked: "2026-10-04" },
         ],
       },
     ],
@@ -421,7 +524,7 @@ export const CATALOG: readonly CatalogMaterial[] = [
     thicknessIn: 15 / 32,
     thicknessMm: 11.9,
     grained: true,
-    notes: "A lower-cost plywood with a hardwood (poplar) face. The thickness is not checked.",
+    notes: "A lower-cost plywood with a hardwood (poplar) face. The thickness is not checked. The ProWood 2 × 4 ft panel page gives no actual thickness.",
     sizes: [
       {
         id: "sanded-ply-1-2-4x8",
@@ -434,6 +537,17 @@ export const CATALOG: readonly CatalogMaterial[] = [
           { store: "Lowe's", priceUsd: 48.97, source: "https://www.lowes.com/pd/1-2-in-x-4-ft-x-8-ft-Poplar-Sanded-Plywood/5002101617", checked: "2026-10-04" },
         ],
       },
+      {
+        id: "sanded-ply-1-2-2x4",
+        label: "2 × 4 ft",
+        lengthIn: 47.75,
+        widthIn: 23.75,
+        lengthMm: 1213,
+        widthMm: 603,
+        listings: [
+          { store: "Home Depot", priceUsd: 27.26, source: "https://www.homedepot.com/p/ProWood-1-2-in-x-2-ft-x-4-ft-Sande-Plywood-Project-Panel-109068/202093791", checked: "2026-10-04" },
+        ],
+      },
     ],
   },
   {
@@ -444,7 +558,7 @@ export const CATALOG: readonly CatalogMaterial[] = [
     thicknessIn: 45 / 64,
     thicknessMm: 17.9,
     grained: true,
-    notes: "A lower-cost plywood with a hardwood face (Sande, poplar). The face veneer is thin.",
+    notes: "A lower-cost plywood with a hardwood face (Sande, poplar). The face veneer is thin. The ProWood 2 × 4 ft panel lists 0.709 in; the catalogue uses 45/64 in = 0.703 in, from the 4 × 8 ft Home Depot listing.",
     sizes: [
       {
         id: "sanded-ply-3-4-4x8",
@@ -456,6 +570,17 @@ export const CATALOG: readonly CatalogMaterial[] = [
         listings: [
           { store: "Home Depot", priceUsd: 62.77, source: "https://www.homedepot.com/p/3-4-in-x-4-ft-x-8-ft-sanded-plywood-actual-0-703-in-x-48-in-x-96-in-690053/100478798", checked: "2026-10-04" },
           { store: "Lowe's", priceUsd: 68.98, source: "https://www.lowes.com/pd/Top-Choice-Blondewood-3-4-in-HPVA-Poplar-Plywood-Application-as-4-x-8/1000170895", checked: "2026-10-04" },
+        ],
+      },
+      {
+        id: "sanded-ply-3-4-2x4",
+        label: "2 × 4 ft",
+        lengthIn: 47.75,
+        widthIn: 23.75,
+        lengthMm: 1213,
+        widthMm: 603,
+        listings: [
+          { store: "Home Depot", priceUsd: 38.31, source: "https://www.homedepot.com/p/Handprint-3-4-in-x-2-ft-x-4-ft-Sande-Plywood-Actual-0-709-in-x-23-75-in-x-47-75-in-Project-Panel-103095/202093792", checked: "2026-10-04" },
         ],
       },
     ],
@@ -629,6 +754,30 @@ export const CATALOG: readonly CatalogMaterial[] = [
     ],
   },
   {
+    id: "cdx-ply-11-32",
+    family: "Construction plywood",
+    name: 'CDX plywood 11/32"',
+    nominal: '3/8" (11/32")',
+    thicknessIn: 11 / 32,
+    thicknessMm: 8.7,
+    grained: true,
+    notes: "Fir sheathing. Home Depot lists 0.344 in and 48 × 96 in; Lowe's lists 0.343 in and about 47.4 × 95.9 in (3.953 × 7.989 ft), and the catalogue uses the Home Depot size. Neither store calls this panel CDX.",
+    sizes: [
+      {
+        id: "cdx-ply-11-32-4x8",
+        label: "4 × 8 ft",
+        lengthIn: 96,
+        widthIn: 48,
+        lengthMm: 2438,
+        widthMm: 1219,
+        listings: [
+          { store: "Home Depot", priceUsd: null, source: "https://www.homedepot.com/p/11-32-in-x-4-ft-x-8-ft-Fir-Sheathing-Plywood-Actual-0-344-in-x-48-in-x-96-in-657865/100046358", checked: "2026-10-04" },
+          { store: "Lowe's", priceUsd: 22, source: "https://www.lowes.com/pd/Roseburg-3-8-CAT-PS1-09-Square-Structural-Plywood-Douglas-Fir-Application-as-4-x-8/1000015969", checked: "2026-10-04" },
+        ],
+      },
+    ],
+  },
+  {
     id: "cdx-ply-15-32",
     family: "Construction plywood",
     name: 'CDX plywood 15/32"',
@@ -647,6 +796,30 @@ export const CATALOG: readonly CatalogMaterial[] = [
         widthMm: 1219,
         listings: [
           { store: "Home Depot", priceUsd: 25.48, source: "https://www.homedepot.com/p/15-32-in-x-4-ft-x-8-ft-Sheathing-Plywood-Actual-0-438-in-x-48-in-x-96-in-20159/206827282", checked: "2026-10-04" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "cdx-ply-19-32",
+    family: "Construction plywood",
+    name: 'CDX plywood 19/32"',
+    nominal: '5/8" (19/32")',
+    thicknessIn: 9 / 16,
+    thicknessMm: 14.3,
+    grained: true,
+    notes: "Fir sheathing. Home Depot lists 0.563 in and 48 × 96 in; Lowe's lists about 0.594 in and about 47.4 × 95.9 in, and the catalogue uses the Home Depot size. Neither store calls this panel CDX. Home Depot 4 × 8 ft: page 439606 is out of stock; SKU 407735 shows $30.98–$33.96, so the price is not set.",
+    sizes: [
+      {
+        id: "cdx-ply-19-32-4x8",
+        label: "4 × 8 ft",
+        lengthIn: 96,
+        widthIn: 48,
+        lengthMm: 2438,
+        widthMm: 1219,
+        listings: [
+          { store: "Home Depot", priceUsd: null, source: "https://www.homedepot.com/p/19-32-in-x-4-ft-x-8-ft-Fir-Sheathing-Plywood-Actual-0-563-in-x-48-in-x-96-in-439606/100024973", checked: "2026-10-04" },
+          { store: "Lowe's", priceUsd: 27.48, source: "https://www.lowes.com/pd/Roseburg-19-32-CAT-PS1-09-Square-Structural-Plywood-Douglas-Fir-Application-as-4-x-8/1000015967", checked: "2026-10-04" },
         ],
       },
     ],
@@ -683,7 +856,7 @@ export const CATALOG: readonly CatalogMaterial[] = [
     thicknessIn: 15 / 64,
     thicknessMm: 5.9,
     grained: true,
-    notes: "Plytanium BC. Georgia-Pacific gives 0.234 in and a smallest size of 47 7/8 × 95 7/8 in.",
+    notes: "Plytanium BC. Georgia-Pacific gives 0.234 in and a smallest size of 47 7/8 × 95 7/8 in. The Home Depot 2 × 4 ft and 2 × 2 ft panels list 0.224 in and 0.22 in (the 4 × 8 ft entry uses 15/64 in = 0.234). Home Depot 2 × 4 ft search results gave $11.22 and $16.98. Home Depot 2 × 2 ft search results gave $6.66–$9.98. Prices not set due to disagreement.",
     sizes: [
       {
         id: "pine-ply-1-4-4x8",
@@ -694,6 +867,52 @@ export const CATALOG: readonly CatalogMaterial[] = [
         widthMm: 1216,
         listings: [
           { store: "Home Depot", priceUsd: 26, source: "https://www.homedepot.com/p/Plytanium-1-4-in-x-4-ft-x-8-ft-BC-Sanded-Pine-Plywood-235552/100063669", checked: "2026-10-04" },
+        ],
+      },
+      {
+        id: "pine-ply-1-4-2x4",
+        label: "2 × 4 ft",
+        lengthIn: 47.75,
+        widthIn: 23.75,
+        lengthMm: 1213,
+        widthMm: 603,
+        listings: [
+          { store: "Home Depot", priceUsd: null, source: "https://www.homedepot.com/p/Sanded-Pine-Plywood-Common-1-4-in-x-24-in-x-48-in-Actual-0-224-in-x-23-75-in-x-47-75-in-1502100/202089011", checked: "2026-10-04" },
+        ],
+      },
+      {
+        id: "pine-ply-1-4-2x2",
+        label: "2 × 2 ft",
+        lengthIn: 23.75,
+        widthIn: 23.75,
+        lengthMm: 603,
+        widthMm: 603,
+        listings: [
+          { store: "Home Depot", priceUsd: null, source: "https://www.homedepot.com/p/ProWood-1-4-in-x-2-ft-x-2-ft-Sanded-Plywood-Project-Panel-109114/202093828", checked: "2026-10-04" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "pine-ply-11-32",
+    family: "Construction plywood",
+    name: 'Sanded pine plywood 11/32"',
+    nominal: '3/8" (11/32")',
+    thicknessIn: 11 / 32,
+    thicknessMm: 8.7,
+    grained: true,
+    notes: "Plytanium BC (Home Depot) and BCX (Lowe's). The thickness is the nominal 11/32 in; the actual thickness is not checked. Lowe's and Georgia-Pacific list 0.328 in and about 47 7/8 × 95 7/8 in. Home Depot 4 × 8 ft: search results gave $21.73, $30.95, and $42.87, so the price is not set.",
+    sizes: [
+      {
+        id: "pine-ply-11-32-4x8",
+        label: "4 × 8 ft",
+        lengthIn: 96,
+        widthIn: 48,
+        lengthMm: 2438,
+        widthMm: 1219,
+        listings: [
+          { store: "Home Depot", priceUsd: null, source: "https://www.homedepot.com/p/Plytanium-11-32-in-or-3-8-in-x-4-ft-x-8-ft-BC-Sanded-Pine-Plywood-721715/100094072", checked: "2026-10-04" },
+          { store: "Lowe's", priceUsd: 35, source: "https://www.lowes.com/pd/Plytanium-11-32-CAT-PS1-09-Pine-Sanded-Plywood-Application-as-4-x-8/3010116", checked: "2026-10-04" },
         ],
       },
     ],
@@ -722,6 +941,30 @@ export const CATALOG: readonly CatalogMaterial[] = [
     ],
   },
   {
+    id: "pine-ply-19-32",
+    family: "Construction plywood",
+    name: 'Sanded pine plywood 19/32"',
+    nominal: '5/8" (19/32")',
+    thicknessIn: 19 / 32,
+    thicknessMm: 15.1,
+    grained: true,
+    notes: "Plytanium BC (Home Depot) and BCX (Lowe's). The thickness is the nominal 19/32 in; the actual thickness is not checked. Lowe's and Georgia-Pacific list 0.578 in and about 47 7/8 × 95 7/8 in.",
+    sizes: [
+      {
+        id: "pine-ply-19-32-4x8",
+        label: "4 × 8 ft",
+        lengthIn: 96,
+        widthIn: 48,
+        lengthMm: 2438,
+        widthMm: 1219,
+        listings: [
+          { store: "Home Depot", priceUsd: 46.2, source: "https://www.homedepot.com/p/Plytanium-19-32-in-x-4-ft-x-8-ft-BC-Sanded-Pine-Plywood-201427/100007300", checked: "2026-10-04" },
+          { store: "Lowe's", priceUsd: 43, source: "https://www.lowes.com/pd/Plytanium-19-32-CAT-PS1-09-Square-Structural-Plywood-Pine-Application-as-4-x-8/3010098", checked: "2026-10-04" },
+        ],
+      },
+    ],
+  },
+  {
     id: "pine-ply-23-32",
     family: "Construction plywood",
     name: 'Sanded pine plywood 23/32"',
@@ -729,7 +972,7 @@ export const CATALOG: readonly CatalogMaterial[] = [
     thicknessIn: 23 / 32,
     thicknessMm: 18.3,
     grained: true,
-    notes: "Plytanium BC. The thickness is the nominal 23/32 in; the actual thickness is not checked.",
+    notes: "Plytanium BC and ProWood radiata pine. The thickness is the nominal 23/32 in; the actual thickness is not checked. The ProWood radiata pine 2 × 4 ft panel lists 0.719 in, which equals 23/32 in.",
     sizes: [
       {
         id: "pine-ply-23-32-4x8",
@@ -740,6 +983,17 @@ export const CATALOG: readonly CatalogMaterial[] = [
         widthMm: 1219,
         listings: [
           { store: "Home Depot", priceUsd: 53.42, source: "https://www.homedepot.com/p/Plytanium-23-32-in-x-4-ft-x-8-ft-BC-Sanded-Pine-Plywood-201428/100061386", checked: "2026-10-04" },
+        ],
+      },
+      {
+        id: "pine-ply-23-32-2x4",
+        label: "2 × 4 ft",
+        lengthIn: 47.75,
+        widthIn: 23.75,
+        lengthMm: 1213,
+        widthMm: 603,
+        listings: [
+          { store: "Home Depot", priceUsd: 35.68, source: "https://www.homedepot.com/p/Handprint-3-4-in-x-2-ft-x-4-ft-Radiata-Pine-Plywood-Actual-0-719-in-x-23-75-in-x-47-75-in-Project-Panel-414716/313354420", checked: "2026-10-04" },
         ],
       },
     ],
@@ -902,7 +1156,32 @@ export const CATALOG: readonly CatalogMaterial[] = [
         lengthMm: 1213,
         widthMm: 603,
         listings: [
+          { store: "Home Depot", priceUsd: 28, source: "https://www.homedepot.com/p/1-2-in-x-2-ft-x-4-ft-Medium-Density-Fiberboard-Panel-Actual-0-483-in-x-23-75-in-x-47-75-in-109097/205856879", checked: "2026-10-04" },
           { store: "Lowe's", priceUsd: null, source: "https://www.lowes.com/pd/MDF-Actual-0-5-in-x-24-in-x-4-ft/1000080511", checked: "2026-10-04" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "mdf-5-8",
+    family: "MDF",
+    name: 'MDF 5/8"',
+    nominal: '5/8"',
+    thicknessIn: 5 / 8,
+    thicknessMm: 15.9,
+    grained: false,
+    notes: "Home Depot and Lowe's list 0.625 in × 49 in × 97 in (Lowe's: 49 in × 8.083 ft). Neither page showed a price.",
+    sizes: [
+      {
+        id: "mdf-5-8-4x8",
+        label: "4 × 8 ft",
+        lengthIn: 97,
+        widthIn: 49,
+        lengthMm: 2464,
+        widthMm: 1245,
+        listings: [
+          { store: "Home Depot", priceUsd: null, source: "https://www.homedepot.com/p/MDF-Panel-Common-5-8-in-x-4-ft-x-8-ft-Actual-0-625-in-x-49-in-x-97-in-988539/206512572", checked: "2026-10-04" },
+          { store: "Lowe's", priceUsd: null, source: "https://www.lowes.com/pd/MDF-Actual-0-625-in-x-49-in-x-8-083-ft/1000075255", checked: "2026-10-04" },
         ],
       },
     ],
@@ -968,6 +1247,41 @@ export const CATALOG: readonly CatalogMaterial[] = [
     ],
   },
   {
+    id: "particleboard-5-8",
+    family: "Particleboard",
+    name: 'Particleboard 5/8"',
+    nominal: '5/8"',
+    thicknessIn: 5 / 8,
+    thicknessMm: 15.9,
+    grained: false,
+    notes: "Underlayment-grade 4 × 8 ft sheets; both stores list 0.625 in × 48 in × 96 in. The ProWood 2 × 4 ft panel lists 0.59 in. Home Depot 2 × 4 ft search results gave $8.34–$15.62, so the price is not set. Lowe's 2 × 4 ft 5/8 in panel is no longer sold online.",
+    sizes: [
+      {
+        id: "particleboard-5-8-4x8",
+        label: "4 × 8 ft",
+        lengthIn: 96,
+        widthIn: 48,
+        lengthMm: 2438,
+        widthMm: 1219,
+        listings: [
+          { store: "Home Depot", priceUsd: 23.26, source: "https://www.homedepot.com/p/5-8-in-x-4-ft-x-8-ft-Douglas-Fir-Particleboard-Panel-Actual-0-625-in-x-48-in-x-96-in-1608400/202302522", checked: "2026-10-04" },
+          { store: "Lowe's", priceUsd: 24.74, source: "https://www.lowes.com/pd/5-8-in-x-4-ft-x-8-ft-Underlayment-Particle-Board/5002094899", checked: "2026-10-04" },
+        ],
+      },
+      {
+        id: "particleboard-5-8-2x4",
+        label: "2 × 4 ft",
+        lengthIn: 47.75,
+        widthIn: 23.75,
+        lengthMm: 1213,
+        widthMm: 603,
+        listings: [
+          { store: "Home Depot", priceUsd: null, source: "https://www.homedepot.com/p/ProWood-5-8-in-x-2-ft-x-4-ft-Particleboard-Project-Panel-224437/206155758", checked: "2026-10-04" },
+        ],
+      },
+    ],
+  },
+  {
     id: "particleboard-3-4",
     family: "Particleboard",
     name: 'Particleboard 3/4"',
@@ -1021,6 +1335,29 @@ export const CATALOG: readonly CatalogMaterial[] = [
         widthMm: 603,
         listings: [
           { store: "Home Depot", priceUsd: 7.68, source: "https://www.homedepot.com/p/ProWood-1-8-in-x-2-ft-x-4-ft-Tempered-Hardboard-Actual-0-115-in-x-23-75-in-x-47-75-in-Project-Panel-109112/202585358", checked: "2026-10-04" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "hardboard-white-1-8",
+    family: "Hardboard",
+    name: 'White hardboard 1/8"',
+    nominal: '1/8"',
+    thicknessIn: 1 / 8,
+    thicknessMm: 3.2,
+    grained: false,
+    notes: "Eucalyptus white hardboard, smooth on one face. The thickness is the nominal 1/8 in; the actual thickness is not checked (Lowe's Eucatex Thrifty White lists about 0.11 in). The size is the nominal 48 × 96 in; the page gives no actual size. Home Depot 4 × 8 ft: search results gave $12.72, $14.33, and $14.48, so the price is not set.",
+    sizes: [
+      {
+        id: "hardboard-white-1-8-4x8",
+        label: "4 × 8 ft",
+        lengthIn: 96,
+        widthIn: 48,
+        lengthMm: 2438,
+        widthMm: 1219,
+        listings: [
+          { store: "Home Depot", priceUsd: null, source: "https://www.homedepot.com/p/1-8-in-x-4-ft-x-8-ft-Eucalyptus-White-Hardboard-447562/204727075", checked: "2026-10-04" },
         ],
       },
     ],

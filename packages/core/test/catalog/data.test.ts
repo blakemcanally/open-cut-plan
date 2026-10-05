@@ -82,4 +82,11 @@ describe("catalogue data", () => {
       if (Math.abs(t - near) <= 0.0005) expect(t, material.id).toBe(near);
     }
   });
+
+  it("has the common thicknesses from 1/8 to 3/4 inch", () => {
+    const ids = CATALOG.map((material) => material.id);
+    expect(ids).toEqual(
+      expect.arrayContaining(["birch-ply-1-8", "cdx-ply-11-32", "cdx-ply-19-32", "pine-ply-11-32", "pine-ply-19-32", "mdf-5-8", "particleboard-5-8", "hardboard-white-1-8"]),
+    );
+  });
 });

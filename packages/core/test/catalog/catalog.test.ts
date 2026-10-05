@@ -61,7 +61,7 @@ describe("catalogFor", () => {
 
   it("filters by family, without case", () => {
     const mdf = catalogFor("in", "mdf");
-    expect(mdf.map((material) => material.id)).toEqual(["mdf-1-4", "mdf-1-2", "mdf-3-4"]);
+    expect(mdf.map((material) => material.id)).toEqual(["mdf-1-4", "mdf-1-2", "mdf-5-8", "mdf-3-4"]);
     expect(catalogFor("in", "Nothing")).toEqual([]);
   });
 });
