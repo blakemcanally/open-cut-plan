@@ -1,3 +1,4 @@
+import { FRAMING_LUMBER } from "./framing-lumber.ts";
 import { PINE_BOARDS } from "./pine-boards.ts";
 import type { CatalogMaterial } from "./types.ts";
 
@@ -1457,4 +1458,4 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
   },
 ];
 
-export const CATALOG: readonly CatalogMaterial[] = [...SHEET_GOODS, ...PINE_BOARDS];
+export const CATALOG: readonly CatalogMaterial[] = [...SHEET_GOODS, ...PINE_BOARDS, ...FRAMING_LUMBER];

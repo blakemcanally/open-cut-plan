@@ -124,4 +124,11 @@ describe("catalogue data", () => {
       widthMm: 89,
     });
   });
+
+  it("has 2x framing lumber from 2x2 to 2x12, with the precut stud lengths", () => {
+    const material = CATALOG.find((entry) => entry.id === "whitewood-2x")!;
+    expect(material).toMatchObject({ family: "Framing lumber", name: "Whitewood 2x (SPF)", nominal: "2x", thicknessIn: 1.5, thicknessMm: 38.1, grained: true, edges: "factory" });
+    expect(new Set(material.sizes.map((size) => size.label.split(" × ")[0]))).toEqual(new Set(["2x2", "2x3", "2x4", "2x6", "2x8", "2x10", "2x12"]));
+    expect(material.sizes.find((size) => size.id === "whitewood-2x-2x4-92-5-8in")).toMatchObject({ label: "2x4 × 92 5/8 in", lengthIn: 92.625, widthIn: 3.5 });
+  });
 });
