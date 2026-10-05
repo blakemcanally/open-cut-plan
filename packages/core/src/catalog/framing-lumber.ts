@@ -10,7 +10,7 @@ export const FRAMING_LUMBER: readonly CatalogMaterial[] = [
     thicknessMm: 38.1,
     grained: true,
     edges: "factory",
-    notes: "Whitewood or SPF framing lumber. Home Depot sells it as #2 Premium Grade SPF or Prime Whitewood. Lowe's sells it as #2 Better SPF or Whitewood. The actual size of a 2x4 is 1 1/2 × 3 1/2 in. The edges are rounded. The 92 5/8 in and 104 5/8 in lengths are precut studs. The 2x2 × 8 ft listings are furring strips, and the Home Depot 2x3 × 8 ft listing is a Select stud, so their grade can differ. Some Lowe's pages list older actual widths: 7 1/2 in for a 2x8, 9 1/2 in for a 2x10, and 11 1/2 in for a 2x12. A price is set only when one price is seen for the page. Seen ranges: 2x2 × 8 ft Home Depot $2.87 to $3.14, Lowe's $2.87 to $2.98; 2x3 × 8 ft Home Depot $2.98 to $3.48; 2x4 × 92 5/8 in Lowe's $3.64 to $4.15; 2x4 × 104 5/8 in Home Depot $4.52 to $5.98, Lowe's $4.75 to $7.32; 2x4 × 10 ft Home Depot $7.72 to $7.74, Lowe's $5.38 to $5.64; 2x4 × 12 ft Home Depot $8.84 to $9.32; 2x6 × 92 5/8 in Home Depot $5.48 to $6.25, Lowe's $5.75 to $6.48; 2x6 × 8 ft Home Depot $8.22 to $9.68; 2x6 × 10 ft Home Depot $9.07 to $12.47, Lowe's $7.52 to $11.23; 2x6 × 12 ft Home Depot $10.18 to $13.12; 2x6 × 16 ft Home Depot $13.54 to $17.97. The Home Depot 2x10 × 12 ft page shows $11.82, but its data is old and the price is low for the size. A Lowe's page for the 2x8 × 10 ft shows $10.66, but another page for the same item says it is no longer sold. Lowe's pages for older Whitewood versions of the 2x4 × 16 ft and 2x6 × 8 ft say they are no longer sold. Home Depot lists no SPF 2x12, and neither store lists an SPF 2x12 in 10 ft or 12 ft. No store lists a 2x2 or 2x3 in 10 ft or longer.",
+    notes: "Whitewood or SPF (spruce-pine-fir) framing lumber, #2 grade or better. The actual size of a 2x4 is 1 1/2 × 3 1/2 in. The edges are rounded. The 92 5/8 in and 104 5/8 in lengths are precut studs. The 2x2 × 8 ft listings are furring strips. Some Lowe's pages list older actual widths: 7 1/2 in for a 2x8, 9 1/2 in for a 2x10, and 11 1/2 in for a 2x12. Prices vary between stores and pages, so many are not set. Wide ranges: 2x6 × 10 ft Home Depot $9.07 to $12.47; 2x6 × 16 ft Home Depot $13.54 to $17.97; 2x4 × 104 5/8 in Lowe's $4.75 to $7.32.",
     sizes: [
       {
         id: "whitewood-2x-2x12-16ft",
@@ -198,7 +198,7 @@ export const FRAMING_LUMBER: readonly CatalogMaterial[] = [
         widthMm: 140,
         listings: [
           { store: "Home Depot", priceUsd: null, source: "https://www.homedepot.com/p/2-in-x-6-in-x-96-in-Premium-Kiln-Dried-Whitewood-Stud-161713/302778090", checked: "2026-10-04" },
-          { store: "Lowe's", priceUsd: 7.15, source: "https://www.lowes.com/pd/2-in-x-6-in-x-8-ft-Whitewood-S4S-Kiln-dried-Lumber/1000057075", checked: "2026-10-04" },
+          { store: "Lowe's", priceUsd: null, source: "https://www.lowes.com/pd/2-in-x-6-in-x-8-ft-Whitewood-S4S-Kiln-dried-Lumber/1000057075", checked: "2026-10-04" },
         ],
       },
       {
