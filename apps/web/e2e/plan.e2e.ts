@@ -300,7 +300,7 @@ test("picks an actual thickness on the Stock tab, and the design follows it", as
 
   const picker = page.getByRole("combobox", { name: "Pick the thickness of Plywood", exact: true });
   const value = await picker.locator("option", { hasText: /^3\/4" → 45\/64"/ }).first().getAttribute("value");
-  await picker.selectOption(value!);
+  await picker.selectOption(value);
   await expect(materials.getByText(/3\/4" is a nominal thickness/)).toHaveCount(0);
 
   await page.getByRole("checkbox", { name: 'Plywood 1/4" thickness is measured' }).check();

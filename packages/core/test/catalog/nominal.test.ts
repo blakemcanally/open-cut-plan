@@ -58,10 +58,10 @@ describe("nominalThickness", () => {
   });
 
   it("gives no likely thickness that is equal to the nominal value", () => {
-    for (const thickness of [0.125, 0.25, 0.5, 0.75, 1, 2]) {
-      const result = nominalThickness(project([ply({ thickness })]), "ply");
-      if (result) expect(result.likely.every((value) => Math.abs(value - thickness) > 0.005), String(thickness)).toBe(true);
-    }
+    const equal = [0.125, 0.25, 0.5, 0.75, 1, 2].filter((thickness) =>
+      nominalThickness(project([ply({ thickness })]), "ply")?.likely.some((value) => Math.abs(value - thickness) <= 0.005),
+    );
+    expect(equal).toEqual([]);
   });
 });
 

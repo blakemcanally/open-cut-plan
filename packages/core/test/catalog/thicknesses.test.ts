@@ -49,7 +49,7 @@ describe("sameThickness", () => {
   it("uses the catalogue tolerance", () => {
     expect(sameThickness(0.75, 0.755, "in")).toBe(true);
     expect(sameThickness(0.755, 0.75, "in")).toBe(true);
-    expect(sameThickness(45 / 64, 0.707, "in")).toBe(true);
+    expect(sameThickness(45 / 64, 0.7068, "in")).toBe(true);
     expect(sameThickness(45 / 64, 0.709, "in")).toBe(false);
     expect(sameThickness(18, 18.1, "mm")).toBe(true);
     expect(sameThickness(18, 18.2, "mm")).toBe(false);

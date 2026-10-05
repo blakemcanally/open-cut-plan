@@ -22,12 +22,12 @@ describe("StockTab", () => {
     expect(status()).toContain('⚠ 3/4" is a nominal thickness. Stock sold as 3/4" is often 45/64" or 11/16" thick. Measure it, or pick it from the list.');
     const picker = screen.getByRole("combobox", { name: "Pick the thickness of Plywood" });
     expect((picker as HTMLSelectElement).value).toBe("");
-    const option = within(picker).getAllByRole("option").find((item) => item.textContent!.startsWith('3/4" → 45/64"'))!;
+    const option = within(picker).getAllByRole("option").find((item) => item.textContent.startsWith('3/4" → 45/64"'))!;
     expect(option.textContent).toBe('3/4" → 45/64" (Birch, Red oak, Maple, Sanded)');
     await userEvent.selectOptions(picker, option);
     expect(current().project.materials[0]).toMatchObject({ thickness: 45 / 64, measured: true });
     expect(status()).not.toContain("nominal thickness");
-    expect((screen.getByRole("combobox", { name: "Pick the thickness of Plywood" }) as HTMLSelectElement).selectedOptions[0]!.textContent).toBe(option.textContent);
+    expect(screen.getByRole<HTMLSelectElement>("combobox", { name: "Pick the thickness of Plywood" }).selectedOptions[0]!.textContent).toBe(option.textContent);
   });
 
   it("stops the warning with Measured, and a typed thickness clears Measured", async () => {
@@ -53,7 +53,7 @@ describe("StockTab", () => {
     const { current } = renderWithStore(mm, (store) => <StockTab store={store} />);
     expect(screen.queryByText(/nominal thickness/)).toBeNull();
     const picker = screen.getByRole("combobox", { name: "Pick the thickness of Plywood" });
-    const option = within(picker).getAllByRole("option").find((item) => item.textContent!.startsWith("18 mm → 18 mm"))!;
+    const option = within(picker).getAllByRole("option").find((item) => item.textContent.startsWith("18 mm → 18 mm"))!;
     await userEvent.selectOptions(picker, option);
     expect(current().project.materials[0]!.thickness).toBe(18);
   });

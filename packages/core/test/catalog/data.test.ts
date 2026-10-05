@@ -78,11 +78,11 @@ describe("catalogue data", () => {
   });
 
   it("gives a thickness that is a rounded 64th of an inch as the exact 64th", () => {
-    for (const material of CATALOG) {
-      const t = material.thicknessIn;
-      const near = Math.round(t * 64) / 64;
-      if (Math.abs(t - near) <= 0.0005) expect(t, material.id).toBe(near);
-    }
+    const rounded = CATALOG.filter((material) => {
+      const near = Math.round(material.thicknessIn * 64) / 64;
+      return material.thicknessIn !== near && Math.abs(material.thicknessIn - near) <= 0.0005;
+    });
+    expect(rounded.map((material) => material.id)).toEqual([]);
   });
 
   it("has the common thicknesses from 1/8 to 3/4 inch", () => {
