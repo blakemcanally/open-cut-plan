@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   applyOptimizeResult,
   checkDesigns,
+  convertProjectUnits,
   designParts,
   designGeometry,
   materialsById,
   optimize,
   regenerateDesigns,
+  snapLength,
   validatePlan,
   type Design,
   type Part,
@@ -132,6 +134,14 @@ describe("regenerateDesigns", () => {
     const once = regenerateDesigns(designProject());
     const noted = { ...once, parts: once.parts.map((p, i) => (i === 0 ? { ...p, notes: "Sand the edges" } : p)) };
     expect(regenerateDesigns(noted).parts[0]).toEqual(once.parts[0]);
+  });
+
+  it("gives generated parts a length and a width on the grid", () => {
+    const project = regenerateDesigns(convertProjectUnits(regenerateDesigns(designProject([kallaxDesign()])), "in"));
+    for (const part of project.parts) {
+      expect(snapLength(part.length, "in"), part.id).toBe(part.length);
+      expect(snapLength(part.width, "in"), part.id).toBe(part.width);
+    }
   });
 });
 

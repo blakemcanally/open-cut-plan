@@ -1,6 +1,7 @@
 import { withoutPlacements } from "../edit/parts.ts";
 import type { Design, Part, Project } from "../format/schema.ts";
 import { isNewerMinor } from "../format/version.ts";
+import { snapLength } from "../geometry/precision.ts";
 import { EPSILON } from "../geometry/rect.ts";
 import { designErrors } from "./errors.ts";
 import { designGeometry, materialsById } from "./geometry.ts";
@@ -21,7 +22,9 @@ export function designParts(project: Project, design: Design): Part[] | null {
   const geometry = designGeometry(design, materialsById(project));
   if (!geometry) return null;
   const stored = new Map(generatedParts(project, design.id).map((part) => [part.id, part]));
-  return buildDesignParts(design, geometry).map((part) => keepStoredSize(part, stored.get(part.id)));
+  const units = project.project.units;
+  const snap = (part: Part): Part => ({ ...part, length: snapLength(part.length, units), width: snapLength(part.width, units) });
+  return buildDesignParts(design, geometry).map((part) => keepStoredSize(snap(part), stored.get(part.id)));
 }
 
 function keepStoredSize(part: Part, stored: Part | undefined): Part {

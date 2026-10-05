@@ -1,4 +1,5 @@
 export * from "./geometry/units.ts";
+export * from "./geometry/precision.ts";
 export * from "./geometry/format.ts";
 export * from "./geometry/parse.ts";
 export * from "./geometry/rect.ts";

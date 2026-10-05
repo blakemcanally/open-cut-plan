@@ -289,7 +289,7 @@ describe("the optimizer goal", () => {
       "living-room-shelf": "33a240fe9e5d1e9c",
       "simple-bookcase-mm": "d9bf137a3ac8f8cc",
       "kallax-2x4-mm": "df858571c0e70e17",
-      "eket-wall-in": "252be793e5f5e0fa",
+      "eket-wall-in": "955700570d365a23",
     });
   });
 

@@ -1,4 +1,5 @@
 import { parseLength, parsePlainNumber, type NumberOptions } from "../geometry/parse.ts";
+import { snapLength } from "../geometry/precision.ts";
 import { convertLength, type Units } from "../geometry/units.ts";
 import type { Table } from "./table.ts";
 import type { CsvRowIssue } from "./types.ts";
@@ -104,7 +105,7 @@ export function lengthCell<F extends string>(
   const { base, factor } = HEADER_UNITS[declared];
   const plain = parsePlainNumber(text, numberOptions(table));
   const value = plain === null ? parseLength(text, base, numberOptions(table)) : plain * factor;
-  return { text, value: value === null ? null : convertLength(value, base, units) };
+  return { text, value: value === null ? null : snapLength(convertLength(value, base, units), units) };
 }
 
 export function requiredLength<F extends string>(

@@ -1,14 +1,15 @@
 import type { Design, DesignAxis, PlanSheet, Project, Tool } from "../format/schema.ts";
+import { snapLength } from "../geometry/precision.ts";
 import { convertLength, type Units } from "../geometry/units.ts";
 
 const TOOL_LENGTHS = ["maxRip", "maxCrosscut", "maxCut"] as const;
 
 /**
- * Rounds to 1e-9 so 48 in becomes 1219.2 mm, not 1219.1999999999998. A layout check adds up to four converted values
- * (x + length against stock length − trim), so the rounding step must stay well below EPSILON / 4.
+ * Snaps to the nanometre grid so 48 in becomes 1219.2 mm, not 1219.1999999999998. A layout check adds up to four
+ * converted values (x + length against stock length − trim), so the grid step must stay well below EPSILON / 4.
  */
 function converter(from: Units, to: Units): (value: number) => number {
-  return (value) => Math.round(convertLength(value, from, to) * 1e9) / 1e9;
+  return (value) => snapLength(convertLength(value, from, to), to);
 }
 
 export function convertTool(tool: Tool, from: Units, to: Units): Tool {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { importStockCsv } from "../../src/index.ts";
+import { importStockCsv, snapLength } from "../../src/index.ts";
 import { expectOk } from "../helpers.ts";
 
 describe("importStockCsv", () => {
@@ -13,12 +13,12 @@ describe("importStockCsv", () => {
     const result = expectOk(importStockCsv(csv, { units: "in" }));
     expect(result.issues).toEqual([]);
     expect(result.rows).toHaveLength(3);
-    expect(result.rows[0]).toEqual({ material: "Baltic birch 18mm", length: 60, width: 60, thickness: 18 / 25.4, quantity: null, cost: 95, kind: "sheet" });
+    expect(result.rows[0]).toEqual({ material: "Baltic birch 18mm", length: 60, width: 60, thickness: snapLength(18 / 25.4, "in"), quantity: null, cost: 95, kind: "sheet" });
     expect(result.rows[1]).toEqual({
       material: "Baltic birch 18mm",
       length: 30,
       width: 22,
-      thickness: 18 / 25.4,
+      thickness: snapLength(18 / 25.4, "in"),
       quantity: 1,
       kind: "offcut",
       name: "From the bench",

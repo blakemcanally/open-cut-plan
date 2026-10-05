@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseLength, parsePlainNumber, type Units } from "../../src/index.ts";
+import { parseLength, parsePlainNumber, snapLength, type Units } from "../../src/index.ts";
 
 describe("parseLength", () => {
   it.each<[string, Units, number]>([
@@ -93,5 +93,19 @@ describe("decimal commas", () => {
     expect(parseLength("15 3/8", "in", { decimalComma: true })).toBe(15.375);
     expect(parseLength("2.440", "mm")).toBe(2.44);
     expect(parseLength("2,440 mm", "mm")).toBe(2.44);
+  });
+});
+
+describe("parseLength on the nanometre grid", () => {
+  it("puts the value on the grid of the project units", () => {
+    expect(parseLength("18 mm", "in")).toBe(snapLength(18 / 25.4, "in"));
+    expect(parseLength("0.1", "mm")).toBe(0.1);
+    expect(parseLength("45/64", "in")).toBe(45 / 64);
+  });
+
+  it("reads a value that starts with ~, as the app shows a rounded value", () => {
+    expect(parseLength('~3/4"', "in")).toBe(0.75);
+    expect(parseLength("~ 17.9 mm", "mm")).toBe(17.9);
+    expect(parseLength("~", "in")).toBeNull();
   });
 });

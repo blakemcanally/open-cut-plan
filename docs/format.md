@@ -11,6 +11,7 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 - **Encoding.** UTF-8 JSON. Readers should accept and ignore a leading byte order mark.
 - **Units.** Every length in the file is a decimal number in `project.units`: `"in"` (inches) or `"mm"` (millimetres).
   Fractions such as `15 3/8"` appear only in user interfaces.
+  The app writes each length on a grid of whole nanometres: a multiple of 1/25,400,000 in, or of 0.000001 mm. This grid holds 1/64", 0.001", and 0.1 mm with no error. A file from another program can have any length; the app puts a length on the grid when it changes it.
 - **Length and width.** Length is the first dimension. On stock, the grain runs along the length.
 - **Ids.** Every `id` is a non-empty string, unique within its collection. References use ids.
 - **Coordinates.** A placement's origin is the top-left corner of the full stock piece (before edge trim). `x` runs
