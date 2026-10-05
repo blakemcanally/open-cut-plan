@@ -3,7 +3,7 @@ import { catalogThicknesses, formatExactLength, sameThickness, type Units } from
 interface ThicknessPickerProps {
   /** The material name, for the accessible name. */
   name: string;
-  value: number;
+  value: number | undefined;
   units: Units;
   onPick(thickness: number): void;
 }
@@ -11,7 +11,7 @@ interface ThicknessPickerProps {
 export function ThicknessPicker({ name, value, units, onPick }: ThicknessPickerProps) {
   const groups = catalogThicknesses(units);
   const keyed = groups.flatMap((group, g) => group.options.map((option, o) => ({ key: `${g}-${o}`, option })));
-  const selected = keyed.find(({ option }) => sameThickness(option.thickness, value, units))?.key ?? "";
+  const selected = value === undefined ? "" : (keyed.find(({ option }) => sameThickness(option.thickness, value, units))?.key ?? "");
   return (
     <select
       className="thickness-picker"

@@ -21,7 +21,7 @@ describe("StockTab", () => {
     const status = () => screen.getByRole("table", { name: "Materials" }).querySelector(".material-status")!.textContent;
     expect(status()).toContain('⚠ 3/4" is a nominal thickness. Stock sold as 3/4" is often 45/64" or 11/16" thick. Measure it, or pick it from the list.');
     const picker = screen.getByRole("combobox", { name: "Pick the thickness of Plywood" });
-    expect((picker as HTMLSelectElement).selectedOptions[0]!.textContent).toBe('3/4" → 3/4" (MDF)');
+    expect((picker as HTMLSelectElement).value).toBe("");
     const option = within(picker).getAllByRole("option").find((item) => item.textContent!.startsWith('3/4" → 45/64"'))!;
     expect(option.textContent).toBe('3/4" → 45/64" (Birch, Red oak, Maple, Sanded)');
     await userEvent.selectOptions(picker, option);

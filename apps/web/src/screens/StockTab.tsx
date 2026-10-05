@@ -149,7 +149,7 @@ export function StockTab({ store }: { store: ProjectStore }) {
                           units={units}
                           onChange={(thickness) => thickness !== undefined && edit((p) => updateMaterial(p, material.id, { thickness }))}
                         />
-                        <ThicknessPicker name={material.name} value={material.thickness} units={units} onPick={(thickness) => edit((p) => updateMaterial(p, material.id, { thickness, measured: true }))} />
+                        <ThicknessPicker name={material.name} value={nominal === null ? material.thickness : undefined} units={units} onPick={(thickness) => edit((p) => updateMaterial(p, material.id, { thickness, measured: true }))} />
                         {(nominal !== null || material.measured === true) && (
                           <label className="measured">
                             <input
