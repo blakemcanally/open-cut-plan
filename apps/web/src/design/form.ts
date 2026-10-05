@@ -150,8 +150,12 @@ export function openingsText(openings: readonly number[], units: Units): string 
   return openings.map((opening) => formatExactLength(opening, units)).join(", ");
 }
 
-export function parseOpenings(text: string, units: Units): number[] | null {
-  const openings = text.split(",").map((item) => parseLength(item.trim(), units));
+/** An item whose text is the text of the same opening in `previous` keeps the exact value of that opening. */
+export function parseOpenings(text: string, units: Units, previous: readonly number[] = []): number[] | null {
+  const openings = text.split(",").map((item, index) => {
+    const old = previous[index];
+    return old !== undefined && item.trim() === formatExactLength(old, units) ? old : parseLength(item.trim(), units);
+  });
   if (openings.length > MAX_DESIGN_CELLS || openings.some((opening) => opening === null || opening <= 0)) return null;
   return openings as number[];
 }

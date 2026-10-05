@@ -1,4 +1,4 @@
-import { analyzeProject, createProject, PART_PALETTE, regenerateDesigns, type CombinedCell, type Project } from "@opencutplan/core";
+import { analyzeProject, convertProjectUnits, createProject, PART_PALETTE, regenerateDesigns, type CombinedCell, type Project } from "@opencutplan/core";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
@@ -139,6 +139,22 @@ describe("DesignTab", () => {
     act(() => current().undo());
     expect(design(current).height).toEqual({ openings: [335, 335] });
     expect(current().project.parts.find((part) => part.id === "hall-shelf")!.quantity).toBe(2);
+  });
+
+  it("keeps the exact value of each opening that the text leaves unchanged", async () => {
+    const inches = convertProjectUnits(designProject(), "in");
+    const before = inches.designs![0]!.height;
+    if (!("openings" in before)) throw new Error("expected openings");
+    const current = renderDesign(inches);
+    const field = screen.getByLabelText("Row openings, top to bottom");
+    const [first, second] = (field as HTMLInputElement).value.split(", ");
+    expect(second).not.toBe(String(before.openings[1]));
+    await userEvent.clear(field);
+    await userEvent.type(field, `${first}, ${second}{Enter}`);
+    expect(design(current).height).toEqual(before);
+    await userEvent.clear(field);
+    await userEvent.type(field, `14, ${second}{Enter}`);
+    expect(design(current).height).toEqual({ openings: [14, before.openings[1]] });
   });
 
   it("draws the new size while the user types, and Escape draws the stored size again", async () => {

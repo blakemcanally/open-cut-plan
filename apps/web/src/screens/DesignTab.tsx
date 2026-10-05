@@ -260,10 +260,10 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
             {text.openings}
             <TextInput
               value={openingsText(axis.openings, units)}
-              valid={(value) => parseOpenings(value, units) !== null}
-              onChange={(value) => apply(`${which}-openings`, put({ ...axis, openings: parseOpenings(value, units)! }))}
+              valid={(value) => parseOpenings(value, units, axis.openings) !== null}
+              onChange={(value) => apply(`${which}-openings`, put({ ...axis, openings: parseOpenings(value, units, axis.openings)! }))}
               {...live((d, t) => {
-                const parsed = parseOpenings(t, units);
+                const parsed = parseOpenings(t, units, axis.openings);
                 return parsed ? { ...d, [which]: { ...axis, openings: parsed } } : null;
               })}
             />

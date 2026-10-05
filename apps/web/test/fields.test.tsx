@@ -15,6 +15,21 @@ describe("LengthInput", () => {
     expect(onChange).toHaveBeenCalledWith(14.5);
   });
 
+  it("does not call onChange for a value that shows with ~, when the text stays as it was", async () => {
+    const onChange = vi.fn();
+    render(<LengthInput aria-label="Length" value={335 / 25.4} units="in" onChange={onChange} />);
+    const input = screen.getByLabelText("Length");
+    expect(input).toHaveProperty("value", '~13.189"');
+    await userEvent.click(input);
+    await userEvent.tab();
+    await userEvent.click(input);
+    await userEvent.keyboard("{Enter}");
+    await userEvent.type(input, "5{Backspace}{Enter}");
+    await userEvent.tab();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(input).toHaveProperty("value", '~13.189"');
+  });
+
   it("keeps rejected text marked on Enter and puts the old value back on blur", async () => {
     const onChange = vi.fn();
     render(<LengthInput aria-label="Length" value={10} units="mm" onChange={onChange} />);
