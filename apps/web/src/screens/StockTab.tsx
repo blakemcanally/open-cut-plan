@@ -8,6 +8,8 @@ import {
   materialColor,
   materialStatus,
   materialStatusText,
+  nominalThickness,
+  nominalThicknessText,
   planContext,
   removeMaterial,
   removeStock,
@@ -24,6 +26,7 @@ import { CatalogDialog } from "../components/CatalogDialog.tsx";
 import { CsvImportDialog } from "../components/CsvImportDialog.tsx";
 import { LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
 import { AddStock } from "../components/StockNote.tsx";
+import { ThicknessPicker } from "../components/ThicknessPicker.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
 import { chooseFile } from "../storage/files.ts";
 import { isTableText } from "./PartsTab.tsx";
@@ -130,6 +133,8 @@ export function StockTab({ store }: { store: ProjectStore }) {
               {project.materials.map((material) => {
                 const status = materialStatus(project, material.id);
                 const stockless = status.parts > 0 && status.sizes === 0;
+                const nominal = nominalThickness(project, material.id);
+                const nominalText = nominalThicknessText(project, material.id);
                 const warn = stockless || status.unpriced > 0;
                 return (
                   <tr key={material.id}>
@@ -137,12 +142,26 @@ export function StockTab({ store }: { store: ProjectStore }) {
                       <TextInput aria-label={`Name of material ${material.name}`} value={material.name} required onChange={(name) => edit((p) => updateMaterial(p, material.id, { name }))} />
                     </td>
                     <td data-label="Thickness">
-                      <LengthInput
-                        aria-label={`Thickness of ${material.name}`}
-                        value={material.thickness}
-                        units={units}
-                        onChange={(thickness) => thickness !== undefined && edit((p) => updateMaterial(p, material.id, { thickness }))}
-                      />
+                      <div className="thickness-field">
+                        <LengthInput
+                          aria-label={`Thickness of ${material.name}`}
+                          value={material.thickness}
+                          units={units}
+                          onChange={(thickness) => thickness !== undefined && edit((p) => updateMaterial(p, material.id, { thickness }))}
+                        />
+                        <ThicknessPicker name={material.name} value={material.thickness} units={units} onPick={(thickness) => edit((p) => updateMaterial(p, material.id, { thickness, measured: true }))} />
+                        {(nominal !== null || material.measured === true) && (
+                          <label className="measured">
+                            <input
+                              type="checkbox"
+                              aria-label={`${material.name} thickness is measured`}
+                              checked={material.measured === true}
+                              onChange={(event) => edit((p) => updateMaterial(p, material.id, { measured: event.target.checked ? true : undefined }))}
+                            />
+                            Measured
+                          </label>
+                        )}
+                      </div>
                     </td>
                     <td data-label="Grained">
                       <input
@@ -160,7 +179,7 @@ export function StockTab({ store }: { store: ProjectStore }) {
                         onChange={(event) => edit((p) => updateMaterial(p, material.id, { color: event.target.value }), `material-color:${material.id}`)}
                       />
                     </td>
-                    <td data-label="Status" className={`material-status wide${warn ? " warning" : ""}`}>
+                    <td data-label="Status" className={`material-status wide${warn || nominalText !== null ? " warning" : ""}`}>
                       {warn && "⚠ "}
                       {materialStatusText(status)}
                       {stockless && (
@@ -169,6 +188,7 @@ export function StockTab({ store }: { store: ProjectStore }) {
                           <AddStock project={project} material={material.id} onAdd={(id) => edit((p) => addSuggestedStock(p, id).project)} />
                         </>
                       )}
+                      {nominalText !== null && <div className="nominal-warning">⚠ {nominalText} Measure it, or pick it from the list.</div>}
                     </td>
                     <td className="actions">
                       <DeleteMaterial name={material.name} status={status} onDelete={() => edit((p) => removeMaterial(p, material.id))} />

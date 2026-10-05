@@ -16,6 +16,48 @@ vi.mock("../src/storage/files.ts", () => ({
 }));
 
 describe("StockTab", () => {
+  it("warns about a nominal thickness, and a pick sets the actual thickness and measured", async () => {
+    const { current } = renderWithStore(sampleProject(), (store) => <StockTab store={store} />);
+    const status = () => screen.getByRole("table", { name: "Materials" }).querySelector(".material-status")!.textContent;
+    expect(status()).toContain('⚠ 3/4" is a nominal thickness. Stock sold as 3/4" is often 45/64" or 11/16" thick. Measure it, or pick it from the list.');
+    const picker = screen.getByRole("combobox", { name: "Pick the thickness of Plywood" });
+    expect((picker as HTMLSelectElement).selectedOptions[0]!.textContent).toBe('3/4" → 3/4" (MDF)');
+    const option = within(picker).getAllByRole("option").find((item) => item.textContent!.startsWith('3/4" → 45/64"'))!;
+    expect(option.textContent).toBe('3/4" → 45/64" (Birch, Red oak, Maple, Sanded)');
+    await userEvent.selectOptions(picker, option);
+    expect(current().project.materials[0]).toMatchObject({ thickness: 45 / 64, measured: true });
+    expect(status()).not.toContain("nominal thickness");
+    expect((screen.getByRole("combobox", { name: "Pick the thickness of Plywood" }) as HTMLSelectElement).selectedOptions[0]!.textContent).toBe(option.textContent);
+  });
+
+  it("stops the warning with Measured, and a typed thickness clears Measured", async () => {
+    const { current } = renderWithStore(sampleProject(), (store) => <StockTab store={store} />);
+    await userEvent.click(screen.getByRole("checkbox", { name: "Plywood thickness is measured" }));
+    expect(current().project.materials[0]!.measured).toBe(true);
+    expect(screen.getByRole("table", { name: "Materials" }).querySelector(".material-status")!.textContent).not.toContain("nominal thickness");
+    const thickness = screen.getByRole("textbox", { name: "Thickness of Plywood" });
+    await userEvent.clear(thickness);
+    await userEvent.type(thickness, "1/2{Enter}");
+    expect(current().project.materials[0]).not.toHaveProperty("measured");
+    expect(screen.getByRole("table", { name: "Materials" }).querySelector(".material-status")!.textContent).toContain('1/2" is a nominal thickness.');
+  });
+
+  it("hides Measured for an actual thickness", () => {
+    const project = sampleProject();
+    renderWithStore({ ...project, materials: [{ ...project.materials[0]!, thickness: 45 / 64 }] }, (store) => <StockTab store={store} />);
+    expect(screen.queryByRole("checkbox", { name: "Plywood thickness is measured" })).toBeNull();
+  });
+
+  it("gives the options in millimetres, and a pick stores the catalogue value", async () => {
+    const mm = { ...createProject("Metric", "mm"), materials: [{ id: "ply", name: "Plywood", thickness: 19, grained: true }] };
+    const { current } = renderWithStore(mm, (store) => <StockTab store={store} />);
+    expect(screen.queryByText(/nominal thickness/)).toBeNull();
+    const picker = screen.getByRole("combobox", { name: "Pick the thickness of Plywood" });
+    const option = within(picker).getAllByRole("option").find((item) => item.textContent!.startsWith("18 mm → 18 mm"))!;
+    await userEvent.selectOptions(picker, option);
+    expect(current().project.materials[0]!.thickness).toBe(18);
+  });
+
   it("keeps a material that parts use and says why, and deleting stock removes its sheets", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <StockTab store={store} />);
     const remove = screen.getByRole("button", { name: "Delete material Plywood" });
@@ -45,11 +87,12 @@ describe("StockTab", () => {
     project.stock.push({ id: "oak-sheet", material: "oak", length: 96, width: 48, quantity: null, kind: "sheet" });
     const { current } = renderWithStore(project, (store) => <StockTab store={store} />);
     const status = () => [...screen.getByRole("table", { name: "Materials" }).querySelectorAll(".material-status")].map((cell) => cell.textContent);
-    expect(status()).toEqual(["Used by 2 parts · 1 size", "⚠ Used by 1 part · no stock Add stock Adds unlimited 96\" × 48\" sheets with no price.", "⚠ Used by no parts · 1 size · no price"]);
+    const nominal = "⚠ 3/4\" is a nominal thickness. Stock sold as 3/4\" is often 45/64\" or 11/16\" thick. Measure it, or pick it from the list.";
+    expect(status()).toEqual([`Used by 2 parts · 1 size${nominal}`, `⚠ Used by 1 part · no stock Add stock Adds unlimited 96" × 48" sheets with no price.${nominal}`, `⚠ Used by no parts · 1 size · no price${nominal}`]);
     expect(screen.queryByText(/MDF has no stock\./)).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Add stock for MDF" }));
     expect(current().project.stock.map((stock) => stock.material)).toEqual(["ply", "oak", "mdf"]);
-    expect(status()[1]).toBe("⚠ Used by 1 part · 1 size · no price");
+    expect(status()[1]).toBe(`⚠ Used by 1 part · 1 size · no price${nominal}`);
   });
 
   it("names stock that has no name by its material and size", async () => {

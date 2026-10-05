@@ -165,6 +165,13 @@ unlimited, cost, kind, edges, and whether to use it). Stock also has a CSV impor
 - A material that parts, stock, or designs use cannot be deleted. Its **Delete** button stays in the Tab order. On
   hover or focus, a tip says why, for example "Parts and stock use this material. Change them first." Screen readers
   read the tip as the description of the button.
+- The **Pick…** list beside each Thickness field gives the catalogue thicknesses by family, for example
+  `3/4" → 45/64" (Birch, Red oak, Maple, Sanded)`. A pick sets the actual thickness and marks it as measured. It does
+  not change the name, the grain, or the colour.
+- In an inch project, a material at a nominal thickness, for example exactly 3/4", gets a warning with the likely
+  actual thicknesses, unless it is a catalogue material. The **Measured** checkbox stops the warning. A typed
+  thickness clears **Measured**.
+- A design whose material has the warning gets the check `nominal-thickness`, with the size of the error.
 - A stock with no name shows its material and size, for example "Birch plywood 3/4" 96" × 48"", in place of its id.
 
 **Add from catalogue…** opens the [catalogue of sheet goods](catalog.md).

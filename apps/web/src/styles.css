@@ -84,6 +84,10 @@ table.grid td input.stock-name { min-width: 220px; }
 .totals { list-style: none; padding: 0; color: var(--muted); }
 .stock-tab section + section { margin-top: 24px; }
 .material-status { min-width: 220px; }
+.thickness-field { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.thickness-picker { max-width: 16em; }
+.measured { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.nominal-warning { margin-top: 4px; }
 table.grid td.actions { text-align: right; }
 
 .tool-list { list-style: none; padding: 0; display: grid; gap: 10px; }
@@ -348,6 +352,7 @@ table.grid tr.generated td { color: var(--muted); }
   table.grid.cards td.wide, table.grid.cards td.actions { grid-column: 1 / -1; }
   table.grid.cards td input[type="text"], table.grid.cards td input.narrow, table.grid.cards td select { width: 100%; min-width: 0; }
   table.grid.cards .material-status { min-width: 0; }
+  table.grid.cards .thickness-picker { max-width: none; }
   .assembly-steps li { gap: 8px; padding: 8px 4px; }
   .assembly-drawing { width: 76px; height: 76px; }
   .assembly-steps li[aria-current="step"] .assembly-drawing { grid-column: 1 / -1; width: 100%; height: auto; }
