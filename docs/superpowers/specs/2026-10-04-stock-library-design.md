@@ -40,7 +40,7 @@ types each thickness by hand. This spec adds three things:
 
 **Success criteria**
 
-- On the Stock tab, a pick of `3/4" → 0.703"` sets the thickness to 0.703", and the design on the Design tab gets
+- On the Stock tab, a pick of `3/4" → 45/64"` sets the thickness to 45/64" (0.703125"), and the design on the Design tab gets
   the new outside size.
 - A typed material `Plywood 3/4` at 0.75" in an inch project shows the warning on the Stock tab and in the checks of
   each design that uses it. A tick on **Measured** removes both.
@@ -148,8 +148,8 @@ export function catalogThicknesses(units: Units): ThicknessGroup[];
 A new component, `ThicknessPicker`, goes beside each Thickness field on the Stock tab.
 
 - It is a native `<select>`, with an `<optgroup>` for each family. An option reads
-  `3/4" → 0.703" (Birch, Red oak, Maple, Sanded)`: the nominal value, the actual thickness as a decimal (as the
-  catalogue dialog shows it), and the short material names (the name without its thickness and without the last word
+  `3/4" → 45/64" (Birch, Red oak, Maple, Sanded)`: the nominal value, the actual thickness from
+  `formatExactLength` (§6.4), and the short material names (the name without its thickness and without the last word
   of the family).
 - The first option is `Pick…`. The list shows the option whose thickness is equal to the thickness of the material,
   within the catalogue tolerance (0.005" or 0.1 mm). With no equal option, it shows `Pick…`. When two options in two
@@ -217,19 +217,19 @@ The function gives a result only when all of these are true:
 
 **Stock tab.** The Status cell has the warning:
 
-> ⚠ 3/4" is a nominal thickness. Stock sold as 3/4" is often 0.703" or 0.688" thick. Measure it, or pick it from the
+> ⚠ 3/4" is a nominal thickness. Stock sold as 3/4" is often 45/64" or 11/16" thick. Measure it, or pick it from the
 > list.
 
 The first value is the thickness of the material in the display format of the project. The second is the `nominal`
 text of the catalogue (`3/4"`, `1x`, or `2x`). The text gives at most two `likely` values. For a material at 1", the
-text is: "⚠ 1" is a nominal thickness. Stock sold as 1x is often 0.75" thick."
+text is: "⚠ 1" is a nominal thickness. Stock sold as 1x is often 3/4" thick." The thicknesses use `formatExactLength` (§6.4).
 
 **Design checks.** `checkDesigns` adds a warning `nominal-thickness` for each design whose box material or back
 material has a result. The error across the width is (columns + 1) × (value − first likely value); across the
 height it is (rows + 1) × the same difference. The message gives the larger of the two:
 
-> Design "Hall" uses Plywood 3/4 at 3/4", a nominal thickness. If the stock is 0.703", the error across the width
-> adds up to 0.235". Measure the stock, or pick its thickness on the Stock tab.
+> Design "Hall" uses Plywood 3/4 at 3/4", a nominal thickness. If the stock is 45/64", the error across the height
+> adds up to 15/64". Measure the stock, or pick its thickness on the Stock tab.
 
 For a back material, the message names the back and gives the error in the depth: the panels are the outside depth
 less the back, so the box depth is off by (value − first likely value).
@@ -244,18 +244,63 @@ The warning shows where the design checks show now: the Design tab, the Cut tab,
 - `materials set --measured true|false` sets the field. `materials add` takes `--measured` too.
 - `materials set --thickness` with no `--measured` clears the field, as in §5.3.
 
-## 6. Order of work
+## 6. Fixed-precision lengths (added after review)
 
-1. Catalogue types: `edges`, `trim: 0` from `addCatalogStock` and `suggestedStock`, and the new data test rules.
-2. Research (§3.5), then `data.ts`.
-3. `catalogThicknesses` and `ThicknessPicker`.
-4. Format 1.9, `nominalThickness`, the Stock tab warning and checkbox, the design check, and the CLI.
-5. Docs: `catalog.md` (families, counts, `edges`, boards), `format.md`, `web-app.md`, `cli.md`, `README.md`, and
+### 6.1 The problem
+
+A JSON save and load does not lose precision: JavaScript writes the shortest text that reads back as the same number
+(ECMA-262 `Number::toString`). The errors come from three other places:
+
+1. **Display.** `formatLength` rounds 0.703" to 11/16" at 1/32", and it does not say that it rounded.
+2. **Arithmetic and conversion.** 5 × (0.75 − 0.703) is 0.23500000000000001, and 18 mm is 0.7086614173228347".
+3. **Rounded store data.** A store lists 0.703", but the product is 45/64" (0.703125").
+
+### 6.2 The nanometre grid
+
+KiCad keeps each length as whole nanometres (`PCB_IU_PER_MM = 1e6`) and writes millimetre decimals with six places;
+Gerber files use the same quantum. Whole nanometres hold 1/64" (396,875 nm), 0.001" (25,400 nm), and 0.1 mm
+(100,000 nm) exactly, and a JavaScript number holds whole nanometres exactly up to about 9,000 km.
+
+- A new module `geometry/precision.ts` has `NM_PER_UNIT` (`in`: 25,400,000; `mm`: 1,000,000), `toNm`, `fromNm`, and
+  `snapLength(value, units)`.
+- Each length that the app writes is on the grid. The app snaps at each entry point: `parseLength` (typed, CLI, and
+  CSV lengths), the other CSV length path, unit conversion (in place of the 1e-9 rounding), and the generated parts of
+  a design. Calculated sizes, such as the error of §5.4, are worked out in whole nanometres.
+- The core geometry, the optimizer, and the layout keep their numbers in project units, with `EPSILON` as now. A full
+  move to integer nanometres in the core is not a goal.
+- The file format does not change. `docs/format.md` says that an app writes lengths on the grid.
+
+### 6.3 Exact store values
+
+When a store thickness rounds a 1/64" fraction to three decimals (within 0.0005"), the catalogue stores the fraction:
+0.703 → 45/64, 0.688 → 11/16, 0.719 → 23/32, 0.734 → 47/64, 0.469 → 15/32, 0.438 → 7/16, 0.188 → 3/16,
+0.234 → 15/64, 0.203 → 13/64. The data test checks the rule, so new data follows it.
+
+### 6.4 Honest display
+
+- `formatLength` keeps the display precision of the project, and it puts `~` before a value that is not exact at
+  that precision, for example `~13 3/16"`. OpenCutList uses the same mark.
+- A new `formatExactLength(value, units)` shows the value with no rounding: in inches, the fraction up to 1/64" when
+  one fits (`45/64"`), or else a decimal to 4 places; in millimetres, a decimal to 3 places. It puts `~` before the
+  text only when the value has more digits.
+- Length input fields, the thickness picker, the nominal warning, and the error sizes use `formatExactLength`. So the
+  Thickness field shows `45/64"`, and the KALLAX error of §1 is `15/64"`.
+- `parseLength` accepts a leading `~`, so a pasted output reads back.
+
+## 7. Order of work
+
+1. The nanometre grid, the honest display, and the exact store values (§6).
+2. Catalogue types: `edges`, `trim: 0` from `addCatalogStock` and `suggestedStock`, and the new data test rules.
+3. Research (§3.5), then `data.ts`.
+4. `catalogThicknesses` and `ThicknessPicker`.
+5. Format 1.9, `nominalThickness`, the Stock tab warning and checkbox, the design check, and the CLI.
+6. Docs: `catalog.md` (families, counts, `edges`, boards), `format.md`, `web-app.md`, `cli.md`, `README.md`, and
    backlog item 23 with the chosen approach.
 
-## 7. Tests
+## 8. Tests
 
-- **Data:** the rules in §3.5.
+- **Precision:** the grid values of 1/64", 0.001", and 0.1 mm; snapping; a unit round trip; `~` and exact text.
+- **Data:** the rules in §3.5 and §6.3.
 - **Catalogue:** `addCatalogStock` and `suggestedStock` give `trim: 0` for a board and no `trim` for a sheet.
 - **`catalogThicknesses`:** the groups and their order, one nominal value with two thicknesses, and millimetres.
 - **`nominalThickness`:** one test for each condition in §5.2; the order of `likely`; `1x` and `2x`; a catalogue

@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add the missing sheet thicknesses, pine 1x boards, and 2x framing lumber to the catalogue; add a thickness picker on the Stock tab; and warn when a typed thickness is a nominal value.
+**Goal:** Put each length that the app writes on a nanometre grid and show `~` before a rounded length; then add the missing sheet thicknesses, pine 1x boards, and 2x framing lumber to the catalogue; add a thickness picker on the Stock tab; and warn when a typed thickness is a nominal value.
 
-**Architecture:** The catalogue data stays in `packages/core/src/catalog/`, with the two board families in their own data files. Two new core modules, `nominal.ts` (the warning rule and its text) and `thicknesses.ts` (the picker options), serve the design checks, the CLI, and the web app. The file format goes to 1.9 for one optional material field, `measured`.
+**Architecture:** A new core module, `geometry/precision.ts`, snaps lengths to whole nanometres where they go into the project, and `formatLength` marks a rounded value with `~`. The catalogue data stays in `packages/core/src/catalog/`, with the two board families in their own data files. Two new core modules, `nominal.ts` (the warning rule and its text) and `thicknesses.ts` (the picker options), serve the design checks, the CLI, and the web app. The file format goes to 1.9 for one optional material field, `measured`.
 
 **Tech Stack:** TypeScript, Zod (file schema), Vitest, React (web app), Playwright (end-to-end tests), Node.js 24+.
 
@@ -16,26 +16,460 @@
 - Catalogue rules (`docs/catalog.md`): each listing has `store`, `priceUsd` (or `null`), `source` (an `https://` address), and `checked` (`YYYY-MM-DD`). Never guess a price. Give the length before the width. Give each size in inches and in millimetres (`lengthMm = Math.round(lengthIn * 25.4)`). Give `thicknessMm` to 0.1 mm. Do not change an existing id.
 - When the stores give different actual sizes, use the Home Depot size, and give the other size in `notes`.
 - The thickness tolerance is 0.005" (0.1 mm), the same as `THICKNESS_TOLERANCE` in `packages/core/src/catalog/catalog.ts`.
-- An actual catalogue thickness always shows as a decimal, with `ACTUAL_DISPLAY = { inch: "decimal", mm: 0.1 }`, as `CatalogDialog` does now. Other lengths use the project display (`project.settings.display`).
+- Lengths: the app writes each length on a grid of whole nanometres (`snapLength`, Task 1). A length that the display rounds shows with `~` (Task 2).
+- An actual thickness, a likely thickness, and the size of an error always show with `formatExactLength(value, units)` (Task 2): a fraction to 1/64", else a decimal to 0.0001"; 0.001 in millimetres. Other lengths use `formatLength` with the project display (`project.settings.display`).
+- A catalogue thickness that a store gives as a 64th rounded to 3 places is the exact fraction, for example `45 / 64` (Task 3). New catalogue data follows the same rule.
 - The file format becomes `"1.9"`. The only new file field is `materials[].measured` (boolean, optional).
 - The app's own default materials stay as they are: `DEFAULT_THICKNESS.in` is 0.75 (`packages/core/src/edit/parts.ts`) and the default back is `Plywood 1/4"` at 0.25 (`apps/web/src/design/form.ts`). The warning fires for them on purpose: the app does not know what the user bought.
 - The warning is for inch projects only.
 - Docs use the plain style of the existing docs: short sentences, one idea in each sentence, active voice.
 - Code comments: no comment that restates the code. Match the comment density of the file.
 - Commit messages follow the repository style: one plain sentence that starts with a verb, for example "Add pine 1x boards to the catalogue". End each message with a blank line and `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
-- Before each commit, run the tests of the packages that the task touched. Task 12 runs `npm run check` and `npm run e2e`.
+- Before each commit, run the tests of the packages that the task touched. Task 2 and Task 15 run `npm run e2e` too. Task 15 runs `npm run check`.
 
 ## Review Focus
 
-1. **A measured value that equals another nominal value.** 0.188" (birch 1/4" actual) is within 0.005" of 3/16". 0.438" (CDX 15/32" actual) is within 0.005" of 7/16". A user who types a measured 0.188" gets a 3/16" warning. **Measured** must stop it, and the choice must survive a save and a load. Test: Task 6 (the rule), Task 5 (load and save).
-2. **Unit conversion.** A project converted from inches to millimetres and back keeps `measured`, and a millimetre project never warns. Test: Task 5 and Task 6.
-3. **Two project materials that look like one catalogue material.** Two materials both named `MDF 3/4"` at 0.75" must both be exempt. A rule that uses `projectMaterialFor` (it returns only the first match) would warn for the second. Test: Task 6.
-4. **The picker in a millimetre project.** The options show millimetres, and a pick stores the catalogue millimetre value (for example 18, not 17.99). Test: Task 7 and Task 10.
-5. **A catalogue name with the wrong thickness.** A material named `Birch plywood 3/4"` at 0.75" is not the catalogue material (the catalogue gives 0.703"), so it must warn. Test: Task 6.
+1. **A measured value that equals another nominal value.** 3/16" (birch 1/4" actual) is itself a nominal value. 7/16" (CDX 15/32" actual) is too. A user who types a measured 3/16" gets a 3/16" warning. **Measured** must stop it, and the choice must survive a save and a load. Test: Task 9 (the rule), Task 8 (load and save).
+2. **Unit conversion.** A project converted from inches to millimetres and back keeps `measured`, and a millimetre project never warns. Test: Task 8 and Task 9.
+3. **Two project materials that look like one catalogue material.** Two materials both named `MDF 3/4"` at 0.75" must both be exempt. A rule that uses `projectMaterialFor` (it returns only the first match) would warn for the second. Test: Task 9.
+4. **The picker in a millimetre project.** The options show millimetres, and a pick stores the catalogue millimetre value (for example 18, not 17.99). Test: Task 10 and Task 13.
+5. **A catalogue name with the wrong thickness.** A material named `Birch plywood 3/4"` at 0.75" is not the catalogue material (the catalogue gives 45/64"), so it must warn. Test: Task 9.
+6. **A rounded value in a field.** A field shows the exact value, so a user who tabs through a field with `~0.7087"` (18 mm in an inch project) must not change the value. `parseLength` reads the `~`, and the value goes back to the same grid point. Test: Task 1 (`parseLength` with `~`) and Task 2 (`formatExactLength`).
+7. **The setup order and `~`.** Two fence settings at the same mark, one exact and one rounded, must stay in one setup group. Test: Task 2.
 
 ---
 
-### Task 1: Missing sheet thicknesses in the catalogue
+### Task 1: A nanometre grid for the lengths that the app writes
+
+**Files:**
+- Create: `packages/core/src/geometry/precision.ts`
+- Modify: `packages/core/src/index.ts` (export it)
+- Modify: `packages/core/src/geometry/parse.ts` (`parseLength`)
+- Modify: `packages/core/src/csv/mapping.ts` (the length of a cell, near line 106)
+- Modify: `packages/core/src/edit/units.ts` (`converter`)
+- Modify: `packages/core/src/design/generate.ts` (`designParts`)
+- Modify: `docs/format.md`
+- Create: `packages/core/test/geometry/precision.test.ts`
+- Modify: `packages/core/test/geometry/parse.test.ts`, `packages/core/test/design/units.test.ts`, `packages/core/test/design/generate.test.ts`
+
+**Interfaces:**
+- Consumes: `Units`, `convertLength` (`packages/core/src/geometry/units.ts`).
+- Produces:
+
+```ts
+export const NM_PER_UNIT: Readonly<Record<Units, number>>; // { in: 25_400_000, mm: 1_000_000 }
+export function toNm(value: number, units: Units): number; // a whole number of nanometres
+export function fromNm(nm: number, units: Units): number;
+export function snapLength(value: number, units: Units): number; // fromNm(toNm(value, units), units)
+```
+
+Background. A length in the file stays a number in the project units. The app now puts each length that it writes on a grid of whole nanometres. 1 in is 25,400,000 nm, so 1/64", 0.001", and 0.1 mm are whole numbers of nanometres. KiCad (`PCB_IU_PER_MM = 1e6`) and Gerber files (6 decimals of a millimetre) use the same grid. JSON does not lose a number: `JSON.parse(JSON.stringify(x)) === x` for each finite double. The errors come from arithmetic and conversion, and the grid removes them at the places where a length goes into the project. The optimizer and `EPSILON` (`packages/core/src/geometry/rect.ts`) do not change. The file format does not change.
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `packages/core/test/geometry/precision.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { convertLength, fromNm, NM_PER_UNIT, snapLength, toNm } from "../../src/index.ts";
+
+describe("the nanometre grid", () => {
+  it("holds 1/64 inch, 0.001 inch, and 0.1 mm as whole numbers", () => {
+    expect(NM_PER_UNIT).toEqual({ in: 25_400_000, mm: 1_000_000 });
+    expect(toNm(1 / 64, "in")).toBe(396_875);
+    expect(toNm(0.001, "in")).toBe(25_400);
+    expect(toNm(0.1, "mm")).toBe(100_000);
+    expect(fromNm(396_875, "in")).toBe(1 / 64);
+  });
+
+  it("removes the error of arithmetic", () => {
+    expect(snapLength(5 * (0.75 - 0.703), "in")).toBe(0.235);
+    expect(snapLength(0.1 + 0.2, "mm")).toBe(0.3);
+    expect(snapLength(5 * (0.75 - 45 / 64), "in")).toBe(15 / 64);
+  });
+
+  it("gives the same value again for a value on the grid", () => {
+    for (const value of [0.75, 45 / 64, 13.188976378, 1219.2, 0.1]) {
+      const snapped = snapLength(value, "in");
+      expect(snapLength(snapped, "in")).toBe(snapped);
+    }
+  });
+
+  it("converts millimetres to inches and back with no change", () => {
+    for (const mm of [18, 1219.2, 335, 0.1, 2438, 17.9]) {
+      const inches = snapLength(convertLength(mm, "mm", "in"), "in");
+      expect(snapLength(convertLength(inches, "in", "mm"), "mm")).toBe(mm);
+    }
+  });
+
+  it("writes and reads a value on the grid through JSON with no change", () => {
+    const values = [snapLength(18 / 25.4, "in"), snapLength(13.188976378, "in"), 45 / 64, 1219.2];
+    expect(JSON.parse(JSON.stringify(values))).toEqual(values);
+  });
+});
+```
+
+Add to `packages/core/test/geometry/parse.test.ts` (import `snapLength` with the other names):
+
+```ts
+describe("parseLength on the nanometre grid", () => {
+  it("puts the value on the grid of the project units", () => {
+    expect(parseLength("18 mm", "in")).toBe(snapLength(18 / 25.4, "in"));
+    expect(parseLength("0.1", "mm")).toBe(0.1);
+    expect(parseLength("45/64", "in")).toBe(45 / 64);
+  });
+
+  it("reads a value that starts with ~, as the app shows a rounded value", () => {
+    expect(parseLength('~3/4"', "in")).toBe(0.75);
+    expect(parseLength("~ 17.9 mm", "mm")).toBe(17.9);
+    expect(parseLength("~", "in")).toBeNull();
+  });
+});
+```
+
+Add to `packages/core/test/design/units.test.ts` (import `snapLength` and `regenerateDesigns`, and use the fixtures that the file has):
+
+```ts
+it("puts each converted length on the grid, so that a conversion to inches and back gives the same project", () => {
+  const project = regenerateDesigns(designProject([kallaxDesign()]));
+  const inches = convertProjectUnits(project, "in");
+  expect(inches.parts.length).toBeGreaterThan(0);
+  for (const part of inches.parts) {
+    expect(snapLength(part.length, "in")).toBe(part.length);
+    expect(snapLength(part.width, "in")).toBe(part.width);
+  }
+  expect(convertProjectUnits(inches, "mm")).toEqual(project);
+});
+```
+
+Add to `packages/core/test/design/generate.test.ts` (use the fixtures that the file has, and import `convertProjectUnits` and `snapLength`):
+
+```ts
+it("gives generated parts a length and a width on the grid", () => {
+  const project = regenerateDesigns(convertProjectUnits(regenerateDesigns(designProject([kallaxDesign()])), "in"));
+  for (const part of project.parts) {
+    expect(snapLength(part.length, "in"), part.id).toBe(part.length);
+    expect(snapLength(part.width, "in"), part.id).toBe(part.width);
+  }
+});
+```
+
+If a file has no `designProject` or `kallaxDesign` fixture, copy the fixture from `packages/core/test/design/checks.test.ts`, or import it from `packages/core/test/helpers.ts` if it is there.
+
+- [ ] **Step 2: Run the tests to see them fail**
+
+Run: `npx vitest run test/geometry test/design --root packages/core`
+Expected: FAIL: `toNm` is not exported.
+
+- [ ] **Step 3: Implement**
+
+Create `packages/core/src/geometry/precision.ts`:
+
+```ts
+import type { Units } from "./units.ts";
+
+/** Whole nanometres hold 1/64 in, 0.001 in, and 0.1 mm with no error. KiCad and Gerber files use the same grid. */
+export const NM_PER_UNIT: Readonly<Record<Units, number>> = { in: 25_400_000, mm: 1_000_000 };
+
+export function toNm(value: number, units: Units): number {
+  return Math.round(value * NM_PER_UNIT[units]);
+}
+
+export function fromNm(nm: number, units: Units): number {
+  return nm / NM_PER_UNIT[units];
+}
+
+export function snapLength(value: number, units: Units): number {
+  return fromNm(toNm(value, units), units);
+}
+```
+
+In `packages/core/src/index.ts`, after `export * from "./geometry/units.ts";`:
+
+```ts
+export * from "./geometry/precision.ts";
+```
+
+In `packages/core/src/geometry/parse.ts`:
+
+```ts
+export function parseLength(text: string, units: Units, options: NumberOptions = {}): number | null {
+  const value = finite(lengthOf(text.trim().replace(/^~\s*/, ""), units, options));
+  return value === null ? null : snapLength(value, units);
+}
+```
+
+In `packages/core/src/csv/mapping.ts`, near line 106, put the converted value on the grid:
+
+```ts
+  return { text, value: value === null ? null : snapLength(convertLength(value, base, units), units) };
+```
+
+In `packages/core/src/edit/units.ts`, replace `converter` and its comment:
+
+```ts
+function converter(from: Units, to: Units): (value: number) => number {
+  return (value) => snapLength(convertLength(value, from, to), to);
+}
+```
+
+The grid step is 1/25,400,000 in, so the rounding error is less than 2e-8 in. A layout check adds up to four converted values, and 4 × 2e-8 is well below `EPSILON` (1e-6). Keep the part of the old comment that says the step must stay below `EPSILON / 4`, and change the example to the grid.
+
+In `packages/core/src/design/generate.ts`, in `designParts`:
+
+```ts
+  const units = project.project.units;
+  const snap = (part: Part): Part => ({ ...part, length: snapLength(part.length, units), width: snapLength(part.width, units) });
+  return buildDesignParts(design, geometry).map((part) => keepStoredSize(snap(part), stored.get(part.id)));
+```
+
+In `docs/format.md`, after the paragraph that says that lengths are in the project units, add:
+
+```markdown
+The app writes each length on a grid of whole nanometres: a multiple of 1/25,400,000 in, or of 0.000001 mm. This grid holds 1/64", 0.001", and 0.1 mm with no error. A file from another program can have any length; the app puts a length on the grid when it changes it.
+```
+
+- [ ] **Step 4: Run the tests**
+
+Run: `npx vitest run --root packages/core && npx vitest run --root packages/cli && npx vitest run --root apps/web`
+Expected: PASS. An old test can expect a value such as `1219.1999999999998` or a 1e-9 rounding. Change it to the value on the grid only when the new value is nearer to the true value. If a test fails for another reason, stop and report it.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/core docs/format.md
+git commit -m "Put each length that the app writes on a grid of whole nanometres
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 2: Show `~` before a rounded length, and show exact lengths where they matter
+
+**Files:**
+- Modify: `packages/core/src/geometry/format.ts`
+- Modify: `packages/core/src/sequence/sequence.ts` (the setup key, near line 186)
+- Modify: `apps/web/src/components/fields.tsx` (`LengthInput`)
+- Modify: `apps/web/src/components/CatalogDialog.tsx` (the actual thickness, near line 72)
+- Modify: `packages/cli/src/commands/catalog.ts` (the actual thickness)
+- Modify: `packages/core/test/geometry/format.test.ts`, and the tests in `packages`, `apps/web/test`, and `apps/web/e2e` that expect a rounded length
+- Modify: `docs/web-app.md`, `docs/cli.md`, `docs/format.md` (the `display` row)
+
+**Interfaces:**
+- Consumes: `toNm` (Task 1).
+- Produces:
+
+```ts
+export function formatLength(value: number, units: Units, display?: DisplayPrecision): string; // "~" before a value that the display rounds
+export function formatExactLength(value: number, units: Units): string;
+```
+
+Background. The display rounds a length to 1/32" or 0.5 mm by default, so `0.703"` and `45/64"` both show as `23/32"`. The user cannot see that the value is not exact. OpenCutList puts `~` before a rounded value. This task does the same. Where the exact value matters (an input, an actual thickness, the size of an error), the app uses `formatExactLength`: a fraction to 1/64" or a decimal to 4 places in inches, and 3 decimals in millimetres.
+
+- [ ] **Step 1: Write the failing tests**
+
+In `packages/core/test/geometry/format.test.ts`, import `formatExactLength`. Change the rows of the two `it.each` tables to:
+
+```ts
+    [42.59370078740158, 32, '~42 19/32"'],
+    [15.375, 32, '15 3/8"'],
+    [0.25, 16, '1/4"'],
+    [60, 32, '60"'],
+    [27.21, 8, '~27 1/4"'],
+    [0.99, 8, '~1"'],
+    [15.375, "decimal", '15.375"'],
+    [-1.5, 32, '-1 1/2"'],
+    [-0.001, 32, '~0"'],
+    [-0.0001, "decimal", '~0"'],
+    [42.5, "decimal", '42.5"'],
+```
+
+```ts
+    [1081.5, 0.5, "1081.5 mm"],
+    [1081.7, 0.5, "~1081.5 mm"],
+    [1081.76, 0.1, "~1081.8 mm"],
+    [18, 1, "18 mm"],
+    [1082, 0.5, "1082 mm"],
+    [0.35, 0.1, "~0.4 mm"],
+```
+
+Add:
+
+```ts
+describe("the ~ before a rounded length", () => {
+  it("shows ~ only when the display rounds the value", () => {
+    expect(formatLength(45 / 64, "in", { inch: 32, mm: 1 })).toBe('~23/32"');
+    expect(formatLength(45 / 64, "in", { inch: 64, mm: 1 })).toBe('45/64"');
+    expect(formatLength(13.188976378, "in")).toBe('~13 3/16"');
+    expect(formatLength(0.703, "in", { inch: "decimal", mm: 1 })).toBe('0.703"');
+    expect(formatLength(1219.2, "mm")).toBe("~1219 mm");
+    expect(formatLength(1219.2, "mm", { inch: 32, mm: 0.1 })).toBe("1219.2 mm");
+    expect(formatLength(-0.3, "in", { inch: 8, mm: 1 })).toBe('~-1/4"');
+  });
+});
+
+describe("formatExactLength", () => {
+  it.each<[number, "in" | "mm", string]>([
+    [45 / 64, "in", '45/64"'],
+    [0.75, "in", '3/4"'],
+    [28.625, "in", '28 5/8"'],
+    [0.22, "in", '0.22"'],
+    [18 / 25.4, "in", '~0.7087"'],
+    [15 / 64, "in", '15/64"'],
+    [18, "mm", "18 mm"],
+    [17.9, "mm", "17.9 mm"],
+    [1 / 3, "mm", "~0.333 mm"],
+    [0, "in", '0"'],
+  ])("%d %s is %s", (value, units, expected) => {
+    expect(formatExactLength(value, units)).toBe(expected);
+  });
+});
+```
+
+Find the setup-order test in `packages/core/test/sequence/` (search for `orderMode: "setup"`). Add a test there, in the style of that file, that makes two rip cuts with the settings 13.1875 and 13.188976378 in an inch project at the default display. Expect the two cuts in one group, next to each other, as now: both settings show at the `13 3/16"` mark, one with `~` and one without.
+
+- [ ] **Step 2: Run the tests to see them fail**
+
+Run: `npx vitest run test/geometry test/sequence --root packages/core`
+Expected: FAIL: no `~`, and `formatExactLength` is not exported.
+
+- [ ] **Step 3: Implement**
+
+In `packages/core/src/geometry/format.ts`, import `toNm` from `./precision.ts`, and change `formatLength`:
+
+```ts
+export function formatLength(value: number, units: Units, display: DisplayPrecision = DEFAULT_DISPLAY): string {
+  const text = units === "in" ? formatInches(value, display.inch) : formatMillimetres(value, display.mm);
+  return toNm(Math.abs(value), units) % gridStep(units, display) === 0 ? text : `~${text}`;
+}
+
+function gridStep(units: Units, display: DisplayPrecision): number {
+  if (units === "mm") return Math.round(display.mm * 1_000_000);
+  return display.inch === "decimal" ? 25_400 : 25_400_000 / display.inch;
+}
+
+/** A fraction to 1/64" or a decimal to 0.0001" in inches, and to 0.001 mm in millimetres, with ~ only past those digits. */
+export function formatExactLength(value: number, units: Units): string {
+  const nm = toNm(Math.abs(value), units);
+  if (units === "in" && nm % 396_875 === 0) return formatInches(value, 64);
+  const digits = units === "in" ? 4 : 3;
+  const step = units === "in" ? 2_540 : 1_000;
+  const text = trimZeros(Math.abs(value).toFixed(digits));
+  const sign = value < 0 && text !== "0" ? "-" : "";
+  const body = units === "in" ? `${sign}${text}"` : `${sign}${text} mm`;
+  return nm % step === 0 ? body : `~${body}`;
+}
+```
+
+The grid steps: 25,400,000 / 32 = 793,750 nm for 1/32"; 25,400 nm for 0.001"; 500,000 nm for 0.5 mm.
+
+In `packages/core/src/sequence/sequence.ts`, near line 186, keep the old groups: take the `~` off the setting in the key.
+
+```ts
+  return `${cut.tool?.id ?? ""}|${cut.kind}|${formatIn(ctx, cut.setting).replace(/^~/, "")}`;
+```
+
+In `apps/web/src/components/fields.tsx`, `LengthInput` shows its value with `formatExactLength(value, units)` in place of `formatLength(value, units, display)`. If `display` is then not used, take it out of the props of `LengthInput` and of its callers. `parseLength` reads a leading `~` (Task 1), so a value that the user does not change commits with no change.
+
+In `apps/web/src/components/CatalogDialog.tsx` near line 72, and in `packages/cli/src/commands/catalog.ts`, show the actual thickness with `formatExactLength(material.thickness, units)`. Keep the sizes as they are.
+
+- [ ] **Step 4: Run all the tests and update the expected texts**
+
+Run: `npx vitest run --root packages/core && npx vitest run --root packages/cli && npx vitest run --root apps/web && npm run e2e`
+
+Expected: FAIL in many tests that expect a rounded length. Update each expected text by hand. **Rule:** a change may only add `~` before a length, or (for an input or an actual thickness) show the exact value in place of the rounded one. If a test needs any other change, stop and report it. Tests in millimetre projects at 0.5 mm need few changes. Tests in inch projects converted from millimetres need many.
+
+After the update, run the same commands again. Expected: PASS.
+
+- [ ] **Step 5: Update the docs**
+
+In `docs/web-app.md` and `docs/cli.md`, where the docs tell how lengths show, add: "A length that the display rounds starts with `~`, for example `~13 3/16"`. A length field shows the exact value, as a fraction to 1/64" or a decimal to 0.0001"." In `docs/format.md`, in the `display` row, add: "A rounded value shows with `~`." Change any example output in the docs that now has `~`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add packages apps/web docs
+git commit -m "Show ~ before a rounded length, and show the exact length in the fields and the catalogue thicknesses
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 3: Exact store fractions in the catalogue
+
+**Files:**
+- Modify: `packages/core/src/catalog/data.ts`
+- Modify: `packages/core/test/catalog/data.test.ts`, `packages/core/test/catalog/catalog.test.ts`, `packages/cli/test/catalog.test.ts`
+- Modify: `docs/catalog.md`
+
+**Interfaces:**
+- Consumes: nothing new.
+- Produces: catalogue thicknesses that are exact 64ths where the store gives a rounded 64th, for example `thicknessIn: 45 / 64` (0.703125) in place of 0.703.
+
+Background. A store gives `0.703"` for a 45/64" sheet: the number is the fraction, rounded to 3 places. The catalogue now stores the fraction. Then the sum of five panels is exact, and the app can show `45/64"`.
+
+- [ ] **Step 1: Write the failing test**
+
+Add to `packages/core/test/catalog/data.test.ts`:
+
+```ts
+  it("gives a thickness that is a rounded 64th of an inch as the exact 64th", () => {
+    for (const material of CATALOG) {
+      const t = material.thicknessIn;
+      const near = Math.round(t * 64) / 64;
+      if (Math.abs(t - near) <= 0.0005) expect(t, material.id).toBe(near);
+    }
+  });
+```
+
+- [ ] **Step 2: Run the test to see it fail**
+
+Run: `npx vitest run test/catalog/data.test.ts --root packages/core`
+Expected: FAIL for `birch-ply-3-4` and others: 0.703 is not 0.703125.
+
+- [ ] **Step 3: Change the data**
+
+In `packages/core/src/catalog/data.ts`, change each such `thicknessIn` to a fraction literal. Do not change `thicknessMm`.
+
+| Now | New |
+|---|---|
+| `0.188` | `3 / 16` |
+| `0.203` | `13 / 64` |
+| `0.234` | `15 / 64` |
+| `0.438` | `7 / 16` |
+| `0.469` | `15 / 32` |
+| `0.688` | `11 / 16` |
+| `0.703` | `45 / 64` |
+| `0.719` | `23 / 32` |
+| `0.734` | `47 / 64` |
+
+Do not change a thickness that is not within 0.0005" of a 64th, for example `0.22`, `0.236`, `0.205`, or `0.709`. Those are decimal or metric products.
+
+- [ ] **Step 4: Update the tests and the docs**
+
+In `packages/core/test/catalog/catalog.test.ts`, the first `catalogFor` test expects `thickness: 45 / 64`. In `packages/cli/test/catalog.test.ts`, the two places that expect `thickness: 0.703` expect `45 / 64`. Search the tests for the other values in the table (`grep -rn "0\.703\|0\.188\|0\.469\|0\.438\|0\.688\|0\.719\|0\.734\|0\.234\|0\.203" packages apps/web --include="*.ts" --include="*.tsx"`) and change a value only where it comes from the catalogue.
+
+In `docs/catalog.md`, after the line that says the thickness is the actual thickness, add: "When the store gives a thickness that is a 64th of an inch rounded to 3 places, for example 0.703", the catalogue stores the fraction (`45 / 64`). The data test checks this."
+
+- [ ] **Step 5: Run the tests**
+
+Run: `npx vitest run --root packages/core && npx vitest run --root packages/cli && npx vitest run --root apps/web`
+Expected: PASS.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add packages docs/catalog.md
+git commit -m "Store the catalogue thicknesses that stores round from a 64th as the exact fraction
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 4: Missing sheet thicknesses in the catalogue
 
 **Files:**
 - Modify: `packages/core/src/catalog/data.ts`
@@ -59,7 +493,7 @@
 
 - [ ] **Step 1: Research the listings**
 
-Use WebSearch and WebFetch on homedepot.com and lowes.com. For each product in the table, find the product pages at both stores. Record, for each page: the actual thickness (titles often say "Actual 0.703 in."), each sheet size, the price (or `null` when the page shows none), the page address, and today's date (`date +%F`). Also record the sizes of the existing materials that a store sells and the catalogue does not have (for example a 2 × 4 ft or 4 × 4 ft panel). Write the findings to the scratchpad as TypeScript entries in the shape of `data.ts`:
+Use WebSearch and WebFetch on homedepot.com and lowes.com. For each product in the table, find the product pages at both stores. Record, for each page: the actual thickness (titles often say "Actual 0.703 in."), each sheet size, the price (or `null` when the page shows none), the page address, and today's date (`date +%F`). Also record the sizes of the existing materials that a store sells and the catalogue does not have (for example a 2 × 4 ft or 4 × 4 ft panel). Write the findings to the scratchpad as TypeScript entries in the shape of `data.ts`. When a thickness is within 0.0005" of a 64th, write the fraction (for example `thicknessIn: 23 / 32` for 0.719"); the data test of Task 3 checks this:
 
 ```ts
   {
@@ -87,7 +521,7 @@ Use WebSearch and WebFetch on homedepot.com and lowes.com. For each product in t
   },
 ```
 
-(The numbers above show the shape only. Use the values from the pages.) When neither store sells a product, leave it out and add it to a list of left-out products. Task 12 puts that list in the backlog. When the page gives no actual thickness, use the nominal value, and write the note `The thickness is the nominal X; the actual thickness is not checked.`, as `pine-ply-15-32` does.
+(The numbers above show the shape only. Use the values from the pages.) When neither store sells a product, leave it out and add it to a list of left-out products. Task 15 puts that list in the backlog. When the page gives no actual thickness, use the nominal value, and write the note `The thickness is the nominal X; the actual thickness is not checked.`, as `pine-ply-15-32` does.
 
 - [ ] **Step 2: Write the failing test**
 
@@ -127,7 +561,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 2: Pine 1x boards in the catalogue
+### Task 5: Pine 1x boards in the catalogue
 
 **Files:**
 - Modify: `packages/core/src/catalog/types.ts` (the `edges` field)
@@ -273,7 +707,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 3: 2x framing lumber in the catalogue
+### Task 6: 2x framing lumber in the catalogue
 
 **Files:**
 - Create: `packages/core/src/catalog/framing-lumber.ts`
@@ -281,7 +715,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Modify: `packages/core/test/catalog/data.test.ts`
 
 **Interfaces:**
-- Consumes: `CatalogMaterial.edges` (Task 2).
+- Consumes: `CatalogMaterial.edges` (Task 5).
 - Produces: `FRAMING_LUMBER: readonly CatalogMaterial[]`; the id `whitewood-2x`; size ids such as `whitewood-2x-2x4-8ft` and `whitewood-2x-2x4-92-5-8in`; the family `Framing lumber`.
 
 - [ ] **Step 1: Write the failing test**
@@ -354,7 +788,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 4: Boards from the catalogue keep their factory edges
+### Task 7: Boards from the catalogue keep their factory edges
 
 **Files:**
 - Modify: `packages/core/src/catalog/catalog.ts` (`addCatalogStock`)
@@ -364,7 +798,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Modify: `docs/catalog.md`
 
 **Interfaces:**
-- Consumes: `CatalogMaterial.edges`, `common-pine-1x`, `whitewood-2x` (Tasks 2 and 3).
+- Consumes: `CatalogMaterial.edges`, `common-pine-1x`, `whitewood-2x` (Tasks 5 and 6).
 - Produces: stock with `trim: 0` for a size of a material with `edges: "factory"`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -381,7 +815,7 @@ In `packages/core/test/catalog/catalog.test.ts`, in the `describe` of `addCatalo
   });
 ```
 
-If the size `common-pine-1x-1x4-8ft` does not exist after Task 2, use another `common-pine-1x` size that exists.
+If the size `common-pine-1x-1x4-8ft` does not exist after Task 5, use another `common-pine-1x` size that exists.
 
 In `packages/core/test/catalog/suggest.test.ts`:
 
@@ -439,7 +873,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 5: File format 1.9 with `measured` on a material
+### Task 8: File format 1.9 with `measured` on a material
 
 **Files:**
 - Modify: `packages/core/src/format/schema.ts` (`FORMAT_VERSION`, `MaterialSchema`)
@@ -472,7 +906,7 @@ describe("updateMaterial and measured", () => {
 
   it("keeps measured when the patch sets it with the thickness", () => {
     const id = withMeasured().materials[0]!.id;
-    expect(updateMaterial(withMeasured(), id, { thickness: 0.703, measured: true }).materials[0]).toMatchObject({ thickness: 0.703, measured: true });
+    expect(updateMaterial(withMeasured(), id, { thickness: 45 / 64, measured: true }).materials[0]).toMatchObject({ thickness: 45 / 64, measured: true });
   });
 
   it("keeps measured through a change of units and back", () => {
@@ -596,7 +1030,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 6: The nominal thickness rule
+### Task 9: The nominal thickness rule
 
 **Files:**
 - Create: `packages/core/src/catalog/nominal.ts`
@@ -605,12 +1039,11 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Modify: `packages/core/test/catalog/data.test.ts`
 
 **Interfaces:**
-- Consumes: `CATALOG` (`data.ts`), `Material.measured` (Task 5), `formatLength` (`packages/core/src/geometry/format.ts`).
+- Consumes: `CATALOG` (`data.ts`), `Material.measured` (Task 8), `formatLength` and `formatExactLength` (Task 2).
 - Produces:
 
 ```ts
 export const NOMINAL_TOLERANCE_IN = 0.005;
-export const ACTUAL_DISPLAY: DisplayPrecision; // { inch: "decimal", mm: 0.1 }
 export function nominalInches(nominal: string): number | null;
 export interface NominalThickness { nominal: string; value: number; likely: number[] }
 export function nominalThickness(project: Project, materialId: string): NominalThickness | null;
@@ -644,11 +1077,11 @@ describe("nominalInches", () => {
 
 describe("nominalThickness", () => {
   it("gives the likely actual thicknesses of 3/4 inch, the most common first, then in catalogue order", () => {
-    expect(nominalThickness(project([ply()]), "ply")).toEqual({ nominal: '3/4"', value: 0.75, likely: [0.703, 0.688, 0.719, 0.734] });
+    expect(nominalThickness(project([ply()]), "ply")).toEqual({ nominal: '3/4"', value: 0.75, likely: [45 / 64, 11 / 16, 23 / 32, 47 / 64] });
   });
 
   it("gives the likely thicknesses of 1/2 inch, 1x, and 2x", () => {
-    expect(nominalThickness(project([ply({ thickness: 0.5 })]), "ply")!.likely).toEqual([0.469, 0.438]);
+    expect(nominalThickness(project([ply({ thickness: 0.5 })]), "ply")!.likely).toEqual([15 / 32, 7 / 16]);
     expect(nominalThickness(project([ply({ thickness: 1 })]), "ply")).toEqual({ nominal: "1x", value: 1, likely: [0.75] });
     expect(nominalThickness(project([ply({ thickness: 2 })]), "ply")).toEqual({ nominal: "2x", value: 2, likely: [1.5] });
   });
@@ -660,7 +1093,7 @@ describe("nominalThickness", () => {
 
   it("gives nothing in a millimetre project, for a thickness that is not nominal, or for a measured material", () => {
     expect(nominalThickness(project([ply({ thickness: 19.05 })], "mm"), "ply")).toBeNull();
-    expect(nominalThickness(project([ply({ thickness: 0.703 })]), "ply")).toBeNull();
+    expect(nominalThickness(project([ply({ thickness: 45 / 64 })]), "ply")).toBeNull();
     expect(nominalThickness(project([ply({ measured: true })]), "ply")).toBeNull();
     expect(nominalThickness(project([ply()]), "gone")).toBeNull();
   });
@@ -677,8 +1110,8 @@ describe("nominalThickness", () => {
   });
 
   it("warns for a measured value that is equal to another nominal value, until the material is measured", () => {
-    expect(nominalThickness(project([ply({ thickness: 0.188 })]), "ply")).toMatchObject({ nominal: '3/16"' });
-    expect(nominalThickness(project([ply({ thickness: 0.188, measured: true })]), "ply")).toBeNull();
+    expect(nominalThickness(project([ply({ thickness: 3 / 16 })]), "ply")).toMatchObject({ nominal: '3/16"' });
+    expect(nominalThickness(project([ply({ thickness: 3 / 16, measured: true })]), "ply")).toBeNull();
   });
 
   it("gives no likely thickness that is equal to the nominal value", () => {
@@ -691,8 +1124,8 @@ describe("nominalThickness", () => {
 
 describe("nominalThicknessText", () => {
   it("names the nominal thickness and at most two likely thicknesses", () => {
-    expect(nominalThicknessText(project([ply()]), "ply")).toBe('3/4" is a nominal thickness. Stock sold as 3/4" is often 0.703" or 0.688" thick.');
-    expect(nominalThicknessText(project([ply({ thickness: 1 })]), "ply")).toBe('1" is a nominal thickness. Stock sold as 1x is often 0.75" thick.');
+    expect(nominalThicknessText(project([ply()]), "ply")).toBe('3/4" is a nominal thickness. Stock sold as 3/4" is often 45/64" or 11/16" thick.');
+    expect(nominalThicknessText(project([ply({ thickness: 1 })]), "ply")).toBe('1" is a nominal thickness. Stock sold as 1x is often 3/4" thick.');
     expect(nominalThicknessText(project([ply({ measured: true })]), "ply")).toBeNull();
   });
 });
@@ -704,7 +1137,7 @@ describe("catalogue nominal values", () => {
 });
 ```
 
-The expected `likely` lists come from the data of 2026-10-04. If Task 1 added a material that changes a list, work out the new list by hand with the rule in Step 3 (count each thickness, most common first, ties in catalogue order), and use that list.
+The expected `likely` lists come from the data of 2026-10-04. If Task 4 added a material that changes a list, work out the new list by hand with the rule in Step 3 (count each thickness, most common first, ties in catalogue order), and use that list.
 
 - [ ] **Step 2: Run the tests to see them fail**
 
@@ -717,11 +1150,10 @@ Create `packages/core/src/catalog/nominal.ts`:
 
 ```ts
 import type { Material, Project } from "../format/schema.ts";
-import { formatLength, type DisplayPrecision } from "../geometry/format.ts";
+import { formatExactLength } from "../geometry/format.ts";
 import { CATALOG } from "./data.ts";
 
 export const NOMINAL_TOLERANCE_IN = 0.005;
-export const ACTUAL_DISPLAY: DisplayPrecision = { inch: "decimal", mm: 0.1 };
 
 export interface NominalThickness {
   /** For example `3/4"` or `1x`. */
@@ -764,13 +1196,13 @@ export function nominalThickness(project: Project, materialId: string): NominalT
   return { nominal: matches[0]!.nominal.replace(/\s*\(.*\)$/, ""), value, likely };
 }
 
-/** For example `3/4" is a nominal thickness. Stock sold as 3/4" is often 0.703" or 0.688" thick.` */
+/** For example `3/4" is a nominal thickness. Stock sold as 3/4" is often 45/64" or 11/16" thick.` */
 export function nominalThicknessText(project: Project, materialId: string): string | null {
   const result = nominalThickness(project, materialId);
   if (!result) return null;
   const material = project.materials.find((item) => item.id === materialId)!;
-  const likely = result.likely.slice(0, 2).map((value) => formatLength(value, "in", ACTUAL_DISPLAY));
-  return `${formatLength(material.thickness, "in", project.settings.display)} is a nominal thickness. Stock sold as ${result.nominal} is often ${likely.join(" or ")} thick.`;
+  const likely = result.likely.slice(0, 2).map((value) => formatExactLength(value, "in"));
+  return `${formatExactLength(material.thickness, "in")} is a nominal thickness. Stock sold as ${result.nominal} is often ${likely.join(" or ")} thick.`;
 }
 ```
 
@@ -783,7 +1215,7 @@ export * from "./catalog/nominal.ts";
 - [ ] **Step 4: Run the tests**
 
 Run: `npx vitest run --root packages/core`
-Expected: PASS. If `1" is a nominal thickness` fails because the default display gives another text for 1, check `formatLength(1, "in")` and use its output.
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -796,7 +1228,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 7: The thickness options of the catalogue
+### Task 10: The thickness options of the catalogue
 
 **Files:**
 - Create: `packages/core/src/catalog/thicknesses.ts`
@@ -843,8 +1275,8 @@ describe("catalogThicknesses", () => {
 
   it("gives one option for each nominal value and thickness, thin to thick, with the short names", () => {
     const hardwood = catalogThicknesses("in").find((group) => group.family === "Hardwood plywood")!;
-    expect(hardwood.options).toContainEqual({ nominal: '3/4"', thickness: 0.703, materials: ["Birch", "Red oak", "Maple", "Sanded"] });
-    expect(hardwood.options).toContainEqual({ nominal: '1/4"', thickness: 0.188, materials: ["Birch", "Red oak"] });
+    expect(hardwood.options).toContainEqual({ nominal: '3/4"', thickness: 45 / 64, materials: ["Birch", "Red oak", "Maple", "Sanded"] });
+    expect(hardwood.options).toContainEqual({ nominal: '1/4"', thickness: 3 / 16, materials: ["Birch", "Red oak"] });
     expect(hardwood.options).toContainEqual({ nominal: '1/4"', thickness: 0.22, materials: ["Maple"] });
     const thicknesses = hardwood.options.map((option) => option.thickness);
     expect(thicknesses).toEqual(thicknesses.toSorted((a, b) => a - b));
@@ -868,15 +1300,15 @@ describe("catalogThicknesses", () => {
 
 describe("sameThickness", () => {
   it("uses the catalogue tolerance", () => {
-    expect(sameThickness(0.703, 0.707, "in")).toBe(true);
-    expect(sameThickness(0.703, 0.709, "in")).toBe(false);
+    expect(sameThickness(45 / 64, 0.707, "in")).toBe(true);
+    expect(sameThickness(45 / 64, 0.709, "in")).toBe(false);
     expect(sameThickness(18, 18.1, "mm")).toBe(true);
     expect(sameThickness(18, 18.2, "mm")).toBe(false);
   });
 });
 ```
 
-If Task 1 added a material that changes the 3/4" or 1/4" hardwood options (for example a 1/8" birch is a new option, which is fine), keep the expectations that are still true and update the others.
+If Task 4 added a material that changes the 3/4" or 1/4" hardwood options (for example a 1/8" birch is a new option, which is fine), keep the expectations that are still true and update the others.
 
 - [ ] **Step 2: Run the tests to see them fail**
 
@@ -959,7 +1391,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 8: A design check for a nominal thickness
+### Task 11: A design check for a nominal thickness
 
 **Files:**
 - Modify: `packages/core/src/plan/issues.ts` (`PlanIssueCode`)
@@ -967,7 +1399,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Modify: `packages/core/test/design/checks.test.ts`
 
 **Interfaces:**
-- Consumes: `nominalThickness`, `ACTUAL_DISPLAY` (Task 6), `designGeometry` (existing).
+- Consumes: `nominalThickness` (Task 9), `formatExactLength`, `toNm`, `fromNm` (Tasks 1 and 2), `designGeometry` (existing).
 - Produces: a `warning` with the code `"nominal-thickness"` and a `design` ref.
 
 - [ ] **Step 1: Write the failing tests**
@@ -987,32 +1419,32 @@ describe("the nominal-thickness check", () => {
     expect(issues).toHaveLength(1);
     expect(issues[0]).toMatchObject({ severity: "warning", refs: [{ kind: "design", design: "kx" }] });
     expect(issues[0]!.message).toBe(
-      'Design "Hall KALLAX" uses Plywood 3/4 at 3/4", a nominal thickness. If the stock is 0.703", the error across the height adds up to 1/4". Measure the stock, or pick its thickness on the Stock tab.',
+      'Design "Hall KALLAX" uses Plywood 3/4 at 3/4", a nominal thickness. If the stock is 45/64", the error across the height adds up to 15/64". Measure the stock, or pick its thickness on the Stock tab.',
     );
   });
 
   it("gives the error across the width for a design with outside sizes", () => {
     const issues = nominal(inches(eketDesign(), { ply18: { name: "Plywood 3/4", thickness: 0.75 } }));
-    expect(issues[0]!.message).toContain("the error across the width adds up to 5/32\".");
+    expect(issues[0]!.message).toContain("the error across the width adds up to 9/64\".");
   });
 
   it("warns about the back, with the error in the depth", () => {
     const issues = nominal(inches(eketDesign(), { ply6: { name: "Back 1/4", thickness: 0.25 } }));
     expect(issues).toHaveLength(1);
     expect(issues[0]!.message).toBe(
-      'Design "Wall EKET" has a back of Back 1/4 at 1/4", a nominal thickness. If the stock is 0.188", the depth of the box is off by 1/16". Measure the stock, or pick its thickness on the Stock tab.',
+      'Design "Wall EKET" has a back of Back 1/4 at 1/4", a nominal thickness. If the stock is 3/16", the depth of the box is off by 1/16". Measure the stock, or pick its thickness on the Stock tab.',
     );
   });
 
   it("gives nothing for measured stock, actual stock, or a millimetre project", () => {
     expect(nominal(inches(kallaxDesign(), { ply18: { name: "Plywood 3/4", thickness: 0.75, measured: true } }))).toEqual([]);
-    expect(nominal(inches(kallaxDesign(), { ply18: { name: "Plywood 3/4", thickness: 0.703 } }))).toEqual([]);
+    expect(nominal(inches(kallaxDesign(), { ply18: { name: "Plywood 3/4", thickness: 45 / 64 } }))).toEqual([]);
     expect(nominal(current(kallaxDesign()))).toEqual([]);
   });
 });
 ```
 
-The numbers: the KALLAX has 2 columns and 4 rows, so the width has 3 panels and the height has 5. The difference is 0.75 − 0.703 = 0.047; 5 × 0.047 = 0.235, which shows as `1/4"` at 1/32". The EKET has 2 columns and 1 row (outside sizes): 3 × 0.047 = 0.141, which shows as `5/32"`. The back: 0.25 − 0.188 = 0.062, which shows as `1/16"`.
+The numbers: the KALLAX has 2 columns and 4 rows, so the width has 3 panels and the height has 5. The difference is 3/4 − 45/64 = 3/64"; 5 × 3/64 = 15/64". The EKET has 2 columns and 1 row (outside sizes): 3 × 3/64 = 9/64". The back: 1/4 − 3/16 = 1/16". The check works in whole nanometres, so the sums are exact, and `formatExactLength` shows them as fractions.
 
 - [ ] **Step 2: Run the tests to see them fail**
 
@@ -1023,20 +1455,20 @@ Expected: FAIL: no `nominal-thickness` issue.
 
 In `packages/core/src/plan/issues.ts`, add `| "nominal-thickness"` to `PlanIssueCode`, after `"design-unknown-mount"`.
 
-In `packages/core/src/design/checks.ts`, import `nominalThickness` and `ACTUAL_DISPLAY` from `../catalog/nominal.ts`. In `checkDesigns`, add after the `pocket-chart` check:
+In `packages/core/src/design/checks.ts`, import `nominalThickness` from `../catalog/nominal.ts`, `formatExactLength` from `../geometry/format.ts`, and `toNm` and `fromNm` from `../geometry/precision.ts`. In `checkDesigns`, add after the `pocket-chart` check:
 
 ```ts
-    const actual = (value: number) => formatLength(value, units, ACTUAL_DISPLAY);
+    const exact = (value: number) => formatExactLength(value, units);
+    const error = (a: number, b: number, panels: number) => fromNm(Math.abs(toNm(a, units) - toNm(b, units)) * panels, units);
     const advice = "Measure the stock, or pick its thickness on the Stock tab.";
     const boxNominal = nominalThickness(project, design.material);
     if (boxNominal) {
-      const difference = Math.abs(geometry.thickness - boxNominal.likely[0]!);
       const across = geometry.rows.length > geometry.columns.length ? "height" : "width";
       const panels = (across === "height" ? geometry.rows.length : geometry.columns.length) + 1;
       issues.push(
         planWarning(
           "nominal-thickness",
-          `${name} uses ${materials.get(design.material)!.name} at ${show(geometry.thickness)}, a nominal thickness. If the stock is ${actual(boxNominal.likely[0]!)}, the error across the ${across} adds up to ${show(panels * difference)}. ${advice}`,
+          `${name} uses ${materials.get(design.material)!.name} at ${exact(geometry.thickness)}, a nominal thickness. If the stock is ${exact(boxNominal.likely[0]!)}, the error across the ${across} adds up to ${exact(error(geometry.thickness, boxNominal.likely[0]!, panels))}. ${advice}`,
           ref,
         ),
       );
@@ -1047,7 +1479,7 @@ In `packages/core/src/design/checks.ts`, import `nominalThickness` and `ACTUAL_D
       issues.push(
         planWarning(
           "nominal-thickness",
-          `${name} has a back of ${backMaterial.name} at ${show(backMaterial.thickness)}, a nominal thickness. If the stock is ${actual(backNominal.likely[0]!)}, the depth of the box is off by ${show(Math.abs(backMaterial.thickness - backNominal.likely[0]!))}. ${advice}`,
+          `${name} has a back of ${backMaterial.name} at ${exact(backMaterial.thickness)}, a nominal thickness. If the stock is ${exact(backNominal.likely[0]!)}, the depth of the box is off by ${exact(error(backMaterial.thickness, backNominal.likely[0]!, 1))}. ${advice}`,
           ref,
         ),
       );
@@ -1072,7 +1504,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 9: The nominal warning and `--measured` in the CLI
+### Task 12: The nominal warning and `--measured` in the CLI
 
 **Files:**
 - Modify: `packages/cli/src/project.ts` (`Mutation.warnings`)
@@ -1081,7 +1513,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Modify: `docs/cli.md`, `README.md` (the examples)
 
 **Interfaces:**
-- Consumes: `nominalThickness`, `nominalThicknessText` (Task 6); `updateMaterial` with `measured` (Task 5).
+- Consumes: `nominalThickness`, `nominalThicknessText` (Task 9); `updateMaterial` with `measured` (Task 8).
 - Produces: `materials list --json` → each material has `nominal` (`NominalThickness | null`); `materials get --json` → `nominal`; `materials add|set` → `warnings` has `warning: nominal-thickness: <text>`; the option `--measured <true|false>` on `materials add` and `materials set`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1094,7 +1526,7 @@ describe("materials and nominal thickness", () => {
     const io = withExamples();
     const added = await cli(["materials", "add", SHELF, "--name", "Plywood 3/4", "--thickness", "3/4", "--json"], io);
     expect(added.code).toBe(0);
-    expect(added.json().warnings).toContainEqual(expect.stringContaining('nominal-thickness: 3/4" is a nominal thickness. Stock sold as 3/4" is often 0.703" or 0.688" thick.'));
+    expect(added.json().warnings).toContainEqual(expect.stringContaining('nominal-thickness: 3/4" is a nominal thickness. Stock sold as 3/4" is often 45/64" or 11/16" thick.'));
     const measured = await cli(["materials", "add", SHELF, "--name", "Shop MDF", "--thickness", "3/4", "--measured", "true", "--json"], io);
     expect(measured.json().material).toMatchObject({ name: "Shop MDF", measured: true });
     expect(measured.json().warnings).not.toContainEqual(expect.stringContaining("nominal-thickness"));
@@ -1196,7 +1628,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 10: The thickness picker and the warning on the Stock tab
+### Task 13: The thickness picker and the warning on the Stock tab
 
 **Files:**
 - Create: `apps/web/src/components/ThicknessPicker.tsx`
@@ -1206,7 +1638,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Modify: `docs/web-app.md`
 
 **Interfaces:**
-- Consumes: `catalogThicknesses`, `sameThickness` (Task 7); `nominalThickness`, `nominalThicknessText`, `ACTUAL_DISPLAY` (Task 6); `updateMaterial` with `measured` (Task 5).
+- Consumes: `catalogThicknesses`, `sameThickness` (Task 10); `nominalThickness`, `nominalThicknessText` (Task 9); `formatExactLength` (Task 2); `updateMaterial` with `measured` (Task 8).
 - Produces: `ThicknessPicker({ name, value, units, onPick })`; on the Stock tab, the select `Pick the thickness of <name>` and the checkbox `<name> thickness is measured`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1217,13 +1649,13 @@ Add to the `describe("StockTab")` in `apps/web/test/screens.test.tsx` (add `type
   it("warns about a nominal thickness, and a pick sets the actual thickness and measured", async () => {
     const { current } = renderWithStore(sampleProject(), (store) => <StockTab store={store} />);
     const status = () => screen.getByRole("table", { name: "Materials" }).querySelector(".material-status")!.textContent;
-    expect(status()).toContain('⚠ 3/4" is a nominal thickness. Stock sold as 3/4" is often 0.703" or 0.688" thick. Measure it, or pick it from the list.');
+    expect(status()).toContain('⚠ 3/4" is a nominal thickness. Stock sold as 3/4" is often 45/64" or 11/16" thick. Measure it, or pick it from the list.');
     const picker = screen.getByRole("combobox", { name: "Pick the thickness of Plywood" });
     expect((picker as HTMLSelectElement).value).toBe("");
-    const option = within(picker).getAllByRole("option").find((item) => item.textContent!.startsWith('3/4" → 0.703"'))!;
-    expect(option.textContent).toBe('3/4" → 0.703" (Birch, Red oak, Maple, Sanded)');
+    const option = within(picker).getAllByRole("option").find((item) => item.textContent!.startsWith('3/4" → 45/64"'))!;
+    expect(option.textContent).toBe('3/4" → 45/64" (Birch, Red oak, Maple, Sanded)');
     await userEvent.selectOptions(picker, option);
-    expect(current().project.materials[0]).toMatchObject({ thickness: 0.703, measured: true });
+    expect(current().project.materials[0]).toMatchObject({ thickness: 45 / 64, measured: true });
     expect(status()).not.toContain("nominal thickness");
     expect((screen.getByRole("combobox", { name: "Pick the thickness of Plywood" }) as HTMLSelectElement).selectedOptions[0]!.textContent).toBe(option.textContent);
   });
@@ -1242,7 +1674,7 @@ Add to the `describe("StockTab")` in `apps/web/test/screens.test.tsx` (add `type
 
   it("hides Measured for an actual thickness", () => {
     const project = sampleProject();
-    renderWithStore({ ...project, materials: [{ ...project.materials[0]!, thickness: 0.703 }] }, (store) => <StockTab store={store} />);
+    renderWithStore({ ...project, materials: [{ ...project.materials[0]!, thickness: 45 / 64 }] }, (store) => <StockTab store={store} />);
     expect(screen.queryByRole("checkbox", { name: "Plywood thickness is measured" })).toBeNull();
   });
 
@@ -1257,7 +1689,7 @@ Add to the `describe("StockTab")` in `apps/web/test/screens.test.tsx` (add `type
   });
 ```
 
-`sampleProject()` in `apps/web/test/helpers.ts` is an inch project with the material `Plywood` at 0.75". The option text `(Birch, Red oak, Maple, Sanded)` assumes that Task 1 added no 3/4" hardwood plywood; if it did, use the text that `catalogThicknesses` gives.
+`sampleProject()` in `apps/web/test/helpers.ts` is an inch project with the material `Plywood` at 0.75". The option text `(Birch, Red oak, Maple, Sanded)` assumes that Task 4 added no 3/4" hardwood plywood; if it did, use the text that `catalogThicknesses` gives.
 
 - [ ] **Step 2: Run the tests to see them fail**
 
@@ -1269,7 +1701,7 @@ Expected: FAIL: no picker, no warning.
 Create `apps/web/src/components/ThicknessPicker.tsx`:
 
 ```tsx
-import { ACTUAL_DISPLAY, catalogThicknesses, formatLength, sameThickness, type Units } from "@opencutplan/core";
+import { catalogThicknesses, formatExactLength, sameThickness, type Units } from "@opencutplan/core";
 
 interface ThicknessPickerProps {
   /** The material name, for the accessible name. */
@@ -1298,7 +1730,7 @@ export function ThicknessPicker({ name, value, units, onPick }: ThicknessPickerP
         <optgroup key={group.family} label={group.family}>
           {group.options.map((option, o) => (
             <option key={`${g}-${o}`} value={`${g}-${o}`}>
-              {`${option.nominal} → ${formatLength(option.thickness, units, ACTUAL_DISPLAY)} (${option.materials.join(", ")})`}
+              {`${option.nominal} → ${formatExactLength(option.thickness, units)} (${option.materials.join(", ")})`}
             </option>
           ))}
         </optgroup>
@@ -1376,13 +1808,13 @@ and in the narrow-screen block, after `table.grid.cards .material-status { min-w
 - [ ] **Step 6: Run the tests**
 
 Run: `npx vitest run --root apps/web`
-Expected: the new tests PASS. Old Stock tab tests that read the status of an inch material at 0.75" now see the warning (for example "shows one status line for each material…"). Update their expected text to the new text, for example `'Used by 2 parts · 1 size⚠ 3/4" is a nominal thickness. Stock sold as 3/4" is often 0.703" or 0.688" thick. Measure it, or pick it from the list.'`. Run again. Expected: PASS.
+Expected: the new tests PASS. Old Stock tab tests that read the status of an inch material at 0.75" now see the warning (for example "shows one status line for each material…"). Update their expected text to the new text, for example `'Used by 2 parts · 1 size⚠ 3/4" is a nominal thickness. Stock sold as 3/4" is often 45/64" or 11/16" thick. Measure it, or pick it from the list.'`. Run again. Expected: PASS.
 
 - [ ] **Step 7: Update `docs/web-app.md`**
 
 In the "### Stock" section, add:
 
-- The **Pick…** list beside each Thickness field gives the catalogue thicknesses by family, for example `3/4" → 0.703" (Birch, Red oak, Maple, Sanded)`. A pick sets the actual thickness and marks it as measured. It does not change the name, the grain, or the colour.
+- The **Pick…** list beside each Thickness field gives the catalogue thicknesses by family, for example `3/4" → 45/64" (Birch, Red oak, Maple, Sanded)`. A pick sets the actual thickness and marks it as measured. It does not change the name, the grain, or the colour.
 - In an inch project, a material at a nominal thickness, for example exactly 3/4", gets a warning with the likely actual thicknesses, unless it is a catalogue material. The **Measured** checkbox stops the warning. A typed thickness clears **Measured**.
 - A design whose material has the warning gets the check `nominal-thickness`, with the size of the error.
 
@@ -1397,13 +1829,13 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 11: End-to-end test of the picker and the design
+### Task 14: End-to-end test of the picker and the design
 
 **Files:**
 - Modify: `apps/web/e2e/plan.e2e.ts`
 
 **Interfaces:**
-- Consumes: the Stock tab controls of Task 10; the Design tab front view (existing).
+- Consumes: the Stock tab controls of Task 13; the Design tab front view (existing).
 
 - [ ] **Step 1: Write the test**
 
@@ -1423,7 +1855,7 @@ test("picks an actual thickness on the Stock tab, and the design follows it", as
   await expect(materials.getByText(/1\/4" is a nominal thickness/)).toBeVisible();
 
   const picker = page.getByRole("combobox", { name: "Pick the thickness of Plywood", exact: true });
-  const value = await picker.locator("option", { hasText: /^3\/4" → 0\.703"/ }).first().getAttribute("value");
+  const value = await picker.locator("option", { hasText: /^3\/4" → 45\/64"/ }).first().getAttribute("value");
   await picker.selectOption(value!);
   await expect(materials.getByText(/3\/4" is a nominal thickness/)).toHaveCount(0);
 
@@ -1435,7 +1867,7 @@ test("picks an actual thickness on the Stock tab, and the design follows it", as
 });
 ```
 
-The sizes: a new inch project gets `Plywood` at 0.75" and `Plywood 1/4"` at 0.25". The KALLAX 2x2 has two openings of 13.189" on each axis: 2 × 13.189 + 3 × 0.75 = 28 5/8", and 2 × 13.189 + 3 × 0.703 = 28 1/2". The depth does not change, because the back stays at 0.25".
+The sizes: a new inch project gets `Plywood` at 0.75" and `Plywood 1/4"` at 0.25". The KALLAX 2x2 has two openings of 13.189" on each axis: 2 × 13.189 + 3 × 3/4 = 28.628" (`~28 5/8"`), and 2 × 13.189 + 3 × 45/64 = 28.487" (`~28 1/2"`). The depth does not change, because the back stays at 1/4". The front-view names show the sizes with the project display, so check them with `formatLength` after Task 2: if a size starts with `~`, put the `~` in the expected name.
 
 - [ ] **Step 2: Run it**
 
@@ -1453,7 +1885,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 12: The backlog, the full checks, and a look at the app
+### Task 15: The backlog, the full checks, and a look at the app
 
 **Files:**
 - Modify: `docs/backlog.md`
@@ -1486,7 +1918,7 @@ hand, and the catalogue has no boards and no 3/8" or 5/8" sheets.
   rips on boards.
 ```
 
-Add one line to "Not done" for each product that Task 1 left out, for example "White hardboard 1/8" (no store sold it on 2026-10-04)".
+Add one line to "Not done" for each product that Task 4 left out, for example "White hardboard 1/8" (no store sold it on 2026-10-04)".
 
 - [ ] **Step 2: Update the README feature list**
 
