@@ -285,3 +285,27 @@ async function readDownload(download: { createReadStream(): Promise<NodeJS.Reada
   for await (const chunk of await download.createReadStream()) chunks.push(Buffer.from(chunk));
   return Buffer.concat(chunks).toString("utf8");
 }
+
+test("picks an actual thickness on the Stock tab, and the design follows it", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Name").fill("E2E thickness");
+  await page.getByRole("button", { name: "Create project" }).click();
+  await page.getByRole("button", { name: "Add design" }).click();
+  await expect(page.getByRole("img", { name: 'Front view of KALLAX 2x2: ~28 5/8" × ~28 5/8" × ~15 11/32"' })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Stock" }).click();
+  const materials = page.getByRole("table", { name: "Materials" });
+  await expect(materials.getByText(/3\/4" is a nominal thickness/)).toBeVisible();
+  await expect(materials.getByText(/1\/4" is a nominal thickness/)).toBeVisible();
+
+  const picker = page.getByRole("combobox", { name: "Pick the thickness of Plywood", exact: true });
+  const value = await picker.locator("option", { hasText: /^3\/4" → 45\/64"/ }).first().getAttribute("value");
+  await picker.selectOption(value!);
+  await expect(materials.getByText(/3\/4" is a nominal thickness/)).toHaveCount(0);
+
+  await page.getByRole("checkbox", { name: 'Plywood 1/4" thickness is measured' }).check();
+  await expect(materials.getByText(/is a nominal thickness/)).toHaveCount(0);
+
+  await page.getByRole("tab", { name: "Design" }).click();
+  await expect(page.getByRole("img", { name: 'Front view of KALLAX 2x2: ~28 1/2" × ~28 1/2" × ~15 11/32"' })).toBeVisible();
+});
