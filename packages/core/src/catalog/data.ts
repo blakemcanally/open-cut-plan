@@ -11,7 +11,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     thicknessIn: 1 / 8,
     thicknessMm: 3.2,
     grained: true,
-    notes: "Home Depot R/C C-2 birch hardwood plywood, model 1400140; it lists 0.125 in. Lowe's has no 1/8 in birch plywood; its 4 × 8 ft 1/8 in panels are lauan. The Home Depot page may be old.",
+    notes: "Home Depot R/C C-2 birch hardwood plywood, model 1400140; it lists 0.125 in. Lowe's has no 1/8 in birch plywood; its 4 × 8 ft 1/8 in panels are lauan.",
     sizes: [
       {
         id: "birch-ply-1-8-4x8",
@@ -208,7 +208,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     thicknessIn: 3 / 16,
     thicknessMm: 4.8,
     grained: true,
-    notes: 'Home Depot PureBond project panels and Lowe\'s SkyPly panels. The thickness comes from PureBond birch 1/4" and is not checked for oak. The Lowe\'s SkyPly 4 × 8 ft and 2 × 4 ft sizes are nominal. Lowe\'s 2 × 4 ft search results gave $25.88 and $28.98, so the price is not set.',
+    notes: 'Home Depot PureBond project panels and Lowe\'s SkyPly panels. The thickness comes from PureBond birch 1/4" and is not checked for oak. The Lowe\'s SkyPly 4 × 8 ft and 2 × 4 ft sizes are nominal. Lowe\'s 2 × 4 ft panels cost $25.88 to $28.98 on 2026-10-04, so the listing has no price.',
     sizes: [
       {
         id: "red-oak-ply-1-4-4x8",
@@ -264,7 +264,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     thicknessIn: 15 / 32,
     thicknessMm: 11.9,
     grained: true,
-    notes: "The thickness comes from PureBond birch 1/2\" and is not checked for oak. The Lowe's 4 × 8 ft price may be old.",
+    notes: "The thickness comes from PureBond birch 1/2\" and is not checked for oak.",
     sizes: [
       {
         id: "red-oak-ply-1-2-4x8",
@@ -526,7 +526,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     thicknessIn: 15 / 32,
     thicknessMm: 11.9,
     grained: true,
-    notes: "A lower-cost plywood with a hardwood (poplar) face. The thickness is not checked. The ProWood 2 × 4 ft panel page gives no actual thickness.",
+    notes: "A lower-cost plywood with a hardwood (poplar) face. The thickness is not checked. The ProWood 2 × 4 ft listing gives no actual thickness.",
     sizes: [
       {
         id: "sanded-ply-1-2-4x8",
@@ -810,7 +810,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     thicknessIn: 9 / 16,
     thicknessMm: 14.3,
     grained: true,
-    notes: "Fir sheathing. Home Depot lists 0.563 in and 48 × 96 in; Lowe's lists about 0.594 in and about 47.4 × 95.9 in, and the catalogue uses the Home Depot size. Neither store calls this panel CDX. Home Depot 4 × 8 ft: page 439606 is out of stock; SKU 407735 shows $30.98–$33.96, so the price is not set.",
+    notes: "Fir sheathing. Home Depot lists 0.563 in and 48 × 96 in; Lowe's lists about 0.594 in and about 47.4 × 95.9 in, and the catalogue uses the Home Depot size. Neither store calls this panel CDX. Home Depot 4 × 8 ft listings: item 439606 is out of stock, and SKU 407735 costs $30.98 to $33.96 on 2026-10-04, so the listing has no price.",
     sizes: [
       {
         id: "cdx-ply-19-32-4x8",
@@ -858,7 +858,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     thicknessIn: 15 / 64,
     thicknessMm: 5.9,
     grained: true,
-    notes: "Plytanium BC. Georgia-Pacific gives 0.234 in and a smallest size of 47 7/8 × 95 7/8 in. The Home Depot 2 × 4 ft and 2 × 2 ft panels list 0.224 in and 0.22 in (the 4 × 8 ft entry uses 15/64 in = 0.234). Home Depot 2 × 4 ft search results gave $11.22 and $16.98. Home Depot 2 × 2 ft search results gave $6.66–$9.98. Prices not set due to disagreement.",
+    notes: "Plytanium BC. Georgia-Pacific gives 0.234 in and a smallest size of 47 7/8 × 95 7/8 in. The Home Depot 2 × 4 ft and 2 × 2 ft panels list 0.224 in and 0.22 in (the 4 × 8 ft entry uses 15/64 in = 0.234). Home Depot 2 × 4 ft panels cost $11.22 to $16.98 on 2026-10-04. Home Depot 2 × 2 ft panels cost $6.66 to $9.98. Those listings have no price, because the prices differ.",
     sizes: [
       {
         id: "pine-ply-1-4-4x8",
@@ -903,7 +903,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     thicknessIn: 11 / 32,
     thicknessMm: 8.7,
     grained: true,
-    notes: "Plytanium BC (Home Depot) and BCX (Lowe's). The thickness is the nominal 11/32 in; the actual thickness is not checked. Lowe's and Georgia-Pacific list 0.328 in and about 47 7/8 × 95 7/8 in. Home Depot 4 × 8 ft: search results gave $21.73, $30.95, and $42.87, so the price is not set.",
+    notes: "Plytanium BC (Home Depot) and BCX (Lowe's). The thickness is the nominal 11/32 in; the actual thickness is not checked. Lowe's and Georgia-Pacific list 0.328 in and about 47 7/8 × 95 7/8 in. Home Depot 4 × 8 ft panels cost $21.73 to $42.87 on 2026-10-04, so the listing has no price.",
     sizes: [
       {
         id: "pine-ply-11-32-4x8",
@@ -1172,7 +1172,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     thicknessIn: 5 / 8,
     thicknessMm: 15.9,
     grained: false,
-    notes: "Home Depot and Lowe's list 0.625 in × 49 in × 97 in (Lowe's: 49 in × 8.083 ft). Neither page showed a price.",
+    notes: "Home Depot and Lowe's list 0.625 in × 49 in × 97 in (Lowe's: 49 in × 8.083 ft). Neither store shows a price.",
     sizes: [
       {
         id: "mdf-5-8-4x8",
@@ -1256,7 +1256,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     thicknessIn: 5 / 8,
     thicknessMm: 15.9,
     grained: false,
-    notes: "Underlayment-grade 4 × 8 ft sheets; both stores list 0.625 in × 48 in × 96 in. The ProWood 2 × 4 ft panel lists 0.59 in. Home Depot 2 × 4 ft search results gave $8.34–$15.62, so the price is not set. Lowe's 2 × 4 ft 5/8 in panel is no longer sold online.",
+    notes: "Underlayment-grade 4 × 8 ft sheets; both stores list 0.625 in × 48 in × 96 in. The ProWood 2 × 4 ft panel lists 0.59 in. Home Depot 2 × 4 ft panels cost $8.34 to $15.62 on 2026-10-04, so the listing has no price. Lowe's no longer sells the 2 × 4 ft 5/8 in panel online.",
     sizes: [
       {
         id: "particleboard-5-8-4x8",
@@ -1349,7 +1349,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     thicknessIn: 1 / 8,
     thicknessMm: 3.2,
     grained: false,
-    notes: "Eucalyptus white hardboard, smooth on one face. The thickness is the nominal 1/8 in; the actual thickness is not checked (Lowe's Eucatex Thrifty White lists about 0.11 in). The size is the nominal 48 × 96 in; the page gives no actual size. Home Depot 4 × 8 ft: search results gave $12.72, $14.33, and $14.48, so the price is not set.",
+    notes: "Eucalyptus white hardboard, smooth on one face. The thickness is the nominal 1/8 in; the actual thickness is not checked (Lowe's Eucatex Thrifty White lists about 0.11 in). The size is the nominal 48 × 96 in; the listing gives no actual size. Home Depot 4 × 8 ft panels cost $12.72 to $14.48 on 2026-10-04, so the listing has no price.",
     sizes: [
       {
         id: "hardboard-white-1-8-4x8",
@@ -1395,7 +1395,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     thicknessIn: 0.215,
     thicknessMm: 5.5,
     grained: false,
-    notes: "Not found at Home Depot or Lowe's. The thickness is typical and is not checked. No price.",
+    notes: "Neither Home Depot nor Lowe's lists it. The thickness is typical and is not checked. No price.",
     sizes: [
       {
         id: "hardboard-1-4-4x8",
@@ -1418,7 +1418,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     thicknessIn: 0.25,
     thicknessMm: 6.4,
     grained: false,
-    notes: "Tempered. No price found.",
+    notes: "Tempered. No price.",
     sizes: [
       {
         id: "pegboard-1-4-4x8",

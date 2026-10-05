@@ -125,7 +125,7 @@ files. `parts` also has `colors` and `group-color` for the colours of the layout
 | `stock save-offcuts <file>` | Adds the usable offcuts of the plan to the stock. | `opencutplan stock save-offcuts shelf.cutplan.json` |
 | `materials list <file>` | Lists the materials and the parts and stock that use them, with a status, for example "Used by 13 parts · 1 size · no price". | `opencutplan materials list shelf.cutplan.json` |
 | `materials get <file> <id>` | Shows one material. | `opencutplan materials get shelf.cutplan.json bb18` |
-| `materials add <file>` | Adds a material. `--catalog <id>` adds a catalogue material. `--measured true` says the thickness is a measured, actual thickness. | `opencutplan materials add shelf.cutplan.json --name "MDF 3/4" --thickness 3/4 --grained false` |
+| `materials add <file>` | Adds a material. `--catalog <id>` adds a catalogue material. `--measured true` says the thickness is a measured, actual thickness. | `opencutplan materials add shelf.cutplan.json --catalog mdf-3-4` |
 | `materials set <file> <id>` | Changes a material. `--measured true` says the thickness is a measured, actual thickness. | `opencutplan materials set shelf.cutplan.json bb18 --color "#d9b98c"` |
 | `materials remove <file> <id>...` | Removes materials. A material in use gives exit 1. | `opencutplan materials remove shelf.cutplan.json mdf-3-4` |
 | `tools list <file>` | Lists the saws in preference order. | `opencutplan tools list shelf.cutplan.json` |

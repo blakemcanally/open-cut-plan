@@ -10,7 +10,7 @@ export const PINE_BOARDS: readonly CatalogMaterial[] = [
     thicknessMm: 19.1,
     grained: true,
     edges: "factory",
-    notes: "Common boards. Home Depot lists most as Pine Common Board, but its 1x2, most 1x4, and 1x12 × 6 ft pages are whitewood (spruce-pine-fir), and some other pages may be whitewood too. Lowe's lists #2 southern yellow pine. The actual size of a 1x4 is 3/4 × 3 1/2 in. A price is set only when the search summary gave one price for the page. Seen ranges: 1x6 × 8 ft $11.95 to $13.28; 1x8 × 8 ft $17.65 to $18.78; 1x10 × 6 ft $9.22 to $16.55; 1x10 × 8 ft $12.84 to $23.23; 1x12 × 8 ft $26.48 to $29.98; 1x12 × 10 ft $29.98 to $36.58; 1x2 × 8 ft $4.41 to $4.87; 1x4 × 6 ft $6.71 to $7.32; 1x4 × 8 ft $8.38 to $8.85; 1x4 × 10 ft $10.98 to $12.53. No store lists a 1x3 common board with a page we could cite.",
+    notes: "Common boards. Home Depot lists most as Pine Common Board. Its 1x2, most 1x4, and 1x12 × 6 ft listings are whitewood (spruce-pine-fir), and some other listings may be whitewood too. Lowe's lists #2 southern yellow pine. The actual size of a 1x4 is 3/4 × 3 1/2 in. Prices differ between listings of one size, so a listing has a price only when its price is a single price. Price ranges on 2026-10-04: 1x6 × 8 ft $11.95 to $13.28; 1x8 × 8 ft $17.65 to $18.78; 1x10 × 6 ft $9.22 to $16.55; 1x10 × 8 ft $12.84 to $23.23; 1x12 × 8 ft $26.48 to $29.98; 1x12 × 10 ft $29.98 to $36.58; 1x2 × 8 ft $4.41 to $4.87; 1x4 × 6 ft $6.71 to $7.32; 1x4 × 8 ft $8.38 to $8.85; 1x4 × 10 ft $10.98 to $12.53. The catalogue has no 1x3 common board.",
     sizes: [
       {
         id: "common-pine-1x-1x12-12ft",
@@ -271,7 +271,7 @@ export const PINE_BOARDS: readonly CatalogMaterial[] = [
     thicknessMm: 19.1,
     grained: true,
     edges: "factory",
-    notes: "Select (clear) boards. Home Depot lists radiata pine. Lowe's lists southern yellow pine, and its 4 ft boards are clear radiata. The actual size of a 1x4 is 3/4 × 3 1/2 in. Most Home Depot prices are old, so they are not set. Seen ranges: 1x2 × 6 ft $4.35 to $5.98; 1x4 × 6 ft $8.68 to $12.24; 1x4 × 8 ft $11.58 to $15.78.",
+    notes: "Select (clear) boards. Home Depot lists radiata pine. Lowe's lists southern yellow pine, and its 4 ft boards are clear radiata. The actual size of a 1x4 is 3/4 × 3 1/2 in. Most Home Depot listings have no price. Price ranges on 2026-10-04: 1x2 × 6 ft $4.35 to $5.98; 1x4 × 6 ft $8.68 to $12.24; 1x4 × 8 ft $11.58 to $15.78.",
     sizes: [
       {
         id: "select-pine-1x-1x12-12ft",

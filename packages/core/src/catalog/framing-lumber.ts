@@ -10,7 +10,7 @@ export const FRAMING_LUMBER: readonly CatalogMaterial[] = [
     thicknessMm: 38.1,
     grained: true,
     edges: "factory",
-    notes: "Whitewood or SPF (spruce-pine-fir) framing lumber, #2 grade or better. The actual size of a 2x4 is 1 1/2 × 3 1/2 in. The edges are rounded. The 92 5/8 in and 104 5/8 in lengths are precut studs. The 2x2 × 8 ft listings are furring strips. Some Lowe's pages list older actual widths: 7 1/2 in for a 2x8, 9 1/2 in for a 2x10, and 11 1/2 in for a 2x12. Prices vary between stores and pages, so many are not set. Wide ranges: 2x6 × 10 ft Home Depot $9.07 to $12.47; 2x6 × 16 ft Home Depot $13.54 to $17.97; 2x4 × 104 5/8 in Lowe's $4.75 to $7.32.",
+    notes: "Whitewood or SPF (spruce-pine-fir) framing lumber, #2 grade or better. The actual size of a 2x4 is 1 1/2 × 3 1/2 in. The edges are rounded. The 92 5/8 in and 104 5/8 in lengths are precut studs. The 2x2 × 8 ft listings are furring strips. Some Lowe's listings give older actual widths: 7 1/2 in for a 2x8, 9 1/2 in for a 2x10, and 11 1/2 in for a 2x12. Prices vary between stores and listings, so many listings have no price. Price ranges on 2026-10-04: 2x6 × 10 ft Home Depot $9.07 to $12.47; 2x6 × 16 ft Home Depot $13.54 to $17.97; 2x4 × 104 5/8 in Lowe's $4.75 to $7.32.",
     sizes: [
       {
         id: "whitewood-2x-2x12-16ft",

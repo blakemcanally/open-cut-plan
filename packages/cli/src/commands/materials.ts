@@ -161,7 +161,7 @@ const set: CommandSpec = {
   description: "Change the fields of a material. Only the fields you give change. The id does not change.",
   args: [FILE_ARG, { name: "id", description: "The material id." }],
   options: [FIELD_OPTIONS.name, FIELD_OPTIONS.thickness, FIELD_OPTIONS.grained, FIELD_OPTIONS.color, FIELD_OPTIONS.measured, unsetOption(["color"]), ...OUTPUT_OPTIONS],
-  examples: [{ command: `${PROGRAM} materials set shelf.cutplan.json bb6 --thickness 1/4 --grained false`, description: "Change the thickness and the grain." }],
+  examples: [{ command: `${PROGRAM} materials set shelf.cutplan.json bb6 --thickness 15/64 --measured true --grained false`, description: "Change the thickness to a measured value, and the grain." }],
   output: "material (after the change), changes, validation, written, dryRun, warnings (the file warnings, then \"warning: nominal-thickness: …\" when the thickness is a nominal value).",
   async run(invocation) {
     const { args, options, io } = invocation;
