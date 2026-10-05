@@ -26,8 +26,8 @@ export interface NumberOptions {
 
 /** Null for text that is not a length, and for a length too large to be a finite number. */
 export function parseLength(text: string, units: Units, options: NumberOptions = {}): number | null {
-  const value = finite(lengthOf(text.trim().replace(/^~\s*/, ""), units, options));
-  return value === null ? null : snapLength(value, units);
+  const value = lengthOf(text.trim().replace(/^~\s*/, ""), units, options);
+  return value === null ? null : finite(snapLength(value, units));
 }
 
 function finite(value: number | null): number | null {

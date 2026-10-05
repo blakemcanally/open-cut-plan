@@ -260,6 +260,33 @@ describe("convertProjectUnits", () => {
     expect(tool).toMatchObject({ maxRip: 762, maxPiece: { length: 1219.2, width: 609.6 }, maxCrosscutPiece: { length: 914.4, width: 304.8 } });
   });
 
+  it("keeps the kerf gap between parts of off-grid size, so that a conversion adds no overlap", () => {
+    const kerf = 0.125;
+    const width = 34 / 3;
+    const base = createProject("Thirds", "in");
+    const count = 2;
+    const project: Project = {
+      ...base,
+      settings: { ...base.settings, trim: 0.25 },
+      materials: [{ id: "ply", name: "Plywood", thickness: 0.75, grained: false }],
+      stock: [{ id: "sheet", material: "ply", length: 96, width: 96, quantity: null, kind: "sheet" }],
+      parts: [{ id: "side", name: "Side", material: "ply", length: width, width, quantity: count, grain: "none" }],
+      tools: [{ id: "ts", name: "Table saw", type: "table-saw", kerf, enabled: true }],
+      plan: {
+        sheets: [
+          {
+            id: "s1",
+            stock: "sheet",
+            placements: Array.from({ length: count }, (_, copy) => ({ part: "side", copy, x: width + copy * (width + kerf), y: 0.25, rotated: false })),
+          },
+        ],
+      },
+    };
+    const overlaps = (p: Project) => validatePlan(p).filter((issue) => issue.code === "overlap");
+    expect(overlaps(project)).toEqual([]);
+    expect(overlaps(convertProjectUnits(project, "mm"))).toEqual([]);
+  });
+
   it("keeps a part that touches the far trim line on the sheet, there and back", () => {
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 30 }), fc.integer({ min: 100, max: 2380 }), fc.integer({ min: 50, max: 1160 }), (trim, length, width) => {

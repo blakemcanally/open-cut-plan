@@ -5,11 +5,16 @@ import { convertLength, type Units } from "../geometry/units.ts";
 const TOOL_LENGTHS = ["maxRip", "maxCrosscut", "maxCut"] as const;
 
 /**
- * Snaps to the nanometre grid so 48 in becomes 1219.2 mm, not 1219.1999999999998. A layout check adds up to four
- * converted values (x + length against stock length − trim), so the grid step must stay well below EPSILON / 4.
+ * Snaps to the nanometre grid so 48 in becomes 1219.2 mm, not 1219.1999999999998. A value that the grid would move by
+ * more than 1e-8 is off the grid, such as 35/3 in; it keeps the finer rounding, because a layout check adds up to four
+ * converted values and the grid step in mm equals EPSILON.
  */
 function converter(from: Units, to: Units): (value: number) => number {
-  return (value) => snapLength(convertLength(value, from, to), to);
+  return (value) => {
+    const converted = convertLength(value, from, to);
+    const snapped = snapLength(converted, to);
+    return Math.abs(snapped - converted) <= 1e-8 ? snapped : Math.round(converted * 1e9) / 1e9;
+  };
 }
 
 export function convertTool(tool: Tool, from: Units, to: Units): Tool {

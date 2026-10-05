@@ -46,6 +46,11 @@ describe("parseLength", () => {
     const huge = "9".repeat(400);
     for (const text of [huge, `${huge} mm`, `${huge}'`, `${huge}"`, `${huge} 1/2"`]) expect(parseLength(text, "in")).toBeNull();
   });
+
+  it("rejects a number that is finite until it is put on the grid", () => {
+    expect(parseLength("9".repeat(301), "in")).toBeNull();
+    expect(parseLength("9".repeat(303), "mm")).toBeNull();
+  });
 });
 
 describe("parsePlainNumber", () => {

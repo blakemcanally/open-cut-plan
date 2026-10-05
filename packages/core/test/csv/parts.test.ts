@@ -76,6 +76,13 @@ describe("importPartsCsv", () => {
     expect(row!.thickness).toBeCloseTo(18 / 25.4, 9);
   });
 
+  it("rejects a length with a declared unit that is too large for the grid", () => {
+    const csv = `Name,Length (mm),Width (mm)\nSide,${"9".repeat(303)},300\nShelf,500,300\n`;
+    const result = expectOk(importPartsCsv(csv, { units: "mm" }));
+    expect(result.rows.map((row) => row.name)).toEqual(["Shelf"]);
+    expect(result.issues[0]).toMatchObject({ severity: "error", row: 2, column: "length" });
+  });
+
   it("converts cm, m, and ft header units to the project units", () => {
     const [metric] = expectOk(importPartsCsv("Name (optional),Length (cm),Width (m),Thickness (mm)\nSide,60,1.2,18mm\n", { units: "mm" })).rows;
     expect(metric).toMatchObject({ name: "Side", thickness: 18 });

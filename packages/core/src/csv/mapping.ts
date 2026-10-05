@@ -105,7 +105,9 @@ export function lengthCell<F extends string>(
   const { base, factor } = HEADER_UNITS[declared];
   const plain = parsePlainNumber(text, numberOptions(table));
   const value = plain === null ? parseLength(text, base, numberOptions(table)) : plain * factor;
-  return { text, value: value === null ? null : snapLength(convertLength(value, base, units), units) };
+  if (value === null) return { text, value: null };
+  const snapped = snapLength(convertLength(value, base, units), units);
+  return { text, value: Number.isFinite(snapped) ? snapped : null };
 }
 
 export function requiredLength<F extends string>(
