@@ -171,6 +171,32 @@ describe("buildCutTree", () => {
     expect(cutLength(tree.root)).toBe(100 + 30 + 10);
   });
 
+  it("leaves gaps between runs uncut, so that one rip removes a waste strip over a row of parts", () => {
+    const k = 0.125;
+    const h = 15.125;
+    const top = h + k + 2.375;
+    const bottom = top + h + k;
+    const layout = items(
+      r(0, 0, 27, h),
+      r(27 + k, 0, 27, h),
+      r(2 * (27 + k), 0, 27, h),
+      r(0, top, 27, h),
+      r(27 + k, top, 13.25, h),
+      r(27 + 13.25 + 2 * k, top, 13.25, h),
+      r(27 + 2 * 13.25 + 3 * k, top, 13.25, h),
+      r(0, bottom, 42.5, h),
+      r(42.5 + k, bottom, 42.5, h),
+    );
+    const tree = buildCutTree(r(0, 0, 96, 48), layout, k, 0);
+    const row = 27 + 3 * 13.25 + 3 * k;
+    expect(tree.root).toMatchObject({ kind: "split", axis: "y", cuts: [h + k / 2, bottom - k / 2] });
+    const middle = (tree.root as Extract<CutNode, { kind: "split" }>).children[1]!;
+    expect(middle).toMatchObject({ kind: "split", axis: "x", cuts: [row + k / 2] });
+    const strip = (middle as Extract<CutNode, { kind: "split" }>).children[0]!;
+    expect(strip).toMatchObject({ kind: "split", axis: "y", cuts: [top - k / 2], rect: { length: row } });
+    expect(cutCount(tree.root)).toBe(12);
+  });
+
   it("keeps the old tree when no tree has shorter cuts", () => {
     const k = 0.125;
     const tree = buildCutTree(r(0, 0, 20 + k, 10 + k + 5), items(r(0, 0, 10, 10), r(10 + k, 0, 10, 10), r(0, 10 + k, 20 + k, 5)), k, 0);

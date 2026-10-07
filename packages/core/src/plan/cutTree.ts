@@ -45,8 +45,9 @@ export interface TreeCut {
  *
  * Each piece gets the split whose subtree has the fewest stuck parts, then the fewest cuts that `canCut` rejects, then
  * (with `minOffcut`) the largest waste piece that is at least `minOffcut`, then the least total cut length, then the
- * fewest cuts. Equal subtrees keep rips first at the first stage and the other direction first at each deeper stage,
- * with every cut of the direction made at once.
+ * fewest cuts. A split cuts at every gap between runs, or only at the waste at the ends, so that the runs stay in one
+ * piece. Equal subtrees keep rips first at the first stage and the other direction first at each deeper stage, with a
+ * split at every gap before a split at the ends only.
  */
 export function buildCutTree(sheet: Rect, items: readonly TreeItem[], kerf: number, trim: number, canCut?: (cut: TreeCut) => boolean, minOffcut?: Size): CutTree {
   const stuck: number[][] = [];
@@ -322,6 +323,21 @@ function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefin
       if (!chosen || compareCost(cost, chosen.cost) < 0) chosen = { cost, next: o };
     });
     if (!chosen) return null;
+
+    const head = boundaries[0]![0]!;
+    const foot = boundaries[last + 1]![0]!;
+    if (last > 0 && (head.cuts.length > 0 || foot.cuts.length > 0)) {
+      const inner = between(head.start, foot.end);
+      let cost = plus(pieceCost(rect, axis, head.start, foot.end, group, stage + 1), cutCost(foot, head.start, () => inner));
+      if (head.waste) cost = plus(cost, cutCost(head, lo, () => head.waste!));
+      if (compareCost(cost, chosen.cost) < 0) {
+        const pieces: Piece[] = [];
+        if (head.waste) pieces.push({ rect: head.waste, group: NO_ITEMS });
+        pieces.push({ rect: inner, group });
+        if (foot.waste) pieces.push({ rect: foot.waste, group: NO_ITEMS });
+        return { cost, cuts: [...head.cuts, ...foot.cuts], pieces };
+      }
+    }
 
     const cuts: number[] = [];
     const pieces: Piece[] = [];

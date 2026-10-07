@@ -61,7 +61,7 @@ describe("report", () => {
     const lines = (await cli(["report", "sequence", SHELF], io)).stdout.split("\n");
     expect(lines[0]).toBe('Setup: Table saw · trim 1/4" · 28 cuts');
     expect(lines[1]).toBe('Step 1 · Trim 1/4" off the top edge');
-    expect(lines).toContain('Setup: Table saw · fence at 15 3/8" · 14 cuts');
+    expect(lines).toContain('Setup: Table saw · fence at 15 3/8" · 12 cuts');
   });
 
   it("lists the offcuts and marks the saved ones", async () => {

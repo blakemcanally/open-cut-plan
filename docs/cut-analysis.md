@@ -80,6 +80,11 @@ trims.
    also make only one cut at a gap. The waste of the gap then stays on the piece on the other side of the cut, and a
    deeper cut removes it. The waste at each end of the piece can also stay on the end piece. A split must divide the
    piece.
+
+   A split can also cut only the waste at the ends of the piece, and keep all the parts in one piece. A deeper split
+   then cuts the parts apart. So one cut can remove a waste strip along a row of parts. For example, a crosscut removes
+   the waste after a row of a divider and three shelves, one rip removes the strip above the row, and three crosscuts
+   cut the parts apart. A split at every gap would need a rip for each part.
 3. The tree chooses the split whose subtree (the split and all the cuts below it) has, in this order:
    1. the fewest stuck parts;
    2. the fewest cuts that no enabled tool can make (only with `toolLimits` on, see below);
@@ -90,8 +95,9 @@ trims.
 
    When two subtrees are equal, the tree keeps the earlier split in this order: at the first stage rips before
    crosscuts, and at each deeper stage the other direction first; in each direction, a cut at each side of every gap
-   first. For example, a 20" × 10" part in a corner of a 96" × 48" sheet gets a 48" crosscut and then a 20" rip
-   (68" of cuts). Rips first would give a 96" rip and then a 10" crosscut (106").
+   first, and a split at the gaps before a split that cuts only the ends. For example, a 20" × 10" part in a corner
+   of a 96" × 48" sheet gets a 48" crosscut and then a 20" rip (68" of cuts). Rips first would give a 96" rip and then
+   a 10" crosscut (106").
 
    The shortest cuts can cut the waste into smaller pieces. So when `settings.optimizer.goal` is `offcuts`, the tree
    compares the largest offcut of each subtree before its cut length. An offcut is a waste piece that is at least the

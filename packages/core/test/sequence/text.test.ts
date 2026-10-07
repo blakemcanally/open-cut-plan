@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../../../examples/builders/index.ts";
 import { convertProjectUnits, describeStep, formatSize, parseProject, planContext, sequencePlan, setupLabel, type Project, type Tool } from "../../src/index.ts";
-import { sampleProject, stripProject } from "../helpers.ts";
+import { offsetStripProject, sampleProject } from "../helpers.ts";
 
 function texts(project: Project) {
   const ctx = planContext(project);
@@ -9,7 +9,7 @@ function texts(project: Project) {
 }
 
 function withTool(tool: Tool): Project {
-  const project = stripProject();
+  const project = offsetStripProject();
   project.tools = [tool];
   return project;
 }
@@ -45,7 +45,7 @@ describe("describeStep", () => {
   });
 
   it("sets the fence for a table saw rip and says where each side goes", () => {
-    const rip = texts(stripProject())[4]!;
+    const rip = texts(offsetStripProject())[4]!;
     expect(rip.title).toBe('Step 5 · Cut 12" off the panel');
     expect(rip.method).toBe("Table saw · rip: a cut along the length of the sheet");
     expect(rip.pickUp).toBe('the panel 95 1/2" × 47 1/2" from step 4');
@@ -60,16 +60,16 @@ describe("describeStep", () => {
   });
 
   it("labels an offcut, or waste when offcuts are off", () => {
-    expect(texts(stripProject())[5]!.results[1]).toEqual({ kind: "offcut", where: null, size: '95 1/2" × 23 1/4"', parts: [], next: null });
-    expect(texts(stripProject())[5]!.body).toMatch(/ Offcut: 95 1\/2" × 23 1\/4"\. Set it aside\.$/);
-    const project = stripProject();
+    expect(texts(offsetStripProject())[5]!.results[1]).toEqual({ kind: "offcut", where: null, size: '95 1/2" × 23 1/4"', parts: [], next: null });
+    expect(texts(offsetStripProject())[5]!.body).toMatch(/ Offcut: 95 1\/2" × 23 1\/4"\. Set it aside\.$/);
+    const project = offsetStripProject();
     project.settings.features.offcuts = false;
     expect(texts(project)[5]!.results[1]!.kind).toBe("waste");
     expect(texts(project)[5]!.body).toMatch(/ Waste: 95 1\/2" × 23 1\/4"\.$/);
   });
 
   it("uses the stop for a table saw crosscut and labels a finished part", () => {
-    const cut = texts(stripProject())[6]!;
+    const cut = texts(offsetStripProject())[6]!;
     expect(cut.headline).toBe('Cut 90" off the panel');
     expect(cut.method).toBe("Table saw · crosscut: a cut across the length of the sheet");
     expect(cut.actions).toEqual(['Set the stop 90" from the blade.', 'Put a 12" edge of the panel against the stop.', "Make the cut."]);
@@ -101,7 +101,7 @@ describe("describeStep", () => {
   });
 
   it("names the limit of a chosen tool: a mitre saw on a rip, or the crosscut piece of a table saw", () => {
-    const project = stripProject();
+    const project = offsetStripProject();
     const ctx = planContext(project);
     const [, , , , rip, , crosscut] = sequencePlan(project);
     const miter: Tool = { id: "m", name: "Mitre saw", type: "miter-saw", kerf: 0.125, enabled: true };
@@ -149,7 +149,7 @@ describe("describeStep", () => {
 
   it("describes every living-room-shelf step, and mm steps in mm", () => {
     const all = texts(example("living-room-shelf"));
-    expect(all).toHaveLength(76);
+    expect(all).toHaveLength(70);
     expect(all.every((text) => !text.body.includes("?"))).toBe(true);
     expect(all[4]!.title).toBe('Step 5 · Cut 15 3/8" off the panel');
     expect(all[4]!.body).toBe(

@@ -8,7 +8,7 @@ import type { PrintJob } from "../src/print/PrintView.tsx";
 import { readProgress, setStepDone } from "../src/shop/progress.ts";
 import { ShopTab } from "../src/shop/ShopTab.tsx";
 import { useProject, type ProjectStore } from "../src/state/useProject.ts";
-import { designProject, sampleProject, stripProject } from "./helpers.ts";
+import { designProject, sampleProject, offsetStripProject } from "./helpers.ts";
 
 function renderShop(initial: Project = sampleProject(), onPrint: (job: PrintJob) => void = () => undefined, props: { openStep?: number; cutColors?: CutColoring } = {}) {
   let latest: ProjectStore | null = null;
@@ -193,7 +193,7 @@ describe("ShopTab", () => {
   });
 
   it("shows the method, the piece to pick up, the numbered actions, and a label for each result", async () => {
-    const project = stripProject();
+    const project = offsetStripProject();
     project.settings.minOffcut = { length: 5, width: 5 };
     renderShop(project);
     await userEvent.click(within(screen.getByRole("region", { name: "Cut sequence" })).getByRole("button", { name: /^5\. / }));

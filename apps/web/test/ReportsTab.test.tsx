@@ -7,7 +7,7 @@ import type { PrintJob } from "../src/print/PrintView.tsx";
 import { ReportsTab } from "../src/reports/ReportsTab.tsx";
 import { DEFAULT_PREFS, type ViewPrefs } from "../src/state/prefs.ts";
 import { useProject, type ProjectStore } from "../src/state/useProject.ts";
-import { designProject, sampleProject, stripProject } from "./helpers.ts";
+import { designProject, sampleProject, offsetStripProject } from "./helpers.ts";
 
 function renderReports(initial: Project = sampleProject(), onPrint: (job: PrintJob) => void = () => undefined, initialPrefs: ViewPrefs = DEFAULT_PREFS) {
   let latest: ProjectStore | null = null;
@@ -154,7 +154,7 @@ describe("ReportsTab", () => {
   });
 
   it("counts two offcuts of the same size separately", () => {
-    const project = stripProject();
+    const project = offsetStripProject();
     project.settings.minOffcut = { length: 5, width: 5 };
     const { offcuts } = analyzeProject(project);
     const oneSaved = { ...project, stock: [...project.stock, { id: "o1", material: "ply", length: 5.375, width: 12, quantity: 1, cost: 0, kind: "offcut" as const, trim: 0, name: "Offcut from Test, sheet 1" }] };

@@ -118,7 +118,6 @@ test("plans a project from CSV, keeps shop progress, and prints and exports it",
     "portrait",
     "landscape",
     "landscape",
-    "landscape",
   ]);
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
   await page.emulateMedia({ media: "screen" });

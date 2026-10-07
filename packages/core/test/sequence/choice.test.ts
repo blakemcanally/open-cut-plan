@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { convertProjectUnits, defaultTools, describeStep, parseProject, planContext, sequencePlan, serializeProject, setToolChoice, withCuts, type Project } from "../../src/index.ts";
-import { sampleProject, stripProject } from "../helpers.ts";
+import { offsetStripProject, sampleProject } from "../helpers.ts";
 
 function twoTools(): Project {
-  const project = stripProject();
+  const project = offsetStripProject();
   project.tools.push({ id: "track", name: "Track saw", type: "track-saw", kerf: 0.125, enabled: true });
   return project;
 }

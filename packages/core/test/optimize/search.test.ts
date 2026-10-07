@@ -288,8 +288,8 @@ describe("the optimizer goal", () => {
     expect(fingerprints).toEqual({
       "living-room-shelf": "33a240fe9e5d1e9c",
       "simple-bookcase-mm": "d9bf137a3ac8f8cc",
-      "kallax-2x4-mm": "df858571c0e70e17",
-      "eket-wall-in": "955700570d365a23",
+      "kallax-2x4-mm": "b39cbf431d1302f4",
+      "eket-wall-in": "df692312110b5465",
     });
   });
 
@@ -459,7 +459,7 @@ describe("keeping groups together", () => {
   it("gives the group spread of the chosen plan with the setting on or off", () => {
     const project = twoGroups();
     expect(optimize(project, { iterations: 100, seed: 3, keepGroupsTogether: false }).materials[0]!.score.groupSpread).toBe(2);
-    expect(optimize(project, { iterations: 100, seed: 1, keepGroupsTogether: false }).materials[0]!.score.groupSpread).toBe(0);
+    expect(optimize(project, { iterations: 100, seed: 3, keepGroupsTogether: true }).materials[0]!.score.groupSpread).toBe(0);
   });
 
   it("never costs more or leaves more copies unplaced than the same search with the setting off", () => {

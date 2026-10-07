@@ -29,10 +29,11 @@ export function sampleProject(): Project {
   };
 }
 
-/** The sample project with 90 × 12 sides, so the shortest cuts rip two strips along the sheet, then crosscut each strip. */
-export function stripProject(): Project {
+/** The sample project with 90 × 12 sides and Side 2 against the right edge, so the shortest cuts rip two strips along the sheet, then crosscut each strip. */
+export function offsetStripProject(): Project {
   const project = sampleProject();
   project.parts[0] = { ...project.parts[0]!, length: 90 };
+  project.plan!.sheets[0]!.placements[1]!.x = 5.75;
   return project;
 }
 

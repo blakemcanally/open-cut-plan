@@ -73,7 +73,7 @@ describe("analyzeProject", () => {
     const analysis = analyzeProject(result.project);
     expect(analysis.issues).toEqual([]);
     expect(analysis.sheets).toHaveLength(7);
-    expect(analysis.steps).toHaveLength(76);
+    expect(analysis.steps).toHaveLength(70);
     expect(analysis.labels).toHaveLength(31);
     expect(analysis.labels.every((label) => label.sheetNumber !== null && label.step !== null)).toBe(true);
     expect(analysis.shopping.materials).toHaveLength(2);

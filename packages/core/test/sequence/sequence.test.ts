@@ -18,7 +18,7 @@ import {
   type Step,
   type Tool,
 } from "../../src/index.ts";
-import { sampleProject, stripProject } from "../helpers.ts";
+import { offsetStripProject, sampleProject, stripProject } from "../helpers.ts";
 
 function shelf(): Project {
   const result = parseProject(EXAMPLES["living-room-shelf"]!());
@@ -46,21 +46,20 @@ describe("sequencePlan", () => {
     ]);
   });
 
-  it("rips strips first and crosscuts in each strip when that is shorter", () => {
+  it("rips the waste off first, crosscuts the strip of both parts, and then rips the parts apart, when that is shorter", () => {
     expect(sequencePlan(stripProject()).map(summary)).toEqual([
       [1, "trim", '1/8"', null, null, 2],
       [2, "trim", '1/8"', 1, null, 3],
       [3, "trim", '1/8"', 2, null, 4],
       [4, "trim", '1/8"', 3, null, 5],
-      [5, "rip", '12"', 4, 7, 6],
-      [6, "rip", '12"', 5, 8, null],
-      [7, "crosscut", '90"', 5, null, null],
-      [8, "crosscut", '90"', 6, null, null],
+      [5, "rip", '24 1/8"', 4, 6, null],
+      [6, "crosscut", '90"', 5, 7, null],
+      [7, "rip", '12"', 6, null, null],
     ]);
   });
 
   it("sends the full-sheet cuts and the crosscuts of long strips to the track saw with the default tools", () => {
-    const project = stripProject();
+    const project = offsetStripProject();
     project.tools = defaultTools("in");
     expect(sequencePlan(project).map((step) => step.tool?.id)).toEqual(Array(8).fill("track-saw"));
     const { maxCrosscutPiece: _, ...older } = project.tools[0] as Extract<Tool, { type: "table-saw" }>;
@@ -102,7 +101,7 @@ describe("sequencePlan", () => {
 
   it("sequences every living-room-shelf sheet in sheet order", () => {
     const steps = sequencePlan(shelf());
-    expect(steps).toHaveLength(76);
+    expect(steps).toHaveLength(70);
     expect(steps.filter((step) => step.sheetNumber === 1).map(summary)).toEqual([
       [1, "trim", '1/8"', null, null, 2],
       [2, "trim", '1/8"', 1, null, 3],
@@ -142,7 +141,7 @@ describe("sequencePlan", () => {
     const keys = setupRuns(ctx, sequencePlan(project))
       .filter((run) => run[0]!.tool?.id === "table-saw")
       .map((run) => setupKey(ctx, run[0]!));
-    expect(keys).toEqual(['table-saw|crosscut|56 17/32"', 'table-saw|crosscut|42 19/32"', 'table-saw|crosscut|27 7/32"', 'table-saw|crosscut|13 1/4"']);
+    expect(keys).toEqual(['table-saw|crosscut|56 17/32"', 'table-saw|crosscut|42 19/32"', 'table-saw|crosscut|27 7/32"', 'table-saw|crosscut|13 1/4"', 'table-saw|rip|15 3/8"']);
   });
 
   it("keeps two rip settings that show at the same mark in one setup group", () => {
@@ -259,7 +258,7 @@ describe("sequencePlan", () => {
 describe("totalCutLength", () => {
   it("adds the length of every step, trims included", () => {
     expect(totalCutLength(sequencePlan(sampleProject()))).toBe(2 * 96 + 2 * 47.5 + 47.5 + 2 * 30);
-    expect(totalCutLength(sequencePlan(stripProject()))).toBe(2 * 96 + 2 * 47.5 + 2 * 95.5 + 2 * 12);
+    expect(totalCutLength(sequencePlan(stripProject()))).toBe(2 * 96 + 2 * 47.5 + 95.5 + 24.125 + 90);
     expect(totalCutLength([])).toBe(0);
   });
 });

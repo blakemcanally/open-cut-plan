@@ -218,8 +218,8 @@ describe("design set", () => {
     expect(data.partChanges).toEqual({ added: [], removed: [], resized: ["kallax-side", "kallax-divider"] });
     expect(data.removedPlacements).toEqual([
       { part: "kallax-side", copy: 0 },
-      { part: "kallax-side", copy: 1 },
       { part: "kallax-divider", copy: 0 },
+      { part: "kallax-side", copy: 1 },
     ]);
     expect(data.changes.plan).toMatchObject({ placementsBefore: 11, placementsAfter: 8 });
     expect(result.file(KALLAX).parts.map((part) => part.quantity)).toEqual([1, 1, 2, 1, 8]);
