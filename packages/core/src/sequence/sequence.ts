@@ -94,12 +94,30 @@ export function sequenceCuts(ctx: PlanContext, sheets: readonly SheetAnalysis[])
   const ordered = ctx.project.settings.orderMode === "setup" ? setupOrder(ctx, cuts) : cuts;
   const stepOf = new Map(ordered.map((cut, i) => [cut.id, i + 1]));
   const step = (id: number | null) => (id === null ? null : stepOf.get(id)!);
-  return ordered.map(({ id, ...cut }) => ({
-    ...cut,
-    step: stepOf.get(id)!,
+  return ordered.map((cut) => ({
+    kind: cut.kind,
+    axis: cut.axis,
+    stage: cut.stage,
+    at: cut.at,
+    piece: cut.piece,
+    released: cut.released,
+    remainder: cut.remainder,
+    releasedPlacements: cut.releasedPlacements,
+    remainderPlacements: cut.remainderPlacements,
+    sheet: cut.sheet,
+    sheetNumber: cut.sheetNumber,
+    from: cut.from,
+    to: cut.to,
+    tool: cut.tool,
+    recommended: cut.recommended,
+    chosen: cut.chosen,
+    overLimit: cut.overLimit,
+    side: cut.side,
+    setting: cut.setting,
     requires: step(cut.requires),
     releasedNext: step(cut.releasedNext),
     remainderNext: step(cut.remainderNext),
+    step: stepOf.get(cut.id)!,
   }));
 }
 
