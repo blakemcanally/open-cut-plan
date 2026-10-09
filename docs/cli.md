@@ -292,13 +292,41 @@ opencutplan optimize shelf.cutplan.json --iterations 200 --seed 1 --strict
 opencutplan optimize shelf.cutplan.json --goal offcuts --extra-cost 15
 ```
 
+`optimize` removes the saved cuts of each sheet that it plans again. A pinned sheet keeps them.
+
+### Optimize cuts
+
+`optimize-cuts <file>` keeps every placement and searches the cut tree of each sheet again. It saves the new tree in
+`savedCuts` of the sheet only when the tree has fewer cuts than the tree that the sheet uses now. The search puts the
+fewest cuts first, then the shortest cut length. See [`cut-analysis.md`](cut-analysis.md#saved-cuts).
+
+- `--sheet <ref>` searches one sheet only.
+- `--time <seconds>` sets the search time for each sheet. The default is `optimizer.timeLimitMs`.
+- `--passes <n>` stops each sheet after pass n and ignores the time. Use it when you need the same result each time.
+- `--clear` removes the saved cuts, so that the sheets use the automatic cuts again. With `--sheet`, it removes them
+  from one sheet only.
+
+The text output has one line for each sheet, for example `Sheet 1 (s1): 8 → 6 cuts, 272" → 258 1/2" of cuts.` The
+counts and the lengths include the trim cuts. The `--json` output has `sheets`: `{ number, id, before, after, saved,
+passes, complete }` for each sheet, where `before` and `after` are `{ cuts, length }`, and `complete` is true when a
+longer search cannot find a better tree. A sheet with no parts, with stuck parts, or with a locked saved cut is not
+searched.
+
+A layout command that changes the placements of a sheet removes its saved cuts. `layout show` tells for each sheet
+whether it uses saved cuts or automatic cuts.
+
+```bash
+opencutplan optimize-cuts shelf.cutplan.json --passes 4
+opencutplan optimize-cuts shelf.cutplan.json --sheet 2 --clear
+```
+
 ### Layout
 
 The layout commands change the plan by hand. x and y are from the top-left corner of the full stock piece.
 
 | Command | What it does | Example |
 | ------- | ------------ | ------- |
-| `layout show <file>` | Shows the sheets, the placements, the tray, and the issues. | `opencutplan layout show shelf.cutplan.json --sheet 2` |
+| `layout show <file>` | Shows the sheets (with `cuts`: saved or automatic), the placements, the tray, and the issues. | `opencutplan layout show shelf.cutplan.json --sheet 2` |
 | `layout pin <file> <sheet>...` | Pins sheets, so `optimize` keeps them. | `opencutplan layout pin shelf.cutplan.json 1 2` |
 | `layout unpin <file> <sheet>...` | Unpins sheets. | `opencutplan layout unpin shelf.cutplan.json s1` |
 | `layout move <file> <part>` | Puts a copy on a sheet. Without `--x` and `--y`, it finds the first free spot. | `opencutplan layout move shelf.cutplan.json a-shelf --copy 2 --sheet 5` |

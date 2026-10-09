@@ -1,4 +1,4 @@
-import { analyzeProject, errorMessage, formatPath, parseProject, regenerateDesigns, serializeProject, withCuts, type Issue, type PlanIssue, type Project } from "@opencutplan/core";
+import { analyzeProject, errorMessage, formatPath, parseProject, regenerateDesigns, serializeProject, withCuts, withoutStaleSavedCuts, type Issue, type PlanIssue, type Project } from "@opencutplan/core";
 import { describeChanges, diffProjects, type Changes } from "./diff.ts";
 import type { Io } from "./io.ts";
 import { CliError, EXIT, type Invocation, type OptionSpec, type Outcome } from "./spec.ts";
@@ -101,7 +101,7 @@ function target(invocation: Invocation, loaded: Loaded): string {
 export async function finishMutation(invocation: Invocation, loaded: Loaded, changed: Project, mutation: Mutation): Promise<Outcome> {
   const { io, options } = invocation;
   const next = regenerateDesigns(changed);
-  const output = loaded.hadCuts ? withCuts(next) : next;
+  const output = loaded.hadCuts ? withCuts(next) : withoutStaleSavedCuts(next);
   const text = serializeProject(output);
   const reparsed = parseProject(text);
   if (!reparsed.ok) {

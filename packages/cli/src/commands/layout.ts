@@ -28,7 +28,7 @@ import { flag, integerValue, optionalBoolean, optionalLength, str } from "../val
 import { findById } from "./common.ts";
 import { planContextOf } from "./context.ts";
 
-const SHEET_REF = "a sheet id, or its 1-based number in the plan";
+export const SHEET_REF = "a sheet id, or its 1-based number in the plan";
 
 export function sheetsOf(project: Project): readonly PlanSheet[] {
   return project.plan?.sheets ?? [];
@@ -68,6 +68,7 @@ function sheetView(project: Project) {
   const analysis = analyzeProject(project);
   const ctx = planContextOf(project);
   const usage = new Map(analysis.shopping.sheets.map((s) => [s.sheet, s.utilization]));
+  const savedCuts = new Map(analysis.sheets.map((s) => [s.sheet.id, s.savedCuts]));
   const sheets = sheetsOf(project).map((sheet, index) => {
     const stock = ctx.stock.get(sheet.stock);
     return {
@@ -76,6 +77,7 @@ function sheetView(project: Project) {
       stock: sheet.stock,
       stockLabel: stock ? stockLabel(ctx, stock) : null,
       pinned: sheet.pinned === true,
+      cuts: savedCuts.get(sheet.id) === "used" ? "saved" : "automatic",
       length: stock?.length ?? null,
       width: stock?.width ?? null,
       usable: stock ? usableRect(ctx, stock) : null,
@@ -98,7 +100,7 @@ const show: CommandSpec = {
   name: "layout show",
   summary: "Show the sheets, the part placements, and the tray.",
   description:
-    "Show the plan: each sheet with its stock, pin state, use, and placements, then the tray (the part copies on no sheet), then the plan issues. x and y are from the top-left corner of the full stock piece; length runs along x. The length and width of a placement are after rotation.",
+    "Show the plan: each sheet with its stock, pin state, use, cuts (saved or automatic), and placements, then the tray (the part copies on no sheet), then the plan issues. x and y are from the top-left corner of the full stock piece; length runs along x. The length and width of a placement are after rotation.",
   args: [FILE_ARG],
   options: [{ name: "sheet", type: "string", value: "<ref>", description: `Show only this sheet: ${SHEET_REF}.` }],
   examples: [
@@ -106,7 +108,7 @@ const show: CommandSpec = {
     { command: `${PROGRAM} layout show shelf.cutplan.json --sheet 2 --json`, description: "Show sheet 2 as JSON." },
   ],
   output:
-    "units, sheets [{ number, id, stock, stockLabel, pinned, length, width, usable { x, y, length, width }, utilization, placements [{ part, copy, x, y, rotated, name, length, width }] }], tray [{ part, copy, name }], issues [{ severity, code, message, refs }].",
+    "units, sheets [{ number, id, stock, stockLabel, pinned, cuts (\"saved\" when the sheet uses its saved cuts, else \"automatic\"), length, width, usable { x, y, length, width }, utilization, placements [{ part, copy, x, y, rotated, name, length, width }] }], tray [{ part, copy, name }], issues [{ severity, code, message, refs }].",
   async run({ args, options, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
@@ -116,7 +118,7 @@ const show: CommandSpec = {
     const lines: string[] = [];
     if (view.sheets.length === 0) lines.push("No plan. Run optimize, or add a sheet with layout add-sheet.");
     for (const sheet of sheets) {
-      lines.push(`Sheet ${sheet.number} (${sheet.id}): ${sheet.stock}, ${sheet.stockLabel ?? "missing stock"}${sheet.pinned ? ", pinned" : ""}, ${percent(sheet.utilization)} used`);
+      lines.push(`Sheet ${sheet.number} (${sheet.id}): ${sheet.stock}, ${sheet.stockLabel ?? "missing stock"}${sheet.pinned ? ", pinned" : ""}, ${percent(sheet.utilization)} used, ${sheet.cuts} cuts`);
       if (sheet.placements.length === 0) lines.push("  (empty)");
       else {
         const rows = sheet.placements.map((p) => [

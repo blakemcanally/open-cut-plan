@@ -7,11 +7,12 @@ import { partsGroup } from "./parts.ts";
 import { stockGroup } from "./stock.ts";
 import { toolsGroup } from "./tools.ts";
 import { optimizeCommand } from "./optimize.ts";
+import { optimizeCutsCommand } from "./optimizeCuts.ts";
 import { reportGroup } from "./report.ts";
 import { catalogGroup } from "./catalog.ts";
 import { settingsGroup } from "./settings.ts";
 import { newCommand, schemaCommand, showCommand, validateCommand } from "./project.ts";
 
-export const COMMANDS: CommandSpec[] = [newCommand, showCommand, validateCommand, optimizeCommand, schemaCommand];
+export const COMMANDS: CommandSpec[] = [newCommand, showCommand, validateCommand, optimizeCommand, optimizeCutsCommand, schemaCommand];
 
 export const GROUPS: GroupSpec[] = [partsGroup, stockGroup, materialsGroup, catalogGroup, toolsGroup, designGroup, settingsGroup, layoutGroup, reportGroup, exportGroup];
