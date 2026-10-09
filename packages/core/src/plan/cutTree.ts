@@ -60,6 +60,14 @@ export function buildCutTree(sheet: Rect, items: readonly TreeItem[], kerf: numb
   return { trims, root: treeBuilder(kerf, canCut, minOffcut, fastControl())(region, group, 1, "y", again), stuck: again };
 }
 
+/** A cut line that Optimize cuts must keep: the same axis, position, and extent. */
+export interface LockedLine {
+  axis: Axis;
+  at: number;
+  from: number;
+  to: number;
+}
+
 export interface TreeSearch {
   /** The best tree when a split can join up to `join` next runs, or null when `deadline` comes first. */
   run(join: number, deadline?: number): { tree: CutTree; limited: boolean } | null;
@@ -70,8 +78,12 @@ export interface TreeSearch {
  * count, then the cut length. A split can join a range of up to `join` next runs into one piece. `limited` is true
  * when some piece had more runs than the split could join, so that a larger `join` can find a better tree. A run that
  * stops at its deadline keeps its memo, so that the next run with the same `join` continues from it.
+ *
+ * A split never goes through a line of `locked`, never cuts on its line where the line does not go fully across the
+ * piece, and always cuts on it where it does. A locked line in a waste piece is not kept, so the caller must check the
+ * result.
  */
-export function createTreeSearch(sheet: Rect, items: readonly TreeItem[], kerf: number, trim: number, canCut?: (cut: TreeCut) => boolean, now: () => number = Date.now): TreeSearch {
+export function createTreeSearch(sheet: Rect, items: readonly TreeItem[], kerf: number, trim: number, canCut?: (cut: TreeCut) => boolean, now: () => number = Date.now, locked: readonly LockedLine[] = []): TreeSearch {
   const trims = trim > 0 ? trimCuts(sheet, trim, kerf) : [];
   const region = trim > 0 ? inset(sheet, trim) : sheet;
   const group = rootGroup(items);
@@ -80,7 +92,7 @@ export function createTreeSearch(sheet: Rect, items: readonly TreeItem[], kerf: 
     run(join, deadline) {
       if (current?.join !== join) {
         const control: Control = { join, cutsFirst: true, deadline: undefined, now, limited: false, ticks: 0 };
-        current = { join, control, plain: treeBuilder(kerf, undefined, undefined, control), tooled: canCut ? treeBuilder(kerf, canCut, undefined, control) : undefined };
+        current = { join, control, plain: treeBuilder(kerf, undefined, undefined, control, locked), tooled: canCut ? treeBuilder(kerf, canCut, undefined, control, locked) : undefined };
       }
       const { control, plain, tooled } = current;
       control.deadline = deadline;
@@ -298,8 +310,9 @@ interface Step {
 
 type Build = (rect: Rect, group: Group, stage: number, prefer: Axis, stuck: number[][]) => CutNode;
 
-function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefined, minOffcut: Size | undefined, control: Control): Build {
+function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefined, minOffcut: Size | undefined, control: Control, locked: readonly LockedLine[] = []): Build {
   const half = kerf / 2;
+  const linesIn = (rect: Rect) => (locked.length === 0 ? locked : locked.filter((line) => lineWithin(rect, line)));
   const memo = new Map<number, Known[]>();
   const compareCost = control.cutsFirst ? compareMeasures : minOffcut ? compareOffcutFirst : compareLength;
   const offcutOf = (waste: Rect | null) => (minOffcut && waste && fitsWithin(minOffcut, waste) ? area(waste) : 0);
@@ -342,7 +355,9 @@ function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefin
       const fits =
         Math.abs(part.x - x) <= EPSILON && Math.abs(part.y - y) <= EPSILON && Math.abs(part.length - length) <= EPSILON && Math.abs(part.width - width) <= EPSILON;
       if (fits) return FREE;
-      if (!canCut && length > EPSILON && width > EPSILON && contains({ x, y, length, width }, part)) return singleCost(x, y, length, width, part, kerf, minOffcut);
+      if (!canCut && length > EPSILON && width > EPSILON && contains({ x, y, length, width }, part) && linesIn({ x, y, length, width }).length === 0) {
+        return singleCost(x, y, length, width, part, kerf, minOffcut);
+      }
     }
     return (lookup(x, y, length, width, items, stage)?.solved ?? solve({ x, y, length, width }, group, stage)).cost;
   };
@@ -386,6 +401,11 @@ function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefin
       ]);
     } else boundaries.push([{ cuts: [], end: hi, start: hi, waste: null }]);
 
+    const forced = boundaries.map(() => false);
+    const blocked = boundaries.map(() => false);
+    const lines = linesIn(rect);
+    if (lines.length > 0 && !lockBoundaries(lines, rect, axis, runs, boundaries, forced, blocked, kerf)) return null;
+
     const cutCost = (boundary: Boundary, start: number, released: () => Rect): Cost => {
       const count = boundary.cuts.length;
       let noTool = 0;
@@ -423,7 +443,12 @@ function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefin
       for (let o = 0; o < options.length; o++) {
         const option = options[o]!;
         let best: Step | undefined;
-        for (let e = b; e <= Math.min(last, b + control.join - 1); e++) {
+        for (let e = b, joined = 1; e <= last; e++) {
+          if (e > b) {
+            if (forced[e]) break;
+            if (!blocked[e]) joined++;
+          }
+          if (joined > control.join) break;
           const nexts = boundaries[e + 1]!;
           for (let n = 0; n < nexts.length; n++) {
             const next = nexts[n]!;
@@ -450,7 +475,7 @@ function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefin
 
     const head = boundaries[0]![0]!;
     const foot = boundaries[last + 1]![0]!;
-    if (last > 0 && (head.cuts.length > 0 || foot.cuts.length > 0)) {
+    if (last > 0 && (head.cuts.length > 0 || foot.cuts.length > 0) && !forced.slice(1, last + 1).some(Boolean)) {
       const inner = between(head.start, foot.end);
       let cost = plus(pieceCost(rect, axis, head.start, foot.end, group, stage + 1), cutCost(foot, head.start, () => inner));
       if (head.waste) cost = plus(cost, cutCost(head, lo, () => head.waste!));
@@ -502,6 +527,60 @@ function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefin
     return { kind: "split", rect, stage, axis, cuts, children, items: indices };
   };
   return build;
+}
+
+/** True when the line is inside the rect, and not on its edge. */
+function lineWithin(rect: Rect, line: LockedLine): boolean {
+  const [lo, hi] = span(rect, line.axis);
+  const [from, to] = span(rect, otherAxis(line.axis));
+  return line.at > lo + EPSILON && line.at < hi - EPSILON && line.from >= from - EPSILON && line.to <= to + EPSILON;
+}
+
+/**
+ * Limits the cut options of a split along `axis` to those that keep the locked lines of the piece. A boundary whose
+ * every option goes through a line is blocked, so that the runs at its sides stay in one piece. A boundary with a line
+ * that goes fully across the piece is forced, and each of its options cuts on that line. False when no split along the
+ * axis keeps the lines.
+ */
+function lockBoundaries(lines: readonly LockedLine[], rect: Rect, axis: Axis, runs: readonly Run[], boundaries: Boundary[][], forced: boolean[], blocked: boolean[], kerf: number): boolean {
+  const half = kerf / 2;
+  const [lo, hi] = span(rect, axis);
+  const [from, to] = span(rect, otherAxis(axis));
+  const clamp = (value: number) => Math.min(hi, Math.max(lo, value));
+  const near = (a: number, b: number) => Math.abs(a - b) <= EPSILON;
+  const across = lines.filter((line) => line.axis !== axis);
+  const along = lines.filter((line) => line.axis === axis);
+  const full = along.filter((line) => near(line.from, from) && near(line.to, to)).map((line) => line.at);
+  const banned = along.filter((line) => !near(line.from, from) || !near(line.to, to)).map((line) => line.at);
+  const allowed = (at: number) =>
+    !across.some((line) => at + half > line.from + EPSILON && at - half < line.to - EPSILON) && !banned.some((b) => Math.abs(at - b) <= Math.max(EPSILON, kerf - EPSILON));
+  const last = runs.length - 1;
+  const gap = (k: number): [number, number] => [k === 0 ? lo : runs[k - 1]!.end, k === last + 1 ? hi : runs[k]!.start];
+  const required: number[][] = boundaries.map(() => []);
+  for (const at of full) {
+    const k = boundaries.findIndex((_, i) => {
+      const [start, end] = gap(i);
+      return at >= start - EPSILON && at <= end + EPSILON;
+    });
+    if (k < 0) return false;
+    required[k]!.push(at);
+  }
+  for (const [k, options] of boundaries.entries()) {
+    const need = required[k]!;
+    let kept = options.filter((option) => option.cuts.every(allowed) && need.every((at) => option.cuts.some((cut) => near(cut, at))));
+    if (kept.length === 0 && need.length === 1) {
+      const at = need[0]!;
+      const end = k === 0 ? lo : clamp(at - half);
+      const start = k === last + 1 ? hi : clamp(at + half);
+      const waste = k === 0 ? withSpan(rect, axis, lo, clamp(at - half)) : k === last + 1 ? withSpan(rect, axis, clamp(at + half), hi) : null;
+      kept = [{ cuts: [at], end, start, waste }];
+    }
+    if (need.length > 0 && kept.length === 0) return false;
+    forced[k] = need.length > 0;
+    blocked[k] = kept.length === 0;
+    boundaries[k] = kept;
+  }
+  return !blocked[0] && !blocked[last + 1];
 }
 
 const lengths = new Float64Array(16);

@@ -131,7 +131,7 @@ tree, and the trims are not lines.
   the check then marks them stale. The CLI removes the stale lines on each change, and the web app removes them
   when it saves a file. A pinned sheet keeps its saved cuts through **Optimize layout**.
 - **The thorough search.** `createCutSearch(project, options)` searches each sheet with parts again and keeps every
-  placement. It skips a sheet with stuck parts or with a locked line. The search compares trees by, in this order:
+  placement. It skips a sheet with stuck parts. The search compares trees by, in this order:
   the fewest stuck parts, the fewest cuts that no tool can make, the fewest cuts, and the least total cut length. The
   automatic tree keeps the least cut length first, so the thorough search can find a tree with fewer, longer cuts.
   - The search runs in passes. In a pass, one piece can join up to `join` runs of parts, so that one long cut can
@@ -142,6 +142,11 @@ tree, and the trims are not lines.
     more cuts that no tool can make.
   - `optimizeCuts(project, options)` runs the search to the end and applies the result with `applyCutsResult`. With
     `passes`, the result does not depend on the time, so it is the same on every computer.
+  - The search keeps each locked line (`locked: true`) with the same axis, position, and extent. A split never goes
+    through a locked line, never cuts on its line where the line does not go fully across the piece, and always cuts
+    on it where it does. A locked line that the search leaves in a waste piece goes back in, and the tree must then
+    pass the check. When no tree keeps every lock, the sheet keeps its saved cuts. The locks apply only when the saved
+    cuts pass the check, and only to the thorough search: the automatic tree and **Optimize layout** do not use them.
 
 ## Cut edits
 
@@ -159,6 +164,8 @@ sheet with no parts, or with stuck parts, has no cut edits. Each result passes t
 - **Join** (`joinCut`) extends each end to the stop that joins the most cuts on the same line, then gives the fewest
   cuts.
 - **Remove** (`removeCut`) removes a cut when the result passes the check, for example a cut between two waste pieces.
+- **Lock** (`setCutLocked`, `isCutLocked`) locks or unlocks a cut. A locked cut cannot be extended, shortened, joined,
+  or removed, and no stop splits it or joins it into another cut. The other edits keep the locks.
 
 Each stop tells the new end, the length of the cut, the cut count of the sheet after the edit (trims included), the
 joined cuts, and `noTool`: true when the result has more cuts that no enabled tool can make. A cut keeps its tool

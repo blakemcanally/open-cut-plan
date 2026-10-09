@@ -5,11 +5,13 @@ import {
   cutStops,
   extendCut,
   inset,
+  isCutLocked,
   joinCut,
   parseProject,
   planContext,
   removeCut,
   sequencePlan,
+  setCutLocked,
   setSavedCuts,
   setToolChoice,
   sheetCuts,
@@ -164,6 +166,48 @@ describe("cut edits", () => {
       const join = joinCut(withTools(50), "s1", POST_RIP)!;
       expect(toolOf(join.project, join.line)).toBe("track");
       expect(join.project.plan!.sheets[0]!.toolChoices).toBeUndefined();
+    });
+  });
+
+  describe("locks", () => {
+    const RAIL_TWO: CutLine = { axis: "y", at: 10.0625, from: 40.25, to: 60.25 };
+    const MIDDLE_CROSSCUT: CutLine = { axis: "x", at: 40.1875, from: 0, to: 48 };
+
+    it("saves the automatic cuts at the first lock, and an unlock keeps the saved cuts", () => {
+      const locked = setCutLocked(joinRowProject(), "s1", RAIL_RIP, true)!;
+      expect(used(locked)).toBe("used");
+      expect(locked.plan!.sheets[0]!.savedCuts!.filter((line) => line.locked)).toEqual([{ ...RAIL_RIP, locked: true }]);
+      expect(isCutLocked(locked, "s1", RAIL_RIP)).toBe(true);
+      expect(isCutLocked(locked, "s1", RAIL_TWO)).toBe(false);
+      const unlocked = setCutLocked(locked, "s1", RAIL_RIP, false)!;
+      expect(isCutLocked(unlocked, "s1", RAIL_RIP)).toBe(false);
+      expect(unlocked.plan!.sheets[0]!.savedCuts).toEqual(lines(joinRowProject()));
+      expect(setCutLocked(joinRowProject(), "s1", { ...RAIL_RIP, at: 11 }, true)).toBeNull();
+    });
+
+    it("refuses to extend, shorten, or remove a locked cut", () => {
+      const project = setCutLocked(setSavedCuts(joinRowProject(), "s1", [...lines(joinRowProject()), { axis: "y", at: 20, from: 80.5, to: 96 }]), "s1", { axis: "y", at: 20, from: 80.5, to: 96 }, true)!;
+      expect(removeCut(project, "s1", { axis: "y", at: 20, from: 80.5, to: 96 })).toBeNull();
+      const rail = setCutLocked(joinRowProject(), "s1", RAIL_RIP, true)!;
+      expect(cutStops(rail, "s1", RAIL_RIP, "to")).toEqual([]);
+      expect(joinCut(rail, "s1", RAIL_RIP)).toBeNull();
+      const post = setCutLocked(joinRowProject(), "s1", POST_CROSSCUT, true)!;
+      expect(shortenStops(post, "s1", POST_CROSSCUT, "to")).toEqual([]);
+    });
+
+    it("gives no stop that joins or splits a locked cut", () => {
+      const joined = setCutLocked(joinRowProject(), "s1", RAIL_TWO, true)!;
+      expect(cutStops(joined, "s1", RAIL_RIP, "to").map((stop) => stop.end)).not.toContain(60.25);
+      const split = setCutLocked(joinRowProject(), "s1", MIDDLE_CROSSCUT, true)!;
+      expect(cutStops(split, "s1", RAIL_RIP, "to")).toEqual([]);
+      expect(cutStops(split, "s1", POST_RIP, "to").map((stop) => stop.end)).toEqual([40.125]);
+      expect(cutStops(joinRowProject(), "s1", POST_RIP, "to").map((stop) => stop.end)).toContain(80.375);
+    });
+
+    it("keeps the locks through an edit of another cut", () => {
+      const locked = setCutLocked(joinRowProject(), "s1", { axis: "x", at: 80.4375, from: 0, to: 48 }, true)!;
+      const join = joinCut(locked, "s1", POST_RIP)!;
+      expect(isCutLocked(join.project, "s1", { axis: "x", at: 80.4375, from: 0, to: 48 })).toBe(true);
     });
   });
 });

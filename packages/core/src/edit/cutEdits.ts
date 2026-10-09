@@ -78,11 +78,11 @@ function check(sheet: SheetCuts, lines: readonly SavedCut[]): CutNode | null {
 /**
  * Moves one end of `lines[index]` out to `value`. The cuts on the same line inside the new extent join it, and each
  * cross cut that it now goes through splits in two. A split piece that the tree does not need goes. Null when the
- * result fails the check.
+ * result fails the check, or when the edit changes a locked line.
  */
 function extendLines(sheet: SheetCuts, lines: readonly SavedCut[], index: number, end: CutEnd, value: number): Edited | null {
   const line = lines[index]!;
-  if (end === "to" ? value <= line.to + EPSILON : value >= line.from - EPSILON) return null;
+  if (line.locked || (end === "to" ? value <= line.to + EPSILON : value >= line.from - EPSILON)) return null;
   const from = end === "from" ? value : line.from;
   const to = end === "to" ? value : line.to;
   const half = sheet.kerf / 2;
@@ -95,6 +95,7 @@ function extendLines(sheet: SheetCuts, lines: readonly SavedCut[], index: number
       out.push({ ...line, from, to });
     } else if (other.axis === line.axis && near(other.at, c)) {
       if (other.from >= from - EPSILON && other.to <= to + EPSILON) {
+        if (other.locked) return null;
         joins++;
       } else if (other.to > from + EPSILON && other.from < to - EPSILON) {
         return null;
@@ -102,6 +103,7 @@ function extendLines(sheet: SheetCuts, lines: readonly SavedCut[], index: number
         out.push(other);
       }
     } else if (other.axis !== line.axis && other.at > from + EPSILON && other.at < to - EPSILON && other.from < c - EPSILON && other.to > c + EPSILON) {
+      if (other.locked) return null;
       for (const piece of [
         { ...other, to: c - half },
         { ...other, from: c + half },
@@ -290,12 +292,12 @@ export function shortenCut(project: Project, sheetId: string, line: CutLine, end
   return applyLines(project, sheet, plan.edited.lines, lineSources(sheet.lines, plan));
 }
 
-/** The sheet without the cut, or null when the result fails the check, for example when the cut separates a part. */
+/** The sheet without the cut, or null when the cut is locked or the result fails the check, for example when the cut separates a part. */
 export function removeCut(project: Project, sheetId: string, line: CutLine): Project | null {
   const sheet = sheetCuts(project, sheetId);
   if (!sheet) return null;
   const index = findLine(sheet.lines, line);
-  if (index < 0) return null;
+  if (index < 0 || sheet.lines[index]!.locked) return null;
   const lines = sheet.lines.filter((_, i) => i !== index);
   if (!check(sheet, lines)) return null;
   return applyLines(project, sheet, lines, (kept) => kept);
@@ -321,4 +323,26 @@ export function joinCut(project: Project, sheetId: string, line: CutLine): { pro
     joins += best.stop.joins;
   }
   return joins > 0 ? { project: current, joins, line: selected } : null;
+}
+
+/** True when the cut is a locked saved cut. */
+export function isCutLocked(project: Project, sheetId: string, line: CutLine): boolean {
+  return sheetCuts(project, sheetId)?.lines.some((other) => other.locked === true && sameLine(other, line)) ?? false;
+}
+
+/**
+ * Locks or unlocks the cut, so that Optimize cuts keeps it or may change it. A lock on a sheet with automatic cuts
+ * saves them first. Null when the sheet has no such cut.
+ */
+export function setCutLocked(project: Project, sheetId: string, line: CutLine, locked: boolean): Project | null {
+  const sheet = sheetCuts(project, sheetId);
+  if (!sheet) return null;
+  const index = findLine(sheet.lines, line);
+  if (index < 0) return null;
+  const lines = sheet.lines.map((other, i) => {
+    if (i !== index) return other;
+    const { locked: _old, ...rest } = other;
+    return locked ? { ...rest, locked: true } : rest;
+  });
+  return applyLines(project, sheet, lines, (kept) => kept);
 }
