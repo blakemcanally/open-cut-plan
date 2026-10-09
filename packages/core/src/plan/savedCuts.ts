@@ -76,3 +76,62 @@ export function rebuildTree(region: Rect, lines: readonly SavedCut[], items: rea
   if (inside.length !== lines.length || members.length !== items.length) return null;
   return build(region, inside, members, 1);
 }
+
+export interface TreeLine {
+  line: SavedCut;
+  /** The index in the list of the cut that makes the piece of this cut, or null when the trims make it. */
+  requires: number | null;
+}
+
+/** The cut lines of the tree in the sheet order of the sequence, each with the cut that it needs first. */
+export function treeCutLines(root: CutNode): TreeLine[] {
+  const out: TreeLine[] = [];
+  const walk = (node: CutNode, parent: number | null): void => {
+    if (node.kind !== "split") return;
+    const [from, to] = span(node.rect, otherAxis(node.axis));
+    const made: number[] = [];
+    let previous = parent;
+    for (const at of node.cuts) {
+      out.push({ line: { axis: node.axis, at, from, to }, requires: previous });
+      previous = out.length - 1;
+      made.push(previous);
+    }
+    node.children.forEach((child, i) => walk(child, i < made.length ? made[i]! : previous));
+  };
+  walk(root, null);
+  return out;
+}
+
+const sameCut = (a: SavedCut, b: SavedCut) => a.axis === b.axis && near(a.at, b.at) && near(a.from, b.from) && near(a.to, b.to);
+
+/**
+ * The lines of the tree in an order that the shop can follow: each cut after the cut that makes its piece. It keeps
+ * the order of `preferred` where it can; a line that is not in `preferred` goes at its place in the sheet order.
+ * Each line keeps the fields of its match in `preferred`, such as `locked`.
+ */
+export function orderLines(root: CutNode, preferred: readonly SavedCut[]): SavedCut[] {
+  const cuts = treeCutLines(root);
+  const ranks = cuts.map((cut, i) => {
+    const index = preferred.findIndex((line) => sameCut(line, cut.line));
+    return index < 0 ? { rank: i, line: cut.line } : { rank: index, line: preferred[index]! };
+  });
+  const done = new Set<number>();
+  const order: SavedCut[] = [];
+  while (order.length < cuts.length) {
+    let best = -1;
+    for (const [i, cut] of cuts.entries()) {
+      if (done.has(i) || (cut.requires !== null && !done.has(cut.requires))) continue;
+      if (best < 0 || ranks[i]!.rank < ranks[best]!.rank) best = i;
+    }
+    done.add(best);
+    order.push(ranks[best]!.line);
+  }
+  return order;
+}
+
+/** True when each line comes after the line that makes its piece. */
+export function linesInOrder(root: CutNode, lines: readonly SavedCut[]): boolean {
+  const cuts = treeCutLines(root);
+  const position = cuts.map((cut) => lines.findIndex((line) => sameCut(line, cut.line)));
+  return cuts.every((cut, i) => position[i]! >= 0 && (cut.requires === null || position[cut.requires]! < position[i]!));
+}
