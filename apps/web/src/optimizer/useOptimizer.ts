@@ -1,4 +1,4 @@
-import { errorMessage, type OptimizeRequest, type OptimizeResult, type OptimizerRequest, type OptimizerResponse } from "@opencutplan/core";
+import { errorMessage, type OptimizeCutsResult, type OptimizeRequest, type OptimizeResult, type OptimizerRequest, type OptimizerResponse, type Project } from "@opencutplan/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface WorkerLike {
@@ -14,15 +14,21 @@ export const createOptimizerWorker: WorkerFactory = () =>
   new Worker(new URL("./optimizer.worker.ts", import.meta.url), { type: "module" });
 
 export interface RunningState {
+  /** "layout" for Optimize layout, "cuts" for Optimize cuts. */
+  kind: "layout" | "cuts";
   startedAt: number;
   timeLimitMs: number;
   best: OptimizeResult | null;
+  /** The progress of an Optimize cuts run. */
+  cuts: OptimizeCutsResult | null;
 }
 
 export interface Optimizer {
   running: RunningState | null;
   error: string | null;
   start(request: OptimizeRequest, onDone: (result: OptimizeResult, cancelled: boolean) => void): void;
+  /** Runs Optimize cuts on every sheet, or on `sheet` only. */
+  startCuts(project: Project, sheet: string | undefined, onDone: (result: OptimizeCutsResult, cancelled: boolean) => void): void;
   /** Stops the search; `onDone` still runs with the best result so far. */
   cancel(): void;
   clearError(): void;
@@ -34,6 +40,7 @@ export function useOptimizer(factory: WorkerFactory): Optimizer {
   const worker = useRef<WorkerLike | null>(null);
   const job = useRef(0);
   const onDone = useRef<((result: OptimizeResult, cancelled: boolean) => void) | null>(null);
+  const onCutsDone = useRef<((result: OptimizeCutsResult, cancelled: boolean) => void) | null>(null);
 
   useEffect(
     () => () => {
@@ -54,6 +61,11 @@ export function useOptimizer(factory: WorkerFactory): Optimizer {
       } else if (message.type === "done") {
         setRunning(null);
         onDone.current?.(message.result, message.cancelled);
+      } else if (message.type === "cuts-progress") {
+        setRunning((state) => state && { ...state, cuts: message.result });
+      } else if (message.type === "cuts-done") {
+        setRunning(null);
+        onCutsDone.current?.(message.result, message.cancelled);
       } else {
         setRunning(null);
         setError(message.message);
@@ -75,7 +87,7 @@ export function useOptimizer(factory: WorkerFactory): Optimizer {
       const id = ++job.current;
       onDone.current = done;
       setError(null);
-      setRunning({ startedAt: Date.now(), timeLimitMs: request.input.settings.optimizer.timeLimitMs, best: null });
+      setRunning({ kind: "layout", startedAt: Date.now(), timeLimitMs: request.input.settings.optimizer.timeLimitMs, best: null, cuts: null });
       const options = request.start ? { start: request.start } : {};
       try {
         ensureWorker().postMessage({ type: "start", id, project: request.input, options });
@@ -87,7 +99,23 @@ export function useOptimizer(factory: WorkerFactory): Optimizer {
     [ensureWorker],
   );
 
+  const startCuts = useCallback(
+    (project: Project, sheet: string | undefined, done: (result: OptimizeCutsResult, cancelled: boolean) => void) => {
+      const id = ++job.current;
+      onCutsDone.current = done;
+      setError(null);
+      setRunning({ kind: "cuts", startedAt: Date.now(), timeLimitMs: project.settings.optimizer.timeLimitMs, best: null, cuts: null });
+      try {
+        ensureWorker().postMessage({ type: "start-cuts", id, project, options: sheet === undefined ? {} : { sheet } });
+      } catch (e) {
+        setRunning(null);
+        setError(errorMessage(e));
+      }
+    },
+    [ensureWorker],
+  );
+
   const cancel = useCallback(() => worker.current?.postMessage({ type: "cancel", id: job.current }), []);
   const clearError = useCallback(() => setError(null), []);
-  return { running, error, start, cancel, clearError };
+  return { running, error, start, startCuts, cancel, clearError };
 }

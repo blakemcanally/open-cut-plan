@@ -32,6 +32,7 @@ index in the sheet's `placements`), part copies, stock, or cut steps. Issues nev
 | `not-guillotine` | error | `cutOrder` on: one issue per group of parts that no order of through-cuts separates; parts that already have `off-sheet` or `overlap` are left out |
 | `no-tool` | error | `cutOrder` on: no tool is enabled (one issue), or `toolLimits` on and no enabled tool can make a cut (one issue per cut) |
 | `factory-edge` | warning | one issue per placed copy that asks for a factory edge and does not get one (see [Factory edges](#factory-edges)). The message says when the sheet has no factory edges: an owned offcut, or a trimmed sheet |
+| `saved-cuts-stale` | warning | `cutOrder` on: one issue per sheet whose [saved cuts](#saved-cuts) no longer fit its placements; the sheet uses the automatic cuts |
 | `unknown-factory-edge` | warning | one issue per part whose `factoryEdge` this app does not know; the part uses the rule of the settings |
 
 ## Factory edges
@@ -113,6 +114,34 @@ trims.
 4. A piece is a part when it is exactly one part, waste when it has no parts, and stuck when no cut is possible.
    A part that lies wholly outside the usable area lands in a zero-size piece. That piece is stuck and is not cut
    again; the validator reports the part as `off-sheet`.
+
+## Saved cuts
+
+A sheet can save its cut tree in `savedCuts` (format 1.10). **Optimize cuts** in the web app and `optimize-cuts` in the
+CLI write it; the format is in [format.md](format.md). Each line is one cut: `axis`, `at` (the position of the cut on
+that axis), and `from` and `to` (its ends on the other axis). The lines are in the order of a depth-first walk of the
+tree, and the trims are not lines.
+
+- **The check.** Each analysis rebuilds the tree from the lines. Each line must cut fully across a piece of the tree
+  so far and touch no part, and at the end each piece must be one part or waste. When the check passes, the sheet
+  uses the saved tree (state `used`). Otherwise the sheet uses the automatic tree and gets the `saved-cuts-stale`
+  warning (state `stale`). A sheet with no lines has the state `none`.
+- **The edits.** An edit that changes the placements of a sheet removes its saved cuts: a move, a turn, a part to the
+  tray, a push to the factory edges, and a part removal. An edit of a part size or of the kerf does not remove them;
+  the check then marks them stale. The CLI removes the stale lines on each change, and the web app removes them
+  when it saves a file. A pinned sheet keeps its saved cuts through **Optimize layout**.
+- **The thorough search.** `createCutSearch(project, options)` searches each sheet with parts again and keeps every
+  placement. It skips a sheet with stuck parts or with a locked line. The search compares trees by, in this order:
+  the fewest stuck parts, the fewest cuts that no tool can make, the fewest cuts, and the least total cut length. The
+  automatic tree keeps the least cut length first, so the thorough search can find a tree with fewer, longer cuts.
+  - The search runs in passes. In a pass, one piece can join up to `join` runs of parts, so that one long cut can
+    remove the waste along all of them. The first pass has a join of 2, and each pass doubles it. Each pass has a new
+    memo. The search on a sheet ends when a pass can join every run (the result is complete), at the pass limit, or
+    at the time limit of the sheet (`settings.optimizer.timeLimitMs` by default).
+  - A sheet saves the best tree only when it has fewer cuts than the tree it uses now, with no more stuck parts and no
+    more cuts that no tool can make.
+  - `optimizeCuts(project, options)` runs the search to the end and applies the result with `applyCutsResult`. With
+    `passes`, the result does not depend on the time, so it is the same on every computer.
 
 ## Tools
 

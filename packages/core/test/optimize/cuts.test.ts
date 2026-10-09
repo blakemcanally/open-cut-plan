@@ -35,7 +35,7 @@ describe("optimizeCuts", () => {
       const { project: next, result } = optimizeCuts(project, { passes: 4 });
       for (const sheet of result.sheets) {
         expect(sheet.after.cuts, `${name} sheet ${sheet.number}`).toBeLessThanOrEqual(sheet.before.cuts);
-        if (sheet.lines) expect(sheet.after.cuts).toBeLessThan(sheet.before.cuts);
+        expect(sheet.lines === null || sheet.after.cuts < sheet.before.cuts, `${name} sheet ${sheet.number}`).toBe(true);
       }
       for (const analysis of analyzeSheets(planContext(next))) expect(analysis.savedCuts).not.toBe("stale");
     }

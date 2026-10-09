@@ -1,6 +1,7 @@
 import {
   addSheet,
   addSuggestedStock,
+  clearSavedCuts,
   clearsKerf,
   contains,
   copyLabel,
@@ -9,6 +10,7 @@ import {
   extraCostPercent,
   findCopy,
   findFreeSpot,
+  lostSavedCuts,
   partColors,
   moveCopyTo,
   moveToTray,
@@ -28,6 +30,7 @@ import {
   unplacedCopies,
   usableRect,
   type CopyRef,
+  type Project,
   type ProjectAnalysis,
   type Rect,
   type Size,
@@ -43,7 +46,7 @@ import { CutLegend } from "./CutLegend.tsx";
 import { fitScale, WINDOW_ALLOWANCE } from "./fit.ts";
 import { Inspector } from "./Inspector.tsx";
 import { IssueList } from "./IssueList.tsx";
-import { comparisonLines, statsText } from "./runSummary.ts";
+import { comparisonLines, cutsLines, cutsProgress, cutsStatus, statsText } from "./runSummary.ts";
 import { sheetSummary } from "./sheetSummary.ts";
 import { copyKey, SheetView, type DropPreview } from "./SheetView.tsx";
 import { snapPosition, type Snapped } from "./snap.ts";
@@ -69,6 +72,17 @@ interface Drag {
   target: DropTarget | null;
   /** The Alt key state of the last move, for a recomputed target during a scroll. */
   free: boolean;
+}
+
+interface LostCuts {
+  sheets: number[];
+  /** The project right after the edit; the notice shows while the project is this one. */
+  after: Project;
+}
+
+function lostCutsText(sheets: number[]): string {
+  const names = sheets.length === 1 ? `sheet ${sheets[0]}` : `sheets ${sheets.slice(0, -1).join(", ")} and ${sheets.at(-1)}`;
+  return `The saved cuts of ${names} were removed, because a part moved.`;
 }
 
 interface LayoutTabProps {
@@ -103,10 +117,32 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
   const [windowHeight, setWindowHeight] = useState(() => window.innerHeight);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [stockChoice, setStockChoice] = useState("");
+  const [lostCuts, setLostCuts] = useState<LostCuts | null>(null);
   const focusAfter = useRef<CopyRef | null>(null);
   const sheetsRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<Drag | null>(null);
   dragRef.current = drag;
+  const projectRef = useRef(project);
+  projectRef.current = project;
+
+  const editLayout = (change: (p: Project) => Project, key?: string) => {
+    const before = projectRef.current;
+    if (!before.plan?.sheets.some((sheet) => sheet.savedCuts)) {
+      edit(change, key);
+      return;
+    }
+    const after = change(before);
+    const lost = lostSavedCuts(before, after);
+    if (lost.length === 0) {
+      edit(change, key);
+      return;
+    }
+    const numbers = lost.map((id) => (after.plan?.sheets.findIndex((sheet) => sheet.id === id) ?? -1) + 1).filter((n) => n > 0);
+    setLostCuts({ sheets: numbers, after });
+    edit(after, key);
+  };
+  const editLayoutRef = useRef(editLayout);
+  editLayoutRef.current = editLayout;
 
   const sheets = project.plan?.sheets ?? [];
   const colors = useMemo(() => partColors(project), [project]);
@@ -175,7 +211,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
 
   const locate = (ref: CopyRef, sheetId: string | null) => {
     if (sheetId === null) {
-      edit((p) => moveToTray(p, ref));
+      editLayout((p) => moveToTray(p, ref));
       focusAfter.current = ref;
       return;
     }
@@ -190,7 +226,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
       return;
     }
     setMessage(null);
-    edit((p) => placeCopy(p, ref, sheet.id, spot.x, spot.y, rotated));
+    editLayout((p) => placeCopy(p, ref, sheet.id, spot.x, spot.y, rotated));
     focusAfter.current = ref;
   };
 
@@ -206,13 +242,13 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
     const step = nudgeStep(analysis, event.shiftKey);
     const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
     if (event.key === "r" || event.key === "R") {
-      edit((p) => rotateCopy(p, selected));
+      editLayout((p) => rotateCopy(p, selected));
     } else if (event.key === "Delete" || event.key === "Backspace") {
-      edit((p) => moveToTray(p, selected));
+      editLayout((p) => moveToTray(p, selected));
       focusAfter.current = selected;
     } else if (moves[event.key]) {
       const [dx, dy] = moves[event.key]!;
-      edit((p) => nudgeCopy(p, selected, dx, dy), `nudge:${copyKey(selected)}`);
+      editLayout((p) => nudgeCopy(p, selected, dx, dy), `nudge:${copyKey(selected)}`);
     } else {
       return;
     }
@@ -294,8 +330,8 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
       setDrag(null);
       if (!current?.started || !current.target) return;
       const drop = current.target;
-      if (drop.kind === "tray") edit((p) => moveToTray(p, current.ref));
-      else edit((p) => placeCopy(p, current.ref, drop.sheet, drop.x, drop.y, current.rotated));
+      if (drop.kind === "tray") editLayoutRef.current((p) => moveToTray(p, current.ref));
+      else editLayoutRef.current((p) => placeCopy(p, current.ref, drop.sheet, drop.x, drop.y, current.rotated));
     };
     const scroll = () => {
       const current = dragRef.current;
@@ -312,11 +348,17 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
       window.removeEventListener("pointercancel", up);
       window.removeEventListener("scroll", scroll, { capture: true });
     };
-  }, [dragActive, edit]);
+  }, [dragActive]);
 
   const dragging = drag?.started ? drag.ref : null;
-  const progress = runs.running ? Math.min(1, (Date.now() - runs.running.startedAt) / runs.running.timeLimitMs) : 0;
+  const running = runs.running;
+  const progress = !running ? 0 : running.kind === "cuts" ? cutsProgress(running.cuts) : Math.min(1, (Date.now() - running.startedAt) / running.timeLimitMs);
+  const runProgress = !running ? "" : running.kind === "cuts" ? cutsStatus(running.cuts) : running.best ? `${running.best.iterations.toLocaleString()} plans tried` : "Starting…";
   const canOptimize = !busy && project.parts.length > 0 && enabledStock.length > 0;
+  const cutsOn = ctx.features.cutOrder;
+  const canOptimizeCuts = !busy && cutsOn && sheets.some((sheet) => sheet.placements.length > 0);
+  const cutStates = new Map(analysis.sheets.map((sheet) => [sheet.sheet.id, sheet.savedCuts]));
+  const lostShown = lostCuts && lostCuts.after === project ? lostCuts : null;
   const goal = describeGoal(projectGoal(project), project.settings.optimizer.extraCostPercent);
   const extraCosts = (runs.current?.result.materials ?? [])
     .map((m) => ({ name: project.materials.find((material) => material.id === m.material)?.name ?? m.material, percent: extraCostPercent(m.score.cost, m.cheapestCost) }))
@@ -329,13 +371,14 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
       ? "The plan from before the optimize run is back. Redo puts the new plan back."
       : runs.notice;
   const comparison = !runs.error && !runs.undone && outcome?.changed ? comparisonLines(ctx, outcome.before, outcome.after) : null;
+  const sheetLines = !runs.error && !runs.undone && outcome?.cuts ? cutsLines(ctx, outcome.cuts) : null;
 
   return (
     // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- layout shortcuts for the focused part or sheet bubble up to this element
     <div className="layout" onKeyDown={onKeyDown}>
       <div className="toolbar" role="toolbar" aria-label="Layout">
         <button type="button" className="primary" disabled={!canOptimize} onClick={() => runs.optimize("all")} title="Plan every part again. Pinned sheets stay as they are.">
-          Optimize
+          Optimize layout
         </button>
         <button type="button" disabled={!canOptimize || unplaced.length === 0} onClick={() => runs.optimize("rest")} title="Keep every sheet and plan only the unplaced parts.">
           Optimize the rest
@@ -343,6 +386,11 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
         <button type="button" disabled={busy || !runs.current} onClick={runs.keepSearching} title="Continue the last search from its best plan.">
           Keep searching
         </button>
+        {cutsOn && (
+          <button type="button" disabled={!canOptimizeCuts} onClick={() => runs.optimizeCuts()} title="Search each sheet for a cut tree with fewer cuts. No part moves.">
+            Optimize cuts
+          </button>
+        )}
         <span className="spacer" />
         <label className="inline">
           Stock
@@ -392,7 +440,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
               </button>
               <progress max={1} value={progress} aria-label="Optimizer progress" />
               <span className="muted" aria-live="polite">
-                {runs.running?.best ? `${runs.running.best.iterations.toLocaleString()} plans tried` : "Starting…"}
+                {runProgress}
               </span>
             </>
           )}
@@ -402,6 +450,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
         <div className={`banner run-result${runs.error ? " error" : ""}`}>
           <div role="status">
             <p>{runText}</p>
+            {sheetLines?.map((line) => <p key={line}>{line}</p>)}
             {comparison?.map((line) => <p key={line}>{line}</p>)}
           </div>
           {outcome?.changed && (
@@ -409,6 +458,14 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
               Undo optimize
             </button>
           )}
+        </div>
+      )}
+      {lostShown && (
+        <div className="banner">
+          <p role="status">{lostCutsText(lostShown.sheets)}</p>
+          <button type="button" onClick={store.undo} title="Undoes the part move and puts back the saved cuts.">
+            Undo
+          </button>
         </div>
       )}
       {project.parts.length === 0 && (
@@ -438,7 +495,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
             onAddStock={(material) => edit((p) => addSuggestedStock(p, material).project)}
           />
           <div className="sheets" ref={sheetsRef}>
-            {sheets.length === 0 && <p className="muted">No sheets yet. Press Optimize, or add a sheet and drag parts onto it.</p>}
+            {sheets.length === 0 && <p className="muted">No sheets yet. Press Optimize layout, or add a sheet and drag parts onto it.</p>}
             {sheets.map((sheet, index) => {
               const drop = drag?.started && drag.target?.kind === "sheet" && drag.target.sheet === sheet.id ? drag.target : null;
               const preview: DropPreview | null = drop && drag ? { rect: { x: drop.x, y: drop.y, ...drag.size }, bad: drop.bad, guides: drop.guides } : null;
@@ -468,7 +525,10 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
                   onTogglePin={() => edit((p) => setPinned(p, sheet.id, !sheet.pinned))}
                   onRemove={() => edit((p) => removeSheet(p, sheet.id))}
                   onOpenStep={onOpenStep}
-                  onPushToFactoryEdges={pushable.has(sheet.id) ? () => edit((p) => pushSheetToFactoryEdges(p, sheet.id)) : undefined}
+                  onPushToFactoryEdges={pushable.has(sheet.id) ? () => editLayout((p) => pushSheetToFactoryEdges(p, sheet.id)) : undefined}
+                  cuts={cutsOn && sheet.placements.length > 0 ? cutStates.get(sheet.id) : undefined}
+                  onOptimizeCuts={cutsOn && sheet.placements.length > 0 ? () => runs.optimizeCuts(sheet.id) : undefined}
+                  onUseAutomaticCuts={sheet.savedCuts ? () => edit((p) => clearSavedCuts(p, sheet.id)) : undefined}
                 />
               );
             })}
@@ -486,8 +546,8 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
             busy={busy}
             message={message}
             onLocation={(sheet) => selected && locate(selected, sheet)}
-            onMove={(x, y) => selected && edit((p) => moveCopyTo(p, selected, x, y))}
-            onRotate={() => selected && edit((p) => rotateCopy(p, selected))}
+            onMove={(x, y) => selected && editLayout((p) => moveCopyTo(p, selected, x, y))}
+            onRotate={() => selected && editLayout((p) => rotateCopy(p, selected))}
           />
           <IssueList
             project={project}

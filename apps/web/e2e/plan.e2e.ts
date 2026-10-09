@@ -15,7 +15,7 @@ declare global {
 
 async function optimize(page: Page) {
   await page.getByRole("tab", { name: "Layout" }).click();
-  await page.getByRole("button", { name: "Optimize", exact: true }).click();
+  await page.getByRole("button", { name: "Optimize layout", exact: true }).click();
   await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0, { timeout: 30_000 });
   await expect(page.locator("[data-copy-key][role=button]").first()).toBeVisible();
 }

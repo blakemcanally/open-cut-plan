@@ -235,8 +235,8 @@ describe("LayoutTab", () => {
 
   it("optimizes in a worker and applies a plan that places every part", async () => {
     const current = renderLayout();
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Optimize" }).hasAttribute("disabled")).toBe(false), { timeout: 10000 });
+    await userEvent.click(screen.getByRole("button", { name: "Optimize layout" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Optimize layout" }).hasAttribute("disabled")).toBe(false), { timeout: 10000 });
     expect(screen.getByText("Every part is on a sheet.")).toBeTruthy();
     expect(current().project.plan!.sheets.flatMap((s) => s.placements)).toHaveLength(3);
     expect(screen.getByRole("button", { name: "Keep searching" }).hasAttribute("disabled")).toBe(false);
@@ -244,7 +244,7 @@ describe("LayoutTab", () => {
 
   it("stops a search and uses the best plan so far", async () => {
     const current = renderLayout();
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize layout" }));
     await userEvent.click(await screen.findByRole("button", { name: "Stop" }));
     await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/^Stopped after/), { timeout: 5000 });
     expect(current().project.plan!.sheets.flatMap((s) => s.placements)).toHaveLength(3);
@@ -252,7 +252,7 @@ describe("LayoutTab", () => {
 
   it("does not use a result when the project changed during the search", async () => {
     const current = renderLayout();
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize layout" }));
     await screen.findByRole("button", { name: "Stop" });
     act(() => current().edit((p) => ({ ...p, project: { ...p.project, name: "Changed" } })));
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("The project changed while the optimizer ran"), { timeout: 10000 });
@@ -274,7 +274,7 @@ describe("LayoutTab", () => {
       return wrapped;
     };
     const current = renderLayout(sampleProject(), factory);
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize layout" }));
     await waitFor(() => expect(held).not.toBeNull(), { timeout: 10000 });
     act(() => {
       current().edit((p) => ({ ...p, project: { ...p.project, name: "Changed" } }));
@@ -309,7 +309,7 @@ describe("LayoutTab", () => {
     const current = renderLayout(project);
     expect(screen.getByText(/^Goal: best offcuts, up to 10 % extra cost\./)).toBeTruthy();
     expect(screen.queryByText(/more cost than the cheapest plan found/)).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize layout" }));
     expect(await screen.findByText("Plywood: 5 % more cost than the cheapest plan found.", {}, { timeout: 10000 })).toBeTruthy();
     act(() => current().edit((p) => ({ ...p, settings: { ...p.settings, optimizer: { ...p.settings.optimizer, goal: "cost" } } })));
     expect(screen.getByText(/^Goal: lowest cost\./)).toBeTruthy();
@@ -332,10 +332,10 @@ describe("LayoutTab", () => {
     };
     const current = renderLayout(project);
     expect(screen.queryByText(/is on one sheet/)).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize layout" }));
     expect(await screen.findByText("Each group is on one sheet.", {}, { timeout: 10000 })).toBeTruthy();
     act(() => current().edit((p) => ({ ...p, settings: { ...p.settings, optimizer: { ...p.settings.optimizer, keepGroupsTogether: false } } })));
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize layout" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Keep searching" }).hasAttribute("disabled")).toBe(false), { timeout: 10000 });
     expect(screen.queryByText(/is on one sheet/)).toBeNull();
   }, 20000);
@@ -343,12 +343,12 @@ describe("LayoutTab", () => {
   it("compares the plan before and after a run, and Undo optimize puts back the plan from before it", async () => {
     const current = renderLayout();
     const placed = () => current().project.plan!.sheets.flatMap((s) => s.placements).length;
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize layout" }));
     const undoRun = await screen.findByRole("button", { name: "Undo optimize" }, { timeout: 10000 });
     const status = screen.getByRole("status").textContent;
     expect(status).toContain(`Before: 1 sheet, ${formatMoney(60, "USD")}, 1 part unplaced, `);
     expect(status).toContain(`After: 1 sheet, ${formatMoney(60, "USD")}, every part placed, `);
-    expect(undoRun.getAttribute("title")).toMatch(/^Puts back the plan from before Optimize: 1 sheet,/);
+    expect(undoRun.getAttribute("title")).toMatch(/^Puts back the plan from before Optimize layout: 1 sheet,/);
     expect(placed()).toBe(3);
     await userEvent.click(undoRun);
     expect(placed()).toBe(2);
@@ -367,7 +367,7 @@ describe("LayoutTab", () => {
     const project = sampleProject();
     project.settings = { ...project.settings, features: { ...project.settings.features, cost: false } };
     renderLayout(project);
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize layout" }));
     await screen.findByRole("button", { name: "Undo optimize" }, { timeout: 10000 });
     expect(screen.getByRole("status").textContent).toContain("Before: 1 sheet, 32.0 sq ft of stock, 1 part unplaced");
   }, 15000);
@@ -393,7 +393,7 @@ describe("LayoutTab", () => {
       return wrapped;
     };
     const current = renderLayout(sampleProject(), factory);
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize layout" }));
     await screen.findByRole("button", { name: "Undo optimize" }, { timeout: 10000 });
     const optimized = current().project;
     const canUndo = current().canUndo;
@@ -410,7 +410,7 @@ describe("LayoutTab", () => {
     const toolbar = screen.getByRole("toolbar", { name: "Layout" });
     const contents = () => [...toolbar.querySelectorAll("*")].map((element) => element.tagName);
     const idle = contents();
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize layout" }));
     const status = screen.getByText(/^Goal:/).closest<HTMLElement>(".layout-status")!;
     expect(within(status).getByRole("button", { name: "Stop" })).toBeTruthy();
     expect(within(status).getByRole("progressbar", { name: "Optimizer progress" })).toBeTruthy();
@@ -420,7 +420,7 @@ describe("LayoutTab", () => {
 
   it("offers Keep searching only while the layout is the one the search produced", async () => {
     renderLayout();
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize layout" }));
     await userEvent.click(await screen.findByRole("button", { name: "Stop" }));
     const keep = await screen.findByRole("button", { name: "Keep searching" });
     await waitFor(() => expect(keep.hasAttribute("disabled")).toBe(false));

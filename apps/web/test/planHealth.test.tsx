@@ -43,7 +43,7 @@ describe("a material with no stock in the tray", () => {
     renderLayout(stocklessProject());
     const door = () => within(tray()).getByRole("button", { name: /Door 1/ });
     expect(door().textContent).toContain("⚠ its material has no stock");
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize layout" }));
     await waitFor(() => expect(within(tray()).queryByRole("button", { name: /Shelf/ })).toBeNull(), { timeout: 4000 });
     expect(door().textContent).toContain("⚠ its material has no stock");
     expect(tray().textContent).not.toContain("larger than every enabled stock");

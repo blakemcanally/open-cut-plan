@@ -70,7 +70,7 @@ parts from the design, and the Parts tab lists them. The file format is in [form
   and no cost. Choose "No back" to remove the back.
 - When the design material or the back material has no enabled stock, **Add design** adds one sheet stock of it. This
   is the [suggested sheet](catalog.md#suggested-sheet): the largest catalogue size of the catalogue material with the
-  same name, or a 96" × 48" (2440 × 1220 mm) sheet with no cost. So the first **Optimize** has stock for every part.
+  same name, or a 96" × 48" (2440 × 1220 mm) sheet with no cost. So the first **Optimize layout** has stock for every part.
 - The list on the left selects a design. The form has the name, the system, how many to build, the columns and rows,
   the depth, the material, the back, and the mount.
 - The **Material** and **Back** lists also show the [catalogue](catalog.md) materials that the project does not have,
@@ -98,7 +98,7 @@ parts from the design, and the Parts tab lists them. The file format is in [form
 - When the project has no sheet stock of a material of the design, **Sheets** says so. For a catalogue material, a
   button adds its largest sheet size. For a different material, a button adds a 96" × 48" (2440 mm × 1220 mm) sheet
   with no cost, and a note tells the user to choose a catalogue material in the **Material** list.
-- **Optimize now** plans every part of the project, as **Optimize** on the Layout tab does, and opens the Layout tab.
+- **Optimize now** plans every part of the project, as **Optimize layout** on the Layout tab does, and opens the Layout tab.
 - The front view, the parts, and the sheets update while the user types. Enter or leaving the field applies the value; Escape goes back.
 - A value that makes the design impossible (for example, a material too thin for pocket screws) is not applied. The
   field stays marked and a message gives the reason. It adds no undo step.
@@ -238,11 +238,18 @@ part that asks for a factory edge and does not get one.
   a cut with a problem adds "no tool" or the limit, for example "Step 1, Table saw trim, over its largest piece".
   While the focus is on a cut number, the part keys (**R**, **Delete**, and the arrow keys) do not act.
 
-- **Optimize** plans every part again. Pinned sheets stay as they are.
+- **Optimize layout** plans every part again. Pinned sheets stay as they are.
 - **Optimize the rest** keeps every sheet and plans only the parts in the tray.
 - **Keep searching** continues the last search from its best plan. It is offered while the project is still the one
   the last search produced.
-- **Stop** ends a search and uses the best plan so far.
+- **Optimize cuts** keeps every part where it is and searches each sheet for a cut tree with fewer cuts. It shows
+  when the `cutOrder` feature is on. The search runs in passes, each up to the time limit of the sheet, and the status
+  shows the sheet and the pass, for example "Sheet 2, pass 3 (2 of 4)". When it finds a tree with fewer cuts, the
+  sheet saves it as its [saved cuts](cut-analysis.md#saved-cuts), and a line tells the change on each sheet, for
+  example "Sheet 1: 8 → 6 cuts, 272" → 258 1/2" of cuts." **Undo optimize** and **Undo** put back the cuts from
+  before.
+- **Stop** ends a search and uses the best plan so far. For **Optimize cuts**, each sheet keeps the best tree found
+  so far.
 - After a run, a line compares the plan before and after the run, for example "Before: 4 sheets, $260.00, 2 parts
   unplaced, 1344" of cuts. After: 3 sheets, $195.00, every part placed, 1176" of cuts." The line gives the cost when
   the `cost` feature is on and each stock has a price; otherwise it gives the stock area of the sheets. The cut length
@@ -260,7 +267,13 @@ part that asks for a factory edge and does not get one.
   sheet, for example "KALLAX 1 of 2 is on 2 sheets.", or "Each unit is on one sheet."
 - The optimizer runs in a Web Worker, so the page stays responsive. A progress bar shows the part of the time limit
   that is used. When the project changes during a search, the result is not used.
-- **Pin** on a sheet keeps it through **Optimize**. **Remove** puts its parts in the tray.
+- **Pin** on a sheet keeps it, and its saved cuts, through **Optimize layout**. **Remove** puts its parts in the tray.
+- When the `cutOrder` feature is on, the header of each sheet with parts says "saved cuts" or "automatic cuts".
+  **Optimize cuts** on a sheet searches only that sheet. **Use automatic cuts** removes the saved cuts, and the sheet
+  goes back to the cuts from its placements.
+- A part move on a sheet removes the saved cuts of that sheet, because they no longer fit. A notice tells so, for
+  example "The saved cuts of sheet 1 were removed, because a part moved.", and its **Undo** puts back the move and
+  the saved cuts.
 - **Push to factory edges** on a sheet moves its pieces so that more parts that ask for a factory edge get one, the
   longest parts first. It uses the same push as the optimizer: the cuts stay the same, and no part turns. The button
   shows only when the push gives a longer part, or more parts, a factory edge.

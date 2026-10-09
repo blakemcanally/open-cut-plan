@@ -53,17 +53,17 @@ describe("rebuildTree", () => {
 
   describe("fails the check", () => {
     const lines = treeLines(createTreeSearch(SHEET, ROW, 0.125, 0).run(4)!.tree);
-    const fails = (changed: readonly SavedCut[], list: readonly TreeItem[] = ROW, kerf = 0.125) => expect(rebuildTree(SHEET, changed, list, kerf)).toBeNull();
+    const rebuild = (changed: readonly SavedCut[], list: readonly TreeItem[] = ROW, kerf = 0.125) => rebuildTree(SHEET, changed, list, kerf);
 
     it("passes with the lines as they are", () => expect(rebuildTree(SHEET, lines, ROW, 0.125)).not.toBeNull());
-    it("with a new kerf", () => fails(lines, ROW, 0.25));
+    it("with a new kerf", () => expect(rebuild(lines, ROW, 0.25)).toBeNull());
     it("with a new trim", () => expect(rebuildTree(inset(SHEET, 0.5), lines, ROW, 0.125)).toBeNull());
-    it("with a new part size", () => fails(lines, ROW.map((item, i) => (i === 1 ? { ...item, rect: { ...item.rect, width: 12 } } : item))));
-    it("with a moved part", () => fails(lines, ROW.map((item, i) => (i === 1 ? { ...item, rect: { ...item.rect, y: 5 } } : item))));
-    it("with a line through a part", () => fails([...lines, { axis: "x", at: 10, from: 0, to: 48 }]));
-    it("with lines that cross", () => fails([...lines, { axis: "y", at: 45, from: 0, to: 96 }]));
-    it("with a line outside the sheet", () => fails([...lines, { axis: "x", at: 100, from: 0, to: 48 }]));
-    it("with a line that no piece uses", () => fails([...lines, { axis: "x", at: 90, from: 10, to: 20 }]));
-    it("with a line missing", () => fails(lines.slice(1)));
+    it("with a new part size", () => expect(rebuild(lines, ROW.map((item, i) => (i === 1 ? { ...item, rect: { ...item.rect, width: 12 } } : item)))).toBeNull());
+    it("with a moved part", () => expect(rebuild(lines, ROW.map((item, i) => (i === 1 ? { ...item, rect: { ...item.rect, y: 5 } } : item)))).toBeNull());
+    it("with a line through a part", () => expect(rebuild([...lines, { axis: "x", at: 10, from: 0, to: 48 }])).toBeNull());
+    it("with lines that cross", () => expect(rebuild([...lines, { axis: "y", at: 45, from: 0, to: 96 }])).toBeNull());
+    it("with a line outside the sheet", () => expect(rebuild([...lines, { axis: "x", at: 100, from: 0, to: 48 }])).toBeNull());
+    it("with a line that no piece uses", () => expect(rebuild([...lines, { axis: "x", at: 90, from: 10, to: 20 }])).toBeNull());
+    it("with a line missing", () => expect(rebuild(lines.slice(1))).toBeNull());
   });
 });

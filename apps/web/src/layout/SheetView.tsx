@@ -21,6 +21,7 @@ import {
   type PlanContext,
   type PlanSheet,
   type Rect,
+  type SavedCutsState,
   type Step,
   type ToolColors,
 } from "@opencutplan/core";
@@ -63,6 +64,11 @@ interface SheetViewProps {
   onOpenStep(step: number): void;
   /** Shown as a sheet action when set: the push gives more parts their factory edges. */
   onPushToFactoryEdges?: (() => void) | undefined;
+  /** Shows "saved cuts" or "automatic cuts" in the header when set. */
+  cuts?: SavedCutsState | undefined;
+  onOptimizeCuts?: (() => void) | undefined;
+  /** Shown when set: removes the saved cuts of the sheet. */
+  onUseAutomaticCuts?: (() => void) | undefined;
 }
 
 const GRID_MIN_PX = 6;
@@ -115,6 +121,21 @@ export function SheetView(props: SheetViewProps) {
     <section className="sheet" aria-label={`Sheet ${number}: ${stockLabel(ctx, stock)}`}>
       <header className="sheet-head">
         <span className="name">Sheet {number}</span>
+        {props.cuts && (
+          <span className={`cuts-label${props.cuts === "used" ? " saved" : ""}`} title={props.cuts === "used" ? "The cuts come from Optimize cuts and are saved in the file." : "The cuts come from the placements."}>
+            {props.cuts === "used" ? "saved cuts" : "automatic cuts"}
+          </span>
+        )}
+        {props.onUseAutomaticCuts && (
+          <button type="button" onClick={props.onUseAutomaticCuts} disabled={busy} title="Removes the saved cuts. The sheet goes back to the cuts from its placements.">
+            Use automatic cuts
+          </button>
+        )}
+        {props.onOptimizeCuts && (
+          <button type="button" onClick={props.onOptimizeCuts} disabled={busy} aria-label={`Optimize the cuts of sheet ${number}`} title="Searches for a cut tree with fewer cuts for this sheet.">
+            Optimize cuts
+          </button>
+        )}
         {props.onPushToFactoryEdges && (
           <button
             type="button"

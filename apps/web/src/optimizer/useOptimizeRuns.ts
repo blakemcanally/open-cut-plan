@@ -1,10 +1,12 @@
 import {
+  applyCutsResult,
   applyRun,
   keepSearchingRequest,
   optimizeRequest,
   planStats,
   samePlan,
   type LastRun,
+  type OptimizeCutsResult,
   type OptimizeMode,
   type OptimizeRequest,
   type OptimizeResult,
@@ -15,9 +17,9 @@ import { useCallback, useState } from "react";
 import type { ProjectStore } from "../state/useProject.ts";
 import { useOptimizer, type RunningState, type WorkerFactory } from "./useOptimizer.ts";
 
-export type RunKind = OptimizeMode | "keep";
+export type RunKind = OptimizeMode | "keep" | "cuts";
 
-export const RUN_NAMES: Record<RunKind, string> = { all: "Optimize", rest: "Optimize the rest", keep: "Keep searching" };
+export const RUN_NAMES: Record<RunKind, string> = { all: "Optimize layout", rest: "Optimize the rest", keep: "Keep searching", cuts: "Optimize cuts" };
 
 export interface RunOutcome {
   kind: RunKind;
@@ -29,6 +31,8 @@ export interface RunOutcome {
   after: PlanStats;
   /** False when the run found no better plan than the one it started from, and so did not change the project. */
   changed: boolean;
+  /** The result of an Optimize cuts run. */
+  cuts?: OptimizeCutsResult;
 }
 
 export interface OptimizeRuns {
@@ -43,6 +47,8 @@ export interface OptimizeRuns {
   /** True while an undo has put back the project from before the last run. */
   undone: boolean;
   optimize(mode: OptimizeMode): void;
+  /** Runs Optimize cuts on every sheet, or on one sheet. */
+  optimizeCuts(sheet?: string): void;
   keepSearching(): void;
   stop(): void;
   /** Undoes the last run, as one undo step, while `outcome` is set and the run changed the project. */
@@ -59,6 +65,19 @@ function summary(result: OptimizeResult, cancelled: boolean, kind: RunKind, chan
   }.`;
 }
 
+function cutsSummary(result: OptimizeCutsResult, cancelled: boolean): string {
+  const saved = result.sheets.filter((sheet) => sheet.lines).length;
+  if (saved === 0) return cancelled ? "Stopped. No sheet got fewer cuts." : "These cuts are already the best found.";
+  return `${cancelled ? "Stopped. " : ""}Optimize cuts saved fewer cuts on ${saved} ${saved === 1 ? "sheet" : "sheets"}.`;
+}
+
+interface LandedCuts {
+  result: OptimizeCutsResult;
+  applied: Project;
+  from: Project;
+  cancelled: boolean;
+}
+
 interface Landed {
   run: LastRun;
   kind: RunKind;
@@ -72,6 +91,7 @@ export function useOptimizeRuns(store: ProjectStore, factory: WorkerFactory): Op
   const [notice, setNotice] = useState<string | null>(null);
   const [lastOutcome, setOutcome] = useState<RunOutcome | null>(null);
   const [landed, setLanded] = useState<Landed | null>(null);
+  const [landedCuts, setLandedCuts] = useState<LandedCuts | null>(null);
 
   if (landed) {
     setLanded(null);
@@ -85,6 +105,19 @@ export function useOptimizeRuns(store: ProjectStore, factory: WorkerFactory): Op
     } else {
       setOutcome(null);
       setNotice("The project changed while the optimizer ran, so its plan was not used.");
+    }
+  }
+  if (landedCuts) {
+    setLandedCuts(null);
+    const { result, applied, from, cancelled } = landedCuts;
+    if (store.project === applied) {
+      const changed = applied !== from;
+      const before = planStats(from);
+      setOutcome({ kind: "cuts", from, applied, before, after: changed ? planStats(applied) : before, changed, cuts: result });
+      setNotice(cutsSummary(result, cancelled));
+    } else {
+      setOutcome(null);
+      setNotice("The project changed while the optimizer ran, so its cuts were not used.");
     }
   }
 
@@ -103,6 +136,20 @@ export function useOptimizeRuns(store: ProjectStore, factory: WorkerFactory): Op
     [optimizer, store],
   );
 
+  const runCuts = useCallback(
+    (sheet?: string) => {
+      const from = store.project;
+      setNotice(null);
+      setOutcome(null);
+      optimizer.startCuts(from, sheet, (result, cancelled) => {
+        const applied = applyCutsResult(from, result);
+        if (applied !== from) store.edit((present: Project) => (present === from ? applied : present));
+        setLandedCuts({ result, applied, from, cancelled });
+      });
+    },
+    [optimizer, store],
+  );
+
   const current = last && last.applied === store.project ? last : null;
   const outcome = lastOutcome && lastOutcome.applied === store.project ? lastOutcome : null;
   return {
@@ -113,6 +160,7 @@ export function useOptimizeRuns(store: ProjectStore, factory: WorkerFactory): Op
     outcome,
     undone: lastOutcome !== null && lastOutcome.changed && lastOutcome.from === store.project,
     optimize: (mode) => run(optimizeRequest(store.project, mode), mode),
+    optimizeCuts: runCuts,
     keepSearching: () => current && run(keepSearchingRequest(current), "keep"),
     stop: optimizer.cancel,
     undo: () => {
