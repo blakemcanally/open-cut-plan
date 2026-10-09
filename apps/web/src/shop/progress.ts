@@ -138,7 +138,8 @@ export function keepAssemblyProgress(project: Project, groups: readonly Assembly
 
 export const cutKey = (s: Step): string => [s.sheet, s.kind, s.axis, round(s.at), round(s.from), round(s.to)].join(",");
 
-function moveTicks(project: Project, steps: readonly Step[], next: Project): Project {
+/** The next project with the ticks of the old steps on the new step numbers of their cuts. A cut that changes loses its tick. */
+export function moveTicks(project: Project, steps: readonly Step[], next: Project): Project {
   const state = shopState(project, steps);
   if (state.stale || state.done.size === 0) return next;
   const ticked = new Set(steps.filter((s) => state.done.has(s.step)).map(cutKey));

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 
 const PARTS = `name,length,width,quantity,material,grain
@@ -307,4 +308,35 @@ test("picks an actual thickness on the Stock tab, and the design follows it", as
 
   await page.getByRole("tab", { name: "Design" }).click();
   await expect(page.getByRole("img", { name: 'Front view of KALLAX 2x2: ~28 1/2" × ~28 1/2" × ~15 11/32"' })).toBeVisible();
+});
+
+test("drags the end of a cut to the far stop in the Cuts mode, and Undo puts back the old cuts", async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(window, "showOpenFilePicker", { value: undefined }));
+  await page.goto("/");
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Open a .cutplan.json file…" }).click();
+  await (await chooser).setFiles({ name: "row.cutplan.json", mimeType: "application/json", buffer: readFileSync(new URL("./row.cutplan.json", import.meta.url)) });
+  await page.getByRole("tab", { name: "Layout" }).click();
+  const sheet = page.getByRole("region", { name: /^Sheet 1:/ });
+  await expect(sheet.getByText("automatic cuts")).toBeVisible();
+
+  await page.getByRole("button", { name: "Cuts", exact: true }).click();
+  await sheet.getByRole("button", { name: /^Step 6,/ }).click();
+  await expect(page.getByText("Cut 6 · Rip · stage 2")).toBeVisible();
+  const area = (await page.locator("svg[data-sheet]").first().boundingBox())!;
+  const inch = area.width / 96;
+  const end = (await page.locator('[data-selected-step="6"] .cut-handle[data-end="to"]').boundingBox())!;
+  await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(area.x + 50 * inch, end.y + end.height / 2, { steps: 5 });
+  await expect(page.locator(".cut-stop")).toHaveCount(1);
+  await page.mouse.move(area.x + 60.25 * inch, end.y + end.height / 2, { steps: 5 });
+  await expect(page.locator(".cut-stop-label")).toHaveText('→ 40 1/8"');
+  await page.mouse.up();
+  await expect(page.getByText("Sheet 1: 7 cuts (was 8).")).toBeVisible();
+  await expect(sheet.getByText("saved cuts")).toBeVisible();
+
+  await page.getByRole("button", { name: "Undo", exact: true }).first().click();
+  await expect(sheet.getByText("automatic cuts")).toBeVisible();
+  await expect(sheet.locator(".cut[data-step]")).toHaveCount(8);
 });

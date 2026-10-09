@@ -177,6 +177,26 @@ fieldset.choice label { display: inline-flex; align-items: center; gap: 4px; }
 .sheet-area .cut-number { pointer-events: auto; cursor: pointer; outline: none; }
 .sheet-area .cut-number:hover circle { stroke-width: 2; }
 .sheet-area .cut-number:focus-visible circle { stroke: #111; stroke-width: 3; }
+.sheet-area .part.locked { opacity: 0.55; cursor: default; }
+.sheet-area .cut-hit { pointer-events: stroke; stroke: transparent; stroke-width: 12; cursor: pointer; }
+.sheet-area .cut-selected { stroke: #d0342c; stroke-width: 5; pointer-events: none; }
+.sheet-area .cut-ghost { stroke: #d0342c; stroke-width: 2; stroke-dasharray: 5 4; opacity: 0.55; pointer-events: none; }
+.sheet-area .cut-handle { fill: #fff; stroke: #d0342c; stroke-width: 2.5; cursor: grab; touch-action: none; }
+.sheet-area .cut-handle.dragging { cursor: grabbing; }
+.sheet-area .cut-stop { stroke: var(--ok); stroke-width: 3; pointer-events: none; }
+.sheet-area .cut-stop.no-tool { stroke: #d08a00; }
+.sheet-area .cut-stop.near { stroke-width: 5; }
+.sheet-area .cut-stop-label { font-size: 11px; fill: #166534; paint-order: stroke; stroke: #fff; stroke-width: 3px; pointer-events: none; }
+.sheet-area .join-chip { cursor: pointer; outline: none; }
+.sheet-area .join-chip rect { fill: #1f2937; }
+.sheet-area .join-chip text { fill: #fff; font-size: 11px; }
+.sheet-area .join-chip:focus-visible rect { stroke: var(--focus); stroke-width: 3; }
+.mode-toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.mode-toggle button { border: 0; border-radius: 0; }
+.mode-toggle button[aria-pressed="true"] { background: #1f2937; color: #fff; }
+.cut-end { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+.cut-end .muted { min-width: 5.5em; }
+.cut-actions { display: flex; gap: 6px; margin: 8px 0; }
 .sheet-area .drop-preview { fill: #1a5fd022; stroke: var(--focus); stroke-width: 2; stroke-dasharray: 6 3; pointer-events: none; }
 .sheet-area .drop-preview.bad { fill: #c6282822; stroke: var(--bad); }
 .sheet-area .grid, .sheet-area .snap-guide { pointer-events: none; }

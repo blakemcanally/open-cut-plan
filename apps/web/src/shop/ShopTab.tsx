@@ -1,7 +1,6 @@
 import {
   describeStep,
   partColors,
-  LIMIT_WORDS,
   resultLabel,
   sequencePlan,
   setupKey,
@@ -11,18 +10,17 @@ import {
   stockLabel,
   TOOL_WARNING_COLOR,
   toolColors,
-  toolLimit,
   type CutColoring,
   type ProjectAnalysis,
   type Settings,
   type Step,
-  type Tool,
 } from "@opencutplan/core";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { TabLink } from "../components/TabLink.tsx";
 import type { PrintJob } from "../print/PrintView.tsx";
 import type { ProjectStore } from "../state/useProject.ts";
 import { chooseOrder, chooseTool, cutKey, keepProgress, setStepDone, shopState, writeProgress } from "./progress.ts";
+import { toolOption } from "./toolOption.ts";
 
 interface ShopTabProps {
   store: ProjectStore;
@@ -57,13 +55,6 @@ function ToolName({ color, name }: { color: string; name: string }) {
       {name}
     </span>
   );
-}
-
-function toolOption(step: Step, tool: Tool, limits: boolean): string {
-  if (tool.id === step.recommended?.id) return `${tool.name} (recommended)`;
-  const limit = toolLimit(tool, { ...step, length: step.to - step.from }, limits);
-  if (limit === "crosscutOnly") return `${tool.name} (${LIMIT_WORDS[limit]})`;
-  return limit ? `${tool.name} (over its ${LIMIT_WORDS[limit]})` : tool.name;
 }
 
 export function ShopTab({ store, analysis, onPrint, openStep = null, cutColors = "stage" }: ShopTabProps) {

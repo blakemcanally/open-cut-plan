@@ -10,6 +10,7 @@ import {
   extraCostPercent,
   findCopy,
   findFreeSpot,
+  joinCut,
   lostSavedCuts,
   partColors,
   moveCopyTo,
@@ -20,9 +21,11 @@ import {
   projectGoal,
   pushSheetToFactoryEdges,
   pushToFactoryEdges,
+  removeCut,
   removeEmptySheets,
   removeSheet,
   rotateCopy,
+  sameLine,
   setPinned,
   sheetRects,
   stockLabel,
@@ -30,6 +33,8 @@ import {
   unplacedCopies,
   usableRect,
   type CopyRef,
+  type CutEnd,
+  type CutLine,
   type Project,
   type ProjectAnalysis,
   type Rect,
@@ -39,9 +44,13 @@ import {
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { TabLink } from "../components/TabLink.tsx";
 import { RUN_NAMES, type OptimizeRuns } from "../optimizer/useOptimizeRuns.ts";
+import { chooseTool, moveTicks } from "../shop/progress.ts";
 import type { ViewPrefs } from "../state/prefs.ts";
 import type { ProjectStore } from "../state/useProject.ts";
 import { ColorLegend } from "./ColorLegend.tsx";
+import { applyStop, endStops, lineOf, type EndStop, type SelectedCut } from "./cutEditing.ts";
+import { CutEditor } from "./CutEditor.tsx";
+import { CutInspector } from "./CutInspector.tsx";
 import { CutLegend } from "./CutLegend.tsx";
 import { fitScale, WINDOW_ALLOWANCE } from "./fit.ts";
 import { Inspector } from "./Inspector.tsx";
@@ -118,6 +127,9 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
   const [drag, setDrag] = useState<Drag | null>(null);
   const [stockChoice, setStockChoice] = useState("");
   const [lostCuts, setLostCuts] = useState<LostCuts | null>(null);
+  const [mode, setMode] = useState<"parts" | "cuts">("parts");
+  const [selectedCut, setSelectedCut] = useState<SelectedCut | null>(null);
+  const [cutsBefore, setCutsBefore] = useState<{ sheet: string; cuts: number } | null>(null);
   const focusAfter = useRef<CopyRef | null>(null);
   const sheetsRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<Drag | null>(null);
@@ -149,6 +161,17 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
   const tools = useMemo(() => toolColors(ctx.tools), [ctx.tools]);
   const unplaced = useMemo(() => unplacedCopies(project), [project]);
   const pushable = useMemo(() => new Set((ctx.project.plan?.sheets ?? []).filter((sheet) => pushToFactoryEdges(ctx, sheet) !== null).map((sheet) => sheet.id)), [ctx]);
+  const cutsMode = mode === "cuts" && ctx.features.cutOrder;
+  const selectedStep = useMemo(
+    () => (cutsMode && selectedCut ? (analysis.steps.find((step) => step.sheet === selectedCut.sheet && step.kind !== "trim" && sameLine(step, selectedCut.line)) ?? null) : null),
+    [analysis.steps, cutsMode, selectedCut],
+  );
+  const cutTools = useMemo(() => {
+    if (!selectedStep) return null;
+    const sheet = selectedStep.sheet;
+    const stops = { from: endStops(project, sheet, selectedStep, "from"), to: endStops(project, sheet, selectedStep, "to") };
+    return { stops, join: joinCut(project, sheet, selectedStep), canRemove: removeCut(project, sheet, selectedStep) !== null };
+  }, [project, selectedStep]);
   const enabledStock = project.stock.filter((stock) => stock.enabled !== false);
   const chosenStock = enabledStock.find((stock) => stock.id === stockChoice) ?? enabledStock[0];
 
@@ -230,8 +253,35 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
     focusAfter.current = ref;
   };
 
+  const editCuts = (sheet: string, next: Project, line: CutLine | null) => {
+    setCutsBefore({ sheet, cuts: analysis.steps.filter((step) => step.sheet === sheet).length });
+    edit(moveTicks(project, analysis.steps, next));
+    setSelectedCut(line ? { sheet, line: lineOf(line) } : null);
+  };
+  const cutStop = (end: CutEnd, stop: EndStop) => {
+    if (!selectedStep || busy) return;
+    const result = applyStop(project, selectedStep.sheet, selectedStep, end, stop);
+    if (result) editCuts(selectedStep.sheet, result.project, result.line);
+  };
+  const joinSelected = () => {
+    if (!selectedStep || !cutTools?.join || busy) return;
+    editCuts(selectedStep.sheet, cutTools.join.project, cutTools.join.line);
+  };
+  const removeSelected = () => {
+    if (!selectedStep || busy) return;
+    const next = removeCut(project, selectedStep.sheet, selectedStep);
+    if (next) editCuts(selectedStep.sheet, next, null);
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (isEditable(event.target) || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (cutsMode) {
+      if (event.key === "Escape") setSelectedCut(null);
+      else if ((event.key === "Delete" || event.key === "Backspace") && event.target instanceof Element && event.target.closest("svg[data-sheet]") && cutTools?.canRemove) removeSelected();
+      else return;
+      event.preventDefault();
+      return;
+    }
     if (event.key === "Escape") {
       if (dragRef.current) setDrag(null);
       else select(null);
@@ -298,7 +348,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
   targetRef.current = target;
 
   const startDrag = (event: ReactPointerEvent, ref: CopyRef, grab: { x: number; y: number } | null) => {
-    if (busy || event.button !== 0) return;
+    if (busy || cutsMode || event.button !== 0) return;
     const rotated = findCopy(project, ref)?.placement.rotated ?? false;
     const size = sizeOf(ref, rotated);
     if (!size) return;
@@ -392,6 +442,16 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
           </button>
         )}
         <span className="spacer" />
+        {cutsOn && (
+          <span className="mode-toggle" role="group" aria-label="Edit mode">
+            <button type="button" aria-pressed={!cutsMode} onClick={() => setMode("parts")} title="Move and turn the parts.">
+              Parts
+            </button>
+            <button type="button" aria-pressed={cutsMode} onClick={() => setMode("cuts")} title="Select a cut, then make it longer or shorter, join it, or remove it. The parts do not move.">
+              Cuts
+            </button>
+          </span>
+        )}
         <label className="inline">
           Stock
           <select value={chosenStock?.id ?? ""} onChange={(event) => setStockChoice(event.target.value)} disabled={busy || enabledStock.length === 0}>
@@ -516,7 +576,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
                   selected={selected}
                   dragging={dragging}
                   preview={preview}
-                  showCuts={prefs.showCuts && ctx.features.cutOrder}
+                  showCuts={(prefs.showCuts || cutsMode) && ctx.features.cutOrder}
                   showKerf={prefs.showKerf}
                   grid={ctx.features.snapping ? prefs.grid[ctx.units] : 0}
                   busy={busy}
@@ -529,6 +589,22 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
                   cuts={cutsOn && sheet.placements.length > 0 ? cutStates.get(sheet.id) : undefined}
                   onOptimizeCuts={cutsOn && sheet.placements.length > 0 ? () => runs.optimizeCuts(sheet.id) : undefined}
                   onUseAutomaticCuts={sheet.savedCuts ? () => edit((p) => clearSavedCuts(p, sheet.id)) : undefined}
+                  mode={cutsMode ? "cuts" : "parts"}
+                  onSelectCut={(step) => setSelectedCut({ sheet: step.sheet, line: lineOf(step) })}
+                  cutOverlay={
+                    selectedStep?.sheet === sheet.id && cutTools ? (
+                      <CutEditor
+                        ctx={ctx}
+                        step={selectedStep}
+                        scale={scale}
+                        busy={busy}
+                        joins={cutTools.join?.joins ?? 0}
+                        stopsFor={(end) => cutTools.stops[end]}
+                        onStop={cutStop}
+                        onJoin={joinSelected}
+                      />
+                    ) : null
+                  }
                 />
               );
             })}
@@ -539,16 +615,40 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
           {prefs.showCuts && ctx.features.cutOrder && (
             <CutLegend coloring={prefs.cutColors} tools={tools} steps={analysis.steps} onColoring={(cutColors) => onPrefs({ ...prefs, cutColors })} />
           )}
-          <Inspector
-            ctx={ctx}
-            project={project}
-            selected={selected}
-            busy={busy}
-            message={message}
-            onLocation={(sheet) => selected && locate(selected, sheet)}
-            onMove={(x, y) => selected && editLayout((p) => moveCopyTo(p, selected, x, y))}
-            onRotate={() => selected && editLayout((p) => rotateCopy(p, selected))}
-          />
+          {cutsMode ? (
+            <CutInspector
+              ctx={ctx}
+              step={selectedStep}
+              busy={busy}
+              count={
+                selectedStep
+                  ? {
+                      sheet: selectedStep.sheetNumber,
+                      cuts: analysis.steps.filter((step) => step.sheet === selectedStep.sheet).length,
+                      before: cutsBefore?.sheet === selectedStep.sheet ? cutsBefore.cuts : null,
+                    }
+                  : null
+              }
+              stops={cutTools?.stops ?? null}
+              joins={cutTools?.join?.joins ?? 0}
+              canRemove={cutTools?.canRemove ?? false}
+              onStop={cutStop}
+              onJoin={joinSelected}
+              onRemove={removeSelected}
+              onTool={(tool) => selectedStep && edit(chooseTool(project, analysis.steps, selectedStep, tool))}
+            />
+          ) : (
+            <Inspector
+              ctx={ctx}
+              project={project}
+              selected={selected}
+              busy={busy}
+              message={message}
+              onLocation={(sheet) => selected && locate(selected, sheet)}
+              onMove={(x, y) => selected && editLayout((p) => moveCopyTo(p, selected, x, y))}
+              onRotate={() => selected && editLayout((p) => rotateCopy(p, selected))}
+            />
+          )}
           <IssueList
             project={project}
             issues={analysis.issues}

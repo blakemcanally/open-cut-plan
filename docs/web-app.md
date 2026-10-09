@@ -297,6 +297,23 @@ part, **R** turns it, **Delete** sends it to the tray, the arrow keys move it by
 a part. The side panel shows the selected part, a **Location** list to move it to a sheet or the tray, and **X** and
 **Y** fields for an exact position.
 
+**Parts** and **Cuts** in the toolbar switch the edit mode, when the `cutOrder` feature is on. In the Cuts mode, the
+parts show pale and do not move, the cuts always show, and a click on a cut line or a cut number selects the cut. The
+trim cuts cannot be selected. See [cut edits](cut-analysis.md#cut-edits).
+
+- The selected cut shows thick, with a handle at each end. A drag of a handle shows the stops as green ticks, or
+  amber when the stop gives a cut that no tool can make, and the new length next to the handle. When you let go, the
+  end goes to the nearest stop within 16 pixels. A drag to no stop changes nothing.
+- When the cut can join cuts on the same line, a chip "Join N cuts" shows next to it.
+- The side panel shows the cut number, the kind, the stage, the position, the extent, the length, and the tool. The
+  tool list is the same as on the Shop tab. **Extend** and **Shorten** move each end (left and right for a rip, top
+  and bottom for a crosscut) to its nearest stop. **Join N cuts** and **Remove** are there too; **Remove** is on only
+  when the parts do not need the cut. Delete removes the selected cut while the focus is on the sheet, and Escape
+  clears the selection.
+- After an edit, the sheet says "saved cuts", and the side panel tells the new cut count of the sheet, for example
+  "Sheet 1: 7 cuts (was 8)." **Undo** undoes the edit. A cut that changes loses its done tick on the Shop tab; the
+  other ticks stay with their cuts.
+
 A layout with problems is never blocked: the user can keep editing, and the Problems list updates after each change.
 
 ### Cut

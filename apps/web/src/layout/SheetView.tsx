@@ -25,7 +25,7 @@ import {
   type Step,
   type ToolColors,
 } from "@opencutplan/core";
-import { Fragment, useId, type PointerEvent } from "react";
+import { Fragment, useId, type PointerEvent, type ReactNode } from "react";
 import { fitPartLabel, overlaps } from "./partDrawing.ts";
 import { summaryItems, type SheetSummary } from "./sheetSummary.ts";
 import type { Snapped } from "./snap.ts";
@@ -69,6 +69,11 @@ interface SheetViewProps {
   onOptimizeCuts?: (() => void) | undefined;
   /** Shown when set: removes the saved cuts of the sheet. */
   onUseAutomaticCuts?: (() => void) | undefined;
+  /** In the cuts mode the parts do not move, and a click on a cut selects it. */
+  mode?: "parts" | "cuts";
+  onSelectCut?: ((step: Step) => void) | undefined;
+  /** Drawn over the cuts: the editor of the selected cut. */
+  cutOverlay?: ReactNode;
 }
 
 const GRID_MIN_PX = 6;
@@ -117,6 +122,8 @@ export function SheetView(props: SheetViewProps) {
   });
   const overlap = overlaps(rects);
   const cutWidth = showKerf ? Math.max(1, px(ctx.kerf)) : 1.5;
+  const cutsMode = props.mode === "cuts";
+  const selectCut = (step: Step) => step.kind !== "trim" && props.onSelectCut?.(step);
   return (
     <section className="sheet" aria-label={`Sheet ${number}: ${stockLabel(ctx, stock)}`}>
       <header className="sheet-head">
@@ -221,15 +228,15 @@ export function SheetView(props: SheetViewProps) {
           return (
             <g
               key={`${copyKey(ref)}@${index}`}
-              className={`part${bad ? " bad" : ""}${overlap.parts.has(index) ? " overlapping" : ""}${isSelected ? " selected" : ""}${sameCopy(dragging, ref) ? " dragging" : ""}`}
+              className={`part${bad ? " bad" : ""}${overlap.parts.has(index) ? " overlapping" : ""}${isSelected ? " selected" : ""}${sameCopy(dragging, ref) ? " dragging" : ""}${cutsMode ? " locked" : ""}`}
               data-copy-key={copyKey(ref)}
               transform={`translate(${px(rect.x)} ${px(rect.y)})`}
-              tabIndex={0}
-              role="button"
-              aria-pressed={isSelected}
+              tabIndex={cutsMode ? -1 : 0}
+              role={cutsMode ? "img" : "button"}
+              aria-pressed={cutsMode ? undefined : isSelected}
               aria-label={`${label}, ${size}${placement.rotated ? ", turned" : ""}${cross ? ", across the grain" : ""}${marks.length > 0 ? ", on a factory edge" : ""}${bad ? ", has a problem" : ""}${colorKey ? `, ${colorKey.label}` : ""}`}
-              onPointerDown={(event) => props.onPartPointerDown(event, ref)}
-              onFocus={() => props.onSelect(ref)}
+              onPointerDown={(event) => !cutsMode && props.onPartPointerDown(event, ref)}
+              onFocus={() => !cutsMode && props.onSelect(ref)}
             >
               <title>{`${label}, ${size}`}</title>
               <rect className="fill" width={w} height={h} fill={colorKey?.color ?? NO_GROUP_COLOR} />
@@ -286,9 +293,12 @@ export function SheetView(props: SheetViewProps) {
             const name = cutName(step);
             const mx = px((x1 + x2) / 2);
             const my = px((y1 + y2) / 2);
-            const open = () => props.onOpenStep(step.step);
+            const open = () => (cutsMode ? selectCut(step) : props.onOpenStep(step.step));
             return (
               <g key={step.step} className="cut" data-step={step.step}>
+                {cutsMode && step.kind !== "trim" && (
+                  <line className="cut-hit" x1={px(x1)} y1={px(y1)} x2={px(x2)} y2={px(y2)} onPointerDown={() => selectCut(step)} />
+                )}
                 <line
                   x1={px(x1)}
                   y1={px(y1)}
@@ -311,7 +321,7 @@ export function SheetView(props: SheetViewProps) {
                     open();
                   }}
                 >
-                  <title>{`${name}, stage ${step.stage}. Open it on the Cut tab.`}</title>
+                  <title>{`${name}, stage ${step.stage}. ${cutsMode ? "Select it." : "Open it on the Cut tab."}`}</title>
                   <circle cx={mx} cy={my} r={8} fill={byTool && toolWarning(step) ? TOOL_WARNING_FILL : "#fff"} stroke={color} />
                   <text x={mx} y={my} fontSize={9} textAnchor="middle" dominantBaseline="central" fill={color}>
                     {step.step}
@@ -320,6 +330,7 @@ export function SheetView(props: SheetViewProps) {
               </g>
             );
           })}
+        {showCuts && props.cutOverlay}
         {preview && (
           <rect
             className={`drop-preview${preview.bad ? " bad" : ""}`}
