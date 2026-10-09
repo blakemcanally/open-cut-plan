@@ -109,6 +109,24 @@ describe("cuts", () => {
     const cleared = await cli(["optimize-cuts", ROW, "--clear"], io);
     expect(cleared.file(ROW).plan!.sheets[0]!.savedCuts).toBeUndefined();
   });
+
+  it("moves a cut in the order of its sheet, and fails with order-limit past the limits", async () => {
+    const io = rowIo();
+    const moved = await cli(["cuts", "move", ROW, ...SHEET, "--step", "5", "--after", "1", "--json"], io);
+    expect(moved.code).toBe(0);
+    expect(moved.json()).toMatchObject({ step: 5, to: 2, cut: { axis: "y", at: 40.0625, from: 0, to: 20 } });
+    const steps = (await cli(["cuts", "show", ROW, ...SHEET, "--json"], io)).json().steps;
+    expect(steps[1]).toMatchObject({ step: 2, axis: "y", at: 40.0625, from: 0, to: 20 });
+    const text = await cli(["cuts", "move", ROW, ...SHEET, "--step", "2", "--before", "6"], io);
+    expect(text.stdout).toContain("Moved step 2 before step 6.");
+    const limit = await cli(["cuts", "move", ROW, ...SHEET, "--step", "2", "--before", "1", "--json"], rowIo());
+    expect(limit.code).toBe(2);
+    expect(limit.json()).toMatchObject({ ok: false, error: { code: "order-limit", after: 1, before: 3 } });
+    const crosscut = await cli(["cuts", "move", ROW, ...SHEET, "--step", "2", "--after", "3"], rowIo());
+    expect(crosscut.stderr).toContain("Step 2 must stay after step 1, the cut that makes its piece, and before step 3, the first cut inside its piece.");
+    const both = await cli(["cuts", "move", ROW, ...SHEET, "--step", "5", "--after", "1", "--before", "2", "--json"], rowIo());
+    expect(both.json()).toMatchObject({ ok: false, error: { code: "conflict" } });
+  });
 });
 
 function savedOf(run: CliResult) {

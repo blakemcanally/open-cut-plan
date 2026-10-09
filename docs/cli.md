@@ -357,6 +357,7 @@ them. See [`cut-analysis.md`](cut-analysis.md#cut-edits).
 | `cuts remove <file>` | Removes a cut that the parts do not need, such as a cut through waste. | `opencutplan cuts remove shelf.cutplan.json --sheet 1 --step 9` |
 | `cuts lock <file>` | Locks a cut, so that `optimize-cuts` keeps it. | `opencutplan cuts lock shelf.cutplan.json --sheet 1 --step 3` |
 | `cuts unlock <file>` | Unlocks a cut, so that `optimize-cuts` and the edits can change it. | `opencutplan cuts unlock shelf.cutplan.json --sheet 1 --step 3` |
+| `cuts move <file>` | Moves a cut just `--before <m>` or just `--after <m>` another cut of the sheet. | `opencutplan cuts move shelf.cutplan.json --sheet 1 --step 5 --after 1` |
 
 A stop is `{ end, length, cuts, joins, noTool }`, and a shorten stop also has `across`, the position of the cross cut.
 `cuts` is the cut count of the sheet after the edit, with the trims. `noTool` is true when the edit gives the sheet more
@@ -365,6 +366,11 @@ stops. `cuts join` fails with `no-join` when no stop joins a cut, and `cuts remo
 cuts then do not free every part. An extended cut keeps its tool choice while that tool can make it. A locked cut cannot
 be extended, shortened, joined, or removed (the code `locked`), and no stop splits it or joins it into another cut.
 `cuts show` marks it `locked`.
+
+`cuts move` keeps an order that the shop can follow: a cut stays after the cut that makes its piece and before the first
+cut inside that piece. A move past these limits fails with the code `order-limit`, and the error has `after` and
+`before`, the step numbers of the limits. The shop order follows the new order when `orderMode` is `sheet`. With
+`orderMode` `setup`, the setups set the order, and the command tells this.
 
 ### Reports
 

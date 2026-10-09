@@ -1,16 +1,20 @@
 import {
   analyzeProject,
+  cutOrderLimits,
   cutStops,
   extendCut,
   isCutLocked,
   joinCut,
+  moveCut,
   removeCut,
+  sameLine,
   sequencePlan,
   setCutLocked,
   sheetCuts,
   shortenCut,
   shortenStops,
   type CutEnd,
+  type CutLine,
   type CutStop,
   type Project,
   type Step,
@@ -240,6 +244,55 @@ const remove: CommandSpec = {
   },
 };
 
+const move: CommandSpec = {
+  name: "cuts move",
+  summary: "Move a cut to another place in the cut order of its sheet.",
+  description:
+    "Move one cut just before or just after another cut of the same sheet. A cut can move only after the cut that makes its piece and before the first cut inside that piece; a move past these limits fails with order-limit, and the error tells the limits. The trims always come first. The first move on a sheet with automatic cuts saves its cuts in the file. The shop order follows the new order when orderMode is sheet. With orderMode setup, the shop order groups the setups and does not use the saved order.",
+  args: [FILE_ARG],
+  options: [
+    SHEET,
+    STEP,
+    { name: "before", type: "string", value: "<m>", description: "Put the cut just before step m." },
+    { name: "after", type: "string", value: "<m>", description: "Put the cut just after step m." },
+    ...OUTPUT_OPTIONS,
+  ],
+  examples: [{ command: `${PROGRAM} cuts move shelf.cutplan.json --sheet 1 --step 5 --after 1`, description: "Make step 5 the cut just after step 1." }],
+  output: "sheet, step (the step number before the move), to (the step number after the move), cut { axis, at, from, to }, changes, validation, written, dryRun. An order-limit error has after and before: the step numbers of the limits, or null.",
+  async run(invocation) {
+    const { args, options, io } = invocation;
+    const loaded = await loadProject(io, args[0]!);
+    const { project } = loaded;
+    const { sheetId, number, step } = findCut(project, options);
+    const before = str(options, "before");
+    const after = str(options, "after");
+    if ((before === undefined) === (after === undefined)) throw usageError("Give --before or --after, not both.", before === undefined ? "missing-option" : "conflict", { option: "before" });
+    const targetNumber = integerValue((before ?? after)!, before !== undefined ? "before" : "after", 1);
+    const steps = sheetSteps(project, sheetId);
+    const target = steps.find((s) => s.step === targetNumber);
+    if (!target || target.kind === "trim") throw usageError(`Sheet ${number} has no cut at step ${targetNumber} to move next to. The trims always come first.`, "not-found", { step: targetNumber });
+    if (target.step === step.step) throw usageError(`Give a step other than step ${step.step}.`, "usage");
+    const others = sheetCuts(project, sheetId)!.lines.filter((other) => !sameLine(other, step));
+    const place = others.findIndex((other) => sameLine(other, target)) + (after !== undefined ? 1 : 0);
+    const next = moveCut(project, sheetId, step, place);
+    if (!next) {
+      const limits = cutOrderLimits(project, sheetId, step)!;
+      const stepOf = (cut: CutLine | null) => (cut ? (steps.find((s) => s.kind !== "trim" && sameLine(s, cut))?.step ?? null) : null);
+      const low = stepOf(limits.requires);
+      const high = stepOf(limits.first);
+      const parts = [low !== null ? `after step ${low}, the cut that makes its piece` : null, high !== null ? `before step ${high}, the first cut inside its piece` : null].filter(Boolean);
+      throw new CliError(EXIT.usage, "order-limit", `Step ${step.step} must stay ${parts.join(", and ")}.`, { after: low, before: high });
+    }
+    const moved = sheetSteps(next, sheetId).find((s) => s.kind !== "trim" && sameLine(s, step))!;
+    const details = project.settings.orderMode === "setup" ? ["The shop order groups the setups, because orderMode is setup. The new order applies when orderMode is sheet."] : [];
+    return finishMutation(invocation, loaded, next, {
+      summary: `Moved step ${step.step} ${before !== undefined ? "before" : "after"} step ${targetNumber}.`,
+      details,
+      data: { sheet: sheetId, step: step.step, to: moved.step, cut: line(step) },
+    });
+  },
+};
+
 function lockCommand(locked: boolean): CommandSpec {
   const verb = locked ? "lock" : "unlock";
   return {
@@ -271,6 +324,6 @@ function lockCommand(locked: boolean): CommandSpec {
 
 export const cutsGroup: GroupSpec = {
   name: "cuts",
-  summary: "The cuts of a sheet: show, extend, shorten, join, remove, lock, and unlock",
-  commands: [show, extend, shorten, join, remove, lockCommand(true), lockCommand(false)],
+  summary: "The cuts of a sheet: show, extend, shorten, join, remove, lock, unlock, and move",
+  commands: [show, extend, shorten, join, remove, lockCommand(true), lockCommand(false), move],
 };
