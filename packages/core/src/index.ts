@@ -51,6 +51,7 @@ export * from "./optimize/search.ts";
 export * from "./optimize/worker.ts";
 export * from "./optimize/runs.ts";
 export * from "./optimize/cuts.ts";
+export * from "./optimize/slide.ts";
 export * from "./optimize/groups.ts";
 export * from "./edit/patch.ts";
 export * from "./edit/parts.ts";

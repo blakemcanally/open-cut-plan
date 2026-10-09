@@ -47,8 +47,8 @@ export interface OptimizeRuns {
   /** True while an undo has put back the project from before the last run. */
   undone: boolean;
   optimize(mode: OptimizeMode): void;
-  /** Runs Optimize cuts on every sheet, or on one sheet. */
-  optimizeCuts(sheet?: string): void;
+  /** Runs Optimize cuts on every sheet, or on one sheet. With `slide`, the parts can slide inside their pieces. */
+  optimizeCuts(sheet?: string, slide?: boolean): void;
   keepSearching(): void;
   stop(): void;
   /** Undoes the last run, as one undo step, while `outcome` is set and the run changed the project. */
@@ -68,7 +68,8 @@ function summary(result: OptimizeResult, cancelled: boolean, kind: RunKind, chan
 function cutsSummary(result: OptimizeCutsResult, cancelled: boolean): string {
   const saved = result.sheets.filter((sheet) => sheet.lines).length;
   if (saved === 0) return cancelled ? "Stopped. No sheet got fewer cuts." : "These cuts are already the best found.";
-  return `${cancelled ? "Stopped. " : ""}Optimize cuts saved fewer cuts on ${saved} ${saved === 1 ? "sheet" : "sheets"}.`;
+  const slid = result.sheets.reduce((sum, sheet) => sum + (sheet.lines ? sheet.slid : 0), 0);
+  return `${cancelled ? "Stopped. " : ""}Optimize cuts saved fewer cuts on ${saved} ${saved === 1 ? "sheet" : "sheets"}${slid > 0 ? ` and slid ${slid} ${slid === 1 ? "part" : "parts"}` : ""}.`;
 }
 
 interface LandedCuts {
@@ -137,11 +138,11 @@ export function useOptimizeRuns(store: ProjectStore, factory: WorkerFactory): Op
   );
 
   const runCuts = useCallback(
-    (sheet?: string) => {
+    (sheet?: string, slide = false) => {
       const from = store.project;
       setNotice(null);
       setOutcome(null);
-      optimizer.startCuts(from, sheet, (result, cancelled) => {
+      optimizer.startCuts(from, { sheet, slide }, (result, cancelled) => {
         const applied = applyCutsResult(from, result);
         if (applied !== from) store.edit((present: Project) => (present === from ? applied : present));
         setLandedCuts({ result, applied, from, cancelled });

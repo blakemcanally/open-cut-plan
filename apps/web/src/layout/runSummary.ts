@@ -20,9 +20,14 @@ export function comparisonLines(ctx: PlanContext, before: PlanStats, after: Plan
 export function cutsLines(ctx: PlanContext, result: OptimizeCutsResult): string[] {
   return result.sheets.map((sheet) =>
     sheet.lines
-      ? `Sheet ${sheet.number}: ${sheet.before.cuts} → ${sheet.after.cuts} cuts, ${formatIn(ctx, sheet.before.length)} → ${formatIn(ctx, sheet.after.length)} of cuts.`
+      ? `Sheet ${sheet.number}: ${sheet.before.cuts} → ${sheet.after.cuts} cuts, ${formatIn(ctx, sheet.before.length)} → ${formatIn(ctx, sheet.after.length)} of cuts.${slidText(sheet.slid)}`
       : `Sheet ${sheet.number}: ${sheet.before.cuts} cuts. No tree with fewer cuts was found.`,
   );
+}
+
+function slidText(slid: number): string {
+  if (slid === 0) return "";
+  return slid === 1 ? " Slid 1 part inside its piece." : ` Slid ${slid} parts inside their pieces.`;
 }
 
 /** The part of the sheets that are done, from 0 to 1. */

@@ -242,12 +242,16 @@ part that asks for a factory edge and does not get one.
 - **Optimize the rest** keeps every sheet and plans only the parts in the tray.
 - **Keep searching** continues the last search from its best plan. It is offered while the project is still the one
   the last search produced.
-- **Optimize cuts** keeps every part where it is and searches each sheet for a cut tree with fewer cuts. It shows
-  when the `cutOrder` feature is on. The search runs in passes, each up to the time limit of the sheet, and the status
-  shows the sheet and the pass, for example "Sheet 2, pass 3 (2 of 4)". When it finds a tree with fewer cuts, the
-  sheet saves it as its [saved cuts](cut-analysis.md#saved-cuts), and a line tells the change on each sheet, for
-  example "Sheet 1: 8 → 6 cuts, 272" → 258 1/2" of cuts." **Undo optimize** and **Undo** put back the cuts from
-  before.
+- **Optimize cuts** keeps every part where it is, unless **Let parts slide** is on, and searches each sheet for a cut
+  tree with fewer cuts. It shows when the `cutOrder` feature is on. The search runs in passes, each up to the time
+  limit of the sheet, and the status shows the sheet and the pass, for example "Sheet 2, pass 3 (2 of 4)". When it
+  finds a tree with fewer cuts, the sheet saves it as its [saved cuts](cut-analysis.md#saved-cuts), and a line tells
+  the change on each sheet, for example "Sheet 1: 8 → 6 cuts, 272" → 258 1/2" of cuts." **Undo optimize** and
+  **Undo** put back the cuts from before.
+- **Let parts slide**, next to **Optimize cuts**, lets the search slide a part inside its piece, toward a corner, when
+  that gives fewer cuts. The sheet line then tells the parts that slid, for example "Slid 1 part inside its piece."
+  A pinned sheet and a sheet with locked cuts do not slide, and a slide never takes a factory edge from a part.
+  **Undo optimize** puts back the parts and the cuts together. The box also applies to **Optimize cuts** on a sheet.
 - **Stop** ends a search and uses the best plan so far. For **Optimize cuts**, each sheet keeps the best tree found
   so far.
 - After a run, a line compares the plan before and after the run, for example "Before: 4 sheets, $260.00, 2 parts

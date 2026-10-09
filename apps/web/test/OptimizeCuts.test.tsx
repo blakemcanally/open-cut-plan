@@ -80,6 +80,32 @@ describe("Optimize cuts", () => {
     expect(within(sheet()).queryByRole("button", { name: "Use automatic cuts" })).toBeNull();
   }, 15000);
 
+  it("lets the parts slide when the box is on, and Undo puts the parts and the cuts back", async () => {
+    const loose = joinRowProject();
+    const sheet0 = loose.plan!.sheets[0]!;
+    loose.plan = { sheets: [{ ...sheet0, placements: sheet0.placements.map((placement, i) => (i === 2 ? { ...placement, y: 3 } : placement)) }] };
+    const current = renderLayout(loose);
+    await userEvent.click(screen.getByRole("checkbox", { name: "Let parts slide" }));
+    await userEvent.click(screen.getByRole("button", { name: "Optimize cuts" }));
+    await waitFor(() => expect(status()).toContain("Optimize cuts saved fewer cuts on 1 sheet and slid 1 part."), { timeout: 10000 });
+    expect(status()).toContain("Slid 1 part inside its piece.");
+    expect(current().project.plan!.sheets[0]!.placements[2]).toMatchObject({ x: 40.25, y: 0 });
+    expect(analyzeProject(current().project).sheets[0]!.savedCuts).toBe("used");
+    expect(status()).not.toContain("were removed");
+    await userEvent.click(screen.getByRole("button", { name: "Undo optimize" }));
+    expect(current().project.plan!.sheets[0]!.placements[2]).toMatchObject({ y: 3 });
+    expect(current().project.plan!.sheets[0]!.savedCuts).toBeUndefined();
+  }, 15000);
+
+  it("moves no part when the box is off", async () => {
+    const loose = joinRowProject();
+    const sheet0 = loose.plan!.sheets[0]!;
+    loose.plan = { sheets: [{ ...sheet0, placements: sheet0.placements.map((placement, i) => (i === 2 ? { ...placement, y: 3 } : placement)) }] };
+    const current = renderLayout(loose);
+    await optimizeCuts();
+    expect(current().project.plan!.sheets[0]!.placements).toEqual(loose.plan.sheets[0]!.placements);
+  }, 15000);
+
   it("offers no Optimize cuts when the cut order is off", () => {
     const project = joinRowProject();
     project.settings.features = { ...project.settings.features, cutOrder: false };

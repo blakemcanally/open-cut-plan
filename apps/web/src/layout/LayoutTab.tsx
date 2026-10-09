@@ -135,6 +135,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
   const [stockChoice, setStockChoice] = useState("");
   const [lostCuts, setLostCuts] = useState<LostCuts | null>(null);
   const [mode, setMode] = useState<"parts" | "cuts">("parts");
+  const [slide, setSlide] = useState(false);
   const [selectedCut, setSelectedCut] = useState<SelectedCut | null>(null);
   const [orderNote, setOrderNote] = useState<{ cut: SelectedCut; text: string } | null>(null);
   const [cutsBefore, setCutsBefore] = useState<{ sheet: string; cuts: number } | null>(null);
@@ -478,9 +479,20 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
           Keep searching
         </button>
         {cutsOn && (
-          <button type="button" disabled={!canOptimizeCuts} onClick={() => runs.optimizeCuts()} title="Search each sheet for a cut tree with fewer cuts. No part moves.">
+          <button
+            type="button"
+            disabled={!canOptimizeCuts}
+            onClick={() => runs.optimizeCuts(undefined, slide)}
+            title={slide ? "Search each sheet for a cut tree with fewer cuts. A part can slide inside its piece when that gives fewer cuts." : "Search each sheet for a cut tree with fewer cuts. No part moves."}
+          >
             Optimize cuts
           </button>
+        )}
+        {cutsOn && (
+          <label className="inline" title="Optimize cuts can slide a part inside its piece, toward a corner, when that gives fewer cuts. Pinned sheets and sheets with locked cuts do not slide.">
+            <input type="checkbox" checked={slide} onChange={(event) => setSlide(event.target.checked)} />
+            Let parts slide
+          </label>
         )}
         <span className="spacer" />
         {cutsOn && (
@@ -628,7 +640,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
                   onOpenStep={onOpenStep}
                   onPushToFactoryEdges={pushable.has(sheet.id) ? () => editLayout((p) => pushSheetToFactoryEdges(p, sheet.id)) : undefined}
                   cuts={cutsOn && sheet.placements.length > 0 ? cutStates.get(sheet.id) : undefined}
-                  onOptimizeCuts={cutsOn && sheet.placements.length > 0 ? () => runs.optimizeCuts(sheet.id) : undefined}
+                  onOptimizeCuts={cutsOn && sheet.placements.length > 0 ? () => runs.optimizeCuts(sheet.id, slide) : undefined}
                   onUseAutomaticCuts={sheet.savedCuts ? () => edit((p) => clearSavedCuts(p, sheet.id)) : undefined}
                   mode={cutsMode ? "cuts" : "parts"}
                   onSelectCut={(step) => setSelectedCut({ sheet: step.sheet, line: lineOf(step) })}

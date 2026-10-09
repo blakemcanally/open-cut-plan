@@ -28,7 +28,7 @@ export interface Optimizer {
   error: string | null;
   start(request: OptimizeRequest, onDone: (result: OptimizeResult, cancelled: boolean) => void): void;
   /** Runs Optimize cuts on every sheet, or on `sheet` only. */
-  startCuts(project: Project, sheet: string | undefined, onDone: (result: OptimizeCutsResult, cancelled: boolean) => void): void;
+  startCuts(project: Project, options: { sheet?: string | undefined; slide?: boolean }, onDone: (result: OptimizeCutsResult, cancelled: boolean) => void): void;
   /** Stops the search; `onDone` still runs with the best result so far. */
   cancel(): void;
   clearError(): void;
@@ -100,13 +100,13 @@ export function useOptimizer(factory: WorkerFactory): Optimizer {
   );
 
   const startCuts = useCallback(
-    (project: Project, sheet: string | undefined, done: (result: OptimizeCutsResult, cancelled: boolean) => void) => {
+    (project: Project, { sheet, slide }: { sheet?: string | undefined; slide?: boolean }, done: (result: OptimizeCutsResult, cancelled: boolean) => void) => {
       const id = ++job.current;
       onCutsDone.current = done;
       setError(null);
       setRunning({ kind: "cuts", startedAt: Date.now(), timeLimitMs: project.settings.optimizer.timeLimitMs, best: null, cuts: null });
       try {
-        ensureWorker().postMessage({ type: "start-cuts", id, project, options: sheet === undefined ? {} : { sheet } });
+        ensureWorker().postMessage({ type: "start-cuts", id, project, options: { ...(sheet === undefined ? {} : { sheet }), ...(slide ? { slide } : {}) } });
       } catch (e) {
         setRunning(null);
         setError(errorMessage(e));

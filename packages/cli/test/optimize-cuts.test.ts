@@ -81,4 +81,42 @@ describe("optimize-cuts", () => {
     await cli(["layout", "pin", ROW, "1"], io);
     expect(io.files.get(ROW)).not.toContain("savedCuts");
   });
+
+  describe("--slide", () => {
+    const looseIo = () => {
+      const io = rowIo();
+      editFile(io, ROW, (file) => {
+        file.plan.sheets[0].placements[2].y = 3;
+      });
+      return io;
+    };
+
+    it("slides a part inside its piece when that gives fewer cuts, and saves the new placement", async () => {
+      const io = looseIo();
+      const plain = (await cli(["optimize-cuts", ROW, "--passes", "8", "--json", "--dry-run"], io)).json().sheets[0];
+      const result = await cli(["optimize-cuts", ROW, "--passes", "8", "--slide"], io);
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain("Slid 1 part inside its piece.");
+      const file = result.file(ROW);
+      expect(file.plan!.sheets[0]!.placements[2]).toMatchObject({ x: 40.25, y: 0 });
+      expect(file.plan!.sheets[0]!.savedCuts!.length).toBeLessThan(plain.after.cuts);
+      expect((await cli(["layout", "show", ROW, "--json"], io)).json().sheets[0].cuts).toBe("saved");
+    });
+
+    it("gives the parts that slid in the JSON, and no part slides without --slide", async () => {
+      expect((await cli(["optimize-cuts", ROW, "--passes", "8", "--slide", "--json"], looseIo())).json().sheets[0]).toMatchObject({ saved: true, slid: 1 });
+      const io = looseIo();
+      expect((await cli(["optimize-cuts", ROW, "--passes", "8", "--json"], io)).json().sheets[0]).toMatchObject({ slid: 0 });
+      expect(io.files.get(ROW)).toContain('"y": 3');
+    });
+
+    it("does not slide a pinned sheet, and refuses --slide with --clear", async () => {
+      const io = looseIo();
+      await cli(["layout", "pin", ROW, "1"], io);
+      expect((await cli(["optimize-cuts", ROW, "--passes", "8", "--slide", "--json"], io)).json().sheets[0]).toMatchObject({ slid: 0 });
+      const conflict = await cli(["optimize-cuts", ROW, "--clear", "--slide"], io);
+      expect(conflict.code).toBe(2);
+      expect(conflict.stderr).toContain("--slide");
+    });
+  });
 });

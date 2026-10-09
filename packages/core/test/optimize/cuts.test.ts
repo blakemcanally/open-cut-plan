@@ -12,10 +12,14 @@ import {
   setCutLocked,
   setSavedCuts,
   sheetCuts,
+  sheetFactoryEdgeMisses,
+  slidePlacements,
+  SLIDE_DIRECTIONS,
   totalCutLength,
   type CutLine,
   type Project,
   type Rect,
+  validatePlan,
 } from "../../src/index.ts";
 import { joinRowProject } from "../helpers.ts";
 import { guillotine, mulberry32 } from "../plan/treeHelpers.ts";
@@ -31,7 +35,7 @@ describe("optimizeCuts", () => {
     const project = joinRowProject();
     const { project: next, result } = optimizeCuts(project, { passes: 8 });
     expect(result.sheets).toEqual([
-      { sheet: "s1", number: 1, before: { cuts: 8, length: 272 }, after: { cuts: 6, length: 258.5 }, lines: expect.any(Array), passes: 2, done: true, complete: true },
+      { sheet: "s1", number: 1, before: { cuts: 8, length: 272 }, after: { cuts: 6, length: 258.5 }, lines: expect.any(Array), placements: null, slid: 0, passes: 2, done: true, complete: true },
     ]);
     expect(result.done).toBe(true);
     expect(next.plan!.sheets[0]!.placements).toBe(project.plan!.sheets[0]!.placements);
@@ -146,6 +150,99 @@ describe("optimizeCuts", () => {
     it("ignores the locks of saved cuts that fail the check", () => {
       const stale = setSavedCuts(joinRowProject(), "s1", [{ ...LAST_CROSSCUT, locked: true }]);
       expect(optimizeCuts(stale, { passes: 8 }).result.sheets[0]!.after.cuts).toBe(6);
+    });
+  });
+
+  describe("slide", () => {
+    const loose = (): Project => {
+      const project = joinRowProject();
+      const sheet = project.plan!.sheets[0]!;
+      const placements = sheet.placements.map((placement, i) => (i === 2 ? { ...placement, y: 3 } : placement));
+      return { ...project, plan: { sheets: [{ ...sheet, placements }] } };
+    };
+    const misses = (project: Project) => sheetFactoryEdgeMisses(planContext(project), project.plan!.sheets[0]!);
+
+    it("packs the pieces of each split against one end, one kerf apart", () => {
+      const analysis = analyzeSheets(planContext(loose()))[0]!;
+      expect(slidePlacements(analysis, 0.125, "in", SLIDE_DIRECTIONS[0]!)!.map(({ x, y }) => ({ x, y }))).toEqual([
+        { x: 0, y: 0 },
+        { x: 20.125, y: 0 },
+        { x: 40.25, y: 0 },
+        { x: 60.375, y: 0 },
+      ]);
+      expect(slidePlacements(analyzeSheets(planContext(joinRowProject()))[0]!, 0.125, "in", SLIDE_DIRECTIONS[0]!)).toBeNull();
+    });
+
+    it("slides a part when that gives fewer cuts, and saves the cuts of the slid layout", () => {
+      const project = loose();
+      const plain = optimizeCuts(project, { passes: 8 });
+      const { project: next, result } = optimizeCuts(project, { passes: 8, slide: true });
+      expect(result.sheets[0]!.after.cuts).toBeLessThan(plain.result.sheets[0]!.after.cuts);
+      expect(result.sheets[0]!.slid).toBe(1);
+      expect(next.plan!.sheets[0]!.placements[2]).toMatchObject({ x: 40.25, y: 0 });
+      expect(analyzeSheets(planContext(next))[0]!.savedCuts).toBe("used");
+      expect(sequencePlan(next)).toHaveLength(result.sheets[0]!.after.cuts);
+      expect(validatePlan(next).filter((issue) => issue.severity === "error")).toEqual([]);
+    });
+
+    it("does not slide without the option, on a pinned sheet, or on a sheet with locked cuts", () => {
+      const project = loose();
+      const sheet = project.plan!.sheets[0]!;
+      const pinned: Project = { ...project, plan: { sheets: [{ ...sheet, pinned: true }] } };
+      const locked = setCutLocked(project, "s1", sheetCuts(project, "s1")!.lines[0]!, true)!;
+      for (const [name, start, slide] of [["off", project, false], ["pinned", pinned, true], ["locked", locked, true]] as const) {
+        const { project: next, result } = optimizeCuts(start, { passes: 8, slide });
+        expect(result.sheets[0], name).toMatchObject({ placements: null, slid: 0 });
+        expect(next.plan!.sheets[0]!.placements, name).toBe(start.plan!.sheets[0]!.placements);
+      }
+    });
+
+    it("does not slide a part off the factory edge that it asks for", () => {
+      const base = loose();
+      const sheet = base.plan!.sheets[0]!;
+      const mirrored = sheet.placements.map((placement) => ({ ...placement, x: 96 - placement.x - 20 }));
+      const project: Project = {
+        ...base,
+        parts: [{ id: "edge-post", name: "Edge post", material: "ply", length: 20, width: 40, quantity: 1, grain: "none", factoryEdge: "long" }, { ...base.parts[0]!, quantity: 1 }, base.parts[1]!],
+        plan: { sheets: [{ ...sheet, placements: [{ ...mirrored[0]!, part: "edge-post" }, mirrored[1]!, mirrored[2]!, { ...mirrored[3]!, copy: 0 }] }] },
+      };
+      const { project: next, result } = optimizeCuts(project, { passes: 8, slide: true });
+      expect(result.sheets[0]!.slid).toBe(1);
+      expect(next.plan!.sheets[0]!.placements[0]).toMatchObject({ x: 76, y: 0 });
+      expect(misses(next)).toBe(0);
+    });
+
+    it("keeps a layout that has no part to slide", () => {
+      expect(optimizeCuts(joinRowProject(), { passes: 8, slide: true }).result.sheets[0]).toMatchObject({ after: { cuts: 6 }, slid: 0 });
+    });
+
+    it("never gives more cuts, an error, or more factory edge misses on random loose sheets", () => {
+      const sheet: Rect = { x: 0, y: 0, length: 96, width: 48 };
+      const base = joinRowProject();
+      let slid = 0;
+      for (let seed = 1; seed <= 20; seed++) {
+        const rects: Rect[] = [];
+        guillotine(mulberry32(seed), inset(sheet, 0.5), 0.125, 6, rects);
+        if (rects.length === 0) continue;
+        const random = mulberry32(seed + 200);
+        const project: Project = {
+          ...base,
+          settings: { ...base.settings, trim: 0.5 },
+          parts: rects.map((rect, i) => ({ id: `p${i}`, name: `P${i}`, material: "ply", length: rect.length - 1, width: rect.width - 1, quantity: 1, grain: "none" })),
+          plan: {
+            sheets: [{ id: "s1", stock: "ply-4x8", placements: rects.map((rect, i) => ({ part: `p${i}`, copy: 0, x: rect.x + Math.floor(random() * 9) / 8, y: rect.y + Math.floor(random() * 9) / 8, rotated: false })) }],
+          },
+        };
+        const plain = optimizeCuts(project, { passes: 4 }).result.sheets[0]!;
+        const { project: next, result } = optimizeCuts(project, { passes: 4, slide: true });
+        const after = result.sheets[0]!;
+        expect(after.after.cuts, `seed ${seed}`).toBeLessThanOrEqual(plain.after.cuts);
+        expect(validatePlan(next).filter((issue) => issue.severity === "error"), `seed ${seed}`).toEqual([]);
+        expect(analyzeSheets(planContext(next))[0]!.savedCuts, `seed ${seed}`).not.toBe("stale");
+        expect(misses(next), `seed ${seed}`).toBeLessThanOrEqual(misses(project));
+        if (after.slid > 0) slid++;
+      }
+      expect(slid).toBeGreaterThan(10);
     });
   });
 });

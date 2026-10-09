@@ -195,7 +195,7 @@ self.onmessage = (event) => handle(event.data);
 The worker runs the search in slices of `progressMs` and sends `progress` after each slice. It yields between slices,
 so a `cancel` can arrive. A cancelled job sends `done` with `cancelled: true` and its best result so far. A new
 `start` or `start-cuts` cancels the running job first. A `start-cuts` job runs Optimize cuts (see
-[cut-analysis.md](cut-analysis.md#saved-cuts)) in the same slices; it never changes a placement.
+[cut-analysis.md](cut-analysis.md#saved-cuts)) in the same slices; it changes a placement only with the `slide` option.
 
 For code that does not use a worker, `createSearch(project, options)` returns a search with `step(budgetMs)`, which
 returns true when the search is finished, and `result()`. Before it builds a result, `result()` tries one candidate for

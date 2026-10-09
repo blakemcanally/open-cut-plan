@@ -296,20 +296,24 @@ opencutplan optimize shelf.cutplan.json --goal offcuts --extra-cost 15
 
 ### Optimize cuts
 
-`optimize-cuts <file>` keeps every placement and searches the cut tree of each sheet again. It saves the new tree in
+`optimize-cuts <file>` keeps every placement, unless you give `--slide`, and searches the cut tree of each sheet again. It saves the new tree in
 `savedCuts` of the sheet only when the tree has fewer cuts than the tree that the sheet uses now. The search puts the
 fewest cuts first, then the shortest cut length. See [`cut-analysis.md`](cut-analysis.md#saved-cuts).
 
 - `--sheet <ref>` searches one sheet only.
 - `--time <seconds>` sets the search time for each sheet. The default is `optimizer.timeLimitMs`.
 - `--passes <n>` stops each sheet after pass n and ignores the time. Use it when you need the same result each time.
+- `--slide` also lets the parts slide inside their pieces when that gives fewer cuts. It saves the new placements with
+  the new cuts. A pinned sheet and a sheet with locked cuts do not slide, and a slide never takes a factory edge from
+  a part. See [`cut-analysis.md`](cut-analysis.md#saved-cuts).
 - `--clear` removes the saved cuts, so that the sheets use the automatic cuts again. With `--sheet`, it removes them
-  from one sheet only.
+  from one sheet only. You cannot give `--clear` with `--time`, `--passes`, or `--slide`.
 
-The text output has one line for each sheet, for example `Sheet 1 (s1): 8 → 6 cuts, 272" → 258 1/2" of cuts.` The
-counts and the lengths include the trim cuts. The `--json` output has `sheets`: `{ number, id, before, after, saved,
-passes, complete }` for each sheet, where `before` and `after` are `{ cuts, length }`, and `complete` is true when a
-longer search cannot find a better tree. A sheet with no parts, or with stuck parts, is not searched. The search keeps
+The text output has one line for each sheet, for example `Sheet 1 (s1): 8 → 6 cuts, 272" → 258 1/2" of cuts.` When
+parts slide, the line ends with, for example, `Slid 1 part inside its piece.` The counts and the lengths include the
+trim cuts. The `--json` output has `sheets`: `{ number, id, before, after, saved, slid, passes, complete }` for each
+sheet, where `before` and `after` are `{ cuts, length }`, `slid` is the number of parts that slid, and `complete` is
+true when a longer search cannot find a better tree. A sheet with no parts, or with stuck parts, is not searched. The search keeps
 each locked cut (`cuts lock`) with the same position and ends, and searches the other cuts. `--clear` removes the locks
 with the saved cuts.
 
@@ -318,6 +322,7 @@ whether it uses saved cuts or automatic cuts.
 
 ```bash
 opencutplan optimize-cuts shelf.cutplan.json --passes 4
+opencutplan optimize-cuts shelf.cutplan.json --slide --passes 4
 opencutplan optimize-cuts shelf.cutplan.json --sheet 2 --clear
 ```
 
