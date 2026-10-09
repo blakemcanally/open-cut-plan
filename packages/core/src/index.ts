@@ -24,6 +24,7 @@ export * from "./plan/issues.ts";
 export * from "./plan/context.ts";
 export * from "./plan/layout.ts";
 export * from "./plan/cutTree.ts";
+export * from "./plan/savedCuts.ts";
 export * from "./plan/sheets.ts";
 export * from "./plan/validate.ts";
 export * from "./plan/factoryEdges.ts";
