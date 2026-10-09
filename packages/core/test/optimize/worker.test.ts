@@ -71,3 +71,22 @@ describe("createOptimizerHost", () => {
     expect(sent).toEqual([{ type: "error", id: 5, message: expect.any(String) }]);
   });
 });
+
+describe("createOptimizerHost with Optimize cuts", () => {
+  it("sends cuts progress after each slice and cuts done at the end", () => {
+    const { sent, handle, drain } = host();
+    handle({ type: "start-cuts", id: 1, project: shelf(), options: { passes: 3 }, progressMs: 0 });
+    drain();
+    expect(sent.at(-1)).toMatchObject({ type: "cuts-done", id: 1, cancelled: false, result: { done: true } });
+    expect(sent.slice(0, -1).every((m) => m.type === "cuts-progress" && m.id === 1)).toBe(true);
+    expect(sent.length).toBeGreaterThan(1);
+  });
+
+  it("stops on cancel and sends the best trees so far", () => {
+    const { sent, queue, handle } = host();
+    handle({ type: "start-cuts", id: 2, project: shelf(), progressMs: 0 });
+    queue.shift()!();
+    handle({ type: "cancel", id: 2 });
+    expect(sent.at(-1)).toMatchObject({ type: "cuts-done", id: 2, cancelled: true, result: { done: false } });
+  });
+});
