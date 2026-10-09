@@ -11,15 +11,17 @@ interface CutInspectorProps {
   stops: Record<CutEnd, EndStop[]> | null;
   joins: number;
   canRemove: boolean;
+  locked: boolean;
   onStop(end: CutEnd, stop: EndStop): void;
   onJoin(): void;
   onRemove(): void;
+  onLock(): void;
   onTool(tool: string): void;
 }
 
 const KIND_NAMES = { rip: "Rip", crosscut: "Crosscut", trim: "Trim" } as const;
 
-export function CutInspector({ ctx, step, busy, count, stops, joins, canRemove, onStop, onJoin, onRemove, onTool }: CutInspectorProps) {
+export function CutInspector({ ctx, step, busy, count, stops, joins, canRemove, locked, onStop, onJoin, onRemove, onLock, onTool }: CutInspectorProps) {
   const total = count && (
     <p className="muted" role="status">
       Sheet {count.sheet}: {count.cuts} cuts{count.before !== null && count.before !== count.cuts ? ` (was ${count.before})` : ""}.
@@ -41,6 +43,7 @@ export function CutInspector({ ctx, step, busy, count, stops, joins, canRemove, 
       <p>
         <b>
           Cut {step.step} · {KIND_NAMES[step.kind]} · stage {step.stage}
+          {locked && " · locked"}
         </b>
         <br />
         At {formatIn(ctx, step.at)}, from {formatIn(ctx, step.from)} to {formatIn(ctx, step.to)}
@@ -75,6 +78,9 @@ export function CutInspector({ ctx, step, busy, count, stops, joins, canRemove, 
         );
       })}
       <div className="cut-actions">
+        <button type="button" aria-pressed={locked} disabled={busy} onClick={onLock} title="Optimize cuts keeps a locked cut. Press L to lock or unlock.">
+          Lock
+        </button>
         {joins > 0 && (
           <button type="button" disabled={busy} onClick={onJoin}>
             Join {joins + 1} cuts
@@ -85,6 +91,7 @@ export function CutInspector({ ctx, step, busy, count, stops, joins, canRemove, 
         </button>
       </div>
       {total}
+      {locked && <p className="muted">This cut is locked: it cannot change, and Optimize cuts keeps it. Unlock it to change it.</p>}
       <p className="muted">The parts are locked in this mode. Escape clears the selection.</p>
     </section>
   );

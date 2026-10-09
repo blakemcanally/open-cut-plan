@@ -187,6 +187,8 @@ fieldset.choice label { display: inline-flex; align-items: center; gap: 4px; }
 .sheet-area .cut-stop.no-tool { stroke: #d08a00; }
 .sheet-area .cut-stop.near { stroke-width: 5; }
 .sheet-area .cut-stop-label { font-size: 11px; fill: #166534; paint-order: stroke; stroke: #fff; stroke-width: 3px; pointer-events: none; }
+.sheet-area .cut-lock path { fill: none; stroke: #1f2937; stroke-width: 1.5; }
+.sheet-area .cut-lock rect { fill: #1f2937; }
 .sheet-area .join-chip { cursor: pointer; outline: none; }
 .sheet-area .join-chip rect { fill: #1f2937; }
 .sheet-area .join-chip text { fill: #fff; font-size: 11px; }

@@ -10,6 +10,7 @@ import {
   extraCostPercent,
   findCopy,
   findFreeSpot,
+  isCutLocked,
   joinCut,
   lostSavedCuts,
   partColors,
@@ -26,6 +27,7 @@ import {
   removeSheet,
   rotateCopy,
   sameLine,
+  setCutLocked,
   setPinned,
   sheetRects,
   stockLabel,
@@ -170,7 +172,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
     if (!selectedStep) return null;
     const sheet = selectedStep.sheet;
     const stops = { from: endStops(project, sheet, selectedStep, "from"), to: endStops(project, sheet, selectedStep, "to") };
-    return { stops, join: joinCut(project, sheet, selectedStep), canRemove: removeCut(project, sheet, selectedStep) !== null };
+    return { stops, join: joinCut(project, sheet, selectedStep), canRemove: removeCut(project, sheet, selectedStep) !== null, locked: isCutLocked(project, sheet, selectedStep) };
   }, [project, selectedStep]);
   const enabledStock = project.stock.filter((stock) => stock.enabled !== false);
   const chosenStock = enabledStock.find((stock) => stock.id === stockChoice) ?? enabledStock[0];
@@ -272,12 +274,18 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
     const next = removeCut(project, selectedStep.sheet, selectedStep);
     if (next) editCuts(selectedStep.sheet, next, null);
   };
+  const lockSelected = () => {
+    if (!selectedStep || !cutTools || busy) return;
+    const next = setCutLocked(project, selectedStep.sheet, selectedStep, !cutTools.locked);
+    if (next) edit(moveTicks(project, analysis.steps, next));
+  };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (isEditable(event.target) || event.metaKey || event.ctrlKey || event.altKey) return;
     if (cutsMode) {
       if (event.key === "Escape") setSelectedCut(null);
       else if ((event.key === "Delete" || event.key === "Backspace") && event.target instanceof Element && event.target.closest("svg[data-sheet]") && cutTools?.canRemove) removeSelected();
+      else if ((event.key === "l" || event.key === "L") && cutTools) lockSelected();
       else return;
       event.preventDefault();
       return;
@@ -632,9 +640,11 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
               stops={cutTools?.stops ?? null}
               joins={cutTools?.join?.joins ?? 0}
               canRemove={cutTools?.canRemove ?? false}
+              locked={cutTools?.locked ?? false}
               onStop={cutStop}
               onJoin={joinSelected}
               onRemove={removeSelected}
+              onLock={lockSelected}
               onTool={(tool) => selectedStep && edit(chooseTool(project, analysis.steps, selectedStep, tool))}
             />
           ) : (

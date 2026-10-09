@@ -8,6 +8,7 @@ import {
   NO_GROUP_COLOR,
   placedRect,
   sameCopy,
+  sameLine,
   sideLine,
   stageColor,
   stockLabel,
@@ -124,6 +125,8 @@ export function SheetView(props: SheetViewProps) {
   const cutWidth = showKerf ? Math.max(1, px(ctx.kerf)) : 1.5;
   const cutsMode = props.mode === "cuts";
   const selectCut = (step: Step) => step.kind !== "trim" && props.onSelectCut?.(step);
+  const lockedLines = props.cuts === "used" ? (sheet.savedCuts ?? []).filter((line) => line.locked) : [];
+  const isLocked = (step: Step) => step.kind !== "trim" && lockedLines.some((line) => sameLine(line, step));
   return (
     <section className="sheet" aria-label={`Sheet ${number}: ${stockLabel(ctx, stock)}`}>
       <header className="sheet-head">
@@ -290,7 +293,8 @@ export function SheetView(props: SheetViewProps) {
             const [x1, y1, x2, y2] = cutEnds(step);
             const byTool = cutColors === "tool";
             const color = byTool ? tools.cutColor(step) : stageColor(step.stage);
-            const name = cutName(step);
+            const locked = isLocked(step);
+            const name = locked ? `${cutName(step)}, locked` : cutName(step);
             const mx = px((x1 + x2) / 2);
             const my = px((y1 + y2) / 2);
             const open = () => (cutsMode ? selectCut(step) : props.onOpenStep(step.step));
@@ -327,6 +331,12 @@ export function SheetView(props: SheetViewProps) {
                     {step.step}
                   </text>
                 </g>
+                {locked && (
+                  <g className="cut-lock" data-locked={step.step} transform={`translate(${mx + 9} ${my - 15})`} aria-hidden="true">
+                    <path d="M2.5 5 V3.5 a2.5 2.5 0 0 1 5 0 V5" />
+                    <rect x={1} y={5} width={8} height={6} rx={1} />
+                  </g>
+                )}
               </g>
             );
           })}

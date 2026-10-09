@@ -78,6 +78,26 @@ describe("the Cuts mode", () => {
     expect(cutsOf(current().project)).toBe(6);
   });
 
+  it("locks a cut with the toggle and the L key, turns off its edits, and shows the lock on the sheet", async () => {
+    const current = renderLayout();
+    await cutsMode();
+    await selectStep(6);
+    const lock = within(inspector()).getByRole("button", { name: "Lock" });
+    expect(lock.getAttribute("aria-pressed")).toBe("false");
+    await userEvent.click(lock);
+    expect(current().project.plan!.sheets[0]!.savedCuts!.filter((line) => line.locked)).toEqual([{ axis: "y", at: 10.0625, from: 20.125, to: 40.125, locked: true }]);
+    expect(within(inspector()).getByRole("button", { name: "Lock" }).getAttribute("aria-pressed")).toBe("true");
+    expect(within(inspector()).getByText("Cut 6 · Rip · stage 2 · locked")).toBeTruthy();
+    for (const name of ["Extend the right end", "Shorten the right end", "Remove"]) expect(within(inspector()).getByRole("button", { name }).hasAttribute("disabled"), name).toBe(true);
+    expect(within(inspector()).queryByRole("button", { name: /^Join/ })).toBeNull();
+    expect(document.querySelector('[data-locked="6"]')).toBeTruthy();
+    expect(within(sheet()).getByRole("button", { name: /^Step 6, .*locked$/ })).toBeTruthy();
+    await userEvent.keyboard("l");
+    expect(current().project.plan!.sheets[0]!.savedCuts!.some((line) => line.locked)).toBe(false);
+    expect(document.querySelector("[data-locked]")).toBeNull();
+    expect(within(inspector()).getByRole("button", { name: "Extend the right end" }).hasAttribute("disabled")).toBe(false);
+  });
+
   it("shortens a cut at a cross cut", async () => {
     const current = renderLayout();
     await cutsMode();

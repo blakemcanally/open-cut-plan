@@ -310,6 +310,10 @@ trim cuts cannot be selected. See [cut edits](cut-analysis.md#cut-edits).
   and bottom for a crosscut) to its nearest stop. **Join N cuts** and **Remove** are there too; **Remove** is on only
   when the parts do not need the cut. Delete removes the selected cut while the focus is on the sheet, and Escape
   clears the selection.
+- **Lock**, or the L key, locks the selected cut, and a second press unlocks it. **Optimize cuts** keeps a locked cut
+  with the same position and ends, and searches the other cuts. A locked cut shows a lock next to its number on the
+  sheet. **Extend**, **Shorten**, **Join**, and **Remove** are off for a locked cut, and no stop of another cut splits
+  it or joins it. A part move removes the saved cuts with their locks, and the notice offers **Undo**.
 - After an edit, the sheet says "saved cuts", and the side panel tells the new cut count of the sheet, for example
   "Sheet 1: 7 cuts (was 8)." **Undo** undoes the edit. A cut that changes loses its done tick on the Shop tab; the
   other ticks stay with their cuts.
