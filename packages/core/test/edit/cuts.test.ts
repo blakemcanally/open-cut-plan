@@ -52,7 +52,6 @@ describe("saved cuts and layout edits", () => {
 
   it("removes the saved cuts after Push to factory edges", () => {
     const moved = moveCopyTo(joinRowProject(), { part: "post", copy: 1 }, 60.375, 8);
-    moved.settings.features.factoryEdges = true;
     moved.parts[0]!.factoryEdge = "long";
     const ctx = planContext(moved);
     const [analysis] = analyzeSheets(ctx);
