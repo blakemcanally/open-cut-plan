@@ -120,3 +120,33 @@ export function designProject(designs: Design[] = [kallaxDesign()]): Project {
     designs,
   };
 }
+
+/** A 96 × 48 sheet with no trim and a 1/8" kerf: two 20 × 40 posts with two 20 × 10 rails between them, one kerf apart in a row. The automatic tree cuts the row in 8 cuts; joined runs need 6. */
+export function joinRowProject(): Project {
+  const base = createProject("Row", "in");
+  return {
+    ...base,
+    settings: { ...base.settings, trim: 0, features: { ...base.settings.features, toolLimits: false } },
+    materials: [{ id: "ply", name: "Plywood 3/4", thickness: 0.75, grained: false }],
+    stock: [{ id: "ply-4x8", material: "ply", length: 96, width: 48, quantity: null, cost: 60, kind: "sheet" }],
+    parts: [
+      { id: "post", name: "Post", material: "ply", length: 20, width: 40, quantity: 2, grain: "none" },
+      { id: "rail", name: "Rail", material: "ply", length: 20, width: 10, quantity: 2, grain: "none" },
+    ],
+    tools: [{ id: "ts", name: "Table saw", type: "table-saw", kerf: 0.125, enabled: true }],
+    plan: {
+      sheets: [
+        {
+          id: "s1",
+          stock: "ply-4x8",
+          placements: [
+            { part: "post", copy: 0, x: 0, y: 0, rotated: false },
+            { part: "rail", copy: 0, x: 20.125, y: 0, rotated: false },
+            { part: "rail", copy: 1, x: 40.25, y: 0, rotated: false },
+            { part: "post", copy: 1, x: 60.375, y: 0, rotated: false },
+          ],
+        },
+      ],
+    },
+  };
+}

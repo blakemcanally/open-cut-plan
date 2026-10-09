@@ -63,17 +63,21 @@ export function matchesChoice(cut: Pick<Step, "axis" | "at" | "from" | "to">, ch
   return cut.axis === choice.axis && Math.abs(cut.at - choice.at) <= EPSILON && Math.abs(cut.from - choice.from) <= EPSILON && Math.abs(cut.to - choice.to) <= EPSILON;
 }
 
-/** Returns the project with each sheet's `cuts` set from the sequence, and only the `toolChoices` that match a cut. */
+/** Returns the project with each sheet's `cuts` set from the sequence, only the `toolChoices` that match a cut, and no `savedCuts` that fail the check. */
 export function withCuts(project: Project): Project {
   if (!project.plan) return project;
-  const steps = sequencePlan(project);
+  const ctx = planContext(project);
+  const analyses = analyzeSheets(ctx);
+  const steps = sequenceCuts(ctx, analyses);
+  const stale = new Set(analyses.filter((analysis) => analysis.savedCuts === "stale").map((analysis) => analysis.sheet.id));
   const sheets = project.plan.sheets.map((sheet, index): PlanSheet => {
-    const { cuts: _old, toolChoices, ...rest } = sheet;
+    const { cuts: _old, toolChoices, savedCuts, ...rest } = sheet;
     const sheetSteps = steps.filter((step) => step.sheetNumber === index + 1);
     const cuts = sheetSteps.map(toCut);
     const next: PlanSheet = cuts.length > 0 ? { ...rest, cuts } : rest;
     const kept = project.settings.features.cutOrder ? (toolChoices ?? []).filter((choice) => sheetSteps.some((step) => matchesChoice(step, choice))) : (toolChoices ?? []);
     if (kept.length > 0) next.toolChoices = kept;
+    if (savedCuts && savedCuts.length > 0 && !stale.has(sheet.id)) next.savedCuts = savedCuts;
     return next;
   });
   return { ...project, plan: { ...project.plan, sheets } };

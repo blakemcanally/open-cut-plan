@@ -7,6 +7,7 @@ export type PlanIssueCode =
   | "grain"
   | "not-guillotine"
   | "no-tool"
+  | "saved-cuts-stale"
   | "unplaced"
   | "stock-exceeded"
   | "bad-ref"
