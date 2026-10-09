@@ -67,9 +67,10 @@ export function convertProjectUnits(project: Project, units: Units): Project {
   if (project.designs) next.designs = project.designs.map((design) => convertDesign(design, c));
   if (project.plan) {
     const sheets = project.plan.sheets.map((sheet) => {
-      const { cuts: _cuts, toolChoices, ...rest } = sheet;
+      const { cuts: _cuts, toolChoices, savedCuts, ...rest } = sheet;
       const converted: PlanSheet = { ...rest, placements: sheet.placements.map((placement) => ({ ...placement, x: c(placement.x), y: c(placement.y) })) };
       if (toolChoices) converted.toolChoices = toolChoices.map((choice) => ({ ...choice, at: c(choice.at), from: c(choice.from), to: c(choice.to) }));
+      if (savedCuts) converted.savedCuts = savedCuts.map((line) => ({ ...line, at: c(line.at), from: c(line.from), to: c(line.to) }));
       return converted;
     });
     next.plan = { ...project.plan, sheets };

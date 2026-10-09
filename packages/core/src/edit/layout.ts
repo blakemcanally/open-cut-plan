@@ -3,6 +3,7 @@ import type { Placement, PlanSheet, Project } from "../format/schema.ts";
 import { contains, EPSILON, gapAlong, type Rect, type Size } from "../geometry/rect.ts";
 import { placedRect, planContext, usableRect, type PlanContext } from "../plan/context.ts";
 import { pushToFactoryEdges } from "../plan/factoryEdges.ts";
+import { withPlacements } from "./cuts.ts";
 import { idsOf } from "./patch.ts";
 
 export { orientedSize } from "../optimize/problem.ts";
@@ -48,7 +49,7 @@ function mapSheets(project: Project, change: (sheet: PlanSheet) => PlanSheet): P
 export function moveToTray(project: Project, ref: CopyRef): Project {
   if (!findCopy(project, ref)) return project;
   return mapSheets(project, (sheet) =>
-    sheet.placements.some((p) => sameCopy(p, ref)) ? { ...sheet, placements: sheet.placements.filter((p) => !sameCopy(p, ref)) } : sheet,
+    sheet.placements.some((p) => sameCopy(p, ref)) ? withPlacements(sheet, sheet.placements.filter((p) => !sameCopy(p, ref))) : sheet,
   );
 }
 
@@ -56,14 +57,14 @@ export function moveToTray(project: Project, ref: CopyRef): Project {
 export function placeCopy(project: Project, ref: CopyRef, sheetId: string, x: number, y: number, rotated: boolean): Project {
   const old = findCopy(project, ref)?.placement;
   const placement: Placement = { ...old, part: ref.part, copy: ref.copy, x, y, rotated };
-  return mapSheets(moveToTray(project, ref), (sheet) => (sheet.id === sheetId ? { ...sheet, placements: [...sheet.placements, placement] } : sheet));
+  return mapSheets(moveToTray(project, ref), (sheet) => (sheet.id === sheetId ? withPlacements(sheet, [...sheet.placements, placement]) : sheet));
 }
 
 function changePlacement(project: Project, ref: CopyRef, change: (placement: Placement) => Placement): Project {
   const found = findCopy(project, ref);
   if (!found) return project;
   return mapSheets(project, (sheet) =>
-    sheet === found.sheet ? { ...sheet, placements: sheet.placements.map((p, i) => (i === found.index ? change(p) : p)) } : sheet,
+    sheet === found.sheet ? withPlacements(sheet, sheet.placements.map((p, i) => (i === found.index ? change(p) : p))) : sheet,
   );
 }
 
@@ -110,7 +111,7 @@ export function pushSheetToFactoryEdges(project: Project, sheetId: string): Proj
   const sheet = project.plan?.sheets.find((s) => s.id === sheetId);
   const pushed = sheet ? pushToFactoryEdges(planContext(project), sheet) : null;
   if (!pushed) return project;
-  return mapSheets(project, (s) => (s.id === sheetId ? { ...s, placements: pushed.placements } : s));
+  return mapSheets(project, (s) => (s.id === sheetId ? withPlacements(s, pushed.placements) : s));
 }
 
 export function clearsKerf(a: Rect, b: Rect, kerf: number): boolean {

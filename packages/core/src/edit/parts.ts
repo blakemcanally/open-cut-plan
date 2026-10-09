@@ -2,6 +2,7 @@ import { slugify, uniqueId } from "../format/ids.ts";
 import type { Material, Part, Project } from "../format/schema.ts";
 import type { Size } from "../geometry/rect.ts";
 import type { Units } from "../geometry/units.ts";
+import { withPlacements } from "./cuts.ts";
 import { applyPatch, idsOf, type Patch } from "./patch.ts";
 
 export const NEW_PART_SIZE: Readonly<Record<Units, Size>> = { in: { length: 24, width: 12 }, mm: { length: 600, width: 300 } };
@@ -46,7 +47,7 @@ export function withoutPlacements(project: Project, drop: (placement: { part: st
     const placements = sheet.placements.filter((placement) => !drop(placement));
     if (placements.length === sheet.placements.length) return sheet;
     changed = true;
-    return { ...sheet, placements };
+    return withPlacements(sheet, placements);
   });
   return changed ? { ...project, plan: { ...project.plan, sheets } } : project;
 }

@@ -57,6 +57,7 @@ export * from "./edit/stock.ts";
 export * from "./edit/tools.ts";
 export * from "./edit/units.ts";
 export * from "./edit/layout.ts";
+export * from "./edit/cuts.ts";
 export * from "./edit/colors.ts";
 export * from "./design/systems.ts";
 export * from "./design/geometry.ts";
