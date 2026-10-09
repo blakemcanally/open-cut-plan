@@ -125,24 +125,24 @@ describe("parseProject", () => {
     expect(result.ok && result.project.settings.features.cutOrder).toBe(true);
   });
 
-  it.each(["1.0", "1.1"])("loads a %s file as version 1.9 with the default goal and no warnings", (version) => {
+  it.each(["1.0", "1.1"])("loads a %s file as version 1.10 with the default goal and no warnings", (version) => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = version;
     delete doc.settings.optimizer.goal;
     delete doc.settings.optimizer.extraCostPercent;
     delete doc.settings.optimizer.keepGroupsTogether;
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.9");
+    expect(result.ok && result.project.version).toBe("1.10");
     expect(result.ok && result.project.settings.optimizer).toMatchObject({ goal: "cost", extraCostPercent: 10, keepGroupsTogether: true });
     expect(result.warnings).toEqual([]);
   });
 
-  it("loads a 1.4 file as version 1.9 and keeps the groups together by default", () => {
+  it("loads a 1.4 file as version 1.10 and keeps the groups together by default", () => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = "1.4";
     delete doc.settings.optimizer.keepGroupsTogether;
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.9");
+    expect(result.ok && result.project.version).toBe("1.10");
     expect(result.ok && result.project.settings.optimizer.keepGroupsTogether).toBe(true);
     expect(result.warnings).toEqual([]);
   });
@@ -156,39 +156,39 @@ describe("parseProject", () => {
     expect(parseProject(doc).ok).toBe(false);
   });
 
-  it("loads a 1.5 file as version 1.9 with no factory edge requests", () => {
+  it("loads a 1.5 file as version 1.10 with no factory edge requests", () => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = "1.5";
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.9");
+    expect(result.ok && result.project.version).toBe("1.10");
     expect(result.ok && result.project.settings.factoryEdge).toBeUndefined();
     expect(result.ok && result.project.parts.map((part) => part.factoryEdge)).toEqual([undefined]);
     expect(result.warnings).toEqual([]);
   });
 
-  it("loads a 1.6 file as version 1.9 with no warnings", () => {
+  it("loads a 1.6 file as version 1.10 with no warnings", () => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = "1.6";
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.9");
+    expect(result.ok && result.project.version).toBe("1.10");
     expect(result.warnings).toEqual([]);
   });
 
-  it("loads a 1.7 file as version 1.9 with no warnings, and keeps its table saw as it was", () => {
+  it("loads a 1.7 file as version 1.10 with no warnings, and keeps its table saw as it was", () => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = "1.7";
     doc.tools[0].maxPiece = { length: 48, width: 24 };
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.9");
+    expect(result.ok && result.project.version).toBe("1.10");
     expect(result.ok && result.project.tools[0]).not.toHaveProperty("maxCrosscutPiece");
     expect(result.warnings).toEqual([]);
   });
 
-  it("loads a 1.8 file as version 1.9 with no warnings, and keeps measured through a save and a load", () => {
+  it("loads a 1.8 file as version 1.10 with no warnings, and keeps measured through a save and a load", () => {
     const doc = JSON.parse(serializeProject(sampleProject()));
     doc.version = "1.8";
     const result = parseProject(doc);
-    expect(result.ok && result.project.version).toBe("1.9");
+    expect(result.ok && result.project.version).toBe("1.10");
     expect(result.warnings).toEqual([]);
     const measured = JSON.parse(serializeProject(sampleProject()));
     measured.materials[0].measured = true;
@@ -261,7 +261,7 @@ describe("parseProject", () => {
   it("loads a newer minor version with a warning and keeps every unknown field on re-save", () => {
     const project = sampleProject();
     const doc = JSON.parse(serializeProject(project));
-    doc.version = "1.10";
+    doc.version = "1.11";
     doc.future = { x: 1 };
     doc.parts[0].edgeBanding = { top: "birch", bottom: null };
     doc.stock[0].supplier = "Local yard";
@@ -276,7 +276,7 @@ describe("parseProject", () => {
       {
         severity: "warning",
         code: "newer-minor",
-        message: "This file uses format version 1.10, which is newer than this app (1.9). Unknown fields are kept but ignored.",
+        message: "This file uses format version 1.11, which is newer than this app (1.10). Unknown fields are kept but ignored.",
         path: ["version"],
       },
     ]);
@@ -291,5 +291,34 @@ describe("formatPath", () => {
     [[], "(root)"],
   ] as const)("%j is %s", (path, expected) => {
     expect(formatPath(path)).toBe(expected);
+  });
+});
+
+describe("savedCuts (1.10)", () => {
+  it("loads the saved cuts of a sheet and keeps them through a save", () => {
+    const project = sampleProject();
+    project.plan!.sheets[0]!.savedCuts = [{ axis: "y", at: 12.3125, from: 0.25, to: 95.75, locked: true }];
+    const result = parseProject(serializeProject(project));
+    expect(result.ok && result.project.plan!.sheets[0]!.savedCuts).toEqual([{ axis: "y", at: 12.3125, from: 0.25, to: 95.75, locked: true }]);
+  });
+
+  it.each([
+    ["a missing field", { axis: "y", at: 1, from: 0 }],
+    ["an axis that is not x or y", { axis: "z", at: 1, from: 0, to: 96 }],
+    ["a value that is not a number", { axis: "y", at: "1", from: 0, to: 96 }],
+    ["a locked that is not a boolean", { axis: "y", at: 1, from: 0, to: 96, locked: "yes" }],
+  ])("refuses a saved cut with %s", (_, line) => {
+    const doc = JSON.parse(serializeProject(sampleProject()));
+    doc.plan.sheets[0].savedCuts = [line];
+    expect(parseProject(JSON.stringify(doc)).ok).toBe(false);
+  });
+
+  it("loads a 1.9 file as version 1.10 with no warnings and no other change", () => {
+    const doc = JSON.parse(serializeProject(sampleProject()));
+    doc.version = "1.9";
+    const result = parseProject(JSON.stringify(doc));
+    expect(result.ok && result.warnings).toEqual([]);
+    const current = parseProject(serializeProject(sampleProject()));
+    expect(result.ok && result.project).toEqual(current.ok && current.project);
   });
 });

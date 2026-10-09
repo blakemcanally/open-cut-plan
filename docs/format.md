@@ -1,4 +1,4 @@
-# The OpenCutPlan file format (`.cutplan.json`), version 1.9
+# The OpenCutPlan file format (`.cutplan.json`), version 1.10
 
 An OpenCutPlan file describes a sheet-goods cutting project: the parts to cut, the stock to cut them from, the tools
 available, settings, and optionally a layout of parts on sheets with an ordered list of cuts.
@@ -22,7 +22,7 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | Always `"opencutplan"`. |
-| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.9"`. |
+| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.10"`. |
 | `project` | yes | `name` (text), `units` (`"in"` or `"mm"`), optional `notes`, `created`, `modified` (should be ISO 8601 date-times; readers accept any string). |
 | `materials` | yes | Materials; see below. |
 | `stock` | yes | Stock pieces available for cutting. |
@@ -233,7 +233,8 @@ means the same thing in 1.8.
 ## Plan
 
 `plan.sheets` lists the stock pieces used. Each sheet has `id`, `stock` (a stock id), optional `pinned` (keep this
-sheet when re-optimizing), `placements`, optional `cuts`, and optional `toolChoices` (added in 1.3).
+sheet when re-optimizing), `placements`, optional `cuts`, optional `toolChoices` (added in 1.3), and optional
+`savedCuts` (added in 1.10).
 
 **Placement.** `part` (a part id), `copy` (0-based, less than the part's `quantity`), `x`, `y`, and `rotated` (`true`
 when the part length runs along the stock width). Each copy of a part is placed at most once.
@@ -247,7 +248,24 @@ so on), `axis` (`"x"` = a line of constant x, `"y"` = a line of constant y), `at
 A writer keeps only the choices that match a cut. A choice with an unknown tool is a warning, like a cut with an
 unknown tool.
 
-`cuts` is derived data. Readers may ignore it and compute their own. When `cuts` and `placements` disagree,
+**Saved cuts (added in 1.10).** A list of cut lines that the user keeps for the sheet, from Optimize cuts or from an
+edit by hand. Each line has `axis`, `at`, `from`, and `to` (the same fields as a tool choice), and optional `locked`
+(`true` when Optimize cuts must keep the line). The list is in the cut order of the sheet. It has no trim cuts: the
+trim gives them, and they come first. An empty list is the same as no field, and a writer does not write one.
+
+A reader builds the cut tree from the lines. In the trimmed sheet, the lines that go fully across the sheet on one axis
+make the first split. In each new piece, the same rule applies to the lines in that piece. A line goes fully across a
+piece when its `from` and `to` are the ends of the piece, in the tolerance of a tool choice. A reader uses the saved
+tree only when each line is in the trimmed sheet, the rebuild uses each line, no piece has lines fully across it on
+both axes, no line with its kerf goes through a part, and each piece with a part has one part only and is the size of
+that part. Otherwise the reader uses its own tree, gives the warning `saved-cuts-stale`, and removes the field when it
+saves the file. The check does not look at the tools.
+
+A writer of 1.9 or earlier keeps `savedCuts` as an unknown field, also when it changes the placements. The check finds
+this. A writer of 1.10 removes `savedCuts` from a sheet when it changes the placements of that sheet.
+
+`cuts` is derived data. Readers may ignore it and compute their own. When a sheet has saved cuts that pass the check,
+`cuts` agrees with them. When `cuts` and `placements` disagree,
 `placements` wins.
 
 A reader loads a file whose plan has invalid references (a sheet with an unknown stock id, a placement of an unknown

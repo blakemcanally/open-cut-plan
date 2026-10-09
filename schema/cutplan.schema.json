@@ -944,6 +944,40 @@
                   ],
                   "additionalProperties": {}
                 }
+              },
+              "savedCuts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "axis": {
+                      "type": "string",
+                      "enum": [
+                        "x",
+                        "y"
+                      ]
+                    },
+                    "at": {
+                      "type": "number"
+                    },
+                    "from": {
+                      "type": "number"
+                    },
+                    "to": {
+                      "type": "number"
+                    },
+                    "locked": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "axis",
+                    "at",
+                    "from",
+                    "to"
+                  ],
+                  "additionalProperties": {}
+                }
               }
             },
             "required": [

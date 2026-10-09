@@ -1,6 +1,6 @@
 {
   "format": "opencutplan",
-  "version": "1.9",
+  "version": "1.10",
   "project": {
     "name": "KALLAX-style 4x2 with combined cells (metric)",
     "units": "mm"
