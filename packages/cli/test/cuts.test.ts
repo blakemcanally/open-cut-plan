@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cli, memoryIo, ROW, rowFile, withExamples } from "./helpers.ts";
+import { cli, memoryIo, ROW, rowFile, withExamples, type CliResult } from "./helpers.ts";
 
 const rowIo = () => memoryIo({ [ROW]: rowFile() });
 const SHEET = ["--sheet", "1"];
@@ -71,4 +71,46 @@ describe("cuts", () => {
     const missing = await cli(["cuts", "remove", ROW, ...SHEET, "--step", "99", "--json"], rowIo());
     expect(missing.json()).toMatchObject({ ok: false, error: { code: "not-found" } });
   });
+
+  it("locks a cut, so that the edits refuse it and optimize-cuts keeps it", async () => {
+    const io = rowIo();
+    const lock = await cli(["cuts", "lock", ROW, ...SHEET, "--step", "6"], io);
+    expect(lock.code).toBe(0);
+    expect(lock.stdout).toContain("Locked step 6.");
+    expect(lock.stdout).toContain("Sheet 1 has 8 cuts and saved cuts.");
+    expect(savedOf(lock).filter((line) => line.locked)).toEqual([{ axis: "y", at: 10.0625, from: 20.125, to: 40.125, locked: true }]);
+    const show = await cli(["cuts", "show", ROW, ...SHEET], io);
+    expect(show.stdout).toContain("rip, locked");
+    expect((await cli(["cuts", "show", ROW, ...SHEET, "--json"], io)).json().steps[5]).toMatchObject({ step: 6, locked: true });
+    for (const command of [
+      ["extend", "--end", "to", "--to", "max"],
+      ["shorten", "--end", "to", "--to", "next"],
+      ["join"],
+      ["remove"],
+    ]) {
+      const refused = await cli(["cuts", command[0]!, ROW, ...SHEET, "--step", "6", ...command.slice(1), "--json"], io);
+      expect(refused.json(), command[0]).toMatchObject({ ok: false, error: { code: "locked" } });
+    }
+    const again = await cli(["cuts", "lock", ROW, ...SHEET, "--step", "6"], io);
+    expect(again.stdout).toContain("Step 6 is already locked.");
+    const optimized = await cli(["optimize-cuts", ROW, "--passes", "8"], io);
+    expect(optimized.stdout).toContain("8 → 7 cuts");
+    expect(savedOf(optimized).filter((line) => line.locked)).toEqual([{ axis: "y", at: 10.0625, from: 20.125, to: 40.125, locked: true }]);
+  });
+
+  it("unlocks a cut, and optimize-cuts --clear removes the locks", async () => {
+    const io = rowIo();
+    await cli(["cuts", "lock", ROW, ...SHEET, "--step", "6"], io);
+    const unlock = await cli(["cuts", "unlock", ROW, ...SHEET, "--step", "6", "--json"], io);
+    expect(unlock.json()).toMatchObject({ step: 6, locked: false, cut: { axis: "y", at: 10.0625 } });
+    expect(savedOf(unlock).some((line) => line.locked)).toBe(false);
+    expect((await cli(["optimize-cuts", ROW, "--passes", "8"], io)).stdout).toContain("8 → 6 cuts");
+    await cli(["cuts", "lock", ROW, ...SHEET, "--step", "1"], io);
+    const cleared = await cli(["optimize-cuts", ROW, "--clear"], io);
+    expect(cleared.file(ROW).plan!.sheets[0]!.savedCuts).toBeUndefined();
+  });
 });
+
+function savedOf(run: CliResult) {
+  return run.file(ROW).plan!.sheets[0]!.savedCuts ?? [];
+}

@@ -2,9 +2,11 @@ import {
   analyzeProject,
   cutStops,
   extendCut,
+  isCutLocked,
   joinCut,
   removeCut,
   sequencePlan,
+  setCutLocked,
   sheetCuts,
   shortenCut,
   shortenStops,
@@ -49,6 +51,10 @@ function findCut(project: Project, options: OptionValues): { sheetId: string; nu
   return { sheetId: sheet.id, number, step };
 }
 
+function notLocked(project: Project, sheetId: string, step: Step): void {
+  if (isCutLocked(project, sheetId, step)) throw new CliError(EXIT.usage, "locked", `Step ${step.step} is locked, so it cannot change. Unlock it with cuts unlock.`, { step: step.step });
+}
+
 function stopText(project: Project, stop: CutStop): string {
   const extras = [stop.across !== undefined ? `across ${len(project, stop.across)}` : null, stop.joins > 0 ? `joins ${stop.joins}` : null, `${stop.cuts} cuts`, stop.noTool ? "no tool" : null];
   return `${len(project, stop.end)} (${extras.filter(Boolean).join(", ")})`;
@@ -78,7 +84,7 @@ const show: CommandSpec = {
   options: [SHEET],
   examples: [{ command: `${PROGRAM} cuts show shelf.cutplan.json --sheet 1`, description: "List the cuts and stops of sheet 1." }],
   output:
-    "sheet, number, cuts (\"saved\" or \"automatic\"), steps [{ step, kind, stage, axis, at, from, to, length, tool, stops (null for a trim) { from { extend [stop], shorten [stop] }, to { … } } }]; a stop is { end, length, cuts, joins, noTool, across (shorten only) }.",
+    "sheet, number, cuts (\"saved\" or \"automatic\"), steps [{ step, kind, stage, axis, at, from, to, length, tool, locked, stops (null for a trim) { from { extend [stop], shorten [stop] }, to { … } } }]; a stop is { end, length, cuts, joins, noTool, across (shorten only) }.",
   async run({ args, options, io }) {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
@@ -92,6 +98,7 @@ const show: CommandSpec = {
       ...line(step),
       length: step.to - step.from,
       tool: step.tool?.id ?? null,
+      locked: step.kind !== "trim" && editable && isCutLocked(project, sheet.id, step),
       stops: step.kind === "trim" || !editable ? null : stopsData(project, sheet.id, step),
     }));
     const state = analysis?.savedCuts === "used" ? "saved" : "automatic";
@@ -99,7 +106,7 @@ const show: CommandSpec = {
     if (steps.length > 0) {
       const rows = steps.map((step) => [
         String(step.step),
-        step.kind,
+        step.locked ? `${step.kind}, locked` : step.kind,
         String(step.stage),
         len(project, step.at),
         `${len(project, step.from)} to ${len(project, step.to)}`,
@@ -139,6 +146,7 @@ const extend: CommandSpec = {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const { sheetId, number, step } = findCut(project, options);
+    notLocked(project, sheetId, step);
     const end = choiceValue(str(options, "end")!, "end", ["from", "to"] as const);
     const stops = cutStops(project, sheetId, step, end);
     const wanted = lengthOrWord(project, str(options, "to")!, "to");
@@ -169,6 +177,7 @@ const shorten: CommandSpec = {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const { sheetId, number, step } = findCut(project, options);
+    notLocked(project, sheetId, step);
     const end = choiceValue(str(options, "end")!, "end", ["from", "to"] as const);
     const stops = shortenStops(project, sheetId, step, end);
     const wanted = lengthOrWord(project, str(options, "to")!, "to");
@@ -198,6 +207,7 @@ const join: CommandSpec = {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const { sheetId, number, step } = findCut(project, options);
+    notLocked(project, sheetId, step);
     const result = joinCut(project, sheetId, step);
     if (!result) throw new CliError(EXIT.usage, "no-join", `Step ${step.step} has no cuts on the same line that it can join.`);
     const { details, cuts } = changed(result.project, sheetId, number);
@@ -222,6 +232,7 @@ const remove: CommandSpec = {
     const loaded = await loadProject(io, args[0]!);
     const { project } = loaded;
     const { sheetId, number, step } = findCut(project, options);
+    notLocked(project, sheetId, step);
     const next = removeCut(project, sheetId, step);
     if (!next) throw new CliError(EXIT.usage, "not-removable", `Step ${step.step} is needed: without it, the cuts do not free every part.`);
     const { details, cuts } = changed(next, sheetId, number);
@@ -229,8 +240,37 @@ const remove: CommandSpec = {
   },
 };
 
+function lockCommand(locked: boolean): CommandSpec {
+  const verb = locked ? "lock" : "unlock";
+  return {
+    name: `cuts ${verb}`,
+    summary: locked ? "Lock a cut, so that optimize-cuts keeps it." : "Unlock a cut, so that optimize-cuts can change it.",
+    description: locked
+      ? "Lock one cut. optimize-cuts then keeps the cut with the same position and ends, and searches the other cuts. A locked cut cannot be extended, shortened, joined, or removed, and no edit can split it. A lock on a sheet with automatic cuts saves them in the file first. A layout change to the sheet removes the saved cuts with their locks."
+      : "Unlock one cut, so that optimize-cuts and the cut edits can change it again. The sheet keeps its saved cuts.",
+    args: [FILE_ARG],
+    options: [SHEET, STEP, ...OUTPUT_OPTIONS],
+    examples: [{ command: `${PROGRAM} cuts ${verb} shelf.cutplan.json --sheet 1 --step 3`, description: `${locked ? "Lock" : "Unlock"} step 3.` }],
+    output: "sheet, step, cut { axis, at, from, to }, locked, changes, validation, written, dryRun.",
+    async run(invocation) {
+      const { args, options, io } = invocation;
+      const loaded = await loadProject(io, args[0]!);
+      const { project } = loaded;
+      const { sheetId, number, step } = findCut(project, options);
+      const was = isCutLocked(project, sheetId, step);
+      const next = was === locked ? project : setCutLocked(project, sheetId, step, locked)!;
+      const { details } = changed(next, sheetId, number);
+      return finishMutation(invocation, loaded, next, {
+        summary: was === locked ? `Step ${step.step} is already ${verb}ed.` : `${locked ? "Locked" : "Unlocked"} step ${step.step}.`,
+        details,
+        data: { sheet: sheetId, step: step.step, cut: line(step), locked },
+      });
+    },
+  };
+}
+
 export const cutsGroup: GroupSpec = {
   name: "cuts",
-  summary: "The cuts of a sheet: show, extend, shorten, join, and remove",
-  commands: [show, extend, shorten, join, remove],
+  summary: "The cuts of a sheet: show, extend, shorten, join, remove, lock, and unlock",
+  commands: [show, extend, shorten, join, remove, lockCommand(true), lockCommand(false)],
 };

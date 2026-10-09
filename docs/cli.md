@@ -309,8 +309,9 @@ fewest cuts first, then the shortest cut length. See [`cut-analysis.md`](cut-ana
 The text output has one line for each sheet, for example `Sheet 1 (s1): 8 → 6 cuts, 272" → 258 1/2" of cuts.` The
 counts and the lengths include the trim cuts. The `--json` output has `sheets`: `{ number, id, before, after, saved,
 passes, complete }` for each sheet, where `before` and `after` are `{ cuts, length }`, and `complete` is true when a
-longer search cannot find a better tree. A sheet with no parts, with stuck parts, or with a locked saved cut is not
-searched.
+longer search cannot find a better tree. A sheet with no parts, or with stuck parts, is not searched. The search keeps
+each locked cut (`cuts lock`) with the same position and ends, and searches the other cuts. `--clear` removes the locks
+with the saved cuts.
 
 A layout command that changes the placements of a sheet removes its saved cuts. `layout show` tells for each sheet
 whether it uses saved cuts or automatic cuts.
@@ -354,12 +355,16 @@ them. See [`cut-analysis.md`](cut-analysis.md#cut-edits).
 | `cuts shorten <file>` | Moves an end in: the cross cut at `--to <position>` (or `next`) goes through the cut first. | `opencutplan cuts shorten shelf.cutplan.json --sheet 1 --step 1 --end to --to next` |
 | `cuts join <file>` | Extends each end to the stop that joins the most cuts on the same line. | `opencutplan cuts join shelf.cutplan.json --sheet 1 --step 5` |
 | `cuts remove <file>` | Removes a cut that the parts do not need, such as a cut through waste. | `opencutplan cuts remove shelf.cutplan.json --sheet 1 --step 9` |
+| `cuts lock <file>` | Locks a cut, so that `optimize-cuts` keeps it. | `opencutplan cuts lock shelf.cutplan.json --sheet 1 --step 3` |
+| `cuts unlock <file>` | Unlocks a cut, so that `optimize-cuts` and the edits can change it. | `opencutplan cuts unlock shelf.cutplan.json --sheet 1 --step 3` |
 
 A stop is `{ end, length, cuts, joins, noTool }`, and a shorten stop also has `across`, the position of the cross cut.
 `cuts` is the cut count of the sheet after the edit, with the trims. `noTool` is true when the edit gives the sheet more
 cuts that no enabled tool can make. An end that is not a stop fails with the code `no-stop`, and the error lists the
 stops. `cuts join` fails with `no-join` when no stop joins a cut, and `cuts remove` fails with `not-removable` when the
-cuts then do not free every part. An extended cut keeps its tool choice while that tool can make it.
+cuts then do not free every part. An extended cut keeps its tool choice while that tool can make it. A locked cut cannot
+be extended, shortened, joined, or removed (the code `locked`), and no stop splits it or joins it into another cut.
+`cuts show` marks it `locked`.
 
 ### Reports
 

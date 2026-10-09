@@ -17,13 +17,13 @@ export const optimizeCutsCommand: CommandSpec = {
   name: "optimize-cuts",
   summary: "Find a cut tree with fewer cuts for each sheet, keep every part where it is, and save the new cuts.",
   description:
-    "Search the cut tree of each sheet again and keep every placement. The search puts the fewest cuts first, then the shortest total cut length. It runs in passes: each pass lets one piece hold more runs of parts, and the search stops when a pass can join every run, at --passes, or at the time limit of the sheet. A sheet gets the new tree, as savedCuts in the file, only when it has fewer cuts than the tree it uses now. A sheet with no parts, with parts that no cut order frees, or with a locked saved cut is not searched. A layout change to a sheet (layout move, a part removal, optimize) removes its saved cuts. --clear removes the saved cuts, so that the sheets use the automatic tree again. A run with --passes gives the same result on every computer.",
+    "Search the cut tree of each sheet again and keep every placement. The search puts the fewest cuts first, then the shortest total cut length. It runs in passes: each pass lets one piece hold more runs of parts, and the search stops when a pass can join every run, at --passes, or at the time limit of the sheet. A sheet gets the new tree, as savedCuts in the file, only when it has fewer cuts than the tree it uses now. A sheet with no parts, or with parts that no cut order frees, is not searched. The search keeps each locked cut (see cuts lock) with the same position and ends. A layout change to a sheet (layout move, a part removal, optimize) removes its saved cuts with their locks. --clear removes the saved cuts and their locks, so that the sheets use the automatic tree again. A run with --passes gives the same result on every computer.",
   args: [FILE_ARG],
   options: [
     { name: "sheet", type: "string", value: "<ref>", description: `Search only this sheet: ${SHEET_REF}.` },
     { name: "time", type: "string", value: "<seconds>", description: "The search time for each sheet. Default: the optimizer.timeLimitMs setting (2 s). Ignored with --passes." },
     { name: "passes", type: "string", value: "<n>", description: "Stop each sheet after pass n and ignore the time. The result then depends only on the project." },
-    { name: "clear", type: "boolean", description: "Remove the saved cuts, of one sheet with --sheet, and use the automatic cuts again." },
+    { name: "clear", type: "boolean", description: "Remove the saved cuts and their locks, of one sheet with --sheet, and use the automatic cuts again." },
     ...OUTPUT_OPTIONS,
   ],
   examples: [
