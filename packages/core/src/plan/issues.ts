@@ -8,6 +8,7 @@ export type PlanIssueCode =
   | "not-guillotine"
   | "no-tool"
   | "saved-cuts-stale"
+  | "saved-cut-order-stale"
   | "unplaced"
   | "stock-exceeded"
   | "bad-ref"

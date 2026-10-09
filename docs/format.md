@@ -251,7 +251,9 @@ unknown tool.
 **Saved cuts (added in 1.10).** A list of cut lines that the user keeps for the sheet, from Optimize cuts or from an
 edit by hand. Each line has `axis`, `at`, `from`, and `to` (the same fields as a tool choice), and optional `locked`
 (`true` when Optimize cuts must keep the line). The list is in the cut order of the sheet. It has no trim cuts: the
-trim gives them, and they come first. An empty list is the same as no field, and a writer does not write one.
+trim gives them, and they come first. With `orderMode` `"sheet"`, the sequence follows the list order when each line
+comes after the line that makes its piece. Otherwise the reader uses its own order for the saved tree and gives the
+warning `saved-cut-order-stale`. With `orderMode` `"setup"`, the list order has no effect. An empty list is the same as no field, and a writer does not write one.
 
 A reader builds the cut tree from the lines. In the trimmed sheet, the lines that go fully across the sheet on one axis
 make the first split. In each new piece, the same rule applies to the lines in that piece. A line goes fully across a

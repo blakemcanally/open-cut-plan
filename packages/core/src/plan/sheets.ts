@@ -3,7 +3,7 @@ import { inset, type Rect } from "../geometry/rect.ts";
 import { assignTool, cutKind } from "../sequence/tools.ts";
 import { placedRect, planContext, stockRect, treeMinOffcut, trimFor, type PlanContext } from "./context.ts";
 import { buildCutTree, type CutTree, type TreeCut, type TreeItem } from "./cutTree.ts";
-import { rebuildTree } from "./savedCuts.ts";
+import { linesInOrder, rebuildTree } from "./savedCuts.ts";
 
 /** "used" when the saved cuts pass the check and make `tree`; "stale" when they fail it, so that `tree` is the automatic tree. */
 export type SavedCutsState = "none" | "used" | "stale";
@@ -19,6 +19,8 @@ export interface SheetAnalysis {
   /** The tree from the placements alone; the same as `tree` unless the saved cuts are used. */
   automatic: CutTree;
   savedCuts: SavedCutsState;
+  /** True when the saved cuts are used and each line comes after the line that makes its piece, so that the sheet order of the sequence follows the list. */
+  savedOrder: boolean;
 }
 
 /** With tool limits on, whether an enabled tool can make a cut; else undefined. */
@@ -53,12 +55,16 @@ export function analyzeSheets(ctx: PlanContext): SheetAnalysis[] {
     const automatic = buildCutTree(stockRect(stock), items, ctx.kerf, treeTrim, canCut, treeMinOffcut(ctx));
     let tree = automatic;
     let savedCuts: SavedCutsState = "none";
+    let savedOrder = false;
     if (sheet.savedCuts && sheet.savedCuts.length > 0) {
       const root = items.length > 0 ? rebuildTree(treeRegion({ stock, trim, items }), sheet.savedCuts, items, ctx.kerf) : null;
       savedCuts = root ? "used" : "stale";
-      if (root) tree = { trims: automatic.trims, root, stuck: [] };
+      if (root) {
+        tree = { trims: automatic.trims, root, stuck: [] };
+        savedOrder = linesInOrder(root, sheet.savedCuts);
+      }
     }
-    result.push({ sheet, index, stock, trim, items, tree, automatic, savedCuts });
+    result.push({ sheet, index, stock, trim, items, tree, automatic, savedCuts, savedOrder });
   });
   return result;
 }

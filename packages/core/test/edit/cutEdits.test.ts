@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../../../examples/builders/index.ts";
 import {
   analyzeSheets,
+  cutOrderLimits,
   cutStops,
   extendCut,
   inset,
   isCutLocked,
   joinCut,
+  moveCut,
   parseProject,
   planContext,
   removeCut,
@@ -17,6 +19,7 @@ import {
   sheetCuts,
   shortenCut,
   shortenStops,
+  validatePlan,
   type CutLine,
   type Project,
   type Rect,
@@ -208,6 +211,55 @@ describe("cut edits", () => {
       const locked = setCutLocked(joinRowProject(), "s1", { axis: "x", at: 80.4375, from: 0, to: 48 }, true)!;
       const join = joinCut(locked, "s1", POST_RIP)!;
       expect(isCutLocked(join.project, "s1", { axis: "x", at: 80.4375, from: 0, to: 48 })).toBe(true);
+    });
+  });
+
+  describe("order", () => {
+    const SECOND_CROSSCUT: CutLine = { axis: "x", at: 40.1875, from: 0, to: 48 };
+    const order = (project: Project) => sheetSteps(project).map(({ axis, at, from, to }) => ({ axis, at, from, to }));
+    const orderStale = (project: Project) => validatePlan(project).filter((issue) => issue.code === "saved-cut-order-stale");
+
+    it("gives the places between the cut that makes the piece and the first cut inside it", () => {
+      const project = joinRowProject();
+      expect(cutOrderLimits(project, "s1", POST_RIP)).toEqual({ index: 4, min: 1, max: 7, count: 8, requires: POST_CROSSCUT, first: null });
+      expect(cutOrderLimits(project, "s1", SECOND_CROSSCUT)).toMatchObject({ index: 1, min: 1, max: 1, count: 8, requires: POST_CROSSCUT, first: { axis: "x", at: 60.3125 } });
+      expect(cutOrderLimits(project, "s1", POST_CROSSCUT)).toMatchObject({ index: 0, min: 0, max: 0, count: 8, requires: null, first: SECOND_CROSSCUT });
+      expect(cutOrderLimits(project, "s1", { ...POST_RIP, at: 3 })).toBeNull();
+    });
+
+    it("moves a cut inside its limits, saves the cuts, and the sequence follows the order", () => {
+      const project = joinRowProject();
+      const moved = moveCut(project, "s1", POST_RIP, 1)!;
+      expect(used(moved)).toBe("used");
+      expect(order(moved)[1]).toEqual(POST_RIP);
+      expect(order(moved)).toEqual([order(project)[0], POST_RIP, ...order(project).slice(1, 4), ...order(project).slice(5)]);
+      expect(orderStale(moved)).toEqual([]);
+      const back = moveCut(moved, "s1", POST_RIP, 4)!;
+      expect(order(back)).toEqual(order(project));
+    });
+
+    it("refuses a move past the limits", () => {
+      const project = joinRowProject();
+      expect(moveCut(project, "s1", POST_RIP, 0)).toBeNull();
+      expect(moveCut(project, "s1", POST_RIP, 8)).toBeNull();
+      expect(moveCut(project, "s1", SECOND_CROSSCUT, 2)).toBeNull();
+    });
+
+    it("uses the automatic order and warns when the saved order has a cut before the cut that makes its piece", () => {
+      const project = joinRowProject();
+      const automatic = lines(project);
+      const bad = setSavedCuts(project, "s1", [automatic[4]!, ...automatic.slice(0, 4), ...automatic.slice(5)]);
+      expect(used(bad)).toBe("used");
+      expect(order(bad)).toEqual(order(project));
+      expect(orderStale(bad)).toMatchObject([{ severity: "warning", refs: [{ kind: "sheet", sheet: "s1" }] }]);
+      expect(lines(bad)).toEqual(automatic);
+      expect(orderStale(moveCut(bad, "s1", POST_RIP, 1)!)).toEqual([]);
+    });
+
+    it("has no effect on the sequence in the setup order mode", () => {
+      const setup = (project: Project): Project => ({ ...project, settings: { ...project.settings, orderMode: "setup" } });
+      const project = joinRowProject();
+      expect(order(setup(moveCut(project, "s1", POST_RIP, 1)!))).toEqual(order(setup(project)));
     });
   });
 });

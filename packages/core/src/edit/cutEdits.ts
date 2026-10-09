@@ -2,7 +2,7 @@ import type { CutToolChoice, Project, SavedCut } from "../format/schema.ts";
 import { EPSILON, otherAxis, span, type Rect } from "../geometry/rect.ts";
 import { planContext } from "../plan/context.ts";
 import { countNoTool, type CutNode } from "../plan/cutTree.ts";
-import { orderLines, rebuildTree, treeLines } from "../plan/savedCuts.ts";
+import { orderLines, rebuildTree, treeCutLines, treeLines } from "../plan/savedCuts.ts";
 import { analyzeSheets, treeRegion, treeToolCheck, type SheetAnalysis } from "../plan/sheets.ts";
 import { matchesChoice, sequencePlan } from "../sequence/sequence.ts";
 import { setSavedCuts } from "./cuts.ts";
@@ -31,7 +31,7 @@ export interface SheetCuts {
   analysis: SheetAnalysis;
   region: Rect;
   kerf: number;
-  /** The lines of the tree that the sheet uses, in the order of its cuts. */
+  /** The lines of the tree that the sheet uses, in the sheet order of its cuts. */
   lines: SavedCut[];
   trims: number;
   noTool: number;
@@ -46,14 +46,17 @@ export function sameLine(a: CutLine, b: CutLine): boolean {
 
 /**
  * The cut lines of a sheet that can take a cut edit: its saved cuts when they pass the check, else the lines of the
- * automatic tree. Null when the sheet does not exist, has no parts, or has parts that no cut separates.
+ * automatic tree. Saved cuts whose order fails the check come in the automatic order. Null when the sheet does not
+ * exist, has no parts, or has parts that no cut separates.
  */
 export function sheetCuts(project: Project, sheetId: string): SheetCuts | null {
   const ctx = planContext(project);
   const analysis = analyzeSheets(ctx).find((sheet) => sheet.sheet.id === sheetId);
   if (!analysis || analysis.items.length === 0 || analysis.tree.stuck.length > 0) return null;
   const canCut = treeToolCheck(ctx);
-  const lines = analysis.savedCuts === "used" ? [...analysis.sheet.savedCuts!] : treeLines(analysis.tree);
+  const saved = analysis.sheet.savedCuts ?? [];
+  const automatic = () => treeLines(analysis.tree).map((line) => saved.find((other) => sameLine(other, line)) ?? line);
+  const lines = analysis.savedCuts === "used" && analysis.savedOrder ? [...saved] : automatic();
   return {
     analysis,
     region: treeRegion(analysis),
@@ -345,4 +348,64 @@ export function setCutLocked(project: Project, sheetId: string, line: CutLine, l
     return locked ? { ...rest, locked: true } : rest;
   });
   return applyLines(project, sheet, lines, (kept) => kept);
+}
+
+export interface CutOrder {
+  /** The place of the cut in the sheet order, from 0, without the trims. */
+  index: number;
+  /** The first and the last place to which the cut can move, in the list without the cut. */
+  min: number;
+  max: number;
+  /** The cuts of the sheet, without the trims. */
+  count: number;
+  /** The cut that makes the piece of the cut, or null when the trims make it. */
+  requires: SavedCut | null;
+  /** The first cut inside the piece of the cut, in the sheet order, or null when the piece has no cuts. */
+  first: SavedCut | null;
+}
+
+function orderOf(sheet: SheetCuts, line: CutLine): CutOrder | null {
+  const index = findLine(sheet.lines, line);
+  if (index < 0) return null;
+  const cuts = treeCutLines(sheet.analysis.tree.root);
+  const me = cuts.findIndex((cut) => sameLine(cut.line, line));
+  const place = (k: number) => {
+    const at = findLine(sheet.lines, cuts[k]!.line);
+    return at > index ? at - 1 : at;
+  };
+  const requires = cuts[me]!.requires;
+  const inside = cuts.flatMap((cut, k) => (cut.requires === me ? [place(k)] : []));
+  const count = sheet.lines.length;
+  const max = inside.length > 0 ? Math.min(...inside) : count - 1;
+  const without = sheet.lines.filter((_, i) => i !== index);
+  return {
+    index,
+    min: requires === null ? 0 : place(requires) + 1,
+    max,
+    count,
+    requires: requires === null ? null : without[place(requires)]!,
+    first: inside.length > 0 ? without[max]! : null,
+  };
+}
+
+/** The place of the cut in the sheet order, and the places to which it can move: after the cut that makes its piece, and before the first cut inside that piece. */
+export function cutOrderLimits(project: Project, sheetId: string, line: CutLine): CutOrder | null {
+  const sheet = sheetCuts(project, sheetId);
+  return sheet && orderOf(sheet, line);
+}
+
+/**
+ * Moves the cut to place `to` in the sheet order (without the trims), a place in the limits of `cutOrderLimits`. The
+ * first move on a sheet with automatic cuts saves them. Null when `to` is past the limits. The sequence follows the
+ * order when `orderMode` is "sheet".
+ */
+export function moveCut(project: Project, sheetId: string, line: CutLine, to: number): Project | null {
+  const sheet = sheetCuts(project, sheetId);
+  const order = sheet && orderOf(sheet, line);
+  if (!sheet || !order || !Number.isInteger(to) || to < order.min || to > order.max) return null;
+  if (to === order.index && sheet.analysis.savedCuts === "used" && sheet.analysis.savedOrder) return project;
+  const lines = [...sheet.lines];
+  const [moved] = lines.splice(order.index, 1);
+  lines.splice(to, 0, moved!);
+  return setSavedCuts(project, sheetId, lines);
 }

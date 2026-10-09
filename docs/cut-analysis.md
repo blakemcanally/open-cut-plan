@@ -33,6 +33,7 @@ index in the sheet's `placements`), part copies, stock, or cut steps. Issues nev
 | `no-tool` | error | `cutOrder` on: no tool is enabled (one issue), or `toolLimits` on and no enabled tool can make a cut (one issue per cut) |
 | `factory-edge` | warning | one issue per placed copy that asks for a factory edge and does not get one (see [Factory edges](#factory-edges)). The message says when the sheet has no factory edges: an owned offcut, or a trimmed sheet |
 | `saved-cuts-stale` | warning | `cutOrder` on: one issue per sheet whose [saved cuts](#saved-cuts) no longer fit its placements; the sheet uses the automatic cuts |
+| `saved-cut-order-stale` | warning | `cutOrder` on: one issue per sheet whose saved cuts fit, but whose list has a cut before the cut that makes its piece; the sheet uses the saved tree in the automatic order |
 | `unknown-factory-edge` | warning | one issue per part whose `factoryEdge` this app does not know; the part uses the rule of the settings |
 
 ## Factory edges
@@ -164,6 +165,9 @@ sheet with no parts, or with stuck parts, has no cut edits. Each result passes t
 - **Join** (`joinCut`) extends each end to the stop that joins the most cuts on the same line, then gives the fewest
   cuts.
 - **Remove** (`removeCut`) removes a cut when the result passes the check, for example a cut between two waste pieces.
+- **Move** (`cutOrderLimits`, `moveCut`) moves a cut to another place in the sheet order, without the trims. A cut can
+  move only after the cut that makes its piece (`requires`) and before the first cut inside that piece (`first`), so
+  that the order stays one that the shop can follow. The first move on a sheet with automatic cuts saves them.
 - **Lock** (`setCutLocked`, `isCutLocked`) locks or unlocks a cut. A locked cut cannot be extended, shortened, joined,
   or removed, and no stop splits it or joins it into another cut. The other edits keep the locks.
 
@@ -219,8 +223,10 @@ stop, or mark), and links: `requires` (the step that makes the piece), `released
 step that cuts each side).
 
 - `orderMode: "sheet"`: sheets in plan order; on each sheet the trims, then each piece's cuts, then its pieces in order.
+  A sheet whose saved cuts pass the check has its cuts in the order of the list, after the trims, when each line comes
+  after the line that makes its piece. Otherwise it uses the order above and gets the `saved-cut-order-stale` warning.
 - `orderMode: "setup"`: the same cuts, grouped by setup: the tool, the cut kind, and the displayed setting
-  (`setupKey`). The current setup continues while any of its cuts is ready (the step that makes its piece is done).
+  (`setupKey`). This mode does not use the order of the saved cuts. The current setup continues while any of its cuts is ready (the step that makes its piece is done).
   Then the next setup starts. It is the first setup, in sheet order, that can finish in one run: each of its remaining
   cuts waits only for cuts that are done or that have the same setup. When no setup can finish in one run, the first
   ready cut in sheet order starts the next setup. For example, a 13 1/4" stop setting whose last cuts wait for a

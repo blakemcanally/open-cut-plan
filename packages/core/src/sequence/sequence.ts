@@ -1,4 +1,4 @@
-import type { Cut, CutToolChoice, PlanSheet, Project, Tool } from "../format/schema.ts";
+import type { Cut, CutToolChoice, PlanSheet, Project, SavedCut, Tool } from "../format/schema.ts";
 import { EPSILON, otherAxis, sizeAlong, span, withSpan, type Axis, type Rect } from "../geometry/rect.ts";
 import { formatIn, planContext, type PlanContext } from "../plan/context.ts";
 import { nodeItems, type CutNode } from "../plan/cutTree.ts";
@@ -59,7 +59,7 @@ export function totalCutLength(steps: readonly Pick<Step, "from" | "to">[]): num
   return steps.reduce((sum, step) => sum + (step.to - step.from), 0);
 }
 
-export function matchesChoice(cut: Pick<Step, "axis" | "at" | "from" | "to">, choice: CutToolChoice): boolean {
+export function matchesChoice(cut: Pick<Step, "axis" | "at" | "from" | "to">, choice: Pick<CutToolChoice, "axis" | "at" | "from" | "to">): boolean {
   return cut.axis === choice.axis && Math.abs(cut.at - choice.at) <= EPSILON && Math.abs(cut.from - choice.from) <= EPSILON && Math.abs(cut.to - choice.to) <= EPSILON;
 }
 
@@ -90,12 +90,20 @@ function toCut(step: Step): Cut {
   return cut;
 }
 
-/** Returns no steps when the cutOrder feature is off. */
+/**
+ * Returns no steps when the cutOrder feature is off. In the sheet order mode, a sheet whose saved cuts pass both checks
+ * has its cuts in the order of the list, after the trims.
+ */
 export function sequenceCuts(ctx: PlanContext, sheets: readonly SheetAnalysis[]): Step[] {
   if (!ctx.features.cutOrder) return [];
   const cuts: RawCut[] = [];
-  for (const sheet of sheets) collectSheet(ctx, sheet, cuts);
-  const ordered = ctx.project.settings.orderMode === "setup" ? setupOrder(ctx, cuts) : cuts;
+  const setup = ctx.project.settings.orderMode === "setup";
+  for (const sheet of sheets) {
+    const start = cuts.length;
+    collectSheet(ctx, sheet, cuts);
+    if (!setup && sheet.savedOrder) savedOrder(cuts, start, sheet.sheet.savedCuts!);
+  }
+  const ordered = setup ? setupOrder(ctx, cuts) : cuts;
   const stepOf = new Map(ordered.map((cut, i) => [cut.id, i + 1]));
   const step = (id: number | null) => (id === null ? null : stepOf.get(id)!);
   return ordered.map((cut) => ({
@@ -201,6 +209,13 @@ function collectSheet(ctx: PlanContext, analysis: SheetAnalysis, cuts: RawCut[])
     });
   };
   walk(analysis.tree.root, last, "remainder");
+}
+
+/** Sorts the cuts of one sheet, from `start`, into the order of the saved lines; the trims stay first. */
+function savedOrder(cuts: RawCut[], start: number, lines: readonly SavedCut[]): void {
+  const rank = (cut: RawCut) => (cut.kind === "trim" ? -1 : lines.findIndex((line) => matchesChoice(cut, line)));
+  const sorted = cuts.slice(start).toSorted((a, b) => rank(a) - rank(b));
+  cuts.splice(start, sorted.length, ...sorted);
 }
 
 /** Cuts with the same key share a tool, a cut kind, and a displayed setting, so the saw does not change between them. */

@@ -32,10 +32,17 @@ export function checkCuts(ctx: PlanContext, layout: readonly PlanIssue[], sheets
     for (const ref of issue.refs) if (ref.kind === "placement") reported.add(`${ref.sheet}#${ref.index}`);
   }
 
-  for (const { sheet, index, tree, savedCuts } of sheets) {
+  for (const { sheet, index, tree, savedCuts, savedOrder } of sheets) {
     if (savedCuts === "stale") {
       issues.push(
         planWarning("saved-cuts-stale", `The saved cuts of sheet ${index + 1} no longer fit the layout. Run Optimize cuts again, or use the automatic cuts.`, [
+          { kind: "sheet", sheet: sheet.id },
+        ]),
+      );
+    }
+    if (savedCuts === "used" && !savedOrder) {
+      issues.push(
+        planWarning("saved-cut-order-stale", `The saved cut order of sheet ${index + 1} has a cut before the cut that makes its piece, so the sheet uses the automatic order.`, [
           { kind: "sheet", sheet: sheet.id },
         ]),
       );
