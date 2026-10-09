@@ -1,5 +1,5 @@
 import { analyzeProject, sequencePlan, type Project } from "@opencutplan/core";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo, useState } from "react";
 import { describe, expect, it } from "vitest";
@@ -146,5 +146,72 @@ describe("the Cuts mode", () => {
     const progress = (current().project.extensions!["opencutplan.app"] as { progress: { sequence: string; done: number[] } }).progress;
     expect(progress.sequence).toBe(sequenceKey(after));
     expect(progress.done.map((n) => after[n - 1]!.at)).toEqual([20.0625]);
+  });
+
+  describe("the cut order", () => {
+    const orderList = () => within(inspector()).getByRole("list", { name: "Cut order" });
+    const item = (step: number) => orderList().querySelector(`[data-order-step="${step}"]`)!;
+    const postRip = (project: Project) => sequencePlan(project).find((step) => step.axis === "y" && step.at === 40.0625 && step.from === 0)!.step;
+
+    it("lists the cuts of the sheet, and Alt+Up and Alt+Down move the selected cut inside its limits", async () => {
+      const current = renderLayout();
+      await cutsMode();
+      await selectStep(5);
+      expect(within(orderList()).getAllByRole("button")).toHaveLength(8);
+      expect(within(orderList()).getByRole("button", { current: true }).textContent).toContain("5 Rip at 40 1/16\"");
+      for (let i = 0; i < 3; i++) await userEvent.keyboard("{Alt>}{ArrowUp}{/Alt}");
+      expect(postRip(current().project)).toBe(2);
+      expect(within(sheet()).getByText("saved cuts")).toBeTruthy();
+      await userEvent.keyboard("{Alt>}{ArrowUp}{/Alt}");
+      expect(postRip(current().project)).toBe(2);
+      expect(within(inspector()).getByText("Step 2 must stay after step 1, the cut that makes its piece.")).toBeTruthy();
+      await userEvent.keyboard("{Alt>}{ArrowDown}{/Alt}");
+      expect(postRip(current().project)).toBe(3);
+      act(() => current().undo());
+      expect(postRip(current().project)).toBe(2);
+    });
+
+    it("drags a cut in the list, and shows the places past its limits while it drags", async () => {
+      const current = renderLayout();
+      await cutsMode();
+      await selectStep(5);
+      fireEvent.dragStart(item(5));
+      expect(item(1).className).toContain("out-of-limits");
+      expect(item(2).className).not.toContain("out-of-limits");
+      fireEvent.dragOver(item(1));
+      fireEvent.drop(item(1));
+      expect(postRip(current().project)).toBe(5);
+      fireEvent.dragStart(item(5));
+      fireEvent.dragOver(item(2));
+      fireEvent.drop(item(2));
+      expect(postRip(current().project)).toBe(2);
+      expect(orderList().querySelector(".out-of-limits")).toBeNull();
+    });
+
+    it("keeps the done ticks with their cuts after a move", async () => {
+      const project = joinRowProject();
+      const ticked = writeProgress(project, { sequence: sequenceKey(sequencePlan(project)), done: [5, 6] });
+      const current = renderLayout(ticked);
+      await cutsMode();
+      await selectStep(5);
+      await userEvent.keyboard("{Alt>}{ArrowUp}{/Alt}");
+      const after = sequencePlan(current().project);
+      const progress = (current().project.extensions!["opencutplan.app"] as { progress: { sequence: string; done: number[] } }).progress;
+      expect(progress.sequence).toBe(sequenceKey(after));
+      expect(progress.done.map((n) => [after[n - 1]!.axis, after[n - 1]!.at])).toEqual([
+        ["y", 40.0625],
+        ["y", 10.0625],
+      ]);
+      expect(progress.done).toEqual([4, 6]);
+    });
+
+    it("tells that the order applies only in the Sheet order mode", async () => {
+      const project = joinRowProject();
+      project.settings.orderMode = "setup";
+      renderLayout(project);
+      await cutsMode();
+      await selectStep(1);
+      expect(within(inspector()).getByText(/The order mode is Setup/)).toBeTruthy();
+    });
   });
 });

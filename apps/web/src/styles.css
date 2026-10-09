@@ -199,6 +199,13 @@ fieldset.choice label { display: inline-flex; align-items: center; gap: 4px; }
 .cut-end { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
 .cut-end .muted { min-width: 5.5em; }
 .cut-actions { display: flex; gap: 6px; margin: 8px 0; }
+.cut-order ol { list-style: none; margin: 6px 0; padding: 0; max-height: 320px; overflow-y: auto; }
+.cut-order li button { width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 4px; padding: 3px 6px; cursor: grab; }
+.cut-order li button.selected { background: #e0ecff; border-color: #93b4f0; }
+.cut-order li button.out-of-limits { opacity: 0.4; }
+.cut-order li button.drop-target { border-top: 2px solid var(--focus); }
+.cut-order li button.dragging { opacity: 0.6; }
+.cut-order .order-number { display: inline-block; min-width: 2em; font-variant-numeric: tabular-nums; }
 .sheet-area .drop-preview { fill: #1a5fd022; stroke: var(--focus); stroke-width: 2; stroke-dasharray: 6 3; pointer-events: none; }
 .sheet-area .drop-preview.bad { fill: #c6282822; stroke: var(--bad); }
 .sheet-area .grid, .sheet-area .snap-guide { pointer-events: none; }

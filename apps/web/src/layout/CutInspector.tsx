@@ -1,6 +1,7 @@
 import { formatIn, type CutEnd, type PlanContext, type Step } from "@opencutplan/core";
+import type { ReactNode } from "react";
 import { toolOption } from "../shop/toolOption.ts";
-import { endName, type EndStop } from "./cutEditing.ts";
+import { endName, KIND_NAMES, type EndStop } from "./cutEditing.ts";
 
 interface CutInspectorProps {
   ctx: PlanContext;
@@ -12,6 +13,8 @@ interface CutInspectorProps {
   joins: number;
   canRemove: boolean;
   locked: boolean;
+  /** The cut order of the sheet. */
+  order: ReactNode;
   onStop(end: CutEnd, stop: EndStop): void;
   onJoin(): void;
   onRemove(): void;
@@ -19,9 +22,7 @@ interface CutInspectorProps {
   onTool(tool: string): void;
 }
 
-const KIND_NAMES = { rip: "Rip", crosscut: "Crosscut", trim: "Trim" } as const;
-
-export function CutInspector({ ctx, step, busy, count, stops, joins, canRemove, locked, onStop, onJoin, onRemove, onLock, onTool }: CutInspectorProps) {
+export function CutInspector({ ctx, step, busy, count, stops, joins, canRemove, locked, order, onStop, onJoin, onRemove, onLock, onTool }: CutInspectorProps) {
   const total = count && (
     <p className="muted" role="status">
       Sheet {count.sheet}: {count.cuts} cuts{count.before !== null && count.before !== count.cuts ? ` (was ${count.before})` : ""}.
@@ -91,6 +92,7 @@ export function CutInspector({ ctx, step, busy, count, stops, joins, canRemove, 
         </button>
       </div>
       {total}
+      {order}
       {locked && <p className="muted">This cut is locked: it cannot change, and Optimize cuts keeps it. Unlock it to change it.</p>}
       <p className="muted">The parts are locked in this mode. Escape clears the selection.</p>
     </section>

@@ -314,6 +314,11 @@ trim cuts cannot be selected. See [cut edits](cut-analysis.md#cut-edits).
   with the same position and ends, and searches the other cuts. A locked cut shows a lock next to its number on the
   sheet. **Extend**, **Shorten**, **Join**, and **Remove** are off for a locked cut, and no stop of another cut splits
   it or joins it. A part move removes the saved cuts with their locks, and the notice offers **Undo**.
+- **Cut order** lists the cuts of the sheet in order, without the trims. Drag a cut in the list, or press Alt+Up or
+  Alt+Down, to move it. A cut stays after the cut that makes its piece and before the first cut inside that piece.
+  While you drag, the places past these limits show pale, and Alt+Up or Alt+Down at a limit tells the limit. The Shop
+  tab follows the new order, and the done ticks stay with their cuts. With the Setup order mode, the list tells that
+  the order applies only in the Sheet order mode.
 - After an edit, the sheet says "saved cuts", and the side panel tells the new cut count of the sheet, for example
   "Sheet 1: 7 cuts (was 8)." **Undo** undoes the edit. A cut that changes loses its done tick on the Shop tab; the
   other ticks stay with their cuts.

@@ -5,6 +5,7 @@ import {
   clearsKerf,
   contains,
   copyLabel,
+  cutOrderLimits,
   describeGoal,
   describeGroupSpread,
   extraCostPercent,
@@ -15,6 +16,7 @@ import {
   lostSavedCuts,
   partColors,
   moveCopyTo,
+  moveCut,
   moveToTray,
   nudgeCopy,
   orientedSize,
@@ -29,6 +31,7 @@ import {
   sameLine,
   setCutLocked,
   setPinned,
+  sheetCuts,
   sheetRects,
   stockLabel,
   toolColors,
@@ -41,6 +44,7 @@ import {
   type ProjectAnalysis,
   type Rect,
   type Size,
+  type Step,
   type UnplacedReason,
 } from "@opencutplan/core";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
@@ -50,9 +54,10 @@ import { chooseTool, moveTicks } from "../shop/progress.ts";
 import type { ViewPrefs } from "../state/prefs.ts";
 import type { ProjectStore } from "../state/useProject.ts";
 import { ColorLegend } from "./ColorLegend.tsx";
-import { applyStop, endStops, lineOf, type EndStop, type SelectedCut } from "./cutEditing.ts";
+import { applyStop, endStops, lineOf, orderLimitText, type EndStop, type SelectedCut } from "./cutEditing.ts";
 import { CutEditor } from "./CutEditor.tsx";
 import { CutInspector } from "./CutInspector.tsx";
+import { CutOrderList } from "./CutOrderList.tsx";
 import { CutLegend } from "./CutLegend.tsx";
 import { fitScale, WINDOW_ALLOWANCE } from "./fit.ts";
 import { Inspector } from "./Inspector.tsx";
@@ -131,6 +136,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
   const [lostCuts, setLostCuts] = useState<LostCuts | null>(null);
   const [mode, setMode] = useState<"parts" | "cuts">("parts");
   const [selectedCut, setSelectedCut] = useState<SelectedCut | null>(null);
+  const [orderNote, setOrderNote] = useState<{ cut: SelectedCut; text: string } | null>(null);
   const [cutsBefore, setCutsBefore] = useState<{ sheet: string; cuts: number } | null>(null);
   const focusAfter = useRef<CopyRef | null>(null);
   const sheetsRef = useRef<HTMLDivElement>(null);
@@ -174,6 +180,12 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
     const stops = { from: endStops(project, sheet, selectedStep, "from"), to: endStops(project, sheet, selectedStep, "to") };
     return { stops, join: joinCut(project, sheet, selectedStep), canRemove: removeCut(project, sheet, selectedStep) !== null, locked: isCutLocked(project, sheet, selectedStep) };
   }, [project, selectedStep]);
+  const orderSteps = useMemo(() => {
+    if (!selectedStep) return null;
+    const sheet = selectedStep.sheet;
+    const steps = analysis.steps.filter((step) => step.sheet === sheet && step.kind !== "trim");
+    return (sheetCuts(project, sheet)?.lines ?? []).flatMap((line) => steps.find((step) => sameLine(step, line)) ?? []);
+  }, [analysis.steps, project, selectedStep]);
   const enabledStock = project.stock.filter((stock) => stock.enabled !== false);
   const chosenStock = enabledStock.find((stock) => stock.id === stockChoice) ?? enabledStock[0];
 
@@ -274,6 +286,22 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
     const next = removeCut(project, selectedStep.sheet, selectedStep);
     if (next) editCuts(selectedStep.sheet, next, null);
   };
+  const moveTo = (step: Step, to: number) => {
+    if (busy) return;
+    const next = moveCut(project, step.sheet, step, to);
+    if (!next) return;
+    setOrderNote(null);
+    edit(moveTicks(project, analysis.steps, next));
+    setSelectedCut({ sheet: step.sheet, line: lineOf(step) });
+  };
+  const nudgeOrder = (later: boolean) => {
+    if (!selectedStep || busy) return;
+    const limits = cutOrderLimits(project, selectedStep.sheet, selectedStep);
+    if (!limits) return;
+    const to = limits.index + (later ? 1 : -1);
+    if (to < limits.min || to > limits.max) setOrderNote({ cut: { sheet: selectedStep.sheet, line: lineOf(selectedStep) }, text: orderLimitText(analysis.steps, selectedStep, limits, later) });
+    else moveTo(selectedStep, to);
+  };
   const lockSelected = () => {
     if (!selectedStep || !cutTools || busy) return;
     const next = setCutLocked(project, selectedStep.sheet, selectedStep, !cutTools.locked);
@@ -281,6 +309,11 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (cutsMode && selectedStep && event.altKey && !event.metaKey && !event.ctrlKey && (event.key === "ArrowUp" || event.key === "ArrowDown") && !isEditable(event.target)) {
+      event.preventDefault();
+      nudgeOrder(event.key === "ArrowDown");
+      return;
+    }
     if (isEditable(event.target) || event.metaKey || event.ctrlKey || event.altKey) return;
     if (cutsMode) {
       if (event.key === "Escape") setSelectedCut(null);
@@ -641,6 +674,21 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
               joins={cutTools?.join?.joins ?? 0}
               canRemove={cutTools?.canRemove ?? false}
               locked={cutTools?.locked ?? false}
+              order={
+                selectedStep && orderSteps ? (
+                  <CutOrderList
+                    ctx={ctx}
+                    steps={orderSteps}
+                    selected={selectedStep}
+                    busy={busy}
+                    setup={project.settings.orderMode === "setup"}
+                    note={orderNote && orderNote.cut.sheet === selectedStep.sheet && sameLine(orderNote.cut.line, selectedStep) ? orderNote.text : null}
+                    limitsFor={(step) => cutOrderLimits(project, step.sheet, step)}
+                    onMove={moveTo}
+                    onSelect={(step) => setSelectedCut({ sheet: step.sheet, line: lineOf(step) })}
+                  />
+                ) : null
+              }
               onStop={cutStop}
               onJoin={joinSelected}
               onRemove={removeSelected}
