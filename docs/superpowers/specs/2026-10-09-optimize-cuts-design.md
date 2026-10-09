@@ -96,7 +96,8 @@ drops saved cuts because of a change to the tools.
 
 The list order is the cut order of the sheet. The order fails the check when a cut comes before the cut that makes its
 piece. When the tree passes and the order fails, the reader keeps the tree, uses the automatic order, and gives the
-warning `saved-cut-order-stale`. Before Phase 4, the sequence uses the automatic order in every case.
+warning `saved-cut-order-stale`. Before Phase 4, the sequence uses the automatic order in every case, and Phase 4
+adds this check and its warning.
 
 ### 5.4 When the check of the tree fails
 
@@ -143,22 +144,26 @@ runs into one piece, not only all of the runs. The search honours the tool limit
 
 The full search can take more than 1 s on a busy sheet. Thus it runs in passes, so that a stop keeps a result:
 
-- Pass k lets a split join up to k next runs.
+- Pass p lets a split join up to 2^p next runs: 2, then 4, then 8, and so on.
 - Each pass gives a full, valid tree. The search keeps the best tree so far.
-- The search starts from the tree that the sheet uses now. It stops at k = all runs, or at the time limit.
-- The memo stays from one pass to the next.
+- The search starts from the tree that the sheet uses now. It stops after the first pass in which no piece has more
+  runs than the pass can join, or at the time limit.
+- Each pass gets a new memo, because the result of a piece depends on the join limit. When the time of one slice
+  ends during a pass, the pass keeps its memo and continues in the next slice.
 
 ### 7.4 The core API
 
-- `createCutSearch(ctx, sheet)` returns an object with `step(budgetMs)`, the same shape as `createSearch`. Each call
-  runs until the budget ends or the search is done. It returns the best tree so far, the pass, and whether the search
-  is done.
+- `createCutSearch(project, options)` returns an object with `step(budgetMs)` and `result()`, the same shape as
+  `createSearch`. Each call of `step` runs until the budget ends or the search is done, and returns true when the
+  search is done. `result()` gives, for each sheet, the best tree so far, the passes, and whether the sheet is done.
 - `optimizeCuts(project, options)` runs the search on each sheet, or on one sheet. It returns the new project and, for
   each sheet, the cut count and the cut length before and after.
 - The search compares its best tree with the tree that the sheet uses now: the saved tree when it passes the check,
-  else the automatic tree. The sheet gets the new tree only when it has fewer cuts. Otherwise the sheet keeps what it
-  has. When the cut counts are equal, a shorter cut length is not enough to save a tree.
-- Optimize cuts writes the lines in the order of the sequence.
+  else the automatic tree. The sheet gets the new tree only when it has fewer cuts, no more stuck parts, and no more
+  cuts that no tool can make. Otherwise the sheet keeps what it has. When the cut counts are equal, a shorter cut
+  length is not enough to save a tree.
+- Optimize cuts writes the lines in the sheet order of the sequence (`orderMode` `"sheet"`).
+- A sheet with no parts, or with stuck parts, is not searched.
 - `options` has `sheet`, `timeLimitMs` (for each sheet), and `passes` (stop after this pass and ignore the time).
 - The search does not use random numbers. With `passes`, the result is the same on every computer.
 - Before Phase 3, Optimize cuts leaves a sheet with a locked line unchanged.
@@ -174,7 +179,7 @@ The full search can take more than 1 s on a busy sheet. Thus it runs in passes, 
   - The header shows "saved cuts" when the sheet has saved cuts that pass the check, and "automatic cuts" when it has
     none.
   - The card has an **Optimize cuts** button for that sheet only.
-  - The card menu has **Use automatic cuts**. It removes the field from that sheet.
+  - The header has **Use automatic cuts** while the sheet has the field. It removes the field from that sheet.
 - **The result.** After the run, a notice tells the change in the cut count and the cut length. When no sheet got
   fewer cuts, it says "These cuts are already the best found."
 - **The warnings.** The warnings of sections 5.3 and 5.4 show in the issue list and on the sheet card.
@@ -306,9 +311,9 @@ Each later phase updates the same docs for its own edits.
   field. A pinned sheet keeps it through Optimize layout.
 - **The units.** A change of units converts the lines, and the check still passes.
 - **CLI.** One test for each option of `optimize-cuts`, with the output text and the JSON.
-- **Web.** A unit test for the hook state of the Optimize cuts run, with Stop. An e2e test: Optimize cuts, then "saved
-  cuts" shows and the cut count goes down. A move removes the label and shows the notice, and Undo brings the label
-  back.
+- **Web.** A component test for the Optimize cuts run, with Stop. A component test of the Layout tab: Optimize cuts,
+  then "saved cuts" shows and the cut count goes down. A move removes the label and shows the notice, and Undo brings
+  the label back.
 
 ### 14.2 Phase 2
 
