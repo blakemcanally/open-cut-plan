@@ -53,31 +53,134 @@ export function buildCutTree(sheet: Rect, items: readonly TreeItem[], kerf: numb
   const stuck: number[][] = [];
   const trims = trim > 0 ? trimCuts(sheet, trim, kerf) : [];
   const region = trim > 0 ? inset(sheet, trim) : sheet;
+  const group = rootGroup(items);
+  const root = treeBuilder(kerf, undefined, minOffcut, fastControl())(region, group, 1, "y", stuck);
+  if (!canCut || countNoTool(root, kerf, canCut, 1) === 0) return { trims, root, stuck };
+  const again: number[][] = [];
+  return { trims, root: treeBuilder(kerf, canCut, minOffcut, fastControl())(region, group, 1, "y", again), stuck: again };
+}
+
+export interface TreeSearch {
+  /** The best tree when a split can join up to `join` next runs, or null when `deadline` comes first. */
+  run(join: number, deadline?: number): { tree: CutTree; limited: boolean } | null;
+}
+
+/**
+ * The thorough search of Optimize cuts. It compares trees by stuck parts, then cuts that `canCut` rejects, then the cut
+ * count, then the cut length. A split can join a range of up to `join` next runs into one piece. `limited` is true
+ * when some piece had more runs than the split could join, so that a larger `join` can find a better tree. A run that
+ * stops at its deadline keeps its memo, so that the next run with the same `join` continues from it.
+ */
+export function createTreeSearch(sheet: Rect, items: readonly TreeItem[], kerf: number, trim: number, canCut?: (cut: TreeCut) => boolean, now: () => number = Date.now): TreeSearch {
+  const trims = trim > 0 ? trimCuts(sheet, trim, kerf) : [];
+  const region = trim > 0 ? inset(sheet, trim) : sheet;
+  const group = rootGroup(items);
+  let current: { join: number; control: Control; plain: Build; tooled: Build | undefined } | null = null;
+  return {
+    run(join, deadline) {
+      if (current?.join !== join) {
+        const control: Control = { join, cutsFirst: true, deadline: undefined, now, limited: false, ticks: 0 };
+        current = { join, control, plain: treeBuilder(kerf, undefined, undefined, control), tooled: canCut ? treeBuilder(kerf, canCut, undefined, control) : undefined };
+      }
+      const { control, plain, tooled } = current;
+      control.deadline = deadline;
+      try {
+        let stuck: number[][] = [];
+        let root = plain(region, group, 1, "y", stuck);
+        if (tooled && countNoTool(root, kerf, canCut!, 1) > 0) {
+          stuck = [];
+          root = tooled(region, group, 1, "y", stuck);
+        }
+        return { tree: { trims, root, stuck }, limited: control.limited };
+      } catch (error) {
+        if (error === ABORTED) return null;
+        throw error;
+      }
+    },
+  };
+}
+
+export interface TreeMeasure {
+  /** Parts in stuck groups. */
+  stuck: number;
+  noTool: number;
+  /** Cuts, trims included. */
+  cuts: number;
+  /** Total cut length, trims included. */
+  length: number;
+}
+
+export function measureTree(tree: CutTree, kerf: number, canCut?: (cut: TreeCut) => boolean): TreeMeasure {
+  let cuts = tree.trims.length;
+  let length = 0;
+  for (const trim of tree.trims) {
+    const [from, to] = span(trim.piece, otherAxis(trim.axis));
+    length += to - from;
+  }
+  const walk = (node: CutNode): void => {
+    if (node.kind !== "split") return;
+    const [from, to] = span(node.rect, otherAxis(node.axis));
+    cuts += node.cuts.length;
+    length += node.cuts.length * (to - from);
+    node.children.forEach(walk);
+  };
+  walk(tree.root);
+  return { stuck: tree.stuck.reduce((sum, group) => sum + group.length, 0), noTool: canCut ? countNoTool(tree.root, kerf, canCut) : 0, cuts, length };
+}
+
+/** Stuck parts, then cuts with no tool, then the cut count, then the cut length. */
+export function compareMeasures(a: TreeMeasure, b: TreeMeasure): number {
+  if (a.stuck !== b.stuck) return a.stuck - b.stuck;
+  if (a.noTool !== b.noTool) return a.noTool - b.noTool;
+  if (a.cuts !== b.cuts) return a.cuts - b.cuts;
+  if (Math.abs(a.length - b.length) > EPSILON) return a.length - b.length;
+  return 0;
+}
+
+/** The cuts of the subtree that `canCut` rejects, counted up to `limit`. */
+export function countNoTool(node: CutNode, kerf: number, canCut: (cut: TreeCut) => boolean, limit = Number.POSITIVE_INFINITY): number {
+  if (node.kind !== "split") return 0;
+  const [lo, hi] = span(node.rect, node.axis);
+  const [from, to] = span(node.rect, otherAxis(node.axis));
+  let count = 0;
+  let start = lo;
+  for (const [i, at] of node.cuts.entries()) {
+    const remainder = Math.min(hi, Math.max(start, at + kerf / 2));
+    const cut = { axis: node.axis, stage: node.stage, length: to - from, piece: withSpan(node.rect, node.axis, start, hi), released: node.children[i]!.rect, remainder: withSpan(node.rect, node.axis, remainder, hi) };
+    if (!canCut(cut) && ++count >= limit) return count;
+    start = remainder;
+  }
+  for (const child of node.children) {
+    count += countNoTool(child, kerf, canCut, limit - count);
+    if (count >= limit) return count;
+  }
+  return count;
+}
+
+function rootGroup(items: readonly TreeItem[]): Group {
   const inner = items.map((item): Item => {
     const it: Item = { ...item, x: span(item.rect, "x"), y: span(item.rect, "y"), run: 0, alone: NO_ITEMS };
     it.alone = { items: [it], x: [it], y: [it], runs: {} };
     return it;
   });
-  const group = { items: inner, x: inner.toSorted((a, b) => a.x[0] - b.x[0]), y: inner.toSorted((a, b) => a.y[0] - b.y[0]), runs: {} };
-  const root = treeBuilder(kerf, undefined, minOffcut)(region, group, 1, "y", stuck);
-  if (!canCut || everyCut(root, kerf, canCut)) return { trims, root, stuck };
-  const again: number[][] = [];
-  return { trims, root: treeBuilder(kerf, canCut, minOffcut)(region, group, 1, "y", again), stuck: again };
+  return { items: inner, x: inner.toSorted((a, b) => a.x[0] - b.x[0]), y: inner.toSorted((a, b) => a.y[0] - b.y[0]), runs: {} };
 }
 
-function everyCut(node: CutNode, kerf: number, canCut: (cut: TreeCut) => boolean): boolean {
-  if (node.kind !== "split") return true;
-  const [lo, hi] = span(node.rect, node.axis);
-  const [from, to] = span(node.rect, otherAxis(node.axis));
-  let start = lo;
-  for (const [i, at] of node.cuts.entries()) {
-    const remainder = Math.min(hi, Math.max(start, at + kerf / 2));
-    const cut = { axis: node.axis, stage: node.stage, length: to - from, piece: withSpan(node.rect, node.axis, start, hi), released: node.children[i]!.rect, remainder: withSpan(node.rect, node.axis, remainder, hi) };
-    if (!canCut(cut)) return false;
-    start = remainder;
-  }
-  return node.children.every((child) => everyCut(child, kerf, canCut));
+interface Control {
+  /** The most next runs that one piece of a split can hold. */
+  join: number;
+  cutsFirst: boolean;
+  deadline: number | undefined;
+  now: () => number;
+  limited: boolean;
+  ticks: number;
 }
+
+function fastControl(): Control {
+  return { join: 1, cutsFirst: false, deadline: undefined, now: Date.now, limited: false, ticks: 0 };
+}
+
+const ABORTED = new Error("The cut search reached its deadline.");
 
 function trimCuts(sheet: Rect, trim: number, kerf: number): TrimCut[] {
   const cuts: TrimCut[] = [];
@@ -189,14 +292,16 @@ interface Boundary {
 interface Step {
   cost: Cost;
   next: number;
+  /** The last run in the piece that the step starts. */
+  to: number;
 }
 
 type Build = (rect: Rect, group: Group, stage: number, prefer: Axis, stuck: number[][]) => CutNode;
 
-function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefined, minOffcut: Size | undefined): Build {
+function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefined, minOffcut: Size | undefined, control: Control): Build {
   const half = kerf / 2;
   const memo = new Map<number, Known[]>();
-  const compareCost = minOffcut ? compareOffcutFirst : compareLength;
+  const compareCost = control.cutsFirst ? compareMeasures : minOffcut ? compareOffcutFirst : compareLength;
   const offcutOf = (waste: Rect | null) => (minOffcut && waste && fitsWithin(minOffcut, waste) ? area(waste) : 0);
 
   const lookup = (x: number, y: number, length: number, width: number, items: readonly Item[], stage: number): Known | undefined => {
@@ -212,6 +317,7 @@ function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefin
     const { items } = group;
     const known = lookup(rect.x, rect.y, rect.length, rect.width, items, stage);
     if (known) return known.solved;
+    if (control.deadline !== undefined && control.ticks++ % 64 === 0 && control.now() >= control.deadline) throw ABORTED;
     const open = rect.length > EPSILON && rect.width > EPSILON;
     const x = open ? plan(rect, group, "x", stage) : null;
     const y = open ? plan(rect, group, "y", stage) : null;
@@ -248,6 +354,7 @@ function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefin
     const length = axis === "x" ? rect.width : rect.length;
     const runs = (group.runs[axis] ??= runsAlong(group, axis, kerf));
     const last = runs.length - 1;
+    if (runs.length > control.join) control.limited = true;
 
     const boundaries: Boundary[][] = [];
     const first = runs[0]!.start;
@@ -294,22 +401,39 @@ function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefin
       return { stuck: 0, noTool, offcut: offcutOf(boundary.waste), length: count * length, cuts: count };
     };
 
+    const unions = new Map<number, Group>();
+    const groupOf = (b: number, e: number): Group => {
+      if (b === e) return runs[b]!.group;
+      if (b === 0 && e === last) return group;
+      const key = b * runs.length + e;
+      let union = unions.get(key);
+      if (!union) {
+        const members = new Set(runs.slice(b, e + 1).flatMap((run) => run.group.items));
+        const keep = (item: Item) => members.has(item);
+        union = { items: group.items.filter(keep), x: group.x.filter(keep), y: group.y.filter(keep), runs: {} };
+        unions.set(key, union);
+      }
+      return union;
+    };
+
     // tail[b][o]: the best cost of run b and everything after it, when option o of boundary b starts run b.
     const tail: (Step | undefined)[][] = boundaries.map(() => []);
     for (let b = last; b >= 0; b--) {
       const options = boundaries[b]!;
-      const nexts = boundaries[b + 1]!;
       for (let o = 0; o < options.length; o++) {
         const option = options[o]!;
         let best: Step | undefined;
-        for (let n = 0; n < nexts.length; n++) {
-          const next = nexts[n]!;
-          if (last === 0 && option.cuts.length === 0 && next.cuts.length === 0) continue;
-          const after = b < last ? tail[b + 1]![n] : undefined;
-          if (b < last && !after) continue;
-          let cost = plus(pieceCost(rect, axis, option.start, next.end, runs[b]!.group, stage + 1), cutCost(next, option.start, () => between(option.start, next.end)));
-          if (after) cost = plus(cost, after.cost);
-          if (!best || compareCost(cost, best.cost) < 0) best = { cost, next: n };
+        for (let e = b; e <= Math.min(last, b + control.join - 1); e++) {
+          const nexts = boundaries[e + 1]!;
+          for (let n = 0; n < nexts.length; n++) {
+            const next = nexts[n]!;
+            if (b === 0 && e === last && option.cuts.length === 0 && next.cuts.length === 0) continue;
+            const after = e < last ? tail[e + 1]![n] : undefined;
+            if (e < last && !after) continue;
+            let cost = plus(pieceCost(rect, axis, option.start, next.end, groupOf(b, e), stage + 1), cutCost(next, option.start, () => between(option.start, next.end)));
+            if (after) cost = plus(cost, after.cost);
+            if (!best || compareCost(cost, best.cost) < 0) best = { cost, next: n, to: e };
+          }
         }
         tail[b]![o] = best;
       }
@@ -320,7 +444,7 @@ function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefin
       const rest = tail[0]![o];
       if (!rest) return;
       const cost = option.waste ? plus(rest.cost, cutCost(option, lo, () => option.waste!)) : rest.cost;
-      if (!chosen || compareCost(cost, chosen.cost) < 0) chosen = { cost, next: o };
+      if (!chosen || compareCost(cost, chosen.cost) < 0) chosen = { cost, next: o, to: -1 };
     });
     if (!chosen) return null;
 
@@ -342,12 +466,14 @@ function treeBuilder(kerf: number, canCut: ((cut: TreeCut) => boolean) | undefin
     const cuts: number[] = [];
     const pieces: Piece[] = [];
     let index = chosen.next;
-    for (let b = 0; b <= last; b++) {
+    for (let b = 0; b <= last; ) {
       const option = boundaries[b]![index]!;
       cuts.push(...option.cuts);
       if (option.waste) pieces.push({ rect: option.waste, group: NO_ITEMS });
-      index = tail[b]![index]!.next;
-      pieces.push({ rect: between(option.start, boundaries[b + 1]![index]!.end), group: runs[b]!.group });
+      const step = tail[b]![index]!;
+      index = step.next;
+      pieces.push({ rect: between(option.start, boundaries[step.to + 1]![index]!.end), group: groupOf(b, step.to) });
+      b = step.to + 1;
     }
     const option = boundaries[last + 1]![index]!;
     cuts.push(...option.cuts);
