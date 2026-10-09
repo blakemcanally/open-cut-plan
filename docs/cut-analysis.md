@@ -143,6 +143,29 @@ tree, and the trims are not lines.
   - `optimizeCuts(project, options)` runs the search to the end and applies the result with `applyCutsResult`. With
     `passes`, the result does not depend on the time, so it is the same on every computer.
 
+## Cut edits
+
+The functions in `packages/core/src/edit/cutEdits.ts` change the cut tree of one sheet by hand. Each one works on the
+lines of the tree that the sheet uses (`sheetCuts`): the saved cuts when they pass the check, else the lines of the
+automatic tree, in the sheet order of the sequence. So the first edit copies the automatic tree to `savedCuts`. A
+sheet with no parts, or with stuck parts, has no cut edits. Each result passes the check of the saved cuts.
+
+- **Extend** (`cutStops`, `extendCut`) moves one end of a cut out. The stops are the ends where the result passes the
+  check: the edge of the region, a kerf edge of a cross cut, or the end of a cut on the same line. The cuts on the same
+  line inside the new extent join the cut, and each cross cut that it now goes through splits in two. A split piece
+  that the tree does not need, for example a cut between two waste pieces, goes.
+- **Shorten** (`shortenStops`, `shortenCut`) moves one end of a cut in, to a cross cut that ends at the cut. It extends
+  that cross cut through the cut, to the nearest stop past it, so that the cut splits in two there.
+- **Join** (`joinCut`) extends each end to the stop that joins the most cuts on the same line, then gives the fewest
+  cuts.
+- **Remove** (`removeCut`) removes a cut when the result passes the check, for example a cut between two waste pieces.
+
+Each stop tells the new end, the length of the cut, the cut count of the sheet after the edit (trims included), the
+joined cuts, and `noTool`: true when the result has more cuts that no enabled tool can make. A cut keeps its tool
+choice when it changes, while that tool can make the new cut; otherwise the choice goes, and the cut gets the
+recommended tool. A split piece keeps the choice of its cut by the same rule. After an edit, the lines keep their
+order where they can, and each cut comes after the cut that makes its piece (`orderLines`).
+
 ## Tools
 
 Each cut gets the first enabled tool, in profile order, that can make it. With `toolLimits` off, that is the first

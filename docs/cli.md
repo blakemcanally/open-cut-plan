@@ -340,6 +340,27 @@ The layout commands change the plan by hand. x and y are from the top-left corne
 A move to an exact spot is done even when the copy overlaps another part. The result then has plan errors in
 `validation`. Use `--strict` to refuse such a change.
 
+### Cuts
+
+The cuts commands change the cut tree of one sheet by hand. Each one takes `--sheet <ref>` and `--step <n>`, the step
+number as in `cuts show` and `report sequence`. A trim cut cannot change (the code `trim`). The first change to the
+cuts of a sheet saves its cuts in `savedCuts`, the same as `optimize-cuts`, so that a layout change to the sheet removes
+them. See [`cut-analysis.md`](cut-analysis.md#cut-edits).
+
+| Command | What it does | Example |
+| ------- | ------------ | ------- |
+| `cuts show <file>` | Lists the cuts of the sheet and the stops of each end. A `+` stop extends the end, and a `-` stop shortens it. | `opencutplan cuts show shelf.cutplan.json --sheet 1` |
+| `cuts extend <file>` | Moves `--end from` or `--end to` out to a stop: `--to <length>`, `next`, or `max`. | `opencutplan cuts extend shelf.cutplan.json --sheet 1 --step 6 --end to --to max` |
+| `cuts shorten <file>` | Moves an end in: the cross cut at `--to <position>` (or `next`) goes through the cut first. | `opencutplan cuts shorten shelf.cutplan.json --sheet 1 --step 1 --end to --to next` |
+| `cuts join <file>` | Extends each end to the stop that joins the most cuts on the same line. | `opencutplan cuts join shelf.cutplan.json --sheet 1 --step 5` |
+| `cuts remove <file>` | Removes a cut that the parts do not need, such as a cut through waste. | `opencutplan cuts remove shelf.cutplan.json --sheet 1 --step 9` |
+
+A stop is `{ end, length, cuts, joins, noTool }`, and a shorten stop also has `across`, the position of the cross cut.
+`cuts` is the cut count of the sheet after the edit, with the trims. `noTool` is true when the edit gives the sheet more
+cuts that no enabled tool can make. An end that is not a stop fails with the code `no-stop`, and the error lists the
+stops. `cuts join` fails with `no-join` when no stop joins a cut, and `cuts remove` fails with `not-removable` when the
+cuts then do not free every part. An extended cut keeps its tool choice while that tool can make it.
+
 ### Reports
 
 The reports do not change the file.
