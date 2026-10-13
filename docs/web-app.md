@@ -248,9 +248,11 @@ part that asks for a factory edge and does not get one.
   finds a tree with fewer cuts, the sheet saves it as its [saved cuts](cut-analysis.md#saved-cuts), and a line tells
   the change on each sheet, for example "Sheet 1: 8 → 6 cuts, 272" → 258 1/2" of cuts." **Undo optimize** and
   **Undo** put back the cuts from before.
-- **Let parts slide**, next to **Optimize cuts**, lets the search slide a part inside its piece, toward a corner, when
-  that gives fewer cuts. The sheet line then tells the parts that slid, for example "Slid 1 part inside its piece."
-  A pinned sheet and a sheet with locked cuts do not slide, and a slide never takes a factory edge from a part.
+- **Let parts slide**, next to **Optimize cuts**, lets the search slide a part inside its piece, toward a corner or onto
+  the edge line of the piece next to it, when that gives a better tree: fewer cuts, or the same cuts with a shorter cut
+  length. The app keeps the box in the view preferences of the browser. The sheet line then tells the parts that
+  slid, for example "Slid 1 part inside its piece." A pinned sheet and a sheet with locked cuts do not slide, and a
+  slide never takes a factory edge from a part.
   **Undo optimize** puts back the parts and the cuts together. The box also applies to **Optimize cuts** on a sheet.
 - **Stop** ends a search and uses the best plan so far. For **Optimize cuts**, each sheet keeps the best tree found
   so far.

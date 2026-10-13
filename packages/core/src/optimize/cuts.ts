@@ -7,7 +7,7 @@ import { compareMeasures, createTreeSearch, measureTree, type CutTree, type Tree
 import { rebuildTree, treeLines } from "../plan/savedCuts.ts";
 import { compareFactoryEdgeMisses, sheetFactoryEdgeMissLengths } from "../plan/factoryEdges.ts";
 import { analyzeSheets, treeRegion, treeToolCheck } from "../plan/sheets.ts";
-import { slidePlacements, SLIDE_DIRECTIONS } from "./slide.ts";
+import { slidePlacements, SLIDES } from "./slide.ts";
 
 export interface CutStats {
   /** Trims included. */
@@ -46,9 +46,10 @@ export interface OptimizeCutsOptions {
   /** Stop each sheet after this pass and ignore the time, so that the result is the same on every computer. */
   passes?: number;
   /**
-   * Also search each sheet with its parts slid inside their pieces (see `slidePlacements`), to each corner. A slid
-   * layout wins only with fewer cuts than the layout as it is. A pinned sheet, a sheet with locked cuts, and a slide
-   * that gives more factory edge misses do not slide. The pass and time limits are for each layout.
+   * Also search each sheet with its parts slid inside their pieces (see `slidePlacements` and `SLIDES`). A slid layout
+   * wins when its tree is better than the tree that the sheet uses now and than the tree of the layout as it is. A
+   * pinned sheet, a sheet with locked cuts, and a slide that gives more factory edge misses do not slide. The pass
+   * limit is for each layout, and the layouts of a sheet share its time limit.
    */
   slide?: boolean;
   now?: () => number;
@@ -105,14 +106,17 @@ function withLocks(layout: Layout, tree: CutTree): CutTree | null {
   return root && { ...tree, root };
 }
 
-/** The layout with the best tree: a slid layout must have fewer cuts than the layout as it is. */
+/**
+ * The layout with the best tree of those that improve on the tree that the sheet uses now: the layout as it is must
+ * have fewer cuts, and a slid layout must have a better tree. Null when no layout improves.
+ */
 function bestLayout(target: Target): Layout | null {
-  const [plain, ...slid] = target.layouts;
-  let chosen = plain!.best ? plain! : null;
-  for (const layout of slid) {
-    if (!layout.best) continue;
-    const better = !chosen ? true : chosen === plain ? fewerCuts(layout.best.measure, chosen.best!.measure) : compareMeasures(layout.best.measure, chosen.best!.measure) < 0;
-    if (better) chosen = layout;
+  let chosen: Layout | null = null;
+  for (const layout of target.layouts) {
+    const measure = layout.best?.measure;
+    if (!measure) continue;
+    const improves = layout.placements ? compareMeasures(measure, target.start) < 0 : fewerCuts(measure, target.start);
+    if (improves && (!chosen || compareMeasures(measure, chosen.best!.measure) < 0)) chosen = layout;
   }
   return chosen;
 }
@@ -154,8 +158,8 @@ export function createCutSearch(project: Project, options: OptimizeCutsOptions =
       if (options.slide && !sheet.pinned && locked.length === 0) {
         const misses = sheetFactoryEdgeMissLengths(ctx, sheet);
         const seen: Placement[][] = [];
-        for (const direction of SLIDE_DIRECTIONS) {
-          const placements = slidePlacements(analysis, ctx.kerf, ctx.units, direction);
+        for (const slide of SLIDES) {
+          const placements = slidePlacements(analysis, ctx.kerf, ctx.units, slide);
           if (!placements || seen.some((other) => other.every((placement, i) => placement.x === placements[i]!.x && placement.y === placements[i]!.y))) continue;
           seen.push(placements);
           if (compareFactoryEdgeMisses(sheetFactoryEdgeMissLengths(ctx, { ...sheet, placements }), misses) > 0) continue;
@@ -170,8 +174,7 @@ export function createCutSearch(project: Project, options: OptimizeCutsOptions =
 
   const result = (): OptimizeCutsResult => ({
     sheets: targets.map((target) => {
-      const chosen = bestLayout(target);
-      const better = chosen?.best && fewerCuts(chosen.best.measure, target.start) ? chosen : null;
+      const better = bestLayout(target);
       return {
         sheet: target.sheet,
         number: target.number,

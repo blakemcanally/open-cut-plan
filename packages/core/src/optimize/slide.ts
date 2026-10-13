@@ -1,5 +1,5 @@
 import type { Placement } from "../format/schema.ts";
-import { EPSILON, span, withSpan, type Axis, type Rect, type Size } from "../geometry/rect.ts";
+import { EPSILON, otherAxis, span, withSpan, type Axis, type Rect, type Size } from "../geometry/rect.ts";
 import { snapLength } from "../geometry/precision.ts";
 import type { Units } from "../geometry/units.ts";
 import type { CutNode } from "../plan/cutTree.ts";
@@ -8,6 +8,13 @@ import { treeRegion, type SheetAnalysis } from "../plan/sheets.ts";
 /** The end of each split that the pieces go to: "start" is the top or the left. */
 export type SlideDirection = Readonly<Record<Axis, "start" | "end">>;
 
+/**
+ * How the parts slide. `pack` packs the pieces of each split against one end. `align` keeps the pieces where they are
+ * along each split, and moves the parts of each piece across it only to put an edge on the line of the same edge of the
+ * piece before it ("forward") or after it ("backward").
+ */
+export type Slide = { readonly pack: SlideDirection } | { readonly align: "forward" | "backward" };
+
 export const SLIDE_DIRECTIONS: readonly SlideDirection[] = [
   { x: "start", y: "start" },
   { x: "end", y: "start" },
@@ -15,15 +22,33 @@ export const SLIDE_DIRECTIONS: readonly SlideDirection[] = [
   { x: "end", y: "end" },
 ];
 
+export const SLIDES: readonly Slide[] = [...SLIDE_DIRECTIONS.map((pack) => ({ pack })), { align: "forward" }, { align: "backward" }];
+
+type Point = { x: number; y: number };
+
 /**
- * The placements of the sheet after each split of its tree packs its pieces against one end, in the same order and one
- * kerf apart, with the waste at the other end. So the parts move only inside their pieces, along the axis of each
- * split, and the tree stays a tree of the same pieces. Null when the sheet has stuck parts, a placement that the tree
- * leaves out, or no part that moves.
+ * The placements of the sheet after its parts slide inside the pieces of its tree. The parts move only inside their
+ * pieces, along the axis of each split, and keep their order, so the tree stays a tree of the same pieces. Null when
+ * the sheet has stuck parts, a placement that the tree leaves out, or no part that moves.
  */
-export function slidePlacements(analysis: SheetAnalysis, kerf: number, units: Units, direction: SlideDirection): Placement[] | null {
+export function slidePlacements(analysis: SheetAnalysis, kerf: number, units: Units, slide: Slide): Placement[] | null {
   const { tree, items, sheet } = analysis;
   if (tree.stuck.length > 0 || items.length === 0 || items.length !== sheet.placements.length) return null;
+  const moved = "pack" in slide ? packed(tree.root, treeRegion(analysis), kerf, slide.pack) : aligned(tree.root, treeRegion(analysis), slide.align);
+  let changed = false;
+  const placements = sheet.placements.map((placement, index) => {
+    const to = moved.get(index);
+    if (!to) return placement;
+    const x = snapLength(to.x, units);
+    const y = snapLength(to.y, units);
+    if (Math.abs(x - placement.x) <= EPSILON && Math.abs(y - placement.y) <= EPSILON) return placement;
+    changed = true;
+    return { ...placement, x, y };
+  });
+  return changed && moved.size === items.length ? placements : null;
+}
+
+function packed(root: CutNode, region: Rect, kerf: number, direction: SlideDirection): Map<number, Point> {
   const sizes = new Map<CutNode, Size | null>();
   const needed = (node: CutNode): Size | null => {
     if (sizes.has(node)) return sizes.get(node)!;
@@ -39,7 +64,7 @@ export function slidePlacements(analysis: SheetAnalysis, kerf: number, units: Un
     sizes.set(node, size);
     return size;
   };
-  const moved = new Map<number, { x: number; y: number }>();
+  const moved = new Map<number, Point>();
   const place = (node: CutNode, slot: Rect): void => {
     const size = needed(node);
     if (!size) return;
@@ -71,16 +96,57 @@ export function slidePlacements(analysis: SheetAnalysis, kerf: number, units: Un
       }
     }
   };
-  place(tree.root, treeRegion(analysis));
-  let changed = false;
-  const placements = sheet.placements.map((placement, index) => {
-    const to = moved.get(index);
-    if (!to) return placement;
-    const x = snapLength(to.x, units);
-    const y = snapLength(to.y, units);
-    if (Math.abs(x - placement.x) <= EPSILON && Math.abs(y - placement.y) <= EPSILON) return placement;
-    changed = true;
-    return { ...placement, x, y };
-  });
-  return changed && moved.size === items.length ? placements : null;
+  place(root, region);
+  return moved;
+}
+
+function aligned(root: CutNode, region: Rect, order: "forward" | "backward"): Map<number, Point> {
+  const boxes = new Map<CutNode, Rect | null>();
+  const box = (node: CutNode): Rect | null => {
+    if (boxes.has(node)) return boxes.get(node)!;
+    let rect: Rect | null = null;
+    if (node.kind === "part") rect = node.rect;
+    else if (node.kind === "split") {
+      const kids = node.children.map(box).filter((kid): kid is Rect => kid !== null);
+      if (kids.length > 0) {
+        const x = Math.min(...kids.map((kid) => kid.x));
+        const y = Math.min(...kids.map((kid) => kid.y));
+        rect = { x, y, length: Math.max(...kids.map((kid) => kid.x + kid.length)) - x, width: Math.max(...kids.map((kid) => kid.y + kid.width)) - y };
+      }
+    }
+    boxes.set(node, rect);
+    return rect;
+  };
+  const shifted = (rect: Rect, by: Point): Rect => ({ ...rect, x: rect.x + by.x, y: rect.y + by.y });
+  const moved = new Map<number, Point>();
+  const visit = (node: CutNode, slot: Rect, by: Point): void => {
+    if (node.kind === "part") {
+      moved.set(node.item, { x: node.rect.x + by.x, y: node.rect.y + by.y });
+      return;
+    }
+    if (node.kind !== "split") return;
+    const axis = node.axis;
+    const across = otherAxis(axis);
+    const [slotLo, slotHi] = span(slot, axis);
+    const [fitLo, fitHi] = span(slot, across);
+    const kids = node.children.filter((kid) => box(kid) !== null);
+    let previous: Rect | null = null;
+    for (const kid of order === "forward" ? kids : kids.toReversed()) {
+      const [lo, hi] = span(kid.rect, axis);
+      const kidSlot = withSpan(slot, axis, Math.max(slotLo, lo + by[axis]), Math.min(slotHi, hi + by[axis]));
+      const rect = shifted(box(kid)!, by);
+      const [from, to] = span(rect, across);
+      let shift = 0;
+      if (previous) {
+        const [prevFrom, prevTo] = span(previous, across);
+        const fits = [prevFrom - from, prevTo - to].filter((d) => from + d >= fitLo - EPSILON && to + d <= fitHi + EPSILON);
+        if (fits.length > 0) shift = fits.reduce((a, b) => (Math.abs(b) < Math.abs(a) ? b : a));
+      }
+      const next = { ...by, [across]: by[across] + shift };
+      visit(kid, kidSlot, next);
+      previous = shifted(rect, { x: next.x - by.x, y: next.y - by.y });
+    }
+  };
+  visit(root, region, { x: 0, y: 0 });
+  return moved;
 }

@@ -148,12 +148,17 @@ tree, and the trims are not lines.
     on it where it does. A locked line that the search leaves in a waste piece goes back in, and the tree must then
     pass the check. When no tree keeps every lock, the sheet keeps its saved cuts. The locks apply only when the saved
     cuts pass the check, and only to the thorough search: the automatic tree and **Optimize layout** do not use them.
-  - With `slide`, the search also tries each sheet with its parts slid inside their pieces (`slidePlacements`). Each
-    split of the automatic tree packs its pieces against one end, one kerf apart and in the same order, and each part
-    goes to one corner of its piece. So the waste of each piece is at one end, where one long cut can remove it. The
-    search tries the four corners (`SLIDE_DIRECTIONS`) and the layout as it is, each with its own passes, and the time
-    limit of the sheet is shared by these layouts. A slid layout wins only when it has fewer cuts than the best tree
-    of the layout as it is. A pinned sheet and a sheet with locked cuts do not slide, and a slid layout that gives
+  - With `slide`, the search also tries each sheet with its parts slid inside their pieces (`slidePlacements`), in
+    the ways of `SLIDES`. The parts move only inside the pieces of the automatic tree, along the axis of each split,
+    and keep their order.
+    - **Pack**, to each of the four corners: each split packs its pieces against one end, one kerf apart, and each
+      part goes to one corner of its piece. So the waste of each piece is at one end, where one long cut can remove it.
+    - **Align**, forward and backward: each piece of a split stays where it is along the split, and its parts move
+      across the split only to put an edge on the line of the same edge of the piece before it (forward) or after it
+      (backward). The smallest move that fits wins, so fewer parts move than with a pack.
+  - The search runs the layout as it is and each slid layout, each with its own passes, and the layouts of a sheet
+    share its time limit. A slid layout wins when its tree is better than the tree that the sheet uses now and than
+    the best tree of the layout as it is: fewer cuts, or the same cuts with a shorter cut length. A pinned sheet and a sheet with locked cuts do not slide, and a slid layout that gives
     more factory edge misses is not searched. `applyCutsResult` applies the slid placements and the saved cuts as one
     change, so one undo puts back both.
 

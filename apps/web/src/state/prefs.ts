@@ -11,6 +11,8 @@ export interface ViewPrefs {
   booklet: Readonly<Record<BookletSection, boolean>>;
   /** Prints the full text of each cut step in place of the short table. */
   detailedSteps: boolean;
+  /** Lets Optimize cuts slide the parts inside their pieces. */
+  slideParts: boolean;
 }
 
 export const DEFAULT_PREFS: ViewPrefs = {
@@ -20,6 +22,7 @@ export const DEFAULT_PREFS: ViewPrefs = {
   grid: { in: 1, mm: 25 },
   booklet: { title: true, shopping: true, sheets: true, sequence: true, assembly: true },
   detailedSteps: false,
+  slideParts: false,
 };
 const KEY = "opencutplan.view";
 
@@ -39,6 +42,7 @@ export function loadPrefs(storage: globalThis.Storage = localStorage): ViewPrefs
       grid: { in: gridSize(grid.in, DEFAULT_PREFS.grid.in), mm: gridSize(grid.mm, DEFAULT_PREFS.grid.mm) },
       booklet: Object.fromEntries(BOOKLET_SECTIONS.map((section) => [section, typeof booklet[section] === "boolean" ? booklet[section] : DEFAULT_PREFS.booklet[section]])) as Record<BookletSection, boolean>,
       detailedSteps: typeof saved.detailedSteps === "boolean" ? saved.detailedSteps : DEFAULT_PREFS.detailedSteps,
+      slideParts: typeof saved.slideParts === "boolean" ? saved.slideParts : DEFAULT_PREFS.slideParts,
     };
   } catch {
     return DEFAULT_PREFS;

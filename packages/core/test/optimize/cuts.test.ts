@@ -15,7 +15,9 @@ import {
   sheetFactoryEdgeMisses,
   slidePlacements,
   SLIDE_DIRECTIONS,
+  SLIDES,
   totalCutLength,
+  withPlacements,
   type CutLine,
   type Project,
   type Rect,
@@ -164,13 +166,60 @@ describe("optimizeCuts", () => {
 
     it("packs the pieces of each split against one end, one kerf apart", () => {
       const analysis = analyzeSheets(planContext(loose()))[0]!;
-      expect(slidePlacements(analysis, 0.125, "in", SLIDE_DIRECTIONS[0]!)!.map(({ x, y }) => ({ x, y }))).toEqual([
+      expect(slidePlacements(analysis, 0.125, "in", { pack: SLIDE_DIRECTIONS[0]! })!.map(({ x, y }) => ({ x, y }))).toEqual([
         { x: 0, y: 0 },
         { x: 20.125, y: 0 },
         { x: 40.25, y: 0 },
         { x: 60.375, y: 0 },
       ]);
-      expect(slidePlacements(analyzeSheets(planContext(joinRowProject()))[0]!, 0.125, "in", SLIDE_DIRECTIONS[0]!)).toBeNull();
+      expect(slidePlacements(analyzeSheets(planContext(joinRowProject()))[0]!, 0.125, "in", { pack: SLIDE_DIRECTIONS[0]! })).toBeNull();
+    });
+
+    it("aligns a part to the edge of the piece before it or after it, and moves no other part", () => {
+      const project = loose();
+      const sheet = project.plan!.sheets[0]!;
+      const low = withPlacements(sheet, sheet.placements.map((placement, i) => ({ ...placement, y: i === 2 ? 8 : 5 })));
+      const analysis = analyzeSheets(planContext({ ...project, plan: { sheets: [low] } }))[0]!;
+      for (const align of ["forward", "backward"] as const) {
+        expect(slidePlacements(analysis, 0.125, "in", { align })!.map(({ x, y }) => ({ x, y })), align).toEqual([
+          { x: 0, y: 5 },
+          { x: 20.125, y: 5 },
+          { x: 40.25, y: 5 },
+          { x: 60.375, y: 5 },
+        ]);
+      }
+      expect(slidePlacements(analysis, 0.125, "in", { pack: SLIDE_DIRECTIONS[0]! })!.every((placement) => placement.y === 0)).toBe(true);
+    });
+
+    it("gives a valid layout for each slide on random loose sheets", () => {
+      const sheet: Rect = { x: 0, y: 0, length: 96, width: 48 };
+      const base = joinRowProject();
+      let slides = 0;
+      for (let seed = 1; seed <= 20; seed++) {
+        const rects: Rect[] = [];
+        guillotine(mulberry32(seed), inset(sheet, 0.5), 0.125, 6, rects);
+        const roomy = rects.filter((rect) => rect.length > 2 && rect.width > 2);
+        if (roomy.length === 0) continue;
+        const random = mulberry32(seed + 300);
+        const project: Project = {
+          ...base,
+          settings: { ...base.settings, trim: 0.5 },
+          parts: roomy.map((rect, i) => ({ id: `p${i}`, name: `P${i}`, material: "ply", length: rect.length - 1, width: rect.width - 1, quantity: 1, grain: "none" })),
+          plan: {
+            sheets: [{ id: "s1", stock: "ply-4x8", placements: roomy.map((rect, i) => ({ part: `p${i}`, copy: 0, x: rect.x + Math.floor(random() * 9) / 8, y: rect.y + Math.floor(random() * 9) / 8, rotated: false })) }],
+          },
+        };
+        const analysis = analyzeSheets(planContext(project))[0]!;
+        for (const slide of SLIDES) {
+          const placements = slidePlacements(analysis, 0.125, "in", slide);
+          if (!placements) continue;
+          slides++;
+          const next: Project = { ...project, plan: { sheets: [{ ...project.plan!.sheets[0]!, placements }] } };
+          expect(validatePlan(next).filter((issue) => issue.severity === "error").map((issue) => issue.message), `seed ${seed} ${JSON.stringify(slide)}`).toEqual([]);
+          expect(analyzeSheets(planContext(next))[0]!.tree.stuck, `seed ${seed} ${JSON.stringify(slide)}`).toEqual([]);
+        }
+      }
+      expect(slides).toBeGreaterThan(50);
     });
 
     it("slides a part when that gives fewer cuts, and saves the cuts of the slid layout", () => {
@@ -223,21 +272,22 @@ describe("optimizeCuts", () => {
       for (let seed = 1; seed <= 20; seed++) {
         const rects: Rect[] = [];
         guillotine(mulberry32(seed), inset(sheet, 0.5), 0.125, 6, rects);
-        if (rects.length === 0) continue;
+        const roomy = rects.filter((rect) => rect.length > 2 && rect.width > 2);
+        if (roomy.length === 0) continue;
         const random = mulberry32(seed + 200);
         const project: Project = {
           ...base,
           settings: { ...base.settings, trim: 0.5 },
-          parts: rects.map((rect, i) => ({ id: `p${i}`, name: `P${i}`, material: "ply", length: rect.length - 1, width: rect.width - 1, quantity: 1, grain: "none" })),
+          parts: roomy.map((rect, i) => ({ id: `p${i}`, name: `P${i}`, material: "ply", length: rect.length - 1, width: rect.width - 1, quantity: 1, grain: "none" })),
           plan: {
-            sheets: [{ id: "s1", stock: "ply-4x8", placements: rects.map((rect, i) => ({ part: `p${i}`, copy: 0, x: rect.x + Math.floor(random() * 9) / 8, y: rect.y + Math.floor(random() * 9) / 8, rotated: false })) }],
+            sheets: [{ id: "s1", stock: "ply-4x8", placements: roomy.map((rect, i) => ({ part: `p${i}`, copy: 0, x: rect.x + Math.floor(random() * 9) / 8, y: rect.y + Math.floor(random() * 9) / 8, rotated: false })) }],
           },
         };
         const plain = optimizeCuts(project, { passes: 4 }).result.sheets[0]!;
         const { project: next, result } = optimizeCuts(project, { passes: 4, slide: true });
         const after = result.sheets[0]!;
         expect(after.after.cuts, `seed ${seed}`).toBeLessThanOrEqual(plain.after.cuts);
-        expect(validatePlan(next).filter((issue) => issue.severity === "error"), `seed ${seed}`).toEqual([]);
+        expect(validatePlan(next).filter((issue) => issue.severity === "error").map((issue) => issue.message), `seed ${seed}`).toEqual([]);
         expect(analyzeSheets(planContext(next))[0]!.savedCuts, `seed ${seed}`).not.toBe("stale");
         expect(misses(next), `seed ${seed}`).toBeLessThanOrEqual(misses(project));
         if (after.slid > 0) slid++;

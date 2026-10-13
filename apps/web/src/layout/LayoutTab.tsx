@@ -135,7 +135,7 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
   const [stockChoice, setStockChoice] = useState("");
   const [lostCuts, setLostCuts] = useState<LostCuts | null>(null);
   const [mode, setMode] = useState<"parts" | "cuts">("parts");
-  const [slide, setSlide] = useState(false);
+  const slide = prefs.slideParts;
   const [selectedCut, setSelectedCut] = useState<SelectedCut | null>(null);
   const [orderNote, setOrderNote] = useState<{ cut: SelectedCut; text: string } | null>(null);
   const [cutsBefore, setCutsBefore] = useState<{ sheet: string; cuts: number } | null>(null);
@@ -483,14 +483,14 @@ export function LayoutTab({ store, analysis, prefs, onPrefs, runs, onShowSetting
             type="button"
             disabled={!canOptimizeCuts}
             onClick={() => runs.optimizeCuts(undefined, slide)}
-            title={slide ? "Search each sheet for a cut tree with fewer cuts. A part can slide inside its piece when that gives fewer cuts." : "Search each sheet for a cut tree with fewer cuts. No part moves."}
+            title={slide ? "Search each sheet for a cut tree with fewer cuts. A part can slide inside its piece when that gives a better cut tree." : "Search each sheet for a cut tree with fewer cuts. No part moves."}
           >
             Optimize cuts
           </button>
         )}
         {cutsOn && (
-          <label className="inline" title="Optimize cuts can slide a part inside its piece, toward a corner, when that gives fewer cuts. Pinned sheets and sheets with locked cuts do not slide.">
-            <input type="checkbox" checked={slide} onChange={(event) => setSlide(event.target.checked)} />
+          <label className="inline" title="Optimize cuts can slide a part inside its piece, toward a corner or onto the edge line of the piece next to it, when that gives fewer cuts or shorter cuts. Pinned sheets and sheets with locked cuts do not slide.">
+            <input type="checkbox" checked={slide} onChange={(event) => onPrefs({ ...prefs, slideParts: event.target.checked })} />
             Let parts slide
           </label>
         )}
