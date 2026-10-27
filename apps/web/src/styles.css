@@ -258,7 +258,7 @@ fieldset.choice label { display: inline-flex; align-items: center; gap: 4px; }
 .grid-picker-cell { width: 14px; height: 14px; background: #fff; border: 1px solid var(--line); border-radius: 2px; cursor: pointer; }
 .grid-picker-cell.on { background: #eaf1fb; border-color: var(--focus); }
 .grid-picker-label { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
-.dialog.starter-dialog { width: min(960px, 94vw); }
+.dialog.starter-dialog { width: min(960px, 94vw); height: min(680px, 90vh); }
 .starter { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: start; }
 .starter-list { min-width: 0; font-size: 13px; }
 .starter-list h4 { margin: 12px 0 2px; font-size: 11px; font-weight: 600; }
@@ -278,8 +278,8 @@ fieldset.choice label { display: inline-flex; align-items: center; gap: 4px; }
 .starter-options { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
 .starter-options button { padding: 2px 8px; font-size: 13px; }
 .starter-options button[aria-pressed="true"] { background: #eaf1fb; border-color: var(--focus); }
-.starter-drawing { flex: 0 1 60%; min-width: 0; }
-.starter-drawing svg { display: block; width: 100%; height: auto; max-height: 40vh; }
+.starter-drawing { flex: 0 1 60%; min-width: 0; height: min(260px, 36vh); }
+.starter-drawing svg { display: block; width: 100%; height: 100%; }
 .starter-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 16px; margin: 0; }
 .starter-facts dt { color: var(--muted); }
 .starter-facts dd { margin: 0; }

@@ -346,3 +346,25 @@ test("drags the end of a cut to the far stop in the Cuts mode, and Undo puts bac
   await expect(sheet.getByText("automatic cuts")).toBeVisible();
   await expect(sheet.locator(".cut[data-step]")).toHaveCount(8);
 });
+
+test("keeps the starter dialog and its grid in place while the pointer moves over the grid", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Name").fill("E2E grid");
+  await page.getByRole("button", { name: "Create project" }).click();
+  await page.getByRole("button", { name: "Add design" }).click();
+
+  const dialog = page.getByRole("dialog");
+  const grid = page.getByRole("slider", { name: "Grid" });
+  const before = { dialog: await dialog.boundingBox(), grid: await grid.boundingBox() };
+  for (const cell of ["1-1", "6-1", "1-6", "6-6", "3-5", "2-2"]) {
+    await page.locator(`[data-cell="${cell}"]`).hover();
+    await expect(page.getByRole("heading", { level: 3 })).toHaveText(`Cube shelf ${cell.replace("-", " × ")}`);
+    expect({ cell, dialog: await dialog.boundingBox(), grid: await grid.boundingBox() }).toEqual({ cell, ...before });
+  }
+  for (const row of await dialog.locator(".starter-row").all()) {
+    await row.click();
+    await expect(row).toHaveAttribute("aria-pressed", "true");
+    expect(await dialog.boundingBox()).toEqual(before.dialog);
+    expect(await dialog.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
+  }
+});
