@@ -42,13 +42,24 @@ function backMaterial(project: Project, carcass: string): { project: Project; ma
   return { project: { ...project, materials: [...project.materials, material], stock: [...project.stock, stock] }, material: material.id };
 }
 
-/** The box material and the back material that a new design gets, with the suggested sheet for each that has no enabled stock. */
-export function pickDesignMaterials(project: Project): DesignMaterials {
+/** The first material that is thick enough for pocket screws, with the suggested sheet when it has no enabled stock. */
+export function pickBoxMaterial(project: Project): { project: Project; material: string } {
   const { project: withMaterial } = ensureMaterial(project);
   const material = pocketMaterial(withMaterial);
-  const withCarcass = withStockFor(withMaterial, [material]);
-  const { project: withBack, material: back } = backMaterial(withCarcass, material);
-  return { project: withStockFor(withBack, [back]), material, back };
+  return { project: withStockFor(withMaterial, [material]), material };
+}
+
+/** The first material too thin for pocket screws, or a new 1/4" (6 mm) plywood, with the suggested sheet when it has no enabled stock. */
+export function pickBackMaterial(project: Project, carcass: string): { project: Project; material: string } {
+  const { project: withBack, material } = backMaterial(project, carcass);
+  return { project: withStockFor(withBack, [material]), material };
+}
+
+/** The box material and the back material that a new design gets, with the suggested sheet for each that has no enabled stock. */
+export function pickDesignMaterials(project: Project): DesignMaterials {
+  const box = pickBoxMaterial(project);
+  const back = pickBackMaterial(box.project, box.material);
+  return { project: back.project, material: box.material, back: back.material };
 }
 
 /** Adds the design that `make(id)` gives, with the first free id from `base`, and tries the next id while the only errors are design-conflict. No parts. */

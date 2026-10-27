@@ -200,7 +200,16 @@ describe("starterValueErrors", () => {
   it("rejects an option that is not allowed", () => {
     expect(starterValueErrors(bookcase, { ...bookcase.defaults, options: { width: "60" } })).not.toEqual([]);
     expect(starterValueErrors(bookcase, { ...bookcase.defaults, options: { height: "106" } })).toEqual([]);
-    expect(starterValueErrors(cube, { columns: 2, rows: 2, options: { mount: "legs" } })).not.toEqual([]);
+    expect(starterValueErrors(cube, { columns: 2, rows: 2, options: { mount: "legs" } })).toEqual([expect.stringContaining('no choice "mount"')]);
+  });
+
+  it("ignores the columns and rows of a starter with no grid", () => {
+    expect(starterValueErrors(bookcase, { columns: 9, rows: 0, options: {} })).toEqual([]);
+    expect(starterValueErrors(media, { columns: 9, rows: 0, options: {} })).toEqual([]);
+    const design = starterDesign(media, { columns: 9, rows: 0, options: {} }, { id: "x", units: "mm", material: "ply18", back: null });
+    expect(design.width).toEqual(presetAxis("kallax", 4, "mm"));
+    expect(design.height).toEqual(presetAxis("kallax", 2, "mm"));
+    expect(starterName(starterById("custom-grid")!, { columns: 9, rows: 0, options: {} })).toBe("Custom grid 2 × 2");
   });
 });
 
@@ -232,6 +241,36 @@ describe("addStarterDesign", () => {
   it("picks the back when only the material is given", () => {
     const result = addStarterDesign(shop("mm"), cube, cube.defaults, { material: "ply18" });
     expect(result.ok && result.project.designs![0]!.back).toEqual({ material: "ply6" });
+  });
+
+  it("adds only the box material and its sheet for a null back in a new project", () => {
+    const result = addStarterDesign(createProject("New", "mm"), cube, cube.defaults, { back: null });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.project.materials.map((material) => material.id)).toEqual(["plywood"]);
+    expect(result.project.stock.map((stock) => stock.id)).toEqual(["plywood-2440x1220"]);
+    expect(result.project.designs![0]!.back).toBeUndefined();
+  });
+
+  it("adds the sheet of a given material and the picked back, and no other material", () => {
+    const project = shop("mm");
+    const result = addStarterDesign({ ...project, stock: [] }, cube, cube.defaults, { material: "ply18" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.project.materials).toEqual(project.materials);
+    expect(result.project.stock.map((stock) => [stock.id, stock.material])).toEqual([
+      ["ply18-2440x1220", "ply18"],
+      ["ply6-2440x1220", "ply6"],
+    ]);
+  });
+
+  it("adds the suggested sheet for a given back that has none", () => {
+    const project = shop("mm");
+    const result = addStarterDesign({ ...project, stock: project.stock.filter((stock) => stock.material !== "ply6") }, cube, cube.defaults, { material: "ply18", back: "ply6" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.project.materials).toEqual(project.materials);
+    expect(result.project.stock.map((stock) => stock.id)).toEqual(["ply18-sheet", "ply6-2440x1220"]);
   });
 
   it("picks the materials of a project that has none, and adds no parts", () => {

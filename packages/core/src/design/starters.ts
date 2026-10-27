@@ -1,7 +1,8 @@
+import { withStockFor } from "../catalog/suggest.ts";
 import { slugify } from "../format/ids.ts";
 import type { CombinedCell, Design, Project } from "../format/schema.ts";
 import { convertLength, type Units } from "../geometry/units.ts";
-import { addDesignWithId, pickDesignMaterials, type DesignAdd } from "./add.ts";
+import { addDesignWithId, pickBackMaterial, pickBoxMaterial, type DesignAdd } from "./add.ts";
 import { checkDesigns } from "./checks.ts";
 import { roundLength } from "./geometry.ts";
 import { EKET, KALLAX, presetAxis, presetDepth, type DesignMount, type SystemValue } from "./systems.ts";
@@ -288,13 +289,16 @@ export function addStarterDesign(
   values: StarterValues,
   options: { material?: string; back?: string | null; name?: string; id?: string } = {},
 ): DesignAdd {
-  const needsPick = options.material === undefined || options.back === undefined;
-  const picked = needsPick ? pickDesignMaterials(project) : undefined;
-  const base = picked?.project ?? project;
-  const material = options.material ?? picked!.material;
-  const back = options.back === undefined ? picked!.back : options.back;
+  const box = options.material === undefined ? pickBoxMaterial(project) : { project: withStockFor(project, [options.material]), material: options.material };
+  const back =
+    options.back === undefined
+      ? pickBackMaterial(box.project, box.material)
+      : { project: options.back === null ? box.project : withStockFor(box.project, [options.back]), material: options.back };
   const name = options.name ?? starterName(starter, values);
-  return addDesignWithId(base, options.id ?? slugify(name), (id) => ({ ...starterDesign(starter, values, { id, units: project.project.units, material, back }), name }));
+  return addDesignWithId(back.project, options.id ?? slugify(name), (id) => ({
+    ...starterDesign(starter, values, { id, units: project.project.units, material: box.material, back: back.material }),
+    name,
+  }));
 }
 
 /** The Fits items of spec §4.2 for a design in a project with its parts, minus each item that a warning of that design rules out. */
