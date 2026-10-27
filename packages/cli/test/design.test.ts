@@ -29,6 +29,11 @@ describe("design systems", () => {
 });
 
 describe("design add", () => {
+  it("shows the generic default name in the help of --name", async () => {
+    const result = await cli(["design", "add", "--help"], memoryIo());
+    expect(result.stdout).toContain("such as KALLAX-style 2x4.");
+  });
+
   it("adds a KALLAX with IKEA-size cells, names it from the grid, and makes its parts", async () => {
     const io = await hall();
     const result = await cli(["design", "add", F, "--system", "kallax", "--cols", "2", "--rows", "4", "--material", "b18", "--json"], io);

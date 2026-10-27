@@ -74,7 +74,7 @@ const OPTIONS = {
   back: { name: "back", type: "string", value: "<id|name|none>", description: "The material of the back, or none. Default for add: none." },
   mount: { name: "mount", type: "string", value: "<floor|legs|feet|wall-rail>", description: "How the unit stands or hangs. legs, feet, and wall-rail add the EKET items to the hardware list. Default: floor." },
   quantity: { name: "quantity", type: "string", value: "<n>", description: `The number of units to build, 1 to ${MAX_DESIGN_QUANTITY}. Default for add: 1.` },
-  name: { name: "name", type: "string", value: "<text>", description: "The design name. It is also the group of its parts. Default for add: the system and the grid, such as KALLAX 2x4." },
+  name: { name: "name", type: "string", value: "<text>", description: "The design name. It is also the group of its parts. Default for add: the system and the grid, such as KALLAX-style 2x4." },
   color: {
     name: "color",
     type: "string",
