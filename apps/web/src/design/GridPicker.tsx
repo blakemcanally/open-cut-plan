@@ -57,7 +57,9 @@ export function GridPicker({ columns, rows, value, onHover, onChange }: GridPick
     if (!step) return;
     event.preventDefault();
     const next = sizeAt(value.columns + step.columns, value.rows + step.rows);
-    if (next.columns !== value.columns || next.rows !== value.rows) onChange(next);
+    if (next.columns === value.columns && next.rows === value.rows) return;
+    leave();
+    onChange(next);
   };
 
   const cells = [];

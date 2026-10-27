@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { GridPicker } from "../src/design/GridPicker.tsx";
 
@@ -88,6 +89,21 @@ describe("GridPicker", () => {
     const narrow = renderPicker({ value: { columns: 1, rows: 2 } });
     fireEvent.keyDown(narrow.grid, { key: "ArrowLeft" });
     expect(narrow.onChange).not.toHaveBeenCalled();
+  });
+
+  it("shows the new value after a key press while the pointer is still over the grid", async () => {
+    const onHover = vi.fn();
+    function Harness() {
+      const [value, setValue] = useState({ columns: 3, rows: 2 });
+      return <GridPicker columns={{ min: 1, max: 6 }} rows={{ min: 1, max: 6 }} value={value} onHover={onHover} onChange={setValue} />;
+    }
+    const { container } = render(<Harness />);
+    await userEvent.click(cell(container, 3, 2));
+    onHover.mockClear();
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Grid" }), { key: "ArrowRight" });
+    expect(onHover).toHaveBeenLastCalledWith(null);
+    expect(screen.getByText("4 × 2")).toBeTruthy();
+    expect(container.querySelectorAll(".grid-picker-cell.on")).toHaveLength(8);
   });
 
   it("ignores other keys", () => {
