@@ -73,6 +73,7 @@ export * from "./design/generate.ts";
 export * from "./design/checks.ts";
 export * from "./design/edit.ts";
 export * from "./design/add.ts";
+export * from "./design/starters.ts";
 export * from "./design/ikea.ts";
 export * from "./design/hardware.ts";
 export * from "./design/assembly.ts";
