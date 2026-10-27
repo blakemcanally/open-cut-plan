@@ -10,8 +10,9 @@ save.
 
 ## What it does
 
-- **Designs.** Describe a KALLAX-style or EKET-style unit, or a custom grid of cells. Combine cells into one larger
-  cell. The app makes the parts, checks the design, and estimates the sheets.
+- **Designs.** Pick a starter design (a cube shelf, a TV bench, a bookcase, wall cubes, and more), or a custom grid of
+  cells. Change the design to fit your room. Combine cells into one larger cell. The app makes the parts, checks the
+  design, and estimates the sheets.
 - **Parts, stock, and tools.** Type or paste the parts, or import a CSV file. Lengths accept fractions, feet, and
   millimetres. Add the sheets that you buy and the offcuts that you own. Add your saws: table saw, track saw, circular
   saw, panel saw, or mitre saw, each with its kerf and limits.
@@ -118,3 +119,7 @@ set **Settings → Pages → Source** to **GitHub Actions** once.
 OpenCutPlan is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
 version. See [`LICENSE`](LICENSE).
+
+## Trademarks
+
+IKEA, KALLAX, EKET, and BILLY are trademarks of Inter IKEA Systems B.V. OpenCutPlan is not affiliated with or endorsed by IKEA.

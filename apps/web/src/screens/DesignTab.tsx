@@ -39,7 +39,8 @@ import { useState, type InputHTMLAttributes } from "react";
 import { ColorChoice, LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
 import { CellGrid } from "../design/CellGrid.tsx";
 import { SheetEstimate } from "../design/SheetEstimate.tsx";
-import { addDesign, axisMode, CATALOG_VALUE, openingsText, parseOpenings, pickMaterial, tryDesign, withCells, withMode, withSystem, type AxisMode } from "../design/form.ts";
+import { StarterDialog } from "../design/StarterDialog.tsx";
+import { axisMode, CATALOG_VALUE, openingsText, outsideText, parseOpenings, pickMaterial, tryDesign, withCells, withMode, withSystem, type AxisMode } from "../design/form.ts";
 import type { ProjectStore } from "../state/useProject.ts";
 
 const MOUNT_LABELS: Readonly<Record<DesignMount, string>> = { floor: "Floor", legs: "EKET legs", feet: "EKET feet", "wall-rail": "EKET wall rail" };
@@ -74,30 +75,18 @@ function CatalogOptions({ project }: { project: Project }) {
   });
 }
 
-function outsideText(project: Project, design: Design): string {
-  const geometry = designGeometry(design, materialsById(project));
-  if (!geometry) return "no size";
-  const show = (value: number) => formatLength(value, project.project.units, project.settings.display);
-  return `${show(geometry.outsideWidth)} × ${show(geometry.outsideHeight)} × ${show(geometry.depth)}`;
-}
-
 export function DesignTab({ store, analysis, focus = null, onOptimize, optimizing = false }: DesignTabProps) {
   const { project, edit } = store;
   const designs = project.designs ?? [];
   const [chosen, setChosen] = useState<string | null>(focus);
-  const [addError, setAddError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const selected = designs.find((design) => design.id === chosen) ?? designs[0];
   const newer = isNewerMinor(project.version);
 
-  const add = () => {
-    const result = addDesign(project);
-    if (!result.ok) {
-      setAddError(result.issues.map((issue) => issue.message).join(" "));
-      return;
-    }
-    setAddError(null);
+  const use = (result: { project: Project; id: string }) => {
     edit(result.project);
     setChosen(result.id);
+    setAdding(false);
   };
 
   return (
@@ -109,18 +98,14 @@ export function DesignTab({ store, analysis, focus = null, onOptimize, optimizin
           className="primary"
           disabled={newer}
           title={newer ? "This file is from a newer OpenCutPlan. Update the app to add designs." : undefined}
-          onClick={add}
+          onClick={() => setAdding(true)}
         >
           Add design
         </button>
       </div>
-      {addError && (
-        <p role="alert" className="error">
-          ✖ {addError}
-        </p>
-      )}
+      {adding && <StarterDialog project={project} onUse={use} onClose={() => setAdding(false)} />}
       {!selected ? (
-        <p className="muted">No designs yet. A design makes the parts of a box unit with a grid of cells: KALLAX-style, EKET-style, or your own sizes.</p>
+        <p className="muted">No designs yet. Add a design from the catalogue of starters, such as a cube shelf, a TV bench, a bookcase, wall cubes, or a custom grid of cells. A design makes the parts of a box unit.</p>
       ) : (
         <div className="design-body">
           <ul className="design-list" aria-label="Designs">

@@ -4,11 +4,12 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 
 interface DialogProps {
   title: string;
+  className?: string;
   onClose(): void;
   children: ReactNode;
 }
 
-export function Dialog({ title, onClose, children }: DialogProps) {
+export function Dialog({ title, className, onClose, children }: DialogProps) {
   const titleId = useId();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -38,7 +39,7 @@ export function Dialog({ title, onClose, children }: DialogProps) {
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the dialog traps Tab and handles Escape for the controls inside it */}
       <div
         ref={ref}
-        className="dialog"
+        className={className ? `dialog ${className}` : "dialog"}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

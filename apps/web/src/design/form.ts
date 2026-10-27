@@ -1,27 +1,29 @@
 import {
   addCatalogMaterial,
-  addDesignWithId,
+  addStarterDesign,
   axisCells,
   axisOpenings,
-  defaultDesignId,
-  defaultDesignName,
   designErrors,
+  designGeometry,
   fitCombined,
   formatExactLength,
+  formatLength,
   isPresetSystem,
+  materialsById,
   MAX_DESIGN_CELLS,
   parseLength,
-  pickDesignMaterials,
   presetAxis,
   presetDepth,
-  presetDesign,
   roundLength,
   withStockFor,
   type Design,
+  type DesignAdd,
   type DesignAxis,
   type DesignSystem,
   type PlanIssue,
   type Project,
+  type Starter,
+  type StarterValues,
   type Units,
 } from "@opencutplan/core";
 
@@ -56,18 +58,16 @@ export function tryDesign(project: Project, design: Design): DesignEdit {
   return issues.length > 0 ? { ok: false, issues } : { ok: true, project: next };
 }
 
-/**
- * Adds a KALLAX-style 2x2 of the first material that is thick enough, with a back of the first thin material. Each of the
- * two materials gets the suggested sheet when it has no enabled stock. Its id is not the id of a design, and no part names
- * it or uses its part ids.
- */
-export function addDesign(project: Project): { ok: true; project: Project; id: string } | { ok: false; issues: PlanIssue[] } {
-  const { project: base, material, back } = pickDesignMaterials(project);
-  const name = defaultDesignName("kallax", 2, 2);
-  return addDesignWithId(base, defaultDesignId("kallax", 2, 2), (id) => ({
-    ...presetDesign({ system: "kallax", id, name, material, cols: 2, rows: 2, units: base.project.units }),
-    back: { material: back },
-  }));
+/** The starter as a design in the project, with the first material that is thick enough and a thin back. No parts: the project store makes them. */
+export function addStarter(project: Project, starter: Starter, values: StarterValues): DesignAdd {
+  return addStarterDesign(project, starter, values);
+}
+
+export function outsideText(project: Project, design: Design): string {
+  const geometry = designGeometry(design, materialsById(project));
+  if (!geometry) return "no size";
+  const show = (value: number) => formatLength(value, project.project.units, project.settings.display);
+  return `${show(geometry.outsideWidth)} × ${show(geometry.outsideHeight)} × ${show(geometry.depth)}`;
 }
 
 export function axisMode(axis: DesignAxis): AxisMode {

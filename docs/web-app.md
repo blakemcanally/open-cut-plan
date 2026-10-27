@@ -63,14 +63,42 @@ The tabs are **Design**, **Parts**, **Stock**, **Tools**, **Layout**, **Cut**, *
 A design describes a cabinet unit: a KALLAX-style or EKET-style grid of cells, or a custom grid. The app makes its
 parts from the design, and the Parts tab lists them. The file format is in [format.md](format.md#designs-added-in-11).
 
-- **Add design** adds a KALLAX-style 2x2 of the first material that is thick enough for pocket screws. With no materials, it
-  adds Plywood (3/4" or 18 mm) first.
-- The new design has a back of the first material that is too thin for pocket screws. With no such material, the app
-  adds Plywood 1/4" (or Plywood 6 mm) and one sheet stock of it, with the size of the first sheet of the design material
-  and no cost. Choose "No back" to remove the back.
-- When the design material or the back material has no enabled stock, **Add design** adds one sheet stock of it. This
-  is the [suggested sheet](catalog.md#suggested-sheet): the largest catalogue size of the catalogue material with the
-  same name, or a 96" × 48" (2440 × 1220 mm) sheet with no cost. So the first **Optimize layout** has stock for every part.
+- **Add design** opens a dialog with a catalogue of starter designs. The starters follow IKEA sizes, so that
+  KALLAX inserts and boxes, EKET legs, and the EKET wall rail fit where the **Fits** row says so. **Use this design** adds the
+  starter as a normal design and shows it in the editor. **Cancel**, Escape, and a click outside the dialog add nothing.
+  The CLI has the same catalogue: see [cli.md](cli.md).
+- The list on the left, one third of the dialog, has the starters in groups: Cube shelves, Low units, Bookcases, Wall
+  units, and Small units. **Custom grid** is last. Each row shows a small front view, the name, and the outside size.
+  A starter with a grid shows the range of the grid instead, for example "1 × 1 to 6 × 6". The outside size is the size
+  that the app makes for the materials that **Use this design** picks.
+- The preview on the right, two thirds of the dialog, follows the selected row. It shows the name of the design, a
+  note, the quick choices, the front view, and these facts:
+  - **Outside:** the width, height, and depth, without legs or feet.
+  - **Mount:** floor, legs, feet, or wall rail.
+  - **Fits:** the IKEA items that fit, for example "KALLAX inserts and boxes, EKET legs". A starter with no item
+    shows no row. The row leaves out an item when a design check warns that it does not fit.
+  - **Sheets:** an estimate of the sheets, the same as the **Sheets** estimate in the editor.
+  - The warnings of the design checks, in small text. A design that the materials refuse shows its error, and **Use
+    this design** stays off.
+- A quick choice changes only a value that IKEA sells in a range. A grid starter has a grid of cells: the size is
+  columns × rows, so "2 × 4" is 2 columns and 4 rows. Move the pointer over the grid to see a size in the preview.
+  Click or tap to set it. The arrow keys also move the size. The other quick choices are buttons, for example the
+  width and height of the bookcase, or legs or feet for a nightstand. Change everything else in the editor, after
+  **Use this design**.
+- The design gets the name of the starter and its size, for example "Cube shelf 3 × 2", and one unit to build. After
+  **Use this design**, the design does not link back to its starter. A KALLAX-style starter keeps the 335 mm cell
+  opening, so its outside size depends on the material and is not the IKEA outside size.
+- The design has the first material that is thick enough for pocket screws, with a back of the first material that is
+  too thin for pocket screws. With no materials, the app adds Plywood (3/4" or 18 mm) first. With no thin material,
+  the app adds Plywood 1/4" (or Plywood 6 mm) and one sheet stock of it, with the size of the first sheet of the design
+  material and no cost. Choose "No back" to remove the back.
+- When the design material or the back material has no enabled stock, **Use this design** adds one sheet stock of it.
+  This is the [suggested sheet](catalog.md#suggested-sheet): the largest catalogue size of the catalogue material with
+  the same name, or a 96" × 48" (2440 × 1220 mm) sheet with no cost. So the first **Optimize layout** has stock for
+  every part.
+- IKEA, KALLAX, EKET, and BILLY are trademarks of Inter IKEA Systems B.V. OpenCutPlan is not affiliated with or
+  endorsed by IKEA. The names of the starters are generic. An IKEA name says only what fits or which sizes a starter
+  follows. The dialog shows this notice at the bottom of the list.
 - The list on the left selects a design. The form has the name, the system, how many to build, the columns and rows,
   the depth, the material, the back, and the mount.
 - The **Material** and **Back** lists also show the [catalogue](catalog.md) materials that the project does not have,
