@@ -1,4 +1,5 @@
 import {
+  addStarterDesign,
   axisCells,
   checkDesigns,
   combineCells,
@@ -17,6 +18,7 @@ import {
   EKET,
   fitCombined,
   generatedParts,
+  IKEA_NOTICE,
   isDesignSystem,
   isHexColor,
   isNewerMinor,
@@ -33,6 +35,9 @@ import {
   renameDesign,
   setDesignColor,
   splitCells,
+  starterById,
+  STARTERS,
+  starterValueErrors,
   type CombinedCell,
   withStockFor,
   type Design,
@@ -41,6 +46,8 @@ import {
   type Part,
   type PlanIssue,
   type Project,
+  type Starter,
+  type StarterValues,
   type Units,
 } from "@opencutplan/core";
 import { PROGRAM } from "../help.ts";
@@ -52,13 +59,17 @@ import { findAll, findById, ID_OPTION, materialFor, newId, nonEmpty, resolveMate
 
 const DESIGN_ARG = { name: "id", description: "The design id." };
 
+function stockAdded(before: Project, after: Project): { addedStock: string[]; details: string[] } {
+  const addedStock = after.stock.slice(before.stock.length).map((stock) => stock.id);
+  if (addedStock.length === 0) return { addedStock, details: [] };
+  const noun = addedStock.length === 1 ? "material" : "materials";
+  return { addedStock, details: [`Added stock ${addedStock.join(" and ")}, because the design ${noun} had no stock.`] };
+}
+
 /** Adds the suggested sheet for each material that has no enabled stock, and the line that names the new stock. */
 function stockFor(project: Project, materials: (string | undefined)[]): { project: Project; addedStock: string[]; details: string[] } {
   const next = withStockFor(project, materials);
-  const addedStock = next.stock.slice(project.stock.length).map((stock) => stock.id);
-  if (addedStock.length === 0) return { project: next, addedStock, details: [] };
-  const noun = addedStock.length === 1 ? "material" : "materials";
-  return { project: next, addedStock, details: [`Added stock ${addedStock.join(" and ")}, because the design ${noun} had no stock.`] };
+  return { project: next, ...stockAdded(project, next) };
 }
 
 const OPTIONS = {
@@ -150,7 +161,11 @@ function assertValid(project: Project, design: Design): void {
   }
   const issues = designErrors(project, design);
   if (issues.length === 0) return;
-  throw new CliError(EXIT.failed, "invalid-value", issues.map((issue) => issue.message).join(" "), { issues });
+  throw designRefused(issues);
+}
+
+function designRefused(issues: PlanIssue[]): CliError {
+  return new CliError(EXIT.failed, "invalid-value", issues.map((issue) => issue.message).join(" "), { issues });
 }
 
 function designIssues(project: Project, id: string): PlanIssue[] {
@@ -276,25 +291,9 @@ const get: CommandSpec = {
   },
 };
 
-const add: CommandSpec = {
-  name: "design add",
-  summary: "Add a design and make its parts.",
-  description:
-    "Add a cabinet design and make its parts: the top, the bottom, the sides, the dividers, the shelves, and the back. Give each axis as --cols with --width (or --rows with --height), or as a list of openings. For kallax and eket, --cols and --rows alone give IKEA-size cells, and the depth is the IKEA depth; the numbers are converted to the project units. A design with an error (such as stock too thin for pocket screws) is refused with exit 1, invalid-value, and the checks in error.issues. When the material or the back material has no enabled stock, the suggested sheet of it is added (as with stock add --suggested); addedStock lists it. The new parts are not placed; run optimize.",
-  args: [FILE_ARG],
-  options: [...FIELD_OPTIONS, ID_OPTION, ...OUTPUT_OPTIONS],
-  examples: [
-    { command: `${PROGRAM} design add hall.cutplan.json --system kallax --cols 2 --rows 4`, description: "Add a KALLAX 2x4; the id is kallax-2x4." },
-    { command: `${PROGRAM} design add hall.cutplan.json --system eket --cols 2 --rows 1 --back ply6 --mount wall-rail --quantity 2`, description: "Add two EKET 2x1 units for the wall rail." },
-    { command: `${PROGRAM} design add hall.cutplan.json --width 1200 --height 800 --cols 3 --rows 2 --depth 300 --name Sideboard`, description: "Add a custom 3x2 grid in a 1200 × 800 outside size." },
-  ],
-  output: "design (the new design), parts (the generated parts), addedStock (the ids of the stock added for the design materials), changes, validation, written, dryRun. For a design with an error: error { code: \"invalid-value\", issues }.",
-  async run(invocation) {
-    const { args, options, io } = invocation;
-    const loaded = await loadProject(io, args[0]!);
-    assertCanGenerate(loaded);
-    const { project } = loaded;
-    const units = project.project.units;
+/** The project with the design of the flags of design add with no --starter. */
+function customDesign(project: Project, options: OptionValues): { project: Project; id: string } {
+  const units = project.project.units;
     const system = choiceValue(str(options, "system") ?? "custom", "system", DESIGN_SYSTEMS);
     const width = axisValue(options, WIDTH, system, units, undefined);
     const height = axisValue(options, HEIGHT, system, units, undefined);
@@ -320,15 +319,150 @@ const add: CommandSpec = {
     if (back !== undefined && back !== "none") design.back = { material: resolveMaterial(project, back).id };
     const mount = optionalChoice(options, "mount", DESIGN_MOUNTS);
     if (mount !== undefined) design.mount = mount;
-    const added = withColors({ ...project, designs: [...(project.designs ?? []), design] }, options, design.id);
+  return { project: { ...project, designs: [...(project.designs ?? []), design] }, id: design.id };
+}
+
+const STARTER_OPTION: OptionSpec = { name: "starter", type: "string", value: "<id>", description: "Make the design from a starter. Run design starters for the ids and the choices." };
+const SIZE_OPTION: OptionSpec = { name: "size", type: "string", value: "<width>x<height>", description: "With --starter bookcase: the width and the height in cm, for example 80x202." };
+
+const SHAPE_FLAGS = ["system", "width", "height", "column-openings", "row-openings"] as const;
+
+interface StarterFlag {
+  flag: string;
+  allowed: string;
+  default: string;
+}
+
+function starterFlags(starter: Starter): StarterFlag[] {
+  const flags: StarterFlag[] = [];
+  const range = ({ min, max }: { min: number; max: number }) => (min === max ? String(min) : `${min}-${max}`);
+  const options = starter.choices.flatMap((choice) => (choice.kind === "option" ? [choice] : []));
+  for (const choice of starter.choices) {
+    if (choice.kind !== "grid") continue;
+    flags.push({ flag: "cols", allowed: range(choice.columns), default: String(starter.defaults.columns) });
+    flags.push({ flag: "rows", allowed: range(choice.rows), default: String(starter.defaults.rows) });
+  }
+  const values = (key: string) => options.find((choice) => choice.key === key)?.values.map((allowed) => allowed.value);
+  const mount = values("mount");
+  if (mount) flags.push({ flag: "mount", allowed: mount.join("|"), default: starter.defaults.options.mount! });
+  const width = values("width");
+  const height = values("height");
+  if (width && height) flags.push({ flag: "size", allowed: `<${width.join("|")}>x<${height.join("|")}>`, default: `${starter.defaults.options.width}x${starter.defaults.options.height}` });
+  return flags;
+}
+
+function starterValues(starter: Starter, options: OptionValues): StarterValues {
+  const flags = starterFlags(starter);
+  const choices = flags.length === 0 ? "It has no choices." : `Its choices: ${flags.map((entry) => `--${entry.flag} ${entry.allowed}`).join(", ")}.`;
+  for (const name of ["cols", "rows", "mount", "size"]) {
+    if (str(options, name) !== undefined && !flags.some((entry) => entry.flag === name)) {
+      throw usageError(`The ${starter.name.toLowerCase()} has no --${name} choice. ${choices}`, "invalid-value", { option: name, starter: starter.id });
+    }
+  }
+  const cols = str(options, "cols");
+  const rows = str(options, "rows");
+  const mount = str(options, "mount");
+  const size = str(options, "size");
+  const match = size === undefined ? null : /^(\d+)x(\d+)$/i.exec(size.trim());
+  if (size !== undefined && !match) throw usageError(`--size "${size}" is not <width>x<height> in cm, for example 80x202.`, "invalid-value", { option: "size", value: size });
+  const values: StarterValues = {
+    columns: cols === undefined ? starter.defaults.columns : integerValue(cols, "cols"),
+    rows: rows === undefined ? starter.defaults.rows : integerValue(rows, "rows"),
+    options: { ...(mount === undefined ? {} : { mount }), ...(match ? { width: String(Number(match[1])), height: String(Number(match[2])) } : {}) },
+  };
+  const errors = starterValueErrors(starter, values);
+  if (errors.length > 0) throw usageError(errors.join(" "), "invalid-value", { starter: starter.id });
+  return values;
+}
+
+/** The project with the design of a starter, its quantity, and its depth. */
+function starterProject(project: Project, options: OptionValues, id: string): { project: Project; id: string } {
+  const starter = starterById(id);
+  if (!starter) {
+    const known = STARTERS.map((entry) => entry.id);
+    throw usageError(`There is no starter "${id}". Starters: ${known.join(", ")}.`, "invalid-value", { option: "starter", value: id, known });
+  }
+  for (const name of SHAPE_FLAGS) {
+    if (str(options, name) !== undefined) throw usageError(`--${name} does not work with --starter. Use --cols, --rows, --mount, or --size, or change the design with design set.`, "conflict", { option: name });
+  }
+  const values = starterValues(starter, options);
+  const material = str(options, "material");
+  const back = str(options, "back");
+  const requested = str(options, "id");
+  const name = nonEmpty(str(options, "name"), "name");
+  const added = addStarterDesign(project, starter, values, {
+    ...(material === undefined ? {} : { material: resolveMaterial(project, material).id }),
+    ...(back === undefined ? {} : { back: back === "none" ? null : resolveMaterial(project, back).id }),
+    ...(name === undefined ? {} : { name }),
+    ...(requested === undefined ? {} : { id: newId(project.designs ?? [], requested, "", "design") }),
+  });
+  if (!added.ok) throw designRefused(added.issues);
+  const quantity = str(options, "quantity");
+  const depth = optionalLength(options, "depth", project.project.units);
+  const changes: Partial<Design> = { ...(quantity === undefined ? {} : { quantity: integerValue(quantity, "quantity", 1, MAX_DESIGN_QUANTITY) }), ...(depth === undefined ? {} : { depth }) };
+  return { project: { ...added.project, designs: (added.project.designs ?? []).map((design) => (design.id === added.id ? { ...design, ...changes } : design)) }, id: added.id };
+}
+
+const starters: CommandSpec = {
+  name: "design starters",
+  summary: "List the starter designs and their choices.",
+  description:
+    "List the starters that design add --starter accepts: the id, the name, the group, the note, the choices with their allowed values, and the defaults. A grid choice is set with --cols and --rows, a mount choice with --mount, and the width and the height of the bookcase with --size <width>x<height> in cm. The command needs no file. The text ends with the IKEA notice.",
+  args: [],
+  options: [],
+  examples: [{ command: `${PROGRAM} design starters --json`, description: "Get the starters and their choices as JSON." }],
+  output:
+    "starters [{ id, name, group, note, choices [{ kind: \"grid\", columns { min, max }, rows { min, max } } or { kind: \"option\", key, label, values [{ value, label }] }], defaults { columns, rows, options } }], notice.",
+  async run() {
+    const entries = STARTERS.map(({ id, name, group, note, choices, defaults }) => ({ id, name, group, note, choices, defaults }));
+    const text = [
+      ...STARTERS.map((starter) =>
+        [
+          `${starter.id}: ${starter.name}${starter.group === null ? "" : ` (${starter.group})`}`,
+          `  ${starter.note}`,
+          ...starterFlags(starter).map((entry) => `  --${entry.flag} ${entry.allowed} (default ${entry.default})`),
+        ].join("\n"),
+      ),
+      IKEA_NOTICE,
+    ].join("\n\n");
+    return { data: { starters: entries, notice: IKEA_NOTICE }, text };
+  },
+};
+
+const add: CommandSpec = {
+  name: "design add",
+  summary: "Add a design and make its parts.",
+  description:
+    "Add a cabinet design and make its parts: the top, the bottom, the sides, the dividers, the shelves, and the back. Give each axis as --cols with --width (or --rows with --height), or as a list of openings. For kallax and eket, --cols and --rows alone give IKEA-size cells, and the depth is the IKEA depth; the numbers are converted to the project units. A design with an error (such as stock too thin for pocket screws) is refused with exit 1, invalid-value, and the checks in error.issues. When the material or the back material has no enabled stock, the suggested sheet of it is added (as with stock add --suggested); addedStock lists it. The new parts are not placed; run optimize. With --starter, the design is a starter from design starters: the grid, the mount, and the size come from --cols, --rows, --mount, and --size, and the command picks the materials, a thin back, and the stock as the app does. --material and --back replace the pick, and --back none gives no back. --name, --id, --quantity, --depth, and --color change the design after the starter makes it. A starter does not work with --system, --width, --height, --column-openings, or --row-openings (exit 2, conflict); use design set after design add. A flag that the starter has no choice for, or a value that it does not allow, is refused with exit 2 and invalid-value.",
+  args: [FILE_ARG],
+  options: [...FIELD_OPTIONS, STARTER_OPTION, SIZE_OPTION, ID_OPTION, ...OUTPUT_OPTIONS],
+  examples: [
+    { command: `${PROGRAM} design add hall.cutplan.json --system kallax --cols 2 --rows 4`, description: "Add a KALLAX 2x4; the id is kallax-2x4." },
+    { command: `${PROGRAM} design add hall.cutplan.json --system eket --cols 2 --rows 1 --back ply6 --mount wall-rail --quantity 2`, description: "Add two EKET 2x1 units for the wall rail." },
+    { command: `${PROGRAM} design add hall.cutplan.json --starter cube-shelf --cols 3 --rows 2`, description: "Add the cube shelf starter at 3 × 2; the id is cube-shelf-3-2." },
+    { command: `${PROGRAM} design add hall.cutplan.json --starter bookcase --size 40x106`, description: "Add the bookcase starter at 40 × 106 cm." },
+    { command: `${PROGRAM} design add hall.cutplan.json --width 1200 --height 800 --cols 3 --rows 2 --depth 300 --name Sideboard`, description: "Add a custom 3x2 grid in a 1200 × 800 outside size." },
+  ],
+  output: "design (the new design), parts (the generated parts), addedStock (the ids of the stock added for the design materials), changes, validation, written, dryRun. For a design with an error: error { code: \"invalid-value\", issues }.",
+  async run(invocation) {
+    const { args, options, io } = invocation;
+    const loaded = await loadProject(io, args[0]!);
+    assertCanGenerate(loaded);
+    const { project } = loaded;
+    const starter = str(options, "starter");
+    if (starter === undefined && str(options, "size") !== undefined) throw usageError("--size needs --starter.", "missing-option", { option: "starter" });
+    const made = starter === undefined ? customDesign(project, options) : starterProject(project, options, starter);
+    const added = withColors(made.project, options, made.id);
+    const design = findById(added.designs ?? [], made.id, "design");
     assertValid(added, design);
     const stocked = stockFor(added, [design.material, design.back?.material]);
     const next = regenerateDesigns(stocked.project);
     const result = findById(next.designs ?? [], design.id, "design");
+    const { addedStock, details } = stockAdded(project, next);
     return finishMutation(invocation, loaded, next, {
       summary: `Added design ${line(next, result)}.`,
-      details: stocked.details,
-      data: { design: result, parts: generatedParts(next, design.id), addedStock: stocked.addedStock },
+      details,
+      data: { design: result, parts: generatedParts(next, design.id), addedStock },
     });
   },
 };
@@ -578,4 +712,4 @@ export function invalidDesign(project: Project, design: Design): CliError {
   return new CliError(EXIT.failed, "design-invalid", `The design ${design.id} makes no parts: ${reason}`, { id: design.id, issues });
 }
 
-export const designGroup: GroupSpec = { name: "design", summary: "Cabinet designs (KALLAX, EKET, custom)", commands: [systems, list, get, add, set, combine, split, remove, detach, drawing] };
+export const designGroup: GroupSpec = { name: "design", summary: "Cabinet designs (KALLAX, EKET, custom)", commands: [systems, starters, list, get, add, set, combine, split, remove, detach, drawing] };

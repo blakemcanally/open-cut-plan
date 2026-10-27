@@ -172,9 +172,10 @@ the shelves between the sides and the dividers, all joined with pocket screws. T
 | Command | What it does | Example |
 | ------- | ------------ | ------- |
 | `design systems` | Lists `kallax`, `eket`, and `custom`, with the IKEA numbers and their sources. It needs no file. | `opencutplan design systems --json` |
+| `design starters` | Lists the starter designs: the id, the name, the group, the note, the choices with their allowed values, and the defaults. The JSON has `starters` and `notice`, and the text ends with the IKEA notice. It needs no file. | `opencutplan design starters --json` |
 | `design list <file>` | Lists the designs with the outside size and the part counts. | `opencutplan design list hall.cutplan.json` |
 | `design get <file> <id>` | Shows one design, its parts, an estimate of its sheets, and its checks. | `opencutplan design get hall.cutplan.json kallax-2x4 --json` |
-| `design add <file>` | Adds a design and makes its parts. | `opencutplan design add hall.cutplan.json --system kallax --cols 2 --rows 4` |
+| `design add <file>` | Adds a design and makes its parts. With `--starter <id>`, it adds the design of a starter. | `opencutplan design add hall.cutplan.json --system kallax --cols 2 --rows 4` |
 | `design set <file> <id>` | Changes a design and makes its parts again. | `opencutplan design set hall.cutplan.json kallax-2x4 --rows 5` |
 | `design combine <file> <id>` | Combines a rectangle of cells into one cell. | `opencutplan design combine hall.cutplan.json kallax-4x2 --cell 1,1 --to 2,1` |
 | `design split <file> <id>` | Splits combined cells into single cells again. | `opencutplan design split hall.cutplan.json kallax-4x2 --cell 1,1` |
@@ -196,6 +197,43 @@ The flags of `design add` and `design set`:
 - `--color <unit>=<#rrggbb|auto>`: the colour of one unit in the layout, for example `--color 2=#ff8800`. The units
   count from 1, up to the quantity. `auto` gives the unit its automatic colour again. Give the flag one time for each
   unit.
+
+#### Starters
+
+`design starters` lists the starters, as **Add design** does in the app. For each starter, `choices` lists what you can
+set, and `defaults` gives the value when you set nothing. A choice is a grid (`kind: "grid"`, with the `min` and `max`
+of the columns and the rows) or an option (`kind: "option"`, with `key`, `label`, and `values`). The result also has
+`notice`, the IKEA trademark notice. The text output ends with it.
+
+`design add --starter <id>` adds the design of a starter. The choices map to flags:
+
+- `--cols <n>` and `--rows <n>` set the grid.
+- `--mount <value>` sets the mount.
+- `--size <width>x<height>` sets the width and the height of the bookcase in cm, for example `--size 80x202`.
+
+A flag that the starter has no choice for, or a value that the starter does not allow, gives exit 2 and
+`invalid-value`. The message lists the allowed values. For example, `--starter bookcase --cols 3` and
+`--starter cube-shelf --mount legs` are refused, and so is `--starter cube-shelf --cols 7` (the columns must be from 1
+to 6). An id that is not a starter gives `invalid-value` and lists the ids.
+
+The flags that set the shape of the grid (`--system`, `--width`, `--height`, `--column-openings`, and
+`--row-openings`) give exit 2 and `conflict` with `--starter`. To change the grid past the choices, run `design set`
+after `design add`.
+
+These flags work with `--starter`:
+
+- `--material` and `--back` replace the pick. Without them, the command picks the first material that is thick enough
+  for pocket screws, and a thin material for the back, as the app does. It adds a material and a suggested sheet when
+  the project has none. `--back none` gives no back.
+- `--name` gives the design name. Without `--name`, the name is the starter and the grid, such as `Cube shelf 3 × 2`,
+  and the id comes from the name: `cube-shelf-3-2`. `--id` gives the id.
+- `--quantity`, `--depth`, and `--color` change the design after the starter makes it.
+
+`addedStock` lists the stock that the command added, also for the materials that it picked.
+
+The starter names are generic. A KALLAX starter makes a design with `system: "kallax"`, so KALLAX inserts and boxes
+fit. IKEA, KALLAX, EKET, and BILLY are trademarks of Inter IKEA Systems B.V. OpenCutPlan is not affiliated with or
+endorsed by IKEA.
 
 The IKEA numbers are in millimetres. The CLI converts them to the project units, so an inch project gets `~13 3/16"` for
 335 mm. Without `--name`, the name is the system and the grid, such as `KALLAX-style 2x4`, and the id is the system and the
@@ -442,7 +480,7 @@ opencutplan export svg $F --out svg --json                          # .files[].p
 opencutplan validate $F --strict --json                             # .valid
 ```
 
-This recipe makes a KALLAX-style 2x4 from a track saw, pocket screws, and one sheet size:
+This recipe makes a cube shelf of 2 × 4 cells from a track saw, pocket screws, and one sheet size:
 
 ```bash
 F=hall.cutplan.json
@@ -450,13 +488,14 @@ opencutplan new $F --name "Hall storage" --units mm --json
 opencutplan tools add $F --type track-saw --max-cut 2800 --position 1 --json
 opencutplan materials add $F --name "Birch ply 18" --thickness 18 --json
 opencutplan stock add $F --length 2440 --width 1220 --cost 80 --json
-opencutplan design add $F --system kallax --cols 2 --rows 4 --json      # .design.id is kallax-2x4
-opencutplan design combine $F kallax-2x4 --cell 1,1 --to 2,1 --json     # one wide cell at the top
+opencutplan design starters --json                                       # .starters[].id, .choices, .defaults
+opencutplan design add $F --starter cube-shelf --cols 2 --rows 4 --json  # .design.id is cube-shelf-2-4
+opencutplan design combine $F cube-shelf-2-4 --cell 1,1 --to 2,1 --json # one wide cell at the top
 opencutplan optimize $F --iterations 200 --seed 1 --strict --json
 opencutplan report assembly $F --json                                   # .designs[].steps[]
 opencutplan report shopping $F --json                                   # .hardware[]
-opencutplan design drawing $F kallax-2x4 --out hall.svg
-opencutplan design drawing $F kallax-2x4 --step 1 --json                # .description
+opencutplan design drawing $F cube-shelf-2-4 --out hall.svg
+opencutplan design drawing $F cube-shelf-2-4 --step 1 --json            # .description
 ```
 
 Some rules help an agent:
