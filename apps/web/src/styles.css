@@ -253,6 +253,11 @@ fieldset.choice label { display: inline-flex; align-items: center; gap: 4px; }
 .design-preview svg { display: block; width: 100%; height: auto; max-height: 60vh; }
 .cell-grid { display: grid; gap: 4px; max-width: 320px; max-height: 320px; padding: 4px; background: #d8cfbf; border-radius: 4px; touch-action: none; user-select: none; }
 .cell-row { display: contents; }
+.grid-picker-grid { display: grid; gap: 3px; width: max-content; padding: 4px; border-radius: 4px; touch-action: manipulation; user-select: none; }
+.grid-picker-grid:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.grid-picker-cell { width: 14px; height: 14px; background: #fff; border: 1px solid var(--line); border-radius: 2px; cursor: pointer; }
+.grid-picker-cell.on { background: #eaf1fb; border-color: var(--focus); }
+.grid-picker-label { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
 .cell { background: #fff; border: 1px solid #b9b3a6; border-radius: 2px; cursor: pointer; min-height: 18px; }
 .cell.combined { background: #f6f1e6; }
 .cell[aria-selected="true"] { background: #eaf1fb; border-color: var(--focus); box-shadow: inset 0 0 0 1px var(--focus); }
