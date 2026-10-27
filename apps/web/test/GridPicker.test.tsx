@@ -11,7 +11,7 @@ function renderPicker(overrides: Partial<Parameters<typeof GridPicker>[0]> = {})
   const { container } = render(
     <GridPicker columns={{ min: 1, max: 6 }} rows={{ min: 1, max: 6 }} value={{ columns: 3, rows: 2 }} onHover={onHover} onChange={onChange} {...overrides} />,
   );
-  return { container, onHover, onChange, grid: screen.getByRole("grid", { name: /^Grid: / }) };
+  return { container, onHover, onChange, grid: screen.getByRole("slider", { name: "Grid" }) };
 }
 
 describe("GridPicker", () => {
@@ -54,14 +54,17 @@ describe("GridPicker", () => {
 
   it("is one focusable element with the size in its name", () => {
     const { grid } = renderPicker();
-    expect(grid.getAttribute("aria-label")).toBe("Grid: 3 columns, 2 rows");
+    expect(grid.getAttribute("aria-valuetext")).toBe("3 columns, 2 rows");
+    expect(grid.getAttribute("aria-valuenow")).toBe("9");
+    expect(grid.getAttribute("aria-valuemax")).toBe("36");
+    expect(grid.getAttribute("aria-orientation")).toBeNull();
     expect(grid.tabIndex).toBe(0);
-    expect(screen.getAllByRole("grid")).toHaveLength(1);
+    expect(screen.getAllByRole("slider")).toHaveLength(1);
   });
 
   it("names a single column or row in the singular", () => {
     const { grid } = renderPicker({ value: { columns: 1, rows: 1 } });
-    expect(grid.getAttribute("aria-label")).toBe("Grid: 1 column, 1 row");
+    expect(grid.getAttribute("aria-valuetext")).toBe("1 column, 1 row");
   });
 
   it("moves the size with the arrow keys, and stops at the limits", () => {

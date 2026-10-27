@@ -68,6 +68,7 @@ export function GridPicker({ columns, rows, value, onHover, onChange }: GridPick
         <div
           key={`${column}-${row}`}
           data-cell={`${column}-${row}`}
+          aria-hidden="true"
           className={on ? "grid-picker-cell on" : "grid-picker-cell"}
         />,
       );
@@ -78,9 +79,13 @@ export function GridPicker({ columns, rows, value, onHover, onChange }: GridPick
     <div className="grid-picker">
       <div
         className="grid-picker-grid"
-        role="grid"
+        role="slider"
         tabIndex={0}
-        aria-label={`Grid: ${plural(value.columns, "column")}, ${plural(value.rows, "row")}`}
+        aria-label="Grid"
+        aria-valuetext={`${plural(value.columns, "column")}, ${plural(value.rows, "row")}`}
+        aria-valuemin={1}
+        aria-valuemax={columns.max * rows.max}
+        aria-valuenow={(value.rows - 1) * columns.max + value.columns}
         style={{ gridTemplateColumns: `repeat(${columns.max}, 14px)` }}
         onKeyDown={onKeyDown}
         onClick={onClick}
