@@ -214,6 +214,25 @@ describe("starterValueErrors", () => {
 });
 
 describe("addStarterDesign", () => {
+  it("refuses a value that the starter does not allow, and adds no design", () => {
+    const wide = addStarterDesign(shop("mm"), bookcase, { ...bookcase.defaults, options: { width: "60" } });
+    expect(wide.ok).toBe(false);
+    expect(!wide.ok && wide.issues.map((issue) => [issue.severity, issue.message])).toEqual([["error", expect.stringContaining("must be 40 cm or 80 cm")]]);
+    const grid = addStarterDesign(shop("mm"), cube, { columns: 9, rows: 0, options: {} });
+    expect(grid.ok).toBe(false);
+    expect(!grid.ok && grid.issues).toHaveLength(2);
+  });
+
+  it("names the starter as written in a message", () => {
+    expect(starterValueErrors(tvBench, { ...tvBench.defaults, options: { width: "80" } })).toEqual(['The TV bench has no choice "width".']);
+  });
+
+  it("gives each media unit its own combined cell", () => {
+    const [one, two] = [media, media].map((starter) => starterDesign(starter, starter.defaults, { id: "x", units: "mm", material: "ply18", back: null }));
+    expect(one!.combined).toEqual(two!.combined);
+    expect(one!.combined![0]).not.toBe(two!.combined![0]);
+  });
+
   it("takes the id from the name", () => {
     const result = addStarterDesign(shop("mm"), cube, cube.defaults);
     expect(result).toMatchObject({ ok: true, id: "cube-shelf-2-4" });

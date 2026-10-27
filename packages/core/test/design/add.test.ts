@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { addDesignWithId, createProject, defaultDesignId, defaultDesignName, pickDesignMaterials, presetDesign } from "../../src/index.ts";
+import { addDesignWithId, createProject, defaultDesignId, defaultDesignName, pickBackMaterial, pickBoxMaterial, presetDesign, type Project } from "../../src/index.ts";
 import { designProject, kallaxDesign } from "../helpers.ts";
 
-describe("pickDesignMaterials", () => {
+function pickDesignMaterials(project: Project) {
+  const box = pickBoxMaterial(project);
+  const back = pickBackMaterial(box.project, box.material);
+  return { project: back.project, material: box.material, back: back.material };
+}
+
+describe("pickBoxMaterial and pickBackMaterial", () => {
   it("adds a material and a back material with a sheet each to a project that has none", () => {
     const picked = pickDesignMaterials(createProject("New", "mm"));
     expect(picked.material).toBe("plywood");

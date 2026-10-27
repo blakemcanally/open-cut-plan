@@ -108,8 +108,18 @@ describe("StarterDialog", () => {
   it("warns about a nominal thickness, and still lets the user add the design", () => {
     const base = createProject("Shop", "in");
     renderDialog({ ...base, materials: [{ id: "ply", name: 'Plywood 3/4"', thickness: 0.75, grained: true }] });
-    expect(within(dialog()).getAllByText(/nominal thickness/, { selector: "li" })).toHaveLength(2);
+    const items = within(dialog()).getAllByRole("listitem").filter((item) => item.closest(".starter-warnings"));
+    expect(items).toHaveLength(1);
+    expect(items[0]!.textContent).toContain("The stock thickness is nominal. Measure it on the Stock tab.");
     expect(within(dialog()).queryByRole("alert")).toBeNull();
     expect(within(dialog()).getByRole("button", { name: "Use this design" })).toHaveProperty("disabled", false);
+  });
+
+  it("shows the full text of a warning that is not about a nominal thickness", async () => {
+    const base = createProject("Thin", "mm");
+    renderDialog({ ...base, materials: [{ id: "ply", name: "Plywood 12 mm", thickness: 12, grained: true }] });
+    await userEvent.click(row(/^Bookcase/));
+    const items = [...dialog().querySelectorAll(".starter-warnings li")].map((item) => item.textContent);
+    expect(items.some((text) => /can sag/.test(text ?? ""))).toBe(true);
   });
 });

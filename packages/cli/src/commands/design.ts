@@ -82,7 +82,7 @@ const OPTIONS = {
   rowOpenings: { name: "row-openings", type: "string", value: "<list>", description: "The opening of each row, top to bottom. It replaces --rows and --height." },
   depth: { name: "depth", type: "string", value: "<length>", description: "The outside depth, with the back. Default for kallax and eket: the IKEA depth." },
   material: { name: "material", type: "string", value: "<id|name>", description: "The material of the panels. Required when the project has more than one material." },
-  back: { name: "back", type: "string", value: "<id|name|none>", description: "The material of the back, or none. Default for add: none." },
+  back: { name: "back", type: "string", value: "<id|name|none>", description: "The material of the back, or none. Default for add: none. Default with --starter: a thin back." },
   mount: { name: "mount", type: "string", value: "<floor|legs|feet|wall-rail>", description: "How the unit stands or hangs. legs, feet, and wall-rail add the EKET items to the hardware list. Default: floor." },
   quantity: { name: "quantity", type: "string", value: "<n>", description: `The number of units to build, 1 to ${MAX_DESIGN_QUANTITY}. Default for add: 1.` },
   name: { name: "name", type: "string", value: "<text>", description: "The design name. It is also the group of its parts. Default for add: the system and the grid, such as KALLAX-style 2x4." },
@@ -294,31 +294,31 @@ const get: CommandSpec = {
 /** The project with the design of the flags of design add with no --starter. */
 function customDesign(project: Project, options: OptionValues): { project: Project; id: string } {
   const units = project.project.units;
-    const system = choiceValue(str(options, "system") ?? "custom", "system", DESIGN_SYSTEMS);
-    const width = axisValue(options, WIDTH, system, units, undefined);
-    const height = axisValue(options, HEIGHT, system, units, undefined);
-    if (!width) throw usageError("Give --cols, --width, or --column-openings.", "missing-option", { option: "cols" });
-    if (!height) throw usageError("Give --rows, --height, or --row-openings.", "missing-option", { option: "rows" });
-    const depth = optionalLength(options, "depth", units) ?? (isPresetSystem(system) ? presetDepth(system, units) : undefined);
-    if (depth === undefined) throw usageError("Give --depth for a custom design.", "missing-option", { option: "depth" });
-    const given = nonEmpty(str(options, "name"), "name");
-    const name = given ?? defaultDesignName(system, axisCells(width), axisCells(height));
-    const idBase = given ?? defaultDesignId(system, axisCells(width), axisCells(height));
-    const design: Design = {
-      id: newId(project.designs ?? [], str(options, "id"), idBase, "design"),
-      name,
-      system,
-      material: materialFor(project, str(options, "material")).id,
-      width,
-      height,
-      depth,
-    };
-    const quantity = str(options, "quantity");
-    if (quantity !== undefined) design.quantity = integerValue(quantity, "quantity", 1, MAX_DESIGN_QUANTITY);
-    const back = str(options, "back");
-    if (back !== undefined && back !== "none") design.back = { material: resolveMaterial(project, back).id };
-    const mount = optionalChoice(options, "mount", DESIGN_MOUNTS);
-    if (mount !== undefined) design.mount = mount;
+  const system = choiceValue(str(options, "system") ?? "custom", "system", DESIGN_SYSTEMS);
+  const width = axisValue(options, WIDTH, system, units, undefined);
+  const height = axisValue(options, HEIGHT, system, units, undefined);
+  if (!width) throw usageError("Give --cols, --width, or --column-openings.", "missing-option", { option: "cols" });
+  if (!height) throw usageError("Give --rows, --height, or --row-openings.", "missing-option", { option: "rows" });
+  const depth = optionalLength(options, "depth", units) ?? (isPresetSystem(system) ? presetDepth(system, units) : undefined);
+  if (depth === undefined) throw usageError("Give --depth for a custom design.", "missing-option", { option: "depth" });
+  const given = nonEmpty(str(options, "name"), "name");
+  const name = given ?? defaultDesignName(system, axisCells(width), axisCells(height));
+  const idBase = given ?? defaultDesignId(system, axisCells(width), axisCells(height));
+  const design: Design = {
+    id: newId(project.designs ?? [], str(options, "id"), idBase, "design"),
+    name,
+    system,
+    material: materialFor(project, str(options, "material")).id,
+    width,
+    height,
+    depth,
+  };
+  const quantity = str(options, "quantity");
+  if (quantity !== undefined) design.quantity = integerValue(quantity, "quantity", 1, MAX_DESIGN_QUANTITY);
+  const back = str(options, "back");
+  if (back !== undefined && back !== "none") design.back = { material: resolveMaterial(project, back).id };
+  const mount = optionalChoice(options, "mount", DESIGN_MOUNTS);
+  if (mount !== undefined) design.mount = mount;
   return { project: { ...project, designs: [...(project.designs ?? []), design] }, id: design.id };
 }
 
@@ -356,7 +356,7 @@ function starterValues(starter: Starter, options: OptionValues): StarterValues {
   const choices = flags.length === 0 ? "It has no choices." : `Its choices: ${flags.map((entry) => `--${entry.flag} ${entry.allowed}`).join(", ")}.`;
   for (const name of ["cols", "rows", "mount", "size"]) {
     if (str(options, name) !== undefined && !flags.some((entry) => entry.flag === name)) {
-      throw usageError(`The ${starter.name.toLowerCase()} has no --${name} choice. ${choices}`, "invalid-value", { option: name, starter: starter.id });
+      throw usageError(`The ${starter.name} has no --${name} choice. ${choices}`, "invalid-value", { option: name, starter: starter.id });
     }
   }
   const cols = str(options, "cols");
@@ -437,8 +437,8 @@ const add: CommandSpec = {
   args: [FILE_ARG],
   options: [...FIELD_OPTIONS, STARTER_OPTION, SIZE_OPTION, ID_OPTION, ...OUTPUT_OPTIONS],
   examples: [
-    { command: `${PROGRAM} design add hall.cutplan.json --system kallax --cols 2 --rows 4`, description: "Add a KALLAX 2x4; the id is kallax-2x4." },
-    { command: `${PROGRAM} design add hall.cutplan.json --system eket --cols 2 --rows 1 --back ply6 --mount wall-rail --quantity 2`, description: "Add two EKET 2x1 units for the wall rail." },
+    { command: `${PROGRAM} design add hall.cutplan.json --system kallax --cols 2 --rows 4`, description: "Add a KALLAX-style 2x4; the id is kallax-2x4." },
+    { command: `${PROGRAM} design add hall.cutplan.json --system eket --cols 2 --rows 1 --back ply6 --mount wall-rail --quantity 2`, description: "Add two EKET-style 2x1 units for the wall rail." },
     { command: `${PROGRAM} design add hall.cutplan.json --starter cube-shelf --cols 3 --rows 2`, description: "Add the cube shelf starter at 3 × 2; the id is cube-shelf-3-2." },
     { command: `${PROGRAM} design add hall.cutplan.json --starter bookcase --size 40x106`, description: "Add the bookcase starter at 40 × 106 cm." },
     { command: `${PROGRAM} design add hall.cutplan.json --width 1200 --height 800 --cols 3 --rows 2 --depth 300 --name Sideboard`, description: "Add a custom 3x2 grid in a 1200 × 800 outside size." },
@@ -645,7 +645,7 @@ const detach: CommandSpec = {
   description: "Remove a design, and keep its parts and their copies on the sheets as normal parts. After this, parts set and parts remove can change them, and no design makes them again.",
   args: [FILE_ARG, DESIGN_ARG],
   options: [...OUTPUT_OPTIONS],
-  examples: [{ command: `${PROGRAM} design detach hall.cutplan.json kallax-2x4`, description: "Make the KALLAX parts normal parts." }],
+  examples: [{ command: `${PROGRAM} design detach hall.cutplan.json kallax-2x4`, description: "Make the KALLAX-style parts normal parts." }],
   output: "detached (the design id), parts (the ids of the parts that are now normal parts), changes, validation, written, dryRun.",
   async run(invocation) {
     const { args, io } = invocation;

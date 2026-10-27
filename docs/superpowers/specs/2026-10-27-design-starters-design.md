@@ -53,7 +53,9 @@ and EKET starters, IKEA inserts, boxes, legs, and rails fit.
 **Success criteria**
 
 - Every starter, with every quick choice, makes a design with no errors and no warnings from the design checks, in a new
-  `in` project and in a new `mm` project, with an 18 mm (3/4") box material and a 6 mm (1/4") back material.
+  `in` project and in a new `mm` project, with an 18 mm (3/4") box material and a 6 mm (1/4") back material. The
+  materials are measured stock. Unmeasured `in` stock gives `nominal-thickness` warnings. The dialog folds them into
+  one short line.
 - The sizes that IKEA fixes match the IKEA source of that starter, within the tolerance of today
   (`KALLAX_CLEARANCE_MM`, `EKET_TOLERANCE_MM`). For a KALLAX starter, that is the cell opening and the depth, not the
   outside size (§5.4). For an EKET starter and the bookcase, that is the outside size.
@@ -294,9 +296,11 @@ function, on a copy of the project that the dialog does not save.
 ## 7. Tests
 
 - Core: each starter, with each allowed value of each quick choice, in an `in` project and an `mm` project, with an
-  18 mm (3/4") box material and a 6 mm (1/4") back, has no errors and no warnings. The sizes that IKEA fixes match the
-  IKEA source within the tolerance (§3). The default values give the default design of §5.1. The pick of §6.2 gives
-  the same materials and stock as `addDesign` does now, for the projects in the tests of `addDesign` today.
+  18 mm (3/4") box material and a 6 mm (1/4") back, has no errors and no warnings. The materials are measured stock.
+  Unmeasured `in` stock gives `nominal-thickness` warnings. The dialog folds them into one short line. The sizes that
+  IKEA fixes match the IKEA source within the tolerance (§3). The default values give the default design of §5.1. The
+  pick of §6.2 gives the same materials and stock as `addDesign` does now, for the projects in the tests of
+  `addDesign` today.
 - Web: the dialog opens from **Add design**; a click in the grid changes the preview; the arrow keys change the grid;
   **Use this design** adds the design and selects it; **Cancel** adds nothing.
 - CLI: `design starters --json`; `design add --starter` with each kind of choice; a value that is not allowed; a

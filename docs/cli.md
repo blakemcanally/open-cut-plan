@@ -232,8 +232,8 @@ These flags work with `--starter`:
 `addedStock` lists the stock that the command added, also for the materials that it picked.
 
 The starter names are generic. A starter with KALLAX-style cells makes a design with `system: "kallax"`. KALLAX
-inserts and boxes fit it when the design checks give no warning. IKEA, KALLAX, EKET, and BILLY are trademarks of Inter IKEA Systems B.V. OpenCutPlan is not affiliated with or
-endorsed by IKEA.
+inserts and boxes fit it when the design checks give no warning. IKEA, KALLAX, EKET, and BILLY are trademarks of Inter
+IKEA Systems B.V. OpenCutPlan is not affiliated with or endorsed by IKEA.
 
 The IKEA numbers are in millimetres. The CLI converts them to the project units, so an inch project gets `~13 3/16"` for
 335 mm. Without `--name`, the name is the system and the grid, such as `KALLAX-style 2x4`, and the id is the system and the

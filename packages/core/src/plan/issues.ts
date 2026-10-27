@@ -28,6 +28,7 @@ export type PlanIssueCode =
   | "design-stale"
   | "design-unknown-system"
   | "design-unknown-mount"
+  | "starter-values"
   | "nominal-thickness"
   | "unknown-goal"
   | "factory-edge"

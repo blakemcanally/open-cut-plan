@@ -2,6 +2,7 @@ import { withStockFor } from "../catalog/suggest.ts";
 import { slugify } from "../format/ids.ts";
 import type { CombinedCell, Design, Project } from "../format/schema.ts";
 import { convertLength, type Units } from "../geometry/units.ts";
+import { planError } from "../plan/issues.ts";
 import { addDesignWithId, pickBackMaterial, pickBoxMaterial, type DesignAdd } from "./add.ts";
 import { checkDesigns } from "./checks.ts";
 import { roundLength } from "./geometry.ts";
@@ -221,7 +222,7 @@ export function starterValueErrors(starter: Starter, values: StarterValues): str
   for (const [key, value] of Object.entries(values.options)) {
     const choice = options.find((candidate) => candidate.key === key);
     if (!choice) {
-      messages.push(`The ${starter.name.toLowerCase()} has no choice "${key}".`);
+      messages.push(`The ${starter.name} has no choice "${key}".`);
     } else if (!choice.values.some((allowed) => allowed.value === value)) {
       messages.push(`The ${choice.label.toLowerCase()} must be ${choice.values.map((allowed) => allowed.label).join(" or ")}, not "${value}".`);
     }
@@ -239,7 +240,7 @@ export function starterName(starter: Starter, values: StarterValues): string {
   return `${starter.name} ${columns} × ${rows}`;
 }
 
-const MEDIA_COMBINED: CombinedCell = { column: 2, row: 1, columns: 2, rows: 1 };
+const mediaCombined = (): CombinedCell => ({ column: 2, row: 1, columns: 2, rows: 1 });
 
 export function starterDesign(starter: Starter, values: StarterValues, target: StarterTarget): Design {
   const { units } = target;
@@ -258,7 +259,7 @@ export function starterDesign(starter: Starter, values: StarterValues, target: S
     case "custom-grid": {
       const system = starter.id === "custom-grid" ? "custom" : "kallax";
       const design: Design = { ...base, system, width: presetAxis("kallax", columns, units), height: presetAxis("kallax", rows, units), depth: presetDepth("kallax", units) };
-      if (starter.id === "media-unit") design.combined = [MEDIA_COMBINED];
+      if (starter.id === "media-unit") design.combined = [mediaCombined()];
       const mount = starter.id === "tv-bench" ? (option(starter, values, "mount") as DesignMount) : starter.id === "media-unit" ? "legs" : "floor";
       return finish(design, mount);
     }
@@ -289,6 +290,8 @@ export function addStarterDesign(
   values: StarterValues,
   options: { material?: string; back?: string | null; name?: string; id?: string } = {},
 ): DesignAdd {
+  const errors = starterValueErrors(starter, values);
+  if (errors.length > 0) return { ok: false, issues: errors.map((message) => planError("starter-values", message)) };
   const box = options.material === undefined ? pickBoxMaterial(project) : { project: withStockFor(project, [options.material]), material: options.material };
   const back =
     options.back === undefined

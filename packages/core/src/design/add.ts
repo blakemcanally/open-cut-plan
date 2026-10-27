@@ -10,12 +10,6 @@ import { fitCombined } from "./combined.ts";
 import { designErrors } from "./errors.ts";
 import { MIN_POCKET_THICKNESS_MM } from "./systems.ts";
 
-export interface DesignMaterials {
-  project: Project;
-  material: string;
-  back: string;
-}
-
 export type DesignAdd = { ok: true; project: Project; id: string } | { ok: false; issues: PlanIssue[] };
 
 const BACK_MATERIAL: Readonly<Record<Units, Omit<Material, "id">>> = {
@@ -53,13 +47,6 @@ export function pickBoxMaterial(project: Project): { project: Project; material:
 export function pickBackMaterial(project: Project, carcass: string): { project: Project; material: string } {
   const { project: withBack, material } = backMaterial(project, carcass);
   return { project: withStockFor(withBack, [material]), material };
-}
-
-/** The box material and the back material that a new design gets, with the suggested sheet for each that has no enabled stock. */
-export function pickDesignMaterials(project: Project): DesignMaterials {
-  const box = pickBoxMaterial(project);
-  const back = pickBackMaterial(box.project, box.material);
-  return { project: back.project, material: box.material, back: back.material };
 }
 
 /** Adds the design that `make(id)` gives, with the first free id from `base`, and tries the next id while the only errors are design-conflict. No parts. */

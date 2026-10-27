@@ -118,6 +118,11 @@ describe("design add --starter", () => {
     expect(errorOf(size).code).toBe("invalid-value");
   });
 
+  it("names the starter as written in a refusal", async () => {
+    const result = await cli(["design", "add", F, "--starter", "tv-bench", "--size", "40x106", "--json"], await fresh());
+    expect(errorOf(result).message).toContain("The TV bench has no --size choice.");
+  });
+
   it("refuses a value that the starter does not allow, and lists the allowed values", async () => {
     const cols = await cli(["design", "add", F, "--starter", "cube-shelf", "--cols", "7", "--json"], await fresh());
     expect(cols.code).toBe(2);

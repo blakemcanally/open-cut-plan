@@ -78,6 +78,8 @@ function Sheets({ candidate: shown }: { candidate: Extract<Candidate, { ok: true
   );
 }
 
+const NOMINAL_NOTE = "The stock thickness is nominal. Measure it on the Stock tab.";
+
 export function StarterDialog({ project, onUse, onClose }: StarterDialogProps) {
   const [chosen, setChosen] = useState<StarterId>(STARTERS[0]!.id);
   const [set, setSet] = useState<Readonly<Partial<Record<StarterId, StarterValues>>>>({});
@@ -106,7 +108,8 @@ export function StarterDialog({ project, onUse, onClose }: StarterDialogProps) {
     setChosen(id);
   };
   const svg = shown.ok ? designElevationSvg(shown.project, shown.design.id) : null;
-  const designIssues = shown.ok ? checkDesigns(shown.project).filter((issue) => issue.severity === "warning" && issue.refs.some((ref) => ref.kind === "design" && ref.design === shown.design.id)) : [];
+  const warnings = shown.ok ? checkDesigns(shown.project).filter((issue) => issue.severity === "warning" && issue.refs.some((ref) => ref.kind === "design" && ref.design === shown.design.id)) : [];
+  const designIssues = [...warnings.filter((issue) => issue.code !== "nominal-thickness"), ...(warnings.some((issue) => issue.code === "nominal-thickness") ? [{ message: NOMINAL_NOTE }] : [])];
   const fits = shown.ok ? starterFits(shown.project, shown.design.id) : [];
 
   return (

@@ -122,4 +122,5 @@ version. See [`LICENSE`](LICENSE).
 
 ## Trademarks
 
-IKEA, KALLAX, EKET, and BILLY are trademarks of Inter IKEA Systems B.V. OpenCutPlan is not affiliated with or endorsed by IKEA.
+IKEA, KALLAX, EKET, and BILLY are trademarks of Inter IKEA Systems B.V. OpenCutPlan is not affiliated with or
+endorsed by IKEA.
