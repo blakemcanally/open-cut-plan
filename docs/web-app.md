@@ -63,7 +63,7 @@ The tabs are **Design**, **Parts**, **Stock**, **Tools**, **Layout**, **Cut**, *
 A design describes a cabinet unit: a KALLAX-style or EKET-style grid of cells, or a custom grid. The app makes its
 parts from the design, and the Parts tab lists them. The file format is in [format.md](format.md#designs-added-in-11).
 
-- **Add design** adds a KALLAX 2x2 of the first material that is thick enough for pocket screws. With no materials, it
+- **Add design** adds a KALLAX-style 2x2 of the first material that is thick enough for pocket screws. With no materials, it
   adds Plywood (3/4" or 18 mm) first.
 - The new design has a back of the first material that is too thin for pocket screws. With no such material, the app
   adds Plywood 1/4" (or Plywood 6 mm) and one sheet stock of it, with the size of the first sheet of the design material

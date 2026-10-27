@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   axisCells,
+  defaultDesignId,
   defaultDesignName,
   detachDesign,
+  IKEA_NOTICE,
   materialInUse,
   presetAxis,
   presetDepth,
@@ -26,9 +28,19 @@ const onSheet = (project: Project) => project.plan!.sheets[0]!.placements.map((p
 
 describe("design names and presets", () => {
   it("names a design by its system and grid", () => {
-    expect(defaultDesignName("kallax", 2, 4)).toBe("KALLAX 2x4");
-    expect(defaultDesignName("eket", 2, 1)).toBe("EKET 2x1");
+    expect(defaultDesignName("kallax", 2, 4)).toBe("KALLAX-style 2x4");
+    expect(defaultDesignName("eket", 2, 1)).toBe("EKET-style 2x1");
     expect(defaultDesignName("custom", 3, 2)).toBe("Custom 3x2");
+  });
+
+  it("keeps the id of a default design", () => {
+    expect(defaultDesignId("kallax", 2, 4)).toBe("kallax-2x4");
+    expect(defaultDesignId("eket", 2, 1)).toBe("eket-2x1");
+    expect(defaultDesignId("custom", 3, 2)).toBe("custom-3x2");
+  });
+
+  it("states the trademark notice", () => {
+    expect(IKEA_NOTICE).toBe("IKEA, KALLAX, EKET, and BILLY are trademarks of Inter IKEA Systems B.V. OpenCutPlan is not affiliated with or endorsed by IKEA.");
   });
 
   it("counts the cells of an axis", () => {

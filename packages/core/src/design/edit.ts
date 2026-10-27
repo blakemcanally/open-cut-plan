@@ -1,12 +1,21 @@
 import { setGroupColor } from "../edit/colors.ts";
 import { withoutPlacements } from "../edit/parts.ts";
+import { slugify } from "../format/ids.ts";
 import type { Design, DesignAxis, Project } from "../format/schema.ts";
 import type { DesignSystem } from "./systems.ts";
 
 export const DESIGN_SYSTEM_NAMES: Readonly<Record<DesignSystem, string>> = { kallax: "KALLAX", eket: "EKET", custom: "Custom" };
 
+const DEFAULT_NAME_PREFIXES: Readonly<Record<DesignSystem, string>> = { kallax: "KALLAX-style", eket: "EKET-style", custom: "Custom" };
+
+export const IKEA_NOTICE = "IKEA, KALLAX, EKET, and BILLY are trademarks of Inter IKEA Systems B.V. OpenCutPlan is not affiliated with or endorsed by IKEA.";
+
 export function defaultDesignName(system: DesignSystem, cols: number, rows: number): string {
-  return `${DESIGN_SYSTEM_NAMES[system]} ${cols}x${rows}`;
+  return `${DEFAULT_NAME_PREFIXES[system]} ${cols}x${rows}`;
+}
+
+export function defaultDesignId(system: DesignSystem, cols: number, rows: number): string {
+  return slugify(`${DESIGN_SYSTEM_NAMES[system]} ${cols}x${rows}`);
 }
 
 export function axisCells(axis: DesignAxis): number {

@@ -2,6 +2,7 @@ import {
   axisCells,
   checkDesigns,
   combineCells,
+  defaultDesignId,
   defaultDesignName,
   DESIGN_MOUNTS,
   DESIGN_SYSTEM_NAMES,
@@ -301,9 +302,11 @@ const add: CommandSpec = {
     if (!height) throw usageError("Give --rows, --height, or --row-openings.", "missing-option", { option: "rows" });
     const depth = optionalLength(options, "depth", units) ?? (isPresetSystem(system) ? presetDepth(system, units) : undefined);
     if (depth === undefined) throw usageError("Give --depth for a custom design.", "missing-option", { option: "depth" });
-    const name = nonEmpty(str(options, "name"), "name") ?? defaultDesignName(system, axisCells(width), axisCells(height));
+    const given = nonEmpty(str(options, "name"), "name");
+    const name = given ?? defaultDesignName(system, axisCells(width), axisCells(height));
+    const idBase = given ?? defaultDesignId(system, axisCells(width), axisCells(height));
     const design: Design = {
-      id: newId(project.designs ?? [], str(options, "id"), name, "design"),
+      id: newId(project.designs ?? [], str(options, "id"), idBase, "design"),
       name,
       system,
       material: materialFor(project, str(options, "material")).id,

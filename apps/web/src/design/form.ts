@@ -3,6 +3,7 @@ import {
   axisCells,
   axisOpenings,
   convertLength,
+  defaultDesignId,
   defaultDesignName,
   designErrors,
   EPSILON,
@@ -100,7 +101,7 @@ export function addDesign(project: Project): { ok: true; project: Project; id: s
   const name = defaultDesignName("kallax", 2, 2);
   const taken = new Set([...(base.designs ?? []).map((design) => design.id), ...base.parts.flatMap((part) => (part.design === undefined ? [] : [part.design]))]);
   for (;;) {
-    const id = uniqueId(slugify(name), taken);
+    const id = uniqueId(defaultDesignId("kallax", 2, 2), taken);
     const result = tryDesign(base, { ...presetDesign({ system: "kallax", id, name, material: carcass, cols: 2, rows: 2, units: base.project.units }), back: { material: back } });
     if (result.ok) return { ...result, id };
     if (!result.issues.every((issue) => issue.code === "design-conflict")) return result;

@@ -44,7 +44,7 @@ describe("DesignTab", () => {
     expect(screen.getByRole("img", { name: /^Front view of / }).innerHTML).toContain('fill="#abcdef"');
   });
 
-  it("adds a KALLAX 2x2 and its parts, and a material when the project has none", async () => {
+  it("adds a KALLAX-style 2x2 and its parts, and a material when the project has none", async () => {
     const current = renderDesign(createProject("New", "mm"));
     expect(screen.getByText(/^No designs yet\./)).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Add design" }));
@@ -56,7 +56,7 @@ describe("DesignTab", () => {
       { id: "plywood-2440x1220", material: "plywood", length: 2440, width: 1220, quantity: null, kind: "sheet" },
       { id: "plywood-6-mm-2440x1220", material: "plywood-6-mm", length: 2440, width: 1220, quantity: null, kind: "sheet" },
     ]);
-    expect(design(current)).toMatchObject({ id: "kallax-2x2", name: "KALLAX 2x2", system: "kallax", material: "plywood", back: { material: "plywood-6-mm" } });
+    expect(design(current)).toMatchObject({ id: "kallax-2x2", name: "KALLAX-style 2x2", system: "kallax", material: "plywood", back: { material: "plywood-6-mm" } });
     expect(current().project.parts.map((part) => [part.id, part.quantity])).toEqual([
       ["kallax-2x2-top", 1],
       ["kallax-2x2-bottom", 1],
@@ -65,14 +65,14 @@ describe("DesignTab", () => {
       ["kallax-2x2-shelf", 2],
       ["kallax-2x2-back", 1],
     ]);
-    expect(screen.getByLabelText("Name")).toHaveProperty("value", "KALLAX 2x2");
-    expect(preview()).toBe("Front view of KALLAX 2x2: 724 mm × 724 mm × 390 mm");
+    expect(screen.getByLabelText("Name")).toHaveProperty("value", "KALLAX-style 2x2");
+    expect(preview()).toBe("Front view of KALLAX-style 2x2: 724 mm × 724 mm × 390 mm");
     await userEvent.click(screen.getByRole("button", { name: "Add design" }));
     expect(current().project.designs!.map((d) => d.id)).toEqual(["kallax-2x2", "kallax-2x2-2"]);
     expect(current().project.designs![1]!.back).toEqual({ material: "plywood-6-mm" });
     expect(current().project.materials).toHaveLength(2);
     expect(current().project.stock).toHaveLength(2);
-    expect(screen.getByRole("button", { name: /^KALLAX 2x2/, pressed: true })).toBe(screen.getAllByRole("button", { name: /^KALLAX 2x2/ })[1]);
+    expect(screen.getByRole("button", { name: /^KALLAX-style 2x2/, pressed: true })).toBe(screen.getAllByRole("button", { name: /^KALLAX-style 2x2/ })[1]);
   });
 
   it("uses a thin material that the project has for the back, and adds a sheet only for the material that has no enabled stock", async () => {

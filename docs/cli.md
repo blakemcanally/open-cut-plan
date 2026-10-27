@@ -198,10 +198,11 @@ The flags of `design add` and `design set`:
   unit.
 
 The IKEA numbers are in millimetres. The CLI converts them to the project units, so an inch project gets `~13 3/16"` for
-335 mm. Without `--name`, the name is the system and the grid, such as `KALLAX 2x4`, and the id comes from the name:
-`kallax-2x4`. A change that gives a design error, such as stock that is too thin for pocket screws, is refused with
-exit 1 and `invalid-value`, and `error.issues` lists the checks. `design set` gives `partChanges` (the parts that were
-added, removed, or resized) and `removedPlacements` (the copies that went to the tray).
+335 mm. Without `--name`, the name is the system and the grid, such as `KALLAX-style 2x4`, and the id is the system and the
+grid: `kallax-2x4`. With `--name`, the id comes from the name. A change that gives a design error, such as stock that
+is too thin for pocket screws, is refused with exit 1 and `invalid-value`, and `error.issues` lists the checks.
+`design set` gives `partChanges` (the parts that were added, removed, or resized) and `removedPlacements` (the copies
+that went to the tray).
 
 `design get` gives `estimate`: for each material of the design, the number of sheets that its parts need. The
 estimate is a short optimizer run on the parts of this design alone. It uses each enabled sheet stock of the material
@@ -441,7 +442,7 @@ opencutplan export svg $F --out svg --json                          # .files[].p
 opencutplan validate $F --strict --json                             # .valid
 ```
 
-This recipe makes a KALLAX 2x4 from a track saw, pocket screws, and one sheet size:
+This recipe makes a KALLAX-style 2x4 from a track saw, pocket screws, and one sheet size:
 
 ```bash
 F=hall.cutplan.json

@@ -197,23 +197,23 @@ test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware
 
   await expect(page.getByRole("tab", { name: "Design" })).toHaveAttribute("aria-selected", "true");
   await page.getByRole("button", { name: "Add design" }).click();
-  await expect(page.getByRole("img", { name: /^Front view of KALLAX 2x2: / })).toBeVisible();
+  await expect(page.getByRole("img", { name: /^Front view of KALLAX-style 2x2: / })).toBeVisible();
   await page.getByLabel("Rows").fill("3");
   await page.getByLabel("Rows").press("Enter");
-  await expect(page.getByRole("img", { name: 'Front view of KALLAX 2x2: ~28 5/8" × ~42 9/16" × ~15 11/32"' })).toBeVisible();
+  await expect(page.getByRole("img", { name: 'Front view of KALLAX-style 2x2: ~28 5/8" × ~42 9/16" × ~15 11/32"' })).toBeVisible();
   await page.getByLabel("How many to build").fill("2");
   await page.getByLabel("How many to build").press("Enter");
-  await page.getByLabel("Colour of KALLAX 2x2 2 of 2").fill("#123456");
-  await expect(page.getByRole("button", { name: "Automatic colour for KALLAX 2x2 2 of 2" })).toBeEnabled();
+  await page.getByLabel("Colour of KALLAX-style 2x2 2 of 2").fill("#123456");
+  await expect(page.getByRole("button", { name: "Automatic colour for KALLAX-style 2x2 2 of 2" })).toBeEnabled();
 
   await page.getByRole("tab", { name: "Parts" }).click();
-  await expect(page.getByRole("row", { name: /^Side/ })).toContainText("From design: KALLAX 2x2");
+  await expect(page.getByRole("row", { name: /^Side/ })).toContainText("From design: KALLAX-style 2x2");
 
   await page.getByRole("tab", { name: "Stock" }).click();
   await expect(page.getByLabel('Length of stock Plywood 96" × 48"')).toBeVisible();
   await expect(page.getByText(/has no stock\./)).toHaveCount(0);
   await optimize(page);
-  await expect(page.getByRole("list", { name: "Colours", exact: true }).getByRole("listitem")).toHaveText(["KALLAX 2x2 1 of 2", "KALLAX 2x2 2 of 2"]);
+  await expect(page.getByRole("list", { name: "Colours", exact: true }).getByRole("listitem")).toHaveText(["KALLAX-style 2x2 1 of 2", "KALLAX-style 2x2 2 of 2"]);
   await expect(page.locator('[data-copy-key="kallax-2x2-top#1"] rect.fill')).toHaveAttribute("fill", "#123456");
 
   await page.getByRole("tab", { name: "Cut" }).click();
@@ -241,7 +241,7 @@ test("designs a unit, cuts it, keeps the assembly ticks, and prints its hardware
   await page.getByRole("button", { name: "Print booklet" }).click();
   await expect.poll(() => page.evaluate(() => window.printed)).toBe(1);
   await page.emulateMedia({ media: "print" });
-  await expect(page.locator(".print-root").getByRole("heading", { name: "E2E kallax: KALLAX 2x2" })).toBeVisible();
+  await expect(page.locator(".print-root").getByRole("heading", { name: "E2E kallax: KALLAX-style 2x2" })).toBeVisible();
   await expect(page.locator(".print-root .print-elevation svg")).toBeVisible();
   await expect(page.locator(".print-root .print-step-drawing svg").first()).toBeVisible();
   await expect(page.locator(".print-root .print-sheet")).toHaveCount(0);
@@ -264,7 +264,7 @@ test("combines two cells on the Design tab, and optimizes from the sheet estimat
   const cells = page.getByRole("grid", { name: "Cells" });
   await cells.getByRole("gridcell", { name: "Column 1, row 1" }).click();
   await cells.getByRole("gridcell", { name: "Column 2, row 1" }).click({ modifiers: ["Shift"] });
-  const front = page.getByRole("img", { name: /^Front view of KALLAX 2x2: / });
+  const front = page.getByRole("img", { name: /^Front view of KALLAX-style 2x2: / });
   await expect(front.locator("[data-highlight]")).toHaveAttribute("width", "688");
   await page.getByRole("button", { name: "Combine" }).click();
   await expect(cells.getByRole("gridcell")).toHaveCount(3);
@@ -291,7 +291,7 @@ test("picks an actual thickness on the Stock tab, and the design follows it", as
   await page.getByLabel("Name").fill("E2E thickness");
   await page.getByRole("button", { name: "Create project" }).click();
   await page.getByRole("button", { name: "Add design" }).click();
-  await expect(page.getByRole("img", { name: 'Front view of KALLAX 2x2: ~28 5/8" × ~28 5/8" × ~15 11/32"' })).toBeVisible();
+  await expect(page.getByRole("img", { name: 'Front view of KALLAX-style 2x2: ~28 5/8" × ~28 5/8" × ~15 11/32"' })).toBeVisible();
 
   await page.getByRole("tab", { name: "Stock" }).click();
   const materials = page.getByRole("table", { name: "Materials" });
@@ -307,7 +307,7 @@ test("picks an actual thickness on the Stock tab, and the design follows it", as
   await expect(materials.getByText(/is a nominal thickness/)).toHaveCount(0);
 
   await page.getByRole("tab", { name: "Design" }).click();
-  await expect(page.getByRole("img", { name: 'Front view of KALLAX 2x2: ~28 1/2" × ~28 1/2" × ~15 11/32"' })).toBeVisible();
+  await expect(page.getByRole("img", { name: 'Front view of KALLAX-style 2x2: ~28 1/2" × ~28 1/2" × ~15 11/32"' })).toBeVisible();
 });
 
 test("drags the end of a cut to the far stop in the Cuts mode, and Undo puts back the old cuts", async ({ page }) => {

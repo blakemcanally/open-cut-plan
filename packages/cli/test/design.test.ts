@@ -36,7 +36,7 @@ describe("design add", () => {
     const data = result.json();
     expect(data.design).toEqual({
       id: "kallax-2x4",
-      name: "KALLAX 2x4",
+      name: "KALLAX-style 2x4",
       system: "kallax",
       material: "b18",
       width: { openings: [335, 335] },
@@ -52,7 +52,7 @@ describe("design add", () => {
     ]);
     expect(data.changes.designs.added).toEqual(["kallax-2x4"]);
     expect(data.changes.parts.added).toEqual(["kallax-2x4-top", "kallax-2x4-bottom", "kallax-2x4-side", "kallax-2x4-divider", "kallax-2x4-shelf"]);
-    expect(result.file(F).parts.every((part) => part.design === "kallax-2x4" && part.group === "KALLAX 2x4")).toBe(true);
+    expect(result.file(F).parts.every((part) => part.design === "kallax-2x4" && part.group === "KALLAX-style 2x4")).toBe(true);
   });
 
   it("adds EKET modules in the project units, with a back and a mount", async () => {
@@ -138,7 +138,7 @@ describe("design add", () => {
     await cli(["design", "add", F, "--system", "kallax", "--cols", "2", "--rows", "4", "--material", "b18"], io);
     const second = await cli(["design", "add", F, "--system", "kallax", "--cols", "2", "--rows", "4", "--material", "b18", "--json"], io);
     expect(second.code).toBe(0);
-    expect(second.json().design).toMatchObject({ id: "kallax-2x4-2", name: "KALLAX 2x4" });
+    expect(second.json().design).toMatchObject({ id: "kallax-2x4-2", name: "KALLAX-style 2x4" });
     expect(second.file(F).parts.map((part) => part.id)).toEqual(["kallax-2x4-top", "kallax-2x4-bottom", "kallax-2x4-side", "kallax-2x4-divider", "kallax-2x4-shelf", "kallax-2x4-2-top", "kallax-2x4-2-bottom", "kallax-2x4-2-side", "kallax-2x4-2-divider", "kallax-2x4-2-shelf"]);
   });
 
