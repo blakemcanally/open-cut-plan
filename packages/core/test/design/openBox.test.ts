@@ -103,7 +103,7 @@ describe("the hardware of an open-top box", () => {
     expect(lines[0]!.name).toBe('Pocket screws, coarse thread, 1 1/4" (32 mm)');
   });
 
-  it("has no back screws, legs, rail, or wall fixings, even when a field asks for them", () => {
+  it("gives no hardware for an open-top box that a field refuses", () => {
     expect(hardwareList(crate({ back: { material: "ply" }, mount: "legs" }))).toEqual([]);
   });
 });
@@ -165,6 +165,12 @@ describe("the checks of an open-top box", () => {
     expect(issues[0]!.message).toContain('Design "Crate" is ');
     expect(issues[0]!.message).toContain("for a KALLAX-style cube");
     expect(issues[0]!.refs).toEqual([{ kind: "design", design: "crate" }]);
+  });
+
+  it("never says a zero excess in inches", () => {
+    const issues = checkDesigns(openBoxProject("in", 23 / 32, { width: 13.125, height: 12.5, depth: 13.5 }));
+    expect(issues.map((issue) => issue.code)).toEqual(["kallax-fit"]);
+    expect(issues[0]!.message).toBe('Design "Crate" is 1/32" too wide for a KALLAX-style cube: it is 13 1/8" wide, and the most that fits is ~13 1/8".');
   });
 
   it("warns once for each size over its limit", () => {

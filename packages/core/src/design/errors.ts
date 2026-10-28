@@ -1,16 +1,15 @@
 import { MAX_PART_QUANTITY, type Design, type Project } from "../format/schema.ts";
 import { EPSILON } from "../geometry/rect.ts";
 import { convertLength } from "../geometry/units.ts";
-import { planError, type PlanIssue, type PlanRef } from "../plan/issues.ts";
+import { planError, type PlanIssue } from "../plan/issues.ts";
 import { combinedErrors } from "./combined.ts";
 import { designGeometry, materialsById } from "./geometry.ts";
 import { isOpenBox, openBoxErrors } from "./openBox.ts";
 import { buildDesignParts } from "./parts.ts";
+import { designRef } from "./ref.ts";
 import { MIN_POCKET_THICKNESS_MM } from "./systems.ts";
 
-export function designRef(design: Design): PlanRef[] {
-  return [{ kind: "design", design: design.id }];
-}
+export { designRef };
 
 /** The problems that stop a design from making parts. */
 export function designErrors(project: Project, design: Design): PlanIssue[] {

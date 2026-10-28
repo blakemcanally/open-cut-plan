@@ -2,17 +2,14 @@ import type { Design, Part, Project } from "../format/schema.ts";
 import { formatLength } from "../geometry/format.ts";
 import { EPSILON } from "../geometry/rect.ts";
 import { convertLength, type Units } from "../geometry/units.ts";
-import { planError, planWarning, type PlanIssue, type PlanRef } from "../plan/issues.ts";
-import { pocketHolesPerEnd } from "./hardware.ts";
+import { planError, planWarning, type PlanIssue } from "../plan/issues.ts";
+import { pocketHolesPerEnd } from "./pocket.ts";
+import { designRef } from "./ref.ts";
 import { roundLength, type DesignGeometry } from "./geometry.ts";
 import { DEFAULT_DESIGN_QUANTITY, designKind, KALLAX, KALLAX_CLEARANCE_MM } from "./systems.ts";
 
 export function isOpenBox(design: Design): boolean {
   return designKind(design) === "open-box";
-}
-
-function designRef(design: Design): PlanRef[] {
-  return [{ kind: "design", design: design.id }];
 }
 
 /** The problems of an open-top box that a shelf design cannot have. */
@@ -81,6 +78,8 @@ export function kallaxFitIssues(design: Design, geometry: DesignGeometry, projec
   const units = project.project.units;
   const show = (value: number) => formatLength(value, units, project.settings.display);
   const mm = (value: number) => convertLength(value, "mm", units);
+  const { inch, mm: mmStep } = project.settings.display;
+  const step = units === "mm" ? mmStep : inch === "decimal" ? 0.001 : 1 / inch;
   const opening = mm(KALLAX.opening.mm - KALLAX_CLEARANCE_MM);
   const sizes = [
     { value: geometry.outsideWidth, limit: opening, word: "wide" },
@@ -92,7 +91,7 @@ export function kallaxFitIssues(design: Design, geometry: DesignGeometry, projec
     .map(({ value, limit, word }) =>
       planWarning(
         "kallax-fit",
-        `Design "${design.name}" is ${show(value - limit)} too ${word} for a KALLAX-style cube: it is ${show(value)} ${word}, and the most that fits is ${show(limit)}.`,
+        `Design "${design.name}" is ${show(Math.max(value - limit, step))} too ${word} for a KALLAX-style cube: it is ${show(value)} ${word}, and the most that fits is ${show(limit)}.`,
         designRef(design),
       ),
     );

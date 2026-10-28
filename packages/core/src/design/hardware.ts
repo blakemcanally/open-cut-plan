@@ -4,8 +4,11 @@ import { designParts } from "./generate.ts";
 import { designGeometry, materialsById, type DesignGeometry } from "./geometry.ts";
 import { boardLength, designLayout } from "./layout.ts";
 import { isOpenBox, openBoxPocketHoles } from "./openBox.ts";
+import { COUNT_EPSILON, pocketHolesPerEnd } from "./pocket.ts";
 import { IKEA_FEET, IKEA_LEGS, IKEA_RAIL_35, IKEA_RAIL_70 } from "./ikea.ts";
 import { DEFAULT_DESIGN_MOUNT, DEFAULT_DESIGN_QUANTITY, EKET, EKET_TOLERANCE_MM, isDesignMount, MAX_POCKET_CHART_MM, MIN_POCKET_THICKNESS_MM } from "./systems.ts";
+
+export { pocketHolesPerEnd };
 
 export interface PocketScrew {
   /** The jig mark and the collar setting, in inches. */
@@ -29,18 +32,12 @@ export const POCKET_SCREWS: readonly PocketScrew[] = [
 ];
 
 const CHART_TOLERANCE_MM = 0.01;
-const COUNT_EPSILON = 1e-9;
 
 /** The row for the nearest jig mark, or null for stock outside the chart. */
 export function pocketScrew(thicknessMm: number): PocketScrew | null {
   if (thicknessMm < MIN_POCKET_THICKNESS_MM - CHART_TOLERANCE_MM || thicknessMm > MAX_POCKET_CHART_MM + CHART_TOLERANCE_MM) return null;
   const setting = Math.min(1.5, Math.max(0.5, Math.round((thicknessMm / 25.4) * 8) / 8));
   return POCKET_SCREWS.find((row) => row.setting === setting) ?? null;
-}
-
-/** 50 mm from each edge, and at most 150 mm between holes. */
-export function pocketHolesPerEnd(panelDepthMm: number): number {
-  return Math.max(2, Math.ceil((panelDepthMm - 100) / 150 - COUNT_EPSILON) + 1);
 }
 
 const THIN_BACK_MM = 7;
