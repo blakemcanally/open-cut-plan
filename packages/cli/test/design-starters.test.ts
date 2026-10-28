@@ -143,6 +143,30 @@ describe("design add --starter", () => {
     expect(errorOf(result).code).toBe("conflict");
   });
 
+  it("adds a crate from the starter, with its parts and finish steps", async () => {
+    const io = await fresh("in");
+    const result = await cli(["design", "add", F, "--starter", "crate", "--json"], io);
+    expect(result.code).toBe(0);
+    expect(result.json().design).toMatchObject({ id: "crate", kind: "open-box", system: "kallax" });
+    expect(result.json().parts.map((part: { id: string }) => part.id)).toEqual(["crate-front", "crate-back", "crate-side", "crate-bottom"]);
+    const report = await cli(["report", "assembly", F, "--json"], io);
+    const steps = report.json().designs[0].steps;
+    expect(steps.at(-1)).toMatchObject({ action: "finish", title: "Finish" });
+    expect(steps.at(-1).body).toContain("Sand lightly.");
+  });
+
+  it("lists the crate starter with no choices", async () => {
+    const result = await cli(["design", "starters", "--json"]);
+    const crate = result.json().starters.find((starter: { id: string }) => starter.id === "crate");
+    expect(crate).toMatchObject({ group: "Accessories", choices: [] });
+  });
+
+  it("replaces the finish steps of the crate with --finish", async () => {
+    const result = await cli(["design", "add", F, "--starter", "crate", "--finish", "Paint it.", "--json"], await fresh("in"));
+    expect(result.code).toBe(0);
+    expect(result.json().design.finish).toEqual(["Paint it."]);
+  });
+
   it("refuses an unknown starter and lists the ids", async () => {
     const result = await cli(["design", "add", F, "--starter", "kallax", "--json"], await fresh());
     expect(result.code).toBe(2);

@@ -324,6 +324,25 @@ describe("design set", () => {
   });
 });
 
+describe("a design with an unknown kind", () => {
+  it("refuses a change, and explains it for a drawing", async () => {
+    const io = withDesignExamples();
+    editFile(io, KALLAX, (file) => {
+      file.designs[0].kind = "drawer";
+    });
+    const before = io.files.get(KALLAX);
+    const refused = await cli(["design", "set", KALLAX, "kallax", "--quantity", "2", "--json"], io);
+    expect(refused.code).toBe(1);
+    expect(refused.json().error).toMatchObject({ code: "invalid-value", issues: [] });
+    expect(refused.json().error.message).toContain('the kind "drawer"');
+    expect(io.files.get(KALLAX)).toBe(before);
+    const drawing = await cli(["design", "drawing", KALLAX, "kallax", "--json"], io);
+    expect(drawing.code).toBe(1);
+    expect(drawing.json().error).toMatchObject({ code: "design-invalid" });
+    expect(drawing.json().error.message).toContain('the kind "drawer" is not known');
+  });
+});
+
 describe("design remove and detach", () => {
   it("removes a design with its parts and their copies", async () => {
     const io = withDesignExamples();
