@@ -65,6 +65,49 @@ describe("FinishSteps", () => {
     expect(screen.queryByLabelText("Finish step 1")).toBeNull();
   });
 
+  it("focuses the Add button after a new step is saved", async () => {
+    renderDesign();
+    await addStep("Sand lightly.");
+    const add = screen.getByRole("button", { name: "Add a finish step" });
+    expect(document.activeElement).toBe(add);
+    await userEvent.keyboard("{Enter}");
+    expect(document.activeElement).toBe(screen.getByLabelText("Finish step 2"));
+  });
+
+  it("keeps the new row and its text when the change is refused", async () => {
+    const project = designProject();
+    renderDesign({ ...project, materials: project.materials.map((material) => ({ ...material, thickness: 0.1 })) });
+    await userEvent.click(screen.getByRole("button", { name: "Add a finish step" }));
+    await userEvent.keyboard("Sand lightly.{Enter}");
+    expect(screen.getByRole("alert")).toBeTruthy();
+    const row = screen.getByLabelText("Finish step 1");
+    expect(row).toHaveProperty("value", "Sand lightly.");
+    expect(row.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it("moves the focus after a remove", async () => {
+    renderDesign();
+    for (const text of ["One.", "Two.", "Three."]) await addStep(text);
+    await userEvent.click(screen.getByRole("button", { name: "Remove finish step 2" }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Finish step 2"));
+    expect(screen.getByLabelText("Finish step 2")).toHaveProperty("value", "Three.");
+    await userEvent.click(screen.getByRole("button", { name: "Remove finish step 2" }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Finish step 1"));
+    await userEvent.click(screen.getByRole("button", { name: "Remove finish step 1" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Add a finish step" }));
+  });
+
+  it("keeps the focus on the move button of the step that moved", async () => {
+    renderDesign();
+    for (const text of ["One.", "Two.", "Three."]) await addStep(text);
+    await userEvent.click(screen.getByRole("button", { name: "Move finish step 3 up" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Move finish step 2 up" }));
+    await userEvent.click(screen.getByRole("button", { name: "Move finish step 2 up" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Move finish step 1 down" }));
+    await userEvent.click(screen.getByRole("button", { name: "Move finish step 1 down" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Move finish step 2 down" }));
+  });
+
   it("does not save an empty step", async () => {
     const { current } = renderDesign();
     const before = current().project;

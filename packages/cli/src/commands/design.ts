@@ -120,7 +120,7 @@ const CLEAR_FINISH_OPTION: OptionSpec = { name: "clear-finish", type: "boolean",
 
 const FIELD_OPTIONS: OptionSpec[] = Object.values(OPTIONS);
 
-const GRID_FLAGS = ["cols", "rows", "column-openings", "row-openings", "back", "mount"] as const;
+const GRID_FLAGS = ["cols", "rows", "column-openings", "row-openings"] as const;
 
 /** The finish steps from --finish, or undefined when the flag is not given. */
 function finishValues(options: OptionValues): string[] | undefined {
@@ -135,6 +135,18 @@ function finishValues(options: OptionValues): string[] | undefined {
 function refuseGridFlags(options: OptionValues, subject: string): void {
   for (const name of GRID_FLAGS) {
     if (str(options, name) !== undefined) throw usageError(`--${name} does not work with ${subject}. Give --width, --height, and --depth.`, "conflict", { option: name });
+  }
+}
+
+/** An open-top box has no back and no mount. The values that already mean that are allowed when `allowed` is true. */
+function refuseBackAndMount(options: OptionValues, allowed: boolean): void {
+  const back = str(options, "back");
+  if (back !== undefined && !(allowed && back === "none")) {
+    throw usageError(`--back does not work with an open-top box. An open-top box has no back.${allowed ? " Give --back none to remove the field." : ""}`, "conflict", { option: "back" });
+  }
+  const mount = str(options, "mount");
+  if (mount !== undefined && !(allowed && mount === "floor")) {
+    throw usageError(`--mount does not work with an open-top box. An open-top box has no mount.${allowed ? " Give --mount floor to remove the field." : ""}`, "conflict", { option: "mount" });
   }
 }
 
@@ -326,7 +338,7 @@ const list: CommandSpec = {
               isOpenBox(project.designs![i]!) ? `${d.system} (open-top box)` : d.system,
               sizeText(project, project.designs![i]!),
               String(d.quantity),
-              d.mount,
+              isOpenBox(project.designs![i]!) ? "-" : d.mount,
               String(d.parts),
               String(d.copies),
             ]),
@@ -371,6 +383,7 @@ const get: CommandSpec = {
 function openBox(project: Project, options: OptionValues): { project: Project; id: string } {
   const units = project.project.units;
   refuseGridFlags(options, "--kind open-box");
+  refuseBackAndMount(options, false);
   const system = choiceValue(str(options, "system") ?? "custom", "system", DESIGN_SYSTEMS);
   refuseEket(system);
   const width = outsideAxis(options, "width", units, undefined);
@@ -579,7 +592,7 @@ const set: CommandSpec = {
   name: "design set",
   summary: "Change a design and make its parts again.",
   description:
-    "Change the fields of a design, then make its parts again. Only the fields you give change. --id gives the design a new id; its parts get new ids, and their copies stay on the sheets. A copy stays on its sheet when its part keeps the same id, size, and material; the other copies go to the tray, and removedPlacements lists them. On an open-top box, --width, --height, and --depth set the outside sizes, and --cols, --rows, --column-openings, --row-openings, --back, and --mount give exit 2 and conflict. --finish replaces the finish steps with the steps that you give, one flag for each step. --clear-finish removes them; with --finish it gives exit 2 and conflict. A change that gives a design error is refused with exit 1, invalid-value, and the checks in error.issues. A --material or --back with no enabled stock gets the suggested sheet (as with stock add --suggested); addedStock lists it.",
+    "Change the fields of a design, then make its parts again. Only the fields you give change. --id gives the design a new id; its parts get new ids, and their copies stay on the sheets. A copy stays on its sheet when its part keeps the same id, size, and material; the other copies go to the tray, and removedPlacements lists them. On an open-top box, --width, --height, and --depth set the outside sizes, and --cols, --rows, --column-openings, and --row-openings give exit 2 and conflict. --back and --mount do the same, except --back none and --mount floor, which remove the back field and the mount field. --finish replaces the finish steps with the steps that you give, one flag for each step. --clear-finish removes them; with --finish it gives exit 2 and conflict. A change that gives a design error is refused with exit 1, invalid-value, and the checks in error.issues. A --material or --back with no enabled stock gets the suggested sheet (as with stock add --suggested); addedStock lists it.",
   args: [FILE_ARG, DESIGN_ARG],
   options: [...FIELD_OPTIONS, FINISH_OPTION, CLEAR_FINISH_OPTION, { ...ID_OPTION, description: "A new id for the design. Its parts get new ids with it." }, ...OUTPUT_OPTIONS],
   examples: [
@@ -612,6 +625,7 @@ const set: CommandSpec = {
     const boxed = isOpenBox(old);
     if (boxed) {
       refuseGridFlags(options, "an open-top box");
+      refuseBackAndMount(options, true);
       if (systemText !== undefined) refuseEket(known);
     }
     fields.width = boxed ? outsideAxis(options, "width", units, old.width) : axisValue(options, WIDTH, known, units, old.width)!;
@@ -629,7 +643,8 @@ const set: CommandSpec = {
     const quantity = str(options, "quantity");
     if (quantity !== undefined) design.quantity = integerValue(quantity, "quantity", 1, MAX_DESIGN_QUANTITY);
     const mount = optionalChoice(options, "mount", DESIGN_MOUNTS);
-    if (mount !== undefined) design.mount = mount;
+    if (mount === "floor" && boxed) delete design.mount;
+    else if (mount !== undefined) design.mount = mount;
     const changed = withColors({ ...renamed, designs: (renamed.designs ?? []).map((item) => (item.id === id ? design : item)) }, options, id);
     assertValid(changed, design);
     const stocked = stockFor(changed, [material === undefined ? undefined : design.material, back === undefined ? undefined : design.back?.material]);

@@ -224,9 +224,11 @@ name is `Open-top box`.
 - With `--system kallax`, the design checks warn when the box does not fit a KALLAX-style cube.
 
 `design set` on an open-top box takes `--width`, `--height`, and `--depth` for the outside sizes. These flags give exit
-2 and `conflict` on `design set` too: `--cols`, `--rows`, `--column-openings`, `--row-openings`, `--back`, and
-`--mount`. `--system eket` gives exit 2 and `invalid-value`. In the text of `design list`, the system column of an
-open-top box ends with `(open-top box)`. The JSON has `kind` for a design that has one.
+2 and `conflict` on `design set` too: `--cols`, `--rows`, `--column-openings`, and `--row-openings`. `--back` and
+`--mount` give exit 2 and `conflict` as well, with two exceptions. `--back none` removes the `back` field of the
+design, and `--mount floor` removes the `mount` field. `--system eket` gives exit 2 and `invalid-value`. In the text of
+`design list`, the system column of an open-top box ends with `(open-top box)`, and its mount column shows `-`. The
+JSON has `kind` for a design that has one.
 
 #### Starters
 

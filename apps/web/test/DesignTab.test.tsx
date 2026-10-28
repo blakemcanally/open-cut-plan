@@ -529,6 +529,18 @@ describe("DesignTab open-top box", () => {
     expect(design(current).finish?.at(-1)).toBe("Oil the wood.");
   });
 
+  it("refuses an outside width that leaves no room inside", async () => {
+    const current = renderDesign(crateProject());
+    await addCrate();
+    const before = design(current).width;
+    const width = screen.getByLabelText("Outside width");
+    await userEvent.clear(width);
+    await userEvent.type(width, "0.5{Enter}");
+    expect(screen.getByRole("alert").textContent).toBe('✖ Design "Crate" is too small: the walls leave no room inside.');
+    expect(design(current).width).toEqual(before);
+    expect(preview()).toBe('Front view of Crate: 12 1/2" × 12 1/2" × 13 1/2"');
+  });
+
   it("turns the KALLAX fit off and on", async () => {
     const current = renderDesign(crateProject());
     await addCrate();

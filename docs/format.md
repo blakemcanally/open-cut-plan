@@ -152,6 +152,29 @@ With combined cells, some boards change. The table above is for a design with no
 When a design and its stored parts do not agree, the design wins: an app makes the parts again and moves the copies
 of changed parts off their sheets.
 
+### Open-top box (added in 1.11)
+
+A design with `kind: "open-box"` is an open-top box: a front, a back, 2 sides, and a bottom. With *t* the material
+thickness, *w* the outside width, *h* the outside height, *d* the depth, and *q* the quantity:
+
+| Part id | Name | Length × width | Quantity |
+|---|---|---|---|
+| `<id>-front` | Front | *w* × *h* | *q* |
+| `<id>-back` | Back | *w* × *h* | *q* |
+| `<id>-side` | Side | (*d* − 2*t*) × *h* | 2 × *q* |
+| `<id>-bottom` | Bottom | (*w* − 2*t*) × (*d* − 2*t*) | *q* |
+
+- The design has the error `design-open-box` and makes no parts when it breaks one of these rules:
+  - `width` and `height` are each `{ "outside": <size>, "cells": 1 }`.
+  - `system` is `"kallax"` or `"custom"`.
+  - There is no `back`.
+  - There is no `mount`, or `mount` is `"floor"`.
+  - There is no `combined`.
+- The design has the error `design-too-small` and makes no parts when the walls leave no room inside.
+- With `system: "kallax"`, the design checks give the warning `kallax-fit` for each size that is over what fits a
+  KALLAX-style cube. The limits are 333 mm for the width and the height, and 390 mm for the depth.
+- Every generated part has `grain: "length"` and `group` set to the design name, as in a box.
+
 ## Colours (added in 1.4)
 
 An app shows each part copy in the colour of its **colour key**:

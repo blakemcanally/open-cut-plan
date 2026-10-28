@@ -2,9 +2,10 @@ import { formatLength } from "../geometry/format.ts";
 import { convertLength } from "../geometry/units.ts";
 import type { Design, Project } from "../format/schema.ts";
 import { designParts } from "./generate.ts";
-import type { AssemblyAction, AssemblyBoard, AssemblyStep } from "./assemblyTypes.ts";
+import { buildCountText, type AssemblyAction, type AssemblyBoard, type AssemblyStep } from "./assemblyTypes.ts";
 import { designGeometry, materialsById, roundLength, type DesignGeometry } from "./geometry.ts";
 import { backScrewCount, backScrewName, pocketHolesPerEnd, pocketScrew, railsFor } from "./hardware.ts";
+import { jigSettingText, pocketScrewsText } from "./pocket.ts";
 import { boardLength, cellStarts, designLayout, segments, spanLength, type Board, type BoardLayout } from "./layout.ts";
 import { isOpenBox, openBoxSteps } from "./openBox.ts";
 import { dividerName, shelfName } from "./parts.ts";
@@ -49,11 +50,11 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
   const dividers = layout.dividers.length;
   const shelves = layout.shelves.length;
   const screw = pocketScrew(mm(thickness));
-  const screws = screw ? `${screw.screw} coarse-thread pocket screws` : "pocket screws (the chart has no length for this stock)";
+  const screws = pocketScrewsText(screw);
   const uprights = dividers === 0 ? "the sides" : "the sides and the dividers";
   const steps: AssemblyStep[] = [];
 
-  const setting = screw ? ` Set the jig and the drill collar to the ${formatLength(screw.setting, "in", { inch: 8, mm: 1 })} mark.` : "";
+  const setting = jigSettingText(screw);
   const drilled =
     dividers === 0
       ? "the 2 sides, on the inside face of each side"
@@ -61,7 +62,7 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
   const drilledShelves = shelves === 0 ? "" : `, and in each end of ${shelves === 1 ? "the shelf" : `the ${shelves} shelves`}, on the underside`;
   steps.push({
     title: "Drill the pocket holes",
-    body: `${quantity > 1 ? `Build ${quantity} of these. The numbers in these steps are for one unit. ` : ""}Drill ${pocketHolesPerEnd(mm(geometry.panelDepth))} pocket holes in each end of ${drilled}${drilledShelves}, for ${show(thickness)} stock.${setting}`,
+    body: `${buildCountText(quantity)}Drill ${pocketHolesPerEnd(mm(geometry.panelDepth))} pocket holes in each end of ${drilled}${drilledShelves}, for ${show(thickness)} stock.${setting}`,
     action: "drill",
     boards: [LEFT, RIGHT, ...layout.dividers, ...layout.shelves],
   });

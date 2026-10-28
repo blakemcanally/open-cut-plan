@@ -111,7 +111,7 @@ describe("the hardware of an open-top box", () => {
 describe("the errors of an open-top box", () => {
   it.each<[string, Partial<Design>, string]>([
     ["back", { back: { material: "ply" } }, "has no back"],
-    ["mount", { mount: "floor" }, "has no mount"],
+    ["mount", { mount: "legs" }, "has no mount other than the floor"],
     ["combined", { combined: [{ column: 1, row: 1, columns: 1, rows: 1 }] }, "has no combined cells"],
     ["eket", { system: "eket" }, "Use the system kallax or custom"],
     ["openings", { width: { openings: [300] } }, "Give its width and height as outside sizes with 1 cell"],
@@ -124,6 +124,12 @@ describe("the errors of an open-top box", () => {
     expect(issues[0]!.message).toContain(text);
     expect(issues[0]!.refs).toEqual([{ kind: "design", design: "crate" }]);
     expect(designParts(project, design(project))).toBeNull();
+  });
+
+  it("accepts the mount floor, which is the default", () => {
+    const project = crate({ mount: "floor" });
+    expect(codes(project)).toEqual([]);
+    expect(designParts(project, design(project))).not.toBeNull();
   });
 
   it.each([
@@ -170,7 +176,13 @@ describe("the checks of an open-top box", () => {
   it("never says a zero excess in inches", () => {
     const issues = checkDesigns(openBoxProject("in", 23 / 32, { width: 13.125, height: 12.5, depth: 13.5 }));
     expect(issues.map((issue) => issue.code)).toEqual(["kallax-fit"]);
-    expect(issues[0]!.message).toBe('Design "Crate" is 1/32" too wide for a KALLAX-style cube: it is 13 1/8" wide, and the most that fits is ~13 1/8".');
+    expect(issues[0]!.message).toBe('Design "Crate" is 1/32" too wide for a KALLAX-style cube: it is 13 1/8" wide, and the most that fits is 13 3/32".');
+  });
+
+  it("shows a limit that is below a size that is over it", () => {
+    const project = openBoxProject("in", 23 / 32, { width: 13.1105, height: 12.5, depth: 13.5 });
+    const issues = checkDesigns(project);
+    expect(issues[0]!.message).toBe('Design "Crate" is 1/32" too wide for a KALLAX-style cube: it is ~13 1/8" wide, and the most that fits is 13 3/32".');
   });
 
   it("warns once for each size over its limit", () => {

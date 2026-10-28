@@ -18,3 +18,8 @@ export interface AssemblyStep {
   /** The boards that the step works on. A `join` step gives only the boards that it adds to the unit. */
   boards?: AssemblyBoard[];
 }
+
+/** The start of the first step when a design makes more than 1 unit, with a trailing space. */
+export function buildCountText(quantity: number): string {
+  return quantity > 1 ? `Build ${quantity} of these. The numbers in these steps are for one unit. ` : "";
+}

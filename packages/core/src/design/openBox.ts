@@ -3,8 +3,8 @@ import { formatLength } from "../geometry/format.ts";
 import { EPSILON } from "../geometry/rect.ts";
 import { convertLength, type Units } from "../geometry/units.ts";
 import { planError, planWarning, type PlanIssue } from "../plan/issues.ts";
-import type { AssemblyBoard, AssemblyStep } from "./assemblyTypes.ts";
-import { pocketHolesPerEnd, pocketScrew } from "./pocket.ts";
+import { buildCountText, type AssemblyBoard, type AssemblyStep } from "./assemblyTypes.ts";
+import { COUNT_EPSILON, jigSettingText, pocketHolesPerEnd, pocketScrew, pocketScrewsText } from "./pocket.ts";
 import { designRef } from "./ref.ts";
 import { designGeometry, materialsById, roundLength, type DesignGeometry } from "./geometry.ts";
 import { DEFAULT_DESIGN_QUANTITY, designKind, KALLAX, KALLAX_CLEARANCE_MM } from "./systems.ts";
@@ -26,7 +26,7 @@ export function openBoxErrors(design: Design, geometry: DesignGeometry): PlanIss
   const refuse = (message: string) => planError("design-open-box", `${name}${message}`, ref);
   const issues: PlanIssue[] = [];
   if (design.back) issues.push(refuse(", so it has no back."));
-  if (design.mount !== undefined) issues.push(refuse(", so it has no mount."));
+  if (design.mount !== undefined && design.mount !== "floor") issues.push(refuse(", so it has no mount other than the floor."));
   if (geometry.combined) issues.push(refuse(", so it has no combined cells."));
   const outsideSize = (axis: Design["width"]) => "outside" in axis && axis.cells === 1;
   if (!outsideSize(design.width) || !outsideSize(design.height)) {
@@ -88,13 +88,13 @@ export function openBoxSteps(project: Project, design: Design): AssemblyStep[] {
   const quantity = design.quantity ?? DEFAULT_DESIGN_QUANTITY;
   const holes = openBoxPocketHoles(geometry, units);
   const screw = pocketScrew(mm(geometry.thickness));
-  const screws = screw ? `${screw.screw} coarse-thread pocket screws` : "pocket screws (the chart has no length for this stock)";
-  const setting = screw ? ` Set the jig and the drill collar to the ${formatLength(screw.setting, "in", { inch: 8, mm: 1 })} mark.` : "";
+  const screws = pocketScrewsText(screw);
+  const setting = jigSettingText(screw);
   const diagonal = roundLength(Math.hypot(geometry.outsideWidth, geometry.depth));
   return [
     {
       title: "Drill the pocket holes",
-      body: `${quantity > 1 ? `Build ${quantity} of these. The numbers in these steps are for one unit. ` : ""}Drill ${holes.sideEnd} pocket holes in each end of the 2 sides, on the inside face of each side. Drill ${holes.bottomFrontBack} pocket holes along the front edge and the back edge of the bottom, and ${holes.bottomSide} along each side edge, on the underside. The holes are for ${show(geometry.thickness)} stock.${setting}`,
+      body: `${buildCountText(quantity)}Drill ${holes.sideEnd} pocket holes in each end of the 2 sides, on the inside face of each side. Drill ${holes.bottomFrontBack} pocket holes along the front edge and the back edge of the bottom, and ${holes.bottomSide} along each side edge, on the underside. The holes are for ${show(geometry.thickness)} stock.${setting}`,
       action: "drill",
       boards: [LEFT, RIGHT, BOTTOM],
     },
@@ -133,13 +133,15 @@ export function kallaxFitIssues(design: Design, geometry: DesignGeometry, projec
     { value: geometry.outsideHeight, limit: opening, word: "tall" },
     { value: geometry.depth, limit: mm(KALLAX.depth.mm), word: "deep" },
   ];
+  const down = (value: number) => Math.round(Math.floor(value / step + COUNT_EPSILON) * step * 1e6) / 1e6;
   return sizes
     .filter(({ value, limit }) => value > limit + EPSILON)
-    .map(({ value, limit, word }) =>
-      planWarning(
+    .map(({ value, limit, word }) => {
+      const shown = Math.min(down(limit), Math.round(value / step) * step - step);
+      return planWarning(
         "kallax-fit",
-        `Design "${design.name}" is ${show(Math.max(value - limit, step))} too ${word} for a KALLAX-style cube: it is ${show(value)} ${word}, and the most that fits is ${show(limit)}.`,
+        `Design "${design.name}" is ${show(Math.max(value - shown, step))} too ${word} for a KALLAX-style cube: it is ${show(value)} ${word}, and the most that fits is ${show(shown)}.`,
         designRef(design),
-      ),
-    );
+      );
+    });
 }

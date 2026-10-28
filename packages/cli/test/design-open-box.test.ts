@@ -112,13 +112,59 @@ describe("design set on an open-top box", () => {
     expect(result.json().design).toMatchObject({ width: { outside: 12.5, cells: 1 }, height: { outside: 6, cells: 1 }, depth: 15 });
   });
 
-  it.each([["--cols", "2"], ["--rows", "2"], ["--column-openings", "300"], ["--row-openings", "300"], ["--back", "none"], ["--mount", "floor"]])("refuses %s", async (flag, value) => {
+  it.each([["--cols", "2"], ["--rows", "2"], ["--column-openings", "300"], ["--row-openings", "300"], ["--back", "ply6"], ["--mount", "legs"]])("refuses %s", async (flag, value) => {
     const io = await withBox();
     const before = io.files.get(F);
     const result = await cli(["design", "set", F, "open-top-box", flag, value, "--json"], io);
     expect(result.code).toBe(2);
     expect(errorOf(result)).toMatchObject({ code: "conflict", option: flag.slice(2) });
     expect(io.files.get(F)).toBe(before);
+  });
+
+  it.each([
+    ["--back", "An open-top box has no back."],
+    ["--mount", "An open-top box has no mount."],
+  ])("does not tell a person to give the sizes when it refuses %s", async (flag, text) => {
+    const value = flag === "--back" ? "ply6" : "legs";
+    const added = await cli([...BOX, flag, value, "--json"], await fresh("in"));
+    expect(errorOf(added).message).toContain(text);
+    expect(errorOf(added).message).not.toContain("--width");
+    const set = await cli(["design", "set", F, "open-top-box", flag, value, "--json"], await withBox());
+    expect(errorOf(set).message).toContain(text);
+    expect(errorOf(set).message).not.toContain("--width");
+  });
+
+  it("removes the back field of an open-top box with --back none", async () => {
+    const io = await withBox();
+    const file = JSON.parse(io.files.get(F)!);
+    file.designs[0].back = { material: "birch" };
+    io.files.set(F, JSON.stringify(file));
+    const result = await cli(["design", "set", F, "open-top-box", "--back", "none", "--json"], io);
+    expect(result.code).toBe(0);
+    expect(result.json().design).not.toHaveProperty("back");
+    expect(JSON.parse(io.files.get(F)!).designs[0]).not.toHaveProperty("back");
+  });
+
+  it("removes the mount field of an open-top box with --mount floor", async () => {
+    const io = await withBox();
+    const file = JSON.parse(io.files.get(F)!);
+    file.designs[0].mount = "floor";
+    io.files.set(F, JSON.stringify(file));
+    const result = await cli(["design", "set", F, "open-top-box", "--mount", "floor", "--json"], io);
+    expect(result.code).toBe(0);
+    expect(result.json().design).not.toHaveProperty("mount");
+    expect(JSON.parse(io.files.get(F)!).designs[0]).not.toHaveProperty("mount");
+  });
+
+  it("clears the back field and the mount field of a hand-edited file in one change", async () => {
+    const io = await withBox();
+    const file = JSON.parse(io.files.get(F)!);
+    file.designs[0].back = { material: "birch" };
+    file.designs[0].mount = "floor";
+    io.files.set(F, JSON.stringify(file));
+    const result = await cli(["design", "set", F, "open-top-box", "--back", "none", "--mount", "floor", "--json"], io);
+    expect(result.code).toBe(0);
+    expect(JSON.parse(io.files.get(F)!).designs[0]).not.toHaveProperty("back");
   });
 
   it("refuses the system eket, as design add does", async () => {
@@ -201,7 +247,13 @@ describe("design list and get", () => {
     const text = await cli(["design", "list", F], io);
     expect(text.stdout).toMatch(/open-top-box\s+Open-top box\s+kallax \(open-top box\)\s+/);
     const json = await cli(["design", "list", F, "--json"], io);
-    expect(json.json().designs[0]).toMatchObject({ id: "open-top-box", kind: "open-box" });
+    expect(json.json().designs[0]).toMatchObject({ id: "open-top-box", kind: "open-box", mount: "floor" });
+  });
+
+  it("shows - in the mount column of an open-top box", async () => {
+    const io = await withBox();
+    const row = (await cli(["design", "list", F], io)).stdout.split("\n")[1]!.split(/\s+/).filter(Boolean);
+    expect(row.at(-3)).toBe("-");
   });
 
   it("keeps the text table of a shelf design as it was", async () => {

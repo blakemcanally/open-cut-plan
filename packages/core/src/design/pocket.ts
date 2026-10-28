@@ -1,3 +1,4 @@
+import { formatLength } from "../geometry/format.ts";
 import { MAX_POCKET_CHART_MM, MIN_POCKET_THICKNESS_MM } from "./systems.ts";
 
 export const COUNT_EPSILON = 1e-9;
@@ -33,4 +34,14 @@ export function pocketScrew(thicknessMm: number): PocketScrew | null {
   if (thicknessMm < MIN_POCKET_THICKNESS_MM - CHART_TOLERANCE_MM || thicknessMm > MAX_POCKET_CHART_MM + CHART_TOLERANCE_MM) return null;
   const setting = Math.min(1.5, Math.max(0.5, Math.round((thicknessMm / 25.4) * 8) / 8));
   return POCKET_SCREWS.find((row) => row.setting === setting) ?? null;
+}
+
+/** The screws of a step, or a note that the chart has no length for the stock. */
+export function pocketScrewsText(screw: PocketScrew | null): string {
+  return screw ? `${screw.screw} coarse-thread pocket screws` : "pocket screws (the chart has no length for this stock)";
+}
+
+/** The sentence for the jig setting, with a leading space, or an empty text when the chart has no row. */
+export function jigSettingText(screw: PocketScrew | null): string {
+  return screw ? ` Set the jig and the drill collar to the ${formatLength(screw.setting, "in", { inch: 8, mm: 1 })} mark.` : "";
 }
