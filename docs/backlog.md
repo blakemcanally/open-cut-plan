@@ -172,7 +172,8 @@ Its mounts are floor, legs, feet, and the wall rail. So the box cannot make his 
   The parts are Foot and Top cleat. The assembly gets the step **Fit the cleats**.
 - A design can have `hiddenWarnings`, a list of warning codes. A check leaves out a hidden warning. It never hides an
   error. The Design tab and `design set --show-warnings` show the warnings again.
-- An open-top box refuses all three settings (`design-open-box`). A value that the app does not know keeps the stored
+- An open-top box refuses a `mount` other than `floor`, `corners` other than `top-over-sides`, and `fastener` other than
+  `pocket-screws` (`design-open-box`). A value that the app does not know keeps the stored
   parts of the design and gives a warning.
 - The starter `stacking-shelf`, in the new group Shop storage, makes 1 column and 4 rows, 16" deep, with the sides
   40" long. It uses the three settings and hides the warning `shelf-span`. Its note credits Evan Monsma, and adds no

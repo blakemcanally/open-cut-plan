@@ -154,7 +154,7 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
     steps.push({ title: "Fit the feet", body: `Screw the 4 EKET adjustable feet to the bottom panel, as IKEA assembly guide ${IKEA_FEET.guide} shows.`, action: "mount", boards: [] });
   }
   if (mount === "cleats") {
-    const strip = `${pocketHolesPerEnd(mm(geometry.panelDepth))} ${cleatScrew(mm(thickness), units)} screws`;
+    const strip = `${pocketHolesPerEnd(mm(geometry.panelDepth))} screws (${cleatScrew(mm(thickness), units)})`;
     steps.push({
       title: "Fit the cleats",
       body: `Glue the 2 feet under the bottom, flush with the left and the right outer edges. Screw each foot on with ${strip}. Then glue the 2 top cleats on the top, ${show(CLEAT_WIDTH[units])} in from the left and the right outer edges. Screw each cleat on with ${strip}. The feet of the next unit fit outside the top cleats.`,

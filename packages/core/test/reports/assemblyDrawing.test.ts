@@ -164,15 +164,26 @@ describe("assemblyDrawings", () => {
     it("makes the view box tall enough for the feet and the top cleats", () => {
       for (const drawing of assemblyDrawings(projectOf(module()), "sh")!) {
         const [, top, , height] = viewBox(drawing.svg);
-        expect(top).toBeLessThan(-0.75);
-        expect(top + height).toBeGreaterThan(40.75);
+        expect(top).toBeCloseTo(-2.719, 3);
+        expect(height).toBeCloseTo(45.438, 3);
+        expect(top + height).toBeCloseTo(42.719, 3);
       }
     });
 
     it("draws the boards of one column with combined rows", () => {
       const design = module({ height: { openings: [8, 8, 8, 8, 8] }, combined: [{ column: 1, row: 2, columns: 1, rows: 2 }] });
       const drawings = assemblyDrawings(projectOf(design), "sh")!;
-      expect(drawings).toHaveLength(assemblySteps(projectOf(design), "sh")!.length);
+      const steps = assemblySteps(projectOf(design), "sh")!;
+      expect(drawings).toHaveLength(steps.length);
+      const at = (title: string) => drawings[steps.findIndex((step) => step.title === title)]!.svg;
+      const shelfYs = (svg: string) => [...svg.matchAll(/data-panel="shelf" data-state="(\w+)" x="0.75" y="([\d.]+)"/g)].map((match) => [match[1], Number(match[2])]);
+      expect(shelfYs(at("Fit the shelves"))).toEqual([
+        ["current", 8.75],
+        ["current", 26.25],
+        ["current", 35],
+      ]);
+      expect(count(at("Mark the shelf positions"), /data-mark/g)).toBe(6);
+      expect(at("Fit the shelves")).toContain('data-panel="side" data-state="placed" x="0" y="0" width="0.75" height="44.5"');
     });
   });
 });

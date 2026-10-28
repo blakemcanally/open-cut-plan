@@ -76,6 +76,8 @@ export const MAX_POCKET_CHART_MM = 38.1;
 /** A rule of thumb for plywood shelves under books, not a load calculation. */
 export const SHELF_SPAN_RATIO = 45;
 export const CLEAT_WIDTH: Readonly<Record<Units, number>> = { in: 3.5, mm: 89 };
+/** 3.5 in is 88.9 mm, so a stored cleat width within this of the made width counts as the same after a unit change. */
+export const CLEAT_WIDTH_TOLERANCE_MM = 0.5;
 export const DEFAULT_DESIGN_QUANTITY = 1;
 export const DEFAULT_DESIGN_MOUNT: DesignMount = "floor";
 

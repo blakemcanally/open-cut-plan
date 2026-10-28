@@ -135,8 +135,9 @@ describe("designElevationSvg", () => {
 
     it("makes the view box tall enough for the feet and the top cleats", () => {
       const [, top, , height] = viewBox(svgOf(module()));
-      expect(top).toBeLessThan(-0.75);
-      expect(top + height).toBeGreaterThan(40.75);
+      expect(top).toBeCloseTo(-6, 3);
+      expect(height).toBeCloseTo(52, 3);
+      expect(top + height).toBeCloseTo(46, 3);
     });
   });
 });

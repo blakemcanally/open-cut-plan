@@ -172,6 +172,7 @@ thickness, *w* the outside width, *h* the outside height, *d* the depth, and *q*
   - `system` is `"kallax"` or `"custom"`.
   - There is no `back`.
   - There is no `mount`, or `mount` is `"floor"`.
+  - There is no `corners`, or `corners` is `"top-over-sides"`. There is no `fastener`, or `fastener` is `"pocket-screws"`.
   - There is no `combined`.
 - The design has the error `design-too-small` and makes no parts when the walls leave no room inside.
 - With `system: "kallax"`, the design checks give the warning `kallax-fit` for each size that is over what fits a

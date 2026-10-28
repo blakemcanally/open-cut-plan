@@ -129,6 +129,16 @@ describe("the errors of an open-top box", () => {
     expect(designParts(project, design(project))).toBeNull();
   });
 
+  it.each<Partial<Design>>([{ corners: "top-over-sides" }, { fastener: "pocket-screws" }, { corners: "top-over-sides", fastener: "pocket-screws", mount: "floor" }])(
+    "accepts the default corners and the default fastener, which mean the same as no value: %j",
+    (patch) => {
+      const project = crate(patch);
+      expect(codes(project)).toEqual([]);
+      expect(designParts(project, design(project))).toEqual(designParts(crate(), design(crate())));
+      expect(assemblySteps(project, "crate")).not.toBeNull();
+    },
+  );
+
   it("accepts the mount floor, which is the default", () => {
     const project = crate({ mount: "floor" });
     expect(codes(project)).toEqual([]);

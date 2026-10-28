@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addStarterDesign,
   checkDesigns,
+  convertProjectUnits,
   createProject,
   designGeometry,
   EKET_TOLERANCE_MM,
@@ -532,6 +533,34 @@ describe("the stacking shelf", () => {
     }
     const { project } = made(sheet("in", 0.75), { back: "ply" });
     expect(project.designs![0]!.back).toBeUndefined();
+  });
+
+  describe("after a unit switch", () => {
+    const placeAll = (project: Project): Project => {
+      const placements = project.parts.flatMap((part) => Array.from({ length: part.quantity }, (_, copy) => ({ part: part.id, copy, x: 0, y: 0, rotated: false })));
+      return { ...project, plan: { sheets: [{ id: "s1", stock: "ply-sheet", placements }] } };
+    };
+    const cleatPlacements = (project: Project) => project.plan!.sheets[0]!.placements.filter((placement) => /-(foot|top-cleat)$/.test(placement.part)).length;
+
+    it.each([
+      ["in", "mm", 0.75],
+      ["mm", "in", 19],
+    ] as const)("keeps the feet, the top cleats, and their placements from %s to %s", (from, to, thickness) => {
+      const project = placeAll(made(sheet(from, thickness)).project);
+      expect(cleatPlacements(project)).toBe(4);
+      const converted = convertProjectUnits(project, to);
+      expect(checkDesigns(converted).map((issue) => issue.code)).not.toContain("design-stale");
+      const regenerated = regenerateDesigns(converted);
+      expect(regenerated).toBe(converted);
+      expect(cleatPlacements(regenerated)).toBe(4);
+      expect(regenerated.plan!.sheets[0]!.placements).toHaveLength(project.plan!.sheets[0]!.placements.length);
+    });
+
+    it("still marks a cleat width that is far from the made width as stale", () => {
+      const project = made(sheet("in", 0.75)).project;
+      const wide = { ...project, parts: project.parts.map((part) => (part.name === "Foot" ? { ...part, width: 4 } : part)) };
+      expect(checkDesigns(wide).map((issue) => issue.code)).toContain("design-stale");
+    });
   });
 
   it("lists the starter in the Shop storage group, after the crate", () => {

@@ -7,7 +7,7 @@ import { buildCountText, type AssemblyBoard, type AssemblyStep } from "./assembl
 import { COUNT_EPSILON, jigSettingText, pocketHolesPerEnd, pocketScrew, pocketScrewsText } from "./pocket.ts";
 import { designRef } from "./ref.ts";
 import { designGeometry, materialsById, roundLength, type DesignGeometry } from "./geometry.ts";
-import { DEFAULT_DESIGN_QUANTITY, designKind, KALLAX, KALLAX_CLEARANCE_MM } from "./systems.ts";
+import { DEFAULT_DESIGN_QUANTITY, designCorners, designFastener, designKind, KALLAX, KALLAX_CLEARANCE_MM } from "./systems.ts";
 
 const FRONT: AssemblyBoard = { kind: "front" };
 const BACK: AssemblyBoard = { kind: "back" };
@@ -27,8 +27,8 @@ export function openBoxErrors(design: Design, geometry: DesignGeometry): PlanIss
   const issues: PlanIssue[] = [];
   if (design.back) issues.push(refuse(", so it has no back."));
   if (design.mount !== undefined && design.mount !== "floor") issues.push(refuse(", so it has no mount other than the floor."));
-  if (design.corners !== undefined) issues.push(refuse(", so it has no corners setting."));
-  if (design.fastener !== undefined) issues.push(refuse(", so it has no fastener setting."));
+  if (designCorners(design) !== "top-over-sides") issues.push(refuse(", so it has no corners setting."));
+  if (designFastener(design) !== "pocket-screws") issues.push(refuse(", so it has no fastener setting."));
   if (geometry.combined) issues.push(refuse(", so it has no combined cells."));
   const outsideSize = (axis: Design["width"]) => "outside" in axis && axis.cells === 1;
   if (!outsideSize(design.width) || !outsideSize(design.height)) {

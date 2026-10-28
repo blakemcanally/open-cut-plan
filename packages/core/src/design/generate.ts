@@ -6,7 +6,8 @@ import { EPSILON } from "../geometry/rect.ts";
 import { designErrors } from "./errors.ts";
 import { designGeometry, materialsById } from "./geometry.ts";
 import { buildDesignParts } from "./parts.ts";
-import { designCorners, designFastener, designKind, isDesignCorners, isDesignFastener, isDesignKind, isDesignSystem } from "./systems.ts";
+import { convertLength } from "../geometry/units.ts";
+import { CLEAT_WIDTH_TOLERANCE_MM, designCorners, designFastener, designKind, isDesignCorners, isDesignFastener, isDesignKind, isDesignSystem } from "./systems.ts";
 
 export function generatedParts(project: Project, designId: string): Part[] {
   return project.parts.filter((part) => part.design === designId);
@@ -15,7 +16,8 @@ export function generatedParts(project: Project, designId: string): Part[] {
 /**
  * The parts a design makes, or null for an unknown system, a design with an error, or a file from a newer minor version
  * (whose designs can have fields that make more parts). A part within EPSILON of its stored size keeps the stored
- * numbers, so the rounding after a unit change does not count as a change.
+ * numbers, so the rounding after a unit change does not count as a change. A foot or a top cleat has a wider band for its
+ * width, because its width is a round number in each unit.
  */
 export function designParts(project: Project, design: Design): Part[] | null {
   if (
@@ -33,11 +35,13 @@ export function designParts(project: Project, design: Design): Part[] | null {
   const stored = new Map(generatedParts(project, design.id).map((part) => [part.id, part]));
   const units = project.project.units;
   const snap = (part: Part): Part => ({ ...part, length: snapLength(part.length, units), width: snapLength(part.width, units) });
-  return buildDesignParts(design, geometry, units).map((part) => keepStoredSize(snap(part), stored.get(part.id)));
+  const cleats = new Set([`${design.id}-foot`, `${design.id}-top-cleat`]);
+  const cleatTolerance = convertLength(CLEAT_WIDTH_TOLERANCE_MM, "mm", units);
+  return buildDesignParts(design, geometry, units).map((part) => keepStoredSize(snap(part), stored.get(part.id), cleats.has(part.id) ? cleatTolerance : EPSILON));
 }
 
-function keepStoredSize(part: Part, stored: Part | undefined): Part {
-  if (!stored || Math.abs(part.length - stored.length) > EPSILON || Math.abs(part.width - stored.width) > EPSILON) return part;
+function keepStoredSize(part: Part, stored: Part | undefined, widthTolerance: number): Part {
+  if (!stored || Math.abs(part.length - stored.length) > EPSILON || Math.abs(part.width - stored.width) > widthTolerance) return part;
   return { ...part, length: stored.length, width: stored.width };
 }
 

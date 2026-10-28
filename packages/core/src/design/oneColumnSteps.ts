@@ -63,7 +63,7 @@ export function oneColumnSteps(project: Project, design: Design, geometry: Desig
       boards: [TOP, BOTTOM, LEFT, RIGHT],
     });
     if (count > 0) {
-      const place = count === 1 ? "Put it between the sides, with its underside on its marks." : "Put the shelves between the sides, from the bottom up, with the underside of each on its marks.";
+      const place = count === 1 ? "Put it between the sides, with its underside on the marks." : "Put the shelves between the sides, from the bottom up, with the underside of each shelf on the marks for it.";
       const drive = face
         ? `Rest ${shelfRef} on the spacers while you drive the screws through the pilot holes in the sides.`
         : `Rest ${shelfRef} on the spacers, with the pocket holes down, and screw ${shelfRef} on with ${screws} through the pocket holes in its ends.`;
@@ -74,7 +74,7 @@ export function oneColumnSteps(project: Project, design: Design, geometry: Desig
       const one = count === 1;
       steps.push({
         title: "Assemble column 1 of 1",
-        body: `Lay the left side on its outside face, with the marks up. Glue the ends of ${one ? "the shelf" : "each shelf"}, and stand ${one ? "it on its mark" : "the shelves on their marks"} on the left side. Put the right side on the other ${one ? "end" : "ends"} of ${one ? "the shelf" : "the shelves"}. Drive the screws through the pilot holes in the right side. Turn the frame over. Drive the screws through the pilot holes in the left side.`,
+        body: `Lay the left side on its outside face, with the marks up. Glue the ends of ${one ? "the shelf" : "each shelf"}. Stand ${one ? "it on its mark" : "the shelves on their marks"} on the left side. Put the right side on the other ${one ? "end" : "ends"} of ${one ? "the shelf" : "the shelves"}. Rest ${shelfRef} on the spacers while you drive the screws through the pilot holes in the right side. Turn the frame over. Drive the screws through the pilot holes in the left side.`,
         action: "join",
         boards: [LEFT, ...shelves, RIGHT],
       });
@@ -83,8 +83,8 @@ export function oneColumnSteps(project: Project, design: Design, geometry: Desig
       title: "Fit the bottom and the top",
       body:
         count > 0
-          ? "Lay the frame on its back. Glue the lower ends of the sides, and put the bottom on them. Drive the screws through the pilot holes in the bottom. Then fit the top the same way."
-          : "Glue the lower ends of the sides, and stand them on the bottom. Drive the screws through the pilot holes in the bottom. Then fit the top the same way.",
+          ? "Lay the frame on its back. Glue the lower ends of the sides. Put the bottom on them. Drive the screws through the pilot holes in the bottom. Then fit the top the same way."
+          : "Glue the lower ends of the sides. Stand them on the bottom. Drive the screws through the pilot holes in the bottom. Then fit the top the same way.",
       action: "join",
       boards: [BOTTOM, TOP, ...(count > 0 ? [] : [LEFT, RIGHT])],
     });

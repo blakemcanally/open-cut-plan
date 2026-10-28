@@ -389,14 +389,29 @@ describe("the steps of one column", () => {
       "Glue the ends of the top and the bottom. Put them between the sides, flush with the ends of the sides. Drive the screws through the pilot holes in the sides.",
     );
     expect(body(steps, "Fit the shelves")).toBe(
-      "Glue the ends of each shelf. Put the shelves between the sides, from the bottom up, with the underside of each on its marks. Rest each shelf on the spacers while you drive the screws through the pilot holes in the sides.",
+      "Glue the ends of each shelf. Put the shelves between the sides, from the bottom up, with the underside of each shelf on the marks for it. Rest each shelf on the spacers while you drive the screws through the pilot holes in the sides.",
     );
   });
 
   it("fits the cleats with 4 screws each", () => {
     const text = body(stepsOf(module()), "Fit the cleats");
     expect(text).toBe(
-      'Glue the 2 feet under the bottom, flush with the left and the right outer edges. Screw each foot on with 4 #8 × 1 1/4" screws. Then glue the 2 top cleats on the top, 3 1/2" in from the left and the right outer edges. Screw each cleat on with 4 #8 × 1 1/4" screws. The feet of the next unit fit outside the top cleats.',
+      'Glue the 2 feet under the bottom, flush with the left and the right outer edges. Screw each foot on with 4 screws (#8 × 1 1/4"). Then glue the 2 top cleats on the top, 3 1/2" in from the left and the right outer edges. Screw each cleat on with 4 screws (#8 × 1 1/4"). The feet of the next unit fit outside the top cleats.',
+    );
+  });
+
+  it("keeps a count away from a size in millimetres", () => {
+    const design = module({ width: { outside: 1333, cells: 1 }, height: { outside: 1016, cells: 4 }, depth: 406 });
+    const steps = assemblySteps({ ...designProject(), designs: [design] }, "sh")!;
+    expect(body(steps, "Fit the cleats")).toBe(
+      "Glue the 2 feet under the bottom, flush with the left and the right outer edges. Screw each foot on with 4 screws (4 × 30 mm). Then glue the 2 top cleats on the top, 89 mm in from the left and the right outer edges. Screw each cleat on with 4 screws (4 × 30 mm). The feet of the next unit fit outside the top cleats.",
+    );
+  });
+
+  it("puts the underside of a single shelf on the marks", () => {
+    const steps = stepsOf(module({ height: { outside: 20, cells: 2 } }));
+    expect(body(steps, "Fit the shelves")).toBe(
+      "Glue the ends of the shelf. Put it between the sides, with its underside on the marks. Rest it on the spacers while you drive the screws through the pilot holes in the sides.",
     );
   });
 
@@ -431,6 +446,12 @@ describe("the steps of one column", () => {
     ]);
     expect(body(steps, "Mark the shelf positions")).toBe('Mark the underside of each shelf on the sides at 9 1/16", 18 7/8" and 28 11/16" from the bottom end.');
     expect(body(steps, "Drill the pilot holes")).toMatch(/^Drill 4 pilot holes for each joint: through the top and the bottom, at each end, and through each side, at the ends of the 3 shelves\./);
+    expect(body(steps, "Assemble column 1 of 1")).toBe(
+      "Lay the left side on its outside face, with the marks up. Glue the ends of each shelf. Stand the shelves on their marks on the left side. Put the right side on the other ends of the shelves. Rest each shelf on the spacers while you drive the screws through the pilot holes in the right side. Turn the frame over. Drive the screws through the pilot holes in the left side.",
+    );
+    expect(body(steps, "Fit the bottom and the top")).toBe(
+      "Lay the frame on its back. Glue the lower ends of the sides. Put the bottom on them. Drive the screws through the pilot holes in the bottom. Then fit the top the same way.",
+    );
     expect(steps[3]!.boards).toEqual([LEFT, shelf(1, 0, 0), shelf(2, 0, 0), shelf(3, 0, 0), RIGHT]);
     expect(steps[4]!.boards).toEqual([BOTTOM, TOP]);
     expect(steps[4]!.action).toBe("join");
@@ -449,6 +470,7 @@ describe("the steps of one column", () => {
     const topOver = stepsOf(module({ height: { outside: 10, cells: 1 }, corners: "top-over-sides", mount: "floor" }));
     expect(topOver.map((step) => step.title)).toEqual(["Drill the pilot holes", "Fit the bottom and the top", "Check that it is square", "Anchor the unit"]);
     expect(topOver[1]!.boards).toEqual([BOTTOM, TOP, LEFT, RIGHT]);
+    expect(topOver[1]!.body).toBe("Glue the lower ends of the sides. Stand them on the bottom. Drive the screws through the pilot holes in the bottom. Then fit the top the same way.");
   });
 
   it("starts with the build count for a quantity of 2", () => {
