@@ -203,11 +203,57 @@ describe("the checks of an open-top box", () => {
   });
 });
 
-describe("the assembly of an open-top box before its steps exist", () => {
-  it("gives no steps, no drawings, and no elevation, and does not throw", () => {
-    const project = crate();
-    expect(assemblySteps(project, "crate")).toBeNull();
-    expect(assemblyDrawings(project, "crate")).toBeNull();
-    expect(designElevationSvg(project, "crate")).toBeNull();
+describe("the assembly steps of an open-top box", () => {
+  const steps = (project: Project) => assemblySteps(project, "crate")!;
+
+  it("gives the crate four steps, then its finish steps", () => {
+    const finished = crate({ finish: ["Sand lightly.", "Oil it."] });
+    expect(steps(finished).map((s) => s.action)).toEqual(["drill", "join", "square", "join", "finish", "finish"]);
+    expect(steps(crate()).map((s) => s.action)).toEqual(["drill", "join", "square", "join"]);
+  });
+
+  it("names the holes of the crate in the drill step", () => {
+    const body = steps(crate())[0]!.body;
+    expect(body).toMatch(/3 pocket holes in each end of the 2 sides, on the inside face/);
+    expect(body).toMatch(/3 pocket holes along the front edge and the back edge of the bottom, and 3 along each side edge, on the underside/);
+    expect(body).toContain('23/32" stock.');
+    expect(body).toContain('Set the jig and the drill collar to the 3/4" mark.');
+    expect(body).not.toMatch(/Build/);
+  });
+
+  it("starts with the build sentence for a quantity of 2", () => {
+    expect(steps(crate({ quantity: 2 }))[0]!.body).toMatch(/^Build 2 of these\. The numbers in these steps are for one unit\. Drill 3 pocket holes/);
+  });
+
+  it("joins the walls with the chart screws, squares the top opening, and fits the bottom", () => {
+    const [, walls, square, bottom] = steps(crate());
+    expect(walls!.body).toContain("flush with the top edge and the bottom edge");
+    expect(walls!.body).toContain('1 1/4" (32 mm) coarse-thread pocket screws');
+    expect(square!.body).toBe("Measure the two diagonals of the top opening. Both must be ~18 13/32\". If they are not the same, push the long diagonal in until they are.");
+    expect(bottom!.body).toContain("flush with their lower edges, with the pocket holes down");
+    expect(steps(metric())[2]!.body).toContain("Both must be ~467.5 mm.");
+  });
+
+  it("names the boards of each step", () => {
+    expect(steps(crate()).map((s) => s.boards!.map((board) => board.kind === "side" ? `side-${board.side}` : board.kind))).toEqual([
+      ["side-left", "side-right", "bottom"],
+      ["front", "back", "side-left", "side-right"],
+      [],
+      ["bottom"],
+    ]);
+  });
+
+  it("has no anchor, mount, or back step", () => {
+    const all = steps(crate({ finish: ["Sand lightly."] }));
+    expect(all.map((s) => s.action)).not.toContain("anchor");
+    expect(all.map((s) => s.action)).not.toContain("mount");
+    expect(all.map((s) => s.title)).not.toContain("Fit the back");
+  });
+
+  it("gives no steps, no drawings, and no front view for an open-top box with an error", () => {
+    const small = openBoxProject("in", 23 / 32, { width: 1.4, height: 12.5, depth: 13.5 });
+    expect(assemblySteps(small, "crate")).toBeNull();
+    expect(assemblyDrawings(small, "crate")).toBeNull();
+    expect(designElevationSvg(small, "crate")).toBeNull();
   });
 });

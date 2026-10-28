@@ -80,6 +80,7 @@ export * from "./design/hardware.ts";
 export * from "./design/assembly.ts";
 export * from "./design/estimate.ts";
 export * from "./reports/elevation.ts";
+export * from "./reports/openBoxDrawings.ts";
 export * from "./catalog/types.ts";
 export * from "./catalog/data.ts";
 export * from "./catalog/catalog.ts";

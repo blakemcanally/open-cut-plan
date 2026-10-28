@@ -9,18 +9,17 @@ import { cellStarts, designLayout, type Board } from "../design/layout.ts";
 import { isOpenBox } from "../design/openBox.ts";
 import { designPanels, type Panel } from "../design/panels.ts";
 import { DEFAULT_DESIGN_MOUNT } from "../design/systems.ts";
-import { designColorKey, NO_GROUP_COLOR, partColors } from "./colors.ts";
+import { ACCENT_STROKE, ASSEMBLY_ACCENT, boardPaint, designFill, dimensionsSvg, drawLine, LATER_COLOR, num, type AssemblyDrawing, type DrawState } from "./drawing.ts";
+import { openBoxAssemblyDrawings, openBoxElevationSvg } from "./openBoxDrawings.ts";
 import { escapeXml } from "./svg.ts";
+
+export { ASSEMBLY_ACCENT, type AssemblyDrawing };
 
 const LEG_HEIGHT_MM = 100;
 const LEG_DIAMETER_MM = 30;
 const FOOT_HEIGHT_MM = 24;
 const RAIL_HEIGHT_MM = 40;
 const RAIL_LENGTH_MM = { long: 630, short: 295 };
-
-function num(value: number): string {
-  return String(Math.round(value * 1000) / 1000);
-}
 
 function mountHeight(mount: string, units: Project["project"]["units"]): number {
   return convertLength(mount === "legs" ? LEG_HEIGHT_MM : mount === "feet" ? FOOT_HEIGHT_MM : 0, "mm", units);
@@ -78,7 +77,8 @@ export interface ElevationOptions {
  */
 export function designElevationSvg(project: Project, designId: string, options: ElevationOptions = {}): string | null {
   const design = project.designs?.find((candidate) => candidate.id === designId);
-  if (!design || isOpenBox(design) || designParts(project, design) === null) return null;
+  if (!design || designParts(project, design) === null) return null;
+  if (isOpenBox(design)) return openBoxElevationSvg(project, design);
   const geometry = designGeometry(design, materialsById(project))!;
   const units = project.project.units;
   const show = (value: number) => formatLength(value, units, project.settings.display);
@@ -87,7 +87,7 @@ export function designElevationSvg(project: Project, designId: string, options: 
   const unit = Math.max(width, height) / 40;
   const below = mountHeight(mount, units);
   const margin = unit * 4;
-  const fill = partColors(project).get(designColorKey(design.id, 1))?.color ?? NO_GROUP_COLOR;
+  const fill = designFill(project, design);
   const stroke = `stroke="#333" stroke-width="${num(unit * 0.08)}"`;
   const font = (scale: number) => `font-size="${num(unit * scale)}"`;
   const viewWidth = width + 2 * margin;
@@ -133,30 +133,12 @@ export function designElevationSvg(project: Project, designId: string, options: 
   }
   out.push("</g>");
 
-  const dim = (x1: number, y1: number, x2: number, y2: number, label: string, tx: number, ty: number, rotate: boolean) =>
-    out.push(
-      `<line x1="${num(x1)}" y1="${num(y1)}" x2="${num(x2)}" y2="${num(y2)}" stroke="#1a5fd0" stroke-width="${num(unit * 0.06)}"/>`,
-      `<text x="${num(tx)}" y="${num(ty)}" ${font(1)} text-anchor="middle" dominant-baseline="middle" fill="#1a5fd0"${rotate ? ` transform="rotate(-90 ${num(tx)} ${num(ty)})"` : ""}>${escapeXml(label)}</text>`,
-    );
-  dim(0, -unit * 1.5, width, -unit * 1.5, show(width), width / 2, -unit * 2.6, false);
-  dim(width + unit * 1.5, 0, width + unit * 1.5, height, show(height), width + unit * 2.6, height / 2, true);
-  out.push(`<text x="${num(width / 2)}" y="${num(height + below + unit * 2)}" ${font(1)} text-anchor="middle" dominant-baseline="middle" fill="#1a5fd0">${escapeXml(`Depth ${show(geometry.depth)}`)}</text>`);
+  out.push(...dimensionsSvg(unit, width, height, below, show, geometry.depth));
   out.push("</svg>");
   return out.join("\n");
 }
 
-export const ASSEMBLY_ACCENT = "#1a5fd0";
-const ACCENT_STROKE = "#0d3c8c";
 const MARK_COLOR = "#d9480f";
-const LATER_COLOR = "#b5b5b5";
-
-export interface AssemblyDrawing {
-  svg: string;
-  /** A text alternative for the drawing. */
-  description: string;
-}
-
-type DrawState = "later" | "placed" | "current";
 
 function boardsText(boards: readonly AssemblyBoard[], rows: number): string {
   const has = (kind: AssemblyBoard["kind"]) => boards.some((board) => board.kind === kind);
@@ -214,6 +196,7 @@ export function assemblyDrawings(project: Project, designId: string): AssemblyDr
   const design = project.designs?.find((candidate) => candidate.id === designId);
   const steps = assemblySteps(project, designId);
   if (!design || !steps) return null;
+  if (isOpenBox(design)) return openBoxAssemblyDrawings(project, design, steps);
   const geometry = designGeometry(design, materialsById(project))!;
   const units = project.project.units;
   const mount = design.mount ?? DEFAULT_DESIGN_MOUNT;
@@ -221,7 +204,7 @@ export function assemblyDrawings(project: Project, designId: string): AssemblyDr
   const unit = Math.max(width, height) / 40;
   const margin = unit * 1.5;
   const below = mountHeight(mount, units);
-  const fill = partColors(project).get(designColorKey(design.id, 1))?.color ?? NO_GROUP_COLOR;
+  const fill = designFill(project, design);
   const viewWidth = width + 2 * margin;
   const viewHeight = height + below + 2 * margin;
   const { panels } = designPanels(geometry);
@@ -240,8 +223,6 @@ export function assemblyDrawings(project: Project, designId: string): AssemblyDr
   const keyOf = (p: Panel) => (p.kind === "side" ? (p.x === 0 ? "side-left" : "side-right") : p.kind === "top" || p.kind === "bottom" ? p.kind : byPosition.get(at(p.kind, p.x, p.y))!);
   const near = (a: number, b: number) => Math.abs(a - b) < 1e-6;
   const horizontal = (p: Panel) => p.kind === "top" || p.kind === "bottom" || p.kind === "shelf";
-  const line = (data: string, x1: number, y1: number, x2: number, y2: number, color: string, px: number) =>
-    `<line ${data} x1="${num(x1)}" y1="${num(y1)}" x2="${num(x2)}" y2="${num(y2)}" stroke="${color}" stroke-width="${px}" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
 
   const marks = (p: Panel): string[] => {
     const out: string[] = [];
@@ -249,7 +230,7 @@ export function assemblyDrawings(project: Project, designId: string): AssemblyDr
       for (const d of panels.filter((candidate) => candidate.kind === "divider" && candidate.x > p.x + 1e-6 && candidate.x < p.x + p.width - 1e-6)) {
         const under = near(d.y, p.y + t);
         const over = near(d.y + d.height, p.y);
-        if (under || over) out.push(line("data-mark", d.x, p.y - (over ? unit : 0), d.x, p.y + t + (under ? unit : 0), MARK_COLOR, 2.5));
+        if (under || over) out.push(drawLine("data-mark", d.x, p.y - (over ? unit : 0), d.x, p.y + t + (under ? unit : 0), MARK_COLOR, 2.5));
       }
       return out;
     }
@@ -261,7 +242,7 @@ export function assemblyDrawings(project: Project, designId: string): AssemblyDr
       const end = ends.get(s.y) ?? { left: false, right: false };
       ends.set(s.y, { left: end.left || left, right: end.right || right });
     }
-    for (const [y, end] of ends) out.push(line("data-mark", p.x - (end.left ? unit : 0), y + t, p.x + t + (end.right ? unit : 0), y + t, MARK_COLOR, 2.5));
+    for (const [y, end] of ends) out.push(drawLine("data-mark", p.x - (end.left ? unit : 0), y + t, p.x + t + (end.right ? unit : 0), y + t, MARK_COLOR, 2.5));
     return out;
   };
 
@@ -278,12 +259,7 @@ export function assemblyDrawings(project: Project, designId: string): AssemblyDr
   };
 
   const mountAt = steps.findIndex((step) => step.action === "mount");
-  const boardFill = (state: DrawState) =>
-    state === "current"
-      ? `fill="${ASSEMBLY_ACCENT}" stroke="${ACCENT_STROKE}" stroke-width="1.5"`
-      : state === "placed"
-        ? `fill="${escapeXml(fill)}" stroke="#333" stroke-width="1"`
-        : `fill="none" stroke="${LATER_COLOR}" stroke-width="1"`;
+  const boardFill = (state: DrawState) => boardPaint(state, fill);
 
   const joined = new Set<string>();
   return steps.map((step, index) => {
@@ -308,7 +284,7 @@ export function assemblyDrawings(project: Project, designId: string): AssemblyDr
     });
     if (step.action === "mark") panels.forEach((p, i) => states[i] === "current" && out.push(...marks(p)));
     if (step.action === "spacers") out.push(...spacers());
-    if (step.action === "square") out.push(line("data-diagonal", 0, 0, width, height, ASSEMBLY_ACCENT, 2.5), line("data-diagonal", width, 0, 0, height, ASSEMBLY_ACCENT, 2.5));
+    if (step.action === "square") out.push(drawLine("data-diagonal", 0, 0, width, height, ASSEMBLY_ACCENT, 2.5), drawLine("data-diagonal", width, 0, 0, height, ASSEMBLY_ACCENT, 2.5));
     if (step.action === "anchor") {
       out.push(`<rect data-anchor x="${num(width / 2 - unit)}" y="${num(-unit * 0.9)}" width="${num(unit * 2)}" height="${num(unit * 0.9)}" ${boardFill("current")} vector-effect="non-scaling-stroke"><title>Anti-tip fitting</title></rect>`);
     }

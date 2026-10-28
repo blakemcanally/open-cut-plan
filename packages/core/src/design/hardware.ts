@@ -4,41 +4,13 @@ import { designParts } from "./generate.ts";
 import { designGeometry, materialsById, type DesignGeometry } from "./geometry.ts";
 import { boardLength, designLayout } from "./layout.ts";
 import { isOpenBox, openBoxPocketHoles } from "./openBox.ts";
-import { COUNT_EPSILON, pocketHolesPerEnd } from "./pocket.ts";
+import { CHART_TOLERANCE_MM, COUNT_EPSILON, pocketHolesPerEnd, pocketScrew, POCKET_SCREWS, type PocketScrew } from "./pocket.ts";
 import { IKEA_FEET, IKEA_LEGS, IKEA_RAIL_35, IKEA_RAIL_70 } from "./ikea.ts";
-import { DEFAULT_DESIGN_MOUNT, DEFAULT_DESIGN_QUANTITY, EKET, EKET_TOLERANCE_MM, isDesignMount, MAX_POCKET_CHART_MM, MIN_POCKET_THICKNESS_MM } from "./systems.ts";
+import { DEFAULT_DESIGN_MOUNT, DEFAULT_DESIGN_QUANTITY, EKET, EKET_TOLERANCE_MM, isDesignMount } from "./systems.ts";
 
-export { pocketHolesPerEnd };
-
-export interface PocketScrew {
-  /** The jig mark and the collar setting, in inches. */
-  setting: number;
-  screw: string;
-}
+export { pocketHolesPerEnd, pocketScrew, POCKET_SCREWS, type PocketScrew };
 
 export const POCKET_SCREW_SOURCE = "https://www.kregtool.com/on/demandware.static/-/Library-Sites-RefArchSharedLibrary/default/dwbda477b7/manuals/K5_NA.pdf";
-
-/** Kreg's chart for the K4 and K5 jigs. The jig marks are the actual board thickness. */
-export const POCKET_SCREWS: readonly PocketScrew[] = [
-  { setting: 0.5, screw: '1" (25 mm)' },
-  { setting: 0.625, screw: '1" (25 mm)' },
-  { setting: 0.75, screw: '1 1/4" (32 mm)' },
-  { setting: 0.875, screw: '1 1/2" (38 mm)' },
-  { setting: 1, screw: '1 1/2" (38 mm)' },
-  { setting: 1.125, screw: '1 1/2" (38 mm)' },
-  { setting: 1.25, screw: '2" (50 mm)' },
-  { setting: 1.375, screw: '2" (50 mm)' },
-  { setting: 1.5, screw: '2 1/2" (64 mm)' },
-];
-
-const CHART_TOLERANCE_MM = 0.01;
-
-/** The row for the nearest jig mark, or null for stock outside the chart. */
-export function pocketScrew(thicknessMm: number): PocketScrew | null {
-  if (thicknessMm < MIN_POCKET_THICKNESS_MM - CHART_TOLERANCE_MM || thicknessMm > MAX_POCKET_CHART_MM + CHART_TOLERANCE_MM) return null;
-  const setting = Math.min(1.5, Math.max(0.5, Math.round((thicknessMm / 25.4) * 8) / 8));
-  return POCKET_SCREWS.find((row) => row.setting === setting) ?? null;
-}
 
 const THIN_BACK_MM = 7;
 

@@ -2,32 +2,16 @@ import { formatLength } from "../geometry/format.ts";
 import { convertLength } from "../geometry/units.ts";
 import type { Design, Project } from "../format/schema.ts";
 import { designParts } from "./generate.ts";
+import type { AssemblyAction, AssemblyBoard, AssemblyStep } from "./assemblyTypes.ts";
 import { designGeometry, materialsById, roundLength, type DesignGeometry } from "./geometry.ts";
 import { backScrewCount, backScrewName, pocketHolesPerEnd, pocketScrew, railsFor } from "./hardware.ts";
 import { boardLength, cellStarts, designLayout, segments, spanLength, type Board, type BoardLayout } from "./layout.ts";
-import { isOpenBox } from "./openBox.ts";
+import { isOpenBox, openBoxSteps } from "./openBox.ts";
 import { dividerName, shelfName } from "./parts.ts";
 import { IKEA_FEET, IKEA_LEGS, IKEA_RAIL_35, IKEA_RAIL_70, RAIL_CLEARANCE_MM } from "./ikea.ts";
 import { DEFAULT_DESIGN_MOUNT, DEFAULT_DESIGN_QUANTITY, isDesignMount } from "./systems.ts";
 
-/** A board of one unit: a box panel, the back, or a divider or shelf board of `designLayout`. */
-export type AssemblyBoard = { kind: "top" | "bottom" | "back" } | { kind: "side"; side: "left" | "right" } | Board;
-
-/**
- * What a step does: drill or mark its boards, cut spacers, join its boards to each other off the unit (`subassembly`),
- * add its boards to the unit (`join`), check the diagonals (`square`), fit the legs, the feet, or the wall rail
- * (`mount`), fix the unit to the wall (`anchor`), or finish the surface of the unit with the finish steps of the design
- * (`finish`).
- */
-export type AssemblyAction = "drill" | "mark" | "spacers" | "subassembly" | "join" | "square" | "mount" | "anchor" | "finish";
-
-export interface AssemblyStep {
-  title: string;
-  body: string;
-  action?: AssemblyAction;
-  /** The boards that the step works on. A `join` step gives only the boards that it adds to the unit. */
-  boards?: AssemblyBoard[];
-}
+export type { AssemblyAction, AssemblyBoard, AssemblyStep };
 
 const LEFT: AssemblyBoard = { kind: "side", side: "left" };
 const RIGHT: AssemblyBoard = { kind: "side", side: "right" };
@@ -51,7 +35,8 @@ export function finishSteps(design: Design): AssemblyStep[] {
 /** The steps to build one unit of a design, or null when the design does not exist or cannot make parts. */
 export function assemblySteps(project: Project, designId: string): AssemblyStep[] | null {
   const design = project.designs?.find((candidate) => candidate.id === designId);
-  if (!design || isOpenBox(design) || designParts(project, design) === null) return null;
+  if (!design || designParts(project, design) === null) return null;
+  if (isOpenBox(design)) return [...openBoxSteps(project, design), ...finishSteps(design)];
   const geometry = designGeometry(design, materialsById(project))!;
   const units = project.project.units;
   const show = (value: number) => formatLength(value, units, project.settings.display);

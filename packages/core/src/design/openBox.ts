@@ -3,10 +3,17 @@ import { formatLength } from "../geometry/format.ts";
 import { EPSILON } from "../geometry/rect.ts";
 import { convertLength, type Units } from "../geometry/units.ts";
 import { planError, planWarning, type PlanIssue } from "../plan/issues.ts";
-import { pocketHolesPerEnd } from "./pocket.ts";
+import type { AssemblyBoard, AssemblyStep } from "./assemblyTypes.ts";
+import { pocketHolesPerEnd, pocketScrew } from "./pocket.ts";
 import { designRef } from "./ref.ts";
-import { roundLength, type DesignGeometry } from "./geometry.ts";
+import { designGeometry, materialsById, roundLength, type DesignGeometry } from "./geometry.ts";
 import { DEFAULT_DESIGN_QUANTITY, designKind, KALLAX, KALLAX_CLEARANCE_MM } from "./systems.ts";
+
+const FRONT: AssemblyBoard = { kind: "front" };
+const BACK: AssemblyBoard = { kind: "back" };
+const LEFT: AssemblyBoard = { kind: "side", side: "left" };
+const RIGHT: AssemblyBoard = { kind: "side", side: "right" };
+const BOTTOM: AssemblyBoard = { kind: "bottom" };
 
 export function isOpenBox(design: Design): boolean {
   return designKind(design) === "open-box";
@@ -70,6 +77,46 @@ export function openBoxPocketHoles(geometry: DesignGeometry, units: Units): Open
   const bottomFrontBack = holes(w - 2 * t);
   const bottomSide = holes(d - 2 * t);
   return { sideEnd, bottomFrontBack, bottomSide, total: 4 * sideEnd + 2 * bottomFrontBack + 2 * bottomSide };
+}
+
+/** The steps to build one unit of a valid open-top box, before its finish steps. */
+export function openBoxSteps(project: Project, design: Design): AssemblyStep[] {
+  const geometry = designGeometry(design, materialsById(project))!;
+  const units = project.project.units;
+  const show = (value: number) => formatLength(value, units, project.settings.display);
+  const mm = (value: number) => convertLength(value, units, "mm");
+  const quantity = design.quantity ?? DEFAULT_DESIGN_QUANTITY;
+  const holes = openBoxPocketHoles(geometry, units);
+  const screw = pocketScrew(mm(geometry.thickness));
+  const screws = screw ? `${screw.screw} coarse-thread pocket screws` : "pocket screws (the chart has no length for this stock)";
+  const setting = screw ? ` Set the jig and the drill collar to the ${formatLength(screw.setting, "in", { inch: 8, mm: 1 })} mark.` : "";
+  const diagonal = roundLength(Math.hypot(geometry.outsideWidth, geometry.depth));
+  return [
+    {
+      title: "Drill the pocket holes",
+      body: `${quantity > 1 ? `Build ${quantity} of these. The numbers in these steps are for one unit. ` : ""}Drill ${holes.sideEnd} pocket holes in each end of the 2 sides, on the inside face of each side. Drill ${holes.bottomFrontBack} pocket holes along the front edge and the back edge of the bottom, and ${holes.bottomSide} along each side edge, on the underside. The holes are for ${show(geometry.thickness)} stock.${setting}`,
+      action: "drill",
+      boards: [LEFT, RIGHT, BOTTOM],
+    },
+    {
+      title: "Join the sides to the front and the back",
+      body: `Put glue on the ends of the 2 sides. Stand them between the front and the back, flush with the top edge and the bottom edge of both. Screw each side to the front and to the back through the pocket holes with ${screws}.`,
+      action: "join",
+      boards: [FRONT, BACK, LEFT, RIGHT],
+    },
+    {
+      title: "Check that it is square",
+      body: `Measure the two diagonals of the top opening. Both must be ${show(diagonal)}. If they are not the same, push the long diagonal in until they are.`,
+      action: "square",
+      boards: [],
+    },
+    {
+      title: "Fit the bottom",
+      body: `Put glue on the edges of the bottom. Set it between the walls, flush with their lower edges, with the pocket holes down. Screw it to the walls through the pocket holes with ${screws}.`,
+      action: "join",
+      boards: [BOTTOM],
+    },
+  ];
 }
 
 /** A warning for each size of an open-top box for the system kallax that is over what fits a KALLAX-style cube. */
