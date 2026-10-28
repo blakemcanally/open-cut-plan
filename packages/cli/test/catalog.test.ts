@@ -53,7 +53,7 @@ describe("materials add --catalog", () => {
     const io = await newProject("mm");
     const result = await cli(["materials", "add", "p.json", "--catalog", "baltic-birch-18mm", "--json"], io);
     expect(result.code).toBe(0);
-    expect(result.json()).toMatchObject({ material: { id: "baltic-birch-18mm", name: 'Baltic birch 3/4" (18 mm)', thickness: 18, grained: true }, added: true });
+    expect(result.json()).toMatchObject({ material: { id: "baltic-birch-18mm", name: 'Baltic birch 3/4" (18 mm)', thickness: 18, grained: false }, added: true });
     expect(result.file("p.json").materials).toHaveLength(1);
     const named = await cli(["materials", "add", "p.json", "--catalog", "mdf-3-4", "--id", "mdf", "--color", "#ccc", "--json"], io);
     expect(named.json().material).toEqual({ id: "mdf", name: 'MDF 3/4"', thickness: 19.1, grained: false, color: "#ccc" });

@@ -10,7 +10,7 @@ describe("addPartRows", () => {
       { name: "Door", length: 20, width: 10, quantity: 2, material: "MDF", grain: "none", thickness: 0.5, group: "Doors" },
       { name: "Drawer front", length: 18, width: 6, quantity: 3, material: "mdf", grain: "none" },
     ]);
-    expect(createdMaterials).toEqual([{ id: "mdf", name: "MDF", thickness: 0.5, grained: true }]);
+    expect(createdMaterials).toEqual([{ id: "mdf", name: "MDF", thickness: 0.5, grained: false }]);
     expect(project.parts.map((part) => [part.id, part.material])).toEqual([
       ["side", "ply"],
       ["side-2", "ply"],
@@ -36,8 +36,8 @@ describe("addPartRows", () => {
       { name: "Top", length: 700, width: 300, quantity: 1, material: "Plywood", grain: "length", thickness: 18.02 },
     ]);
     expect(createdMaterials).toEqual([
-      { id: "plywood", name: "Plywood", thickness: 18, grained: true },
-      { id: "plywood-6-mm", name: "Plywood (6 mm)", thickness: 6, grained: true },
+      { id: "plywood", name: "Plywood", thickness: 18, grained: false },
+      { id: "plywood-6-mm", name: "Plywood (6 mm)", thickness: 6, grained: false },
     ]);
     expect(project.parts.map((part) => part.material)).toEqual(["plywood", "plywood-6-mm", "plywood", "plywood-6-mm", "plywood"]);
     expect(parseProject(project).ok).toBe(true);
@@ -48,7 +48,7 @@ describe("addPartRows", () => {
       { name: "Back", length: 30, width: 20, quantity: 1, material: "Plywood 3/4", grain: "none", thickness: 0.25 },
       { name: "Top", length: 30, width: 12, quantity: 1, material: "Plywood 3/4", grain: "length", thickness: 0.7505 },
     ]);
-    expect(createdMaterials).toEqual([{ id: "plywood-3-4-1-4", name: 'Plywood 3/4 (1/4")', thickness: 0.25, grained: true }]);
+    expect(createdMaterials).toEqual([{ id: "plywood-3-4-1-4", name: 'Plywood 3/4 (1/4")', thickness: 0.25, grained: false }]);
     expect(project.parts.slice(1).map((part) => part.material)).toEqual(["plywood-3-4-1-4", "ply"]);
   });
 
@@ -65,7 +65,7 @@ describe("addStockRows", () => {
       { material: "Plywood 3/4", length: 60, width: 60, quantity: null, kind: "sheet", cost: 95 },
       { material: "Hardboard", length: 96, width: 48, quantity: 2, kind: "sheet", thickness: 0.125 },
     ]);
-    expect(createdMaterials).toEqual([{ id: "hardboard", name: "Hardboard", thickness: 0.125, grained: true }]);
+    expect(createdMaterials).toEqual([{ id: "hardboard", name: "Hardboard", thickness: 0.125, grained: false }]);
     expect(project.stock.slice(1)).toEqual([
       { id: "plywood-3-4-60x60", material: "ply", length: 60, width: 60, quantity: null, kind: "sheet", cost: 95 },
       { id: "hardboard-96x48", material: "hardboard", length: 96, width: 48, quantity: 2, kind: "sheet" },

@@ -10,7 +10,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '1/8"',
     thicknessIn: 1 / 8,
     thicknessMm: 3.2,
-    grained: true,
+    grained: false,
     notes: "Home Depot R/C C-2 birch hardwood plywood, model 1400140; it lists 0.125 in. Lowe's has no 1/8 in birch plywood; its 4 × 8 ft 1/8 in panels are lauan.",
     sizes: [
       {
@@ -33,7 +33,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '1/4"',
     thicknessIn: 3 / 16,
     thicknessMm: 4.8,
-    grained: true,
+    grained: false,
     notes: "PureBond birch at Home Depot. Home Depot lists 0.188 in; the Lowe's 2 × 4 ft panel lists 0.22 in.",
     sizes: [
       {
@@ -79,7 +79,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '1/2"',
     thicknessIn: 15 / 32,
     thicknessMm: 11.9,
-    grained: true,
+    grained: false,
     notes: "PureBond and ProWood birch. ProWood lists 0.47 in. Lowe's no longer sells 4 × 8 ft sheets online. The 2 × 8 ft and 4 × 4 ft PureBond project panel sizes are nominal.",
     sizes: [
       {
@@ -137,7 +137,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '3/4"',
     thicknessIn: 45 / 64,
     thicknessMm: 17.9,
-    grained: true,
+    grained: false,
     notes: "PureBond, ProWood, and Top Choice birch. Most listings give 0.703 in; some 2 × 4 ft panels give 0.72 in. The 2 × 8 ft and 4 × 4 ft PureBond project panel sizes are nominal.",
     sizes: [
       {
@@ -207,7 +207,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '1/4"',
     thicknessIn: 3 / 16,
     thicknessMm: 4.8,
-    grained: true,
+    grained: false,
     notes: 'Home Depot PureBond project panels and Lowe\'s SkyPly panels. The thickness comes from PureBond birch 1/4" and is not checked for oak. The Lowe\'s SkyPly 4 × 8 ft and 2 × 4 ft sizes are nominal. Lowe\'s 2 × 4 ft panels were seen at $25.88 to $28.98, some of them in old snapshots, so the listing has no price.',
     sizes: [
       {
@@ -263,7 +263,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '1/2"',
     thicknessIn: 15 / 32,
     thicknessMm: 11.9,
-    grained: true,
+    grained: false,
     notes: "The thickness comes from PureBond birch 1/2\" and is not checked for oak. The Lowe's 4 × 8 ft price may be old.",
     sizes: [
       {
@@ -319,7 +319,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '3/4"',
     thicknessIn: 45 / 64,
     thicknessMm: 17.9,
-    grained: true,
+    grained: false,
     notes: "Home Depot PureBond project panels and Lowe's SkyPly panels. Lowe's oak plywood sizes are nominal. The catalogue uses the Home Depot size, 48 × 96 in for the 4 × 8 ft.",
     sizes: [
       {
@@ -387,7 +387,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '1/4"',
     thicknessIn: 0.22,
     thicknessMm: 5.6,
-    grained: true,
+    grained: false,
     notes: "Lowe's lists 0.203 to 0.25 in for different items; the catalogue uses 0.22 in. The Home Depot thickness is not checked.",
     sizes: [
       {
@@ -432,7 +432,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '1/2"',
     thicknessIn: 15 / 32,
     thicknessMm: 11.9,
-    grained: true,
+    grained: false,
     notes: 'The thickness comes from PureBond birch 1/2" and is not checked for maple.',
     sizes: [
       {
@@ -478,7 +478,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '3/4"',
     thicknessIn: 45 / 64,
     thicknessMm: 17.9,
-    grained: true,
+    grained: false,
     notes: "Lowe's lists the 4 × 8 ft sheet as about 48 1/2 × 96 1/2 in; the catalogue uses the Home Depot size, 48 × 96 in.",
     sizes: [
       {
@@ -525,7 +525,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '1/2"',
     thicknessIn: 15 / 32,
     thicknessMm: 11.9,
-    grained: true,
+    grained: false,
     notes: "A lower-cost plywood with a hardwood (poplar) face. The thickness is not checked. The ProWood 2 × 4 ft listing gives no actual thickness.",
     sizes: [
       {
@@ -559,7 +559,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '3/4"',
     thicknessIn: 45 / 64,
     thicknessMm: 17.9,
-    grained: true,
+    grained: false,
     notes: "A lower-cost plywood with a hardwood face (Sande, poplar). The face veneer is thin. The ProWood 2 × 4 ft panel lists 0.709 in; the catalogue uses 45/64 in = 0.703 in, from the 4 × 8 ft Home Depot listing.",
     sizes: [
       {
@@ -594,7 +594,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: "6 mm",
     thicknessIn: 0.236,
     thicknessMm: 6,
-    grained: true,
+    grained: false,
     notes: "5 plies. Home Depot and Lowe's do not sell full sheets. Specialty sellers sell 5 × 5 ft (1525 mm) sheets. No prices.",
     sizes: [
       {
@@ -628,7 +628,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: "12 mm",
     thicknessIn: 0.472,
     thicknessMm: 12,
-    grained: true,
+    grained: false,
     notes: "9 plies. Home Depot and Lowe's do not sell it. Specialty sellers sell 5 × 5 ft (1525 mm) sheets and cut sizes. No prices.",
     sizes: [
       {
@@ -673,7 +673,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: "18 mm",
     thicknessIn: 0.709,
     thicknessMm: 18,
-    grained: true,
+    grained: false,
     notes: "13 plies. Home Depot and Lowe's do not sell it. Specialty sellers sell 5 × 5 ft sheets and cut sizes; cut sizes can be up to 1/8 in small. No prices.",
     sizes: [
       {
@@ -762,7 +762,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '3/8" (11/32")',
     thicknessIn: 11 / 32,
     thicknessMm: 8.7,
-    grained: true,
+    grained: false,
     notes: "Fir sheathing. Home Depot lists 0.344 in and 48 × 96 in; Lowe's lists 0.343 in and about 47.4 × 95.9 in (3.953 × 7.989 ft), and the catalogue uses the Home Depot size. Neither store calls this panel CDX.",
     sizes: [
       {
@@ -786,7 +786,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '1/2" (15/32")',
     thicknessIn: 7 / 16,
     thicknessMm: 11.1,
-    grained: true,
+    grained: false,
     notes: "Fir sheathing. Home Depot lists 0.438 in.",
     sizes: [
       {
@@ -809,7 +809,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '5/8" (19/32")',
     thicknessIn: 9 / 16,
     thicknessMm: 14.3,
-    grained: true,
+    grained: false,
     notes: "Fir sheathing. Home Depot lists 0.563 in and 48 × 96 in; Lowe's lists about 0.594 in and about 47.4 × 95.9 in, and the catalogue uses the Home Depot size. Neither store calls this panel CDX. Home Depot 4 × 8 ft listings: item 439606 is out of stock, and SKU 407735 was seen at $30.98 to $33.96, some of them in old snapshots, so the listing has no price.",
     sizes: [
       {
@@ -833,7 +833,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '3/4" (23/32")',
     thicknessIn: 11 / 16,
     thicknessMm: 17.5,
-    grained: true,
+    grained: false,
     notes: "Fir sheathing. Home Depot lists 0.688 in.",
     sizes: [
       {
@@ -857,7 +857,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '1/4"',
     thicknessIn: 15 / 64,
     thicknessMm: 5.9,
-    grained: true,
+    grained: false,
     notes: "Plytanium BC. Georgia-Pacific gives 0.234 in and a smallest size of 47 7/8 × 95 7/8 in. The Home Depot 2 × 4 ft and 2 × 2 ft panels list 0.224 in and 0.22 in (the 4 × 8 ft entry uses 15/64 in = 0.234). Home Depot 2 × 4 ft panels were seen at $11.22 to $16.98, some of them in old snapshots. Home Depot 2 × 2 ft panels cost $6.66 to $9.98. Those listings have no price, because the prices differ.",
     sizes: [
       {
@@ -902,7 +902,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '3/8" (11/32")',
     thicknessIn: 11 / 32,
     thicknessMm: 8.7,
-    grained: true,
+    grained: false,
     notes: "Plytanium BC (Home Depot) and BCX (Lowe's). The thickness is the nominal 11/32 in; the actual thickness is not checked. Lowe's and Georgia-Pacific list 0.328 in and about 47 7/8 × 95 7/8 in. Home Depot 4 × 8 ft panels were seen at $21.73 to $42.87, some of them in old snapshots, so the listing has no price.",
     sizes: [
       {
@@ -926,7 +926,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '1/2" (15/32")',
     thicknessIn: 15 / 32,
     thicknessMm: 11.9,
-    grained: true,
+    grained: false,
     notes: "Plytanium BC. The thickness is the nominal 15/32 in; the actual thickness is not checked.",
     sizes: [
       {
@@ -949,7 +949,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '5/8" (19/32")',
     thicknessIn: 19 / 32,
     thicknessMm: 15.1,
-    grained: true,
+    grained: false,
     notes: "Plytanium BC (Home Depot) and BCX (Lowe's). The thickness is the nominal 19/32 in; the actual thickness is not checked. Lowe's and Georgia-Pacific list 0.578 in and about 47 7/8 × 95 7/8 in.",
     sizes: [
       {
@@ -973,7 +973,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '3/4" (23/32")',
     thicknessIn: 23 / 32,
     thicknessMm: 18.3,
-    grained: true,
+    grained: false,
     notes: "Plytanium BC and ProWood radiata pine. The thickness is the nominal 23/32 in; the actual thickness is not checked. The ProWood radiata pine 2 × 4 ft panel lists 0.719 in, which equals 23/32 in.",
     sizes: [
       {
@@ -1007,7 +1007,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '1/4" (5.2 mm)',
     thicknessIn: 13 / 64,
     thicknessMm: 5.2,
-    grained: true,
+    grained: false,
     notes: "Meranti lauan underlayment. Home Depot lists 0.203 in; the Lowe's 2 × 4 ft panel lists 0.22 in.",
     sizes: [
       {
@@ -1041,7 +1041,7 @@ const SHEET_GOODS: readonly CatalogMaterial[] = [
     nominal: '1/4" (5.2 mm)',
     thicknessIn: 0.205,
     thicknessMm: 5.2,
-    grained: true,
+    grained: false,
     notes: "Sanded poplar underlayment, 0.205 in. A 5 mm ReliaBilt poplar panel (0.197 in) costs less.",
     sizes: [
       {

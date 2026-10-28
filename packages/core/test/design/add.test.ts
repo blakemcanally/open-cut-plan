@@ -56,7 +56,7 @@ describe("pickBoxMaterial and pickBackMaterial", () => {
       stock: [{ id: "birch-sheet", material: "birch", length: 97, width: 49, quantity: null, cost: 60, kind: "sheet" }],
     });
     expect(picked.back).toBe("plywood-1-4");
-    expect(picked.project.materials.at(-1)).toEqual({ id: "plywood-1-4", name: 'Plywood 1/4"', thickness: 0.25, grained: true });
+    expect(picked.project.materials.at(-1)).toEqual({ id: "plywood-1-4", name: 'Plywood 1/4"', thickness: 0.25, grained: false });
     expect(picked.project.stock.at(-1)).toEqual({ id: "plywood-1-4-97x49", material: "plywood-1-4", length: 97, width: 49, quantity: null, kind: "sheet" });
   });
 });

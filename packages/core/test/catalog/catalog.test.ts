@@ -20,7 +20,7 @@ function project(units: "in" | "mm" = "in", currency = "USD"): Project {
 describe("catalogFor", () => {
   it("gives the sizes and the thickness in inches", () => {
     const birch = catalogFor("in").find((material) => material.id === "birch-ply-3-4")!;
-    expect(birch).toMatchObject({ family: "Hardwood plywood", name: 'Birch plywood 3/4"', nominal: '3/4"', thickness: 45 / 64, grained: true });
+    expect(birch).toMatchObject({ family: "Hardwood plywood", name: 'Birch plywood 3/4"', nominal: '3/4"', thickness: 45 / 64, grained: false });
     expect(birch.sizes[0]).toMatchObject({ id: "birch-ply-3-4-4x8", label: "4 × 8 ft", length: 96, width: 48 });
   });
 
@@ -79,7 +79,7 @@ describe("addCatalogMaterial", () => {
   it("adds the material with the actual thickness in the project units", () => {
     const result = addCatalogMaterial(project("mm"), "baltic-birch-18mm");
     expect(result).toMatchObject({ material: "baltic-birch-18mm", addedMaterial: true, stock: null, addedStock: false });
-    expect(result.project.materials).toEqual([{ id: "baltic-birch-18mm", name: 'Baltic birch 3/4" (18 mm)', thickness: 18, grained: true }]);
+    expect(result.project.materials).toEqual([{ id: "baltic-birch-18mm", name: 'Baltic birch 3/4" (18 mm)', thickness: 18, grained: false }]);
     expect(result.project.stock).toEqual([]);
   });
 

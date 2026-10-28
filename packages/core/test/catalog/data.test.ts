@@ -108,6 +108,10 @@ describe("catalogue data", () => {
     }
   });
 
+  it("grains the boards and not the sheet goods", () => {
+    for (const material of CATALOG) expect(material.grained, material.id).toBe(material.edges === "factory");
+  });
+
   it("has common and select pine 1x boards from 1x2 to 1x12", () => {
     for (const id of ["common-pine-1x", "select-pine-1x"]) {
       const material = CATALOG.find((entry) => entry.id === id)!;

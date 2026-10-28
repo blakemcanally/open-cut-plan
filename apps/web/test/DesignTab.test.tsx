@@ -134,7 +134,7 @@ describe("DesignTab", () => {
       stock: [{ id: "birch-sheet", material: "birch", length: 97, width: 49, quantity: null, cost: 60, kind: "sheet" }],
     });
     await addCubeShelf();
-    expect(current().project.materials.at(-1)).toEqual({ id: "plywood-1-4", name: 'Plywood 1/4"', thickness: 0.25, grained: true });
+    expect(current().project.materials.at(-1)).toEqual({ id: "plywood-1-4", name: 'Plywood 1/4"', thickness: 0.25, grained: false });
     expect(current().project.stock.at(-1)).toEqual({ id: "plywood-1-4-97x49", material: "plywood-1-4", length: 97, width: 49, quantity: null, kind: "sheet" });
     expect(design(current).back).toEqual({ material: "plywood-1-4" });
   });
@@ -226,7 +226,7 @@ describe("DesignTab", () => {
     expect(within(material).getByRole("group", { name: "Catalogue: Baltic birch plywood" })).toBeTruthy();
     await userEvent.selectOptions(material, 'Baltic birch 3/4" (18 mm)');
     expect(design(current).material).toBe("baltic-birch-18mm");
-    expect(current().project.materials.at(-1)).toEqual({ id: "baltic-birch-18mm", name: 'Baltic birch 3/4" (18 mm)', thickness: 18, grained: true });
+    expect(current().project.materials.at(-1)).toEqual({ id: "baltic-birch-18mm", name: 'Baltic birch 3/4" (18 mm)', thickness: 18, grained: false });
     expect(current().project.stock.at(-1)).toEqual({ id: "baltic-birch-18mm-5x5", material: "baltic-birch-18mm", length: 1525, width: 1525, quantity: null, kind: "sheet" });
     expect(material).toHaveProperty("value", "baltic-birch-18mm");
     expect(within(material).queryByRole("option", { name: 'Baltic birch 3/4" (18 mm)' })).toBeNull();

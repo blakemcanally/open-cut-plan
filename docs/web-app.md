@@ -217,6 +217,8 @@ A materials table (name, thickness, grain, colour, and status) and a stock table
 unlimited, cost, kind, edges, and whether to use it). Stock also has a CSV import. **Edges** is the project choice,
 **Use factory edges**, or **Trim** with a width for that stock. Deleting stock also removes its sheets from the plan.
 
+- A new material has no grain. Turn on **Grained** for a material whose parts must keep the grain direction, for
+  example solid wood. In the catalogue, the boards are grained and the sheet goods, plywood included, are not.
 - Each material has its own colour. A material with no chosen colour gets the colour of its place in the list, from a
   set of wood and board colours that are not part colours. Choose a colour in the box to keep it in the file.
 - **Status** gives one line for each material, for example "Used by 13 parts · 1 size · no price". "1 size" counts

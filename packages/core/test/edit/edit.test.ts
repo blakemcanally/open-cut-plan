@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
+  addMaterial,
   addPart,
   addSheet,
   addStock,
@@ -40,9 +41,13 @@ import {
 import { editSampleProject as sampleProject } from "../helpers.ts";
 
 describe("part edits", () => {
+  it("adds a material that is not grained", () => {
+    expect(addMaterial(createProject("New", "in")).materials).toEqual([{ id: "material-1", name: "Material 1", thickness: 0.75, grained: false }]);
+  });
+
   it("adds a part, and a material when the project has none", () => {
     const { project, id } = addPart(createProject("New", "mm"));
-    expect(project.materials).toEqual([{ id: "plywood", name: "Plywood", thickness: 18, grained: true }]);
+    expect(project.materials).toEqual([{ id: "plywood", name: "Plywood", thickness: 18, grained: false }]);
     expect(project.parts).toEqual([{ id, name: "Part 1", material: "plywood", length: 600, width: 300, quantity: 1, grain: "length" }]);
   });
 

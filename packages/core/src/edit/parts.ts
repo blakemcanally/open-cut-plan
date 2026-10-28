@@ -12,7 +12,7 @@ export const DEFAULT_THICKNESS: Readonly<Record<Units, number>> = { in: 0.75, mm
 export function ensureMaterial(project: Project): { project: Project; material: string } {
   const first = project.materials[0];
   if (first) return { project, material: first.id };
-  const material: Material = { id: "plywood", name: "Plywood", thickness: DEFAULT_THICKNESS[project.project.units], grained: true };
+  const material: Material = { id: "plywood", name: "Plywood", thickness: DEFAULT_THICKNESS[project.project.units], grained: false };
   return { project: { ...project, materials: [material] }, material: material.id };
 }
 

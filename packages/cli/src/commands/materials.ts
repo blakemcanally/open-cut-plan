@@ -39,7 +39,7 @@ function line(project: Project, material: Material): string {
 const FIELD_OPTIONS = {
   name: { name: "name", type: "string", value: "<text>", description: "The name, for example \"Baltic birch 18mm\"." },
   thickness: { name: "thickness", type: "string", value: "<length>", description: "The actual thickness, not the nominal one." },
-  grained: { name: "grained", type: "string", value: "<true|false>", description: "true when the face has a grain or pattern direction. Default for add: true." },
+  grained: { name: "grained", type: "string", value: "<true|false>", description: "true when the face has a grain or pattern direction. Default for add: false." },
   color: { name: "color", type: "string", value: "<css>", description: "A display colour (a CSS colour string)." },
   measured: { name: "measured", type: "string", value: "<true|false>", description: "true when the thickness is an actual, measured thickness. It stops the nominal thickness warning. A new --thickness with no --measured clears it." },
 } as const;
@@ -105,7 +105,7 @@ const add: CommandSpec = {
     ...OUTPUT_OPTIONS,
   ],
   examples: [
-    { command: `${PROGRAM} materials add shelf.cutplan.json --name "Baltic birch 18mm" --thickness 18mm`, description: "Add a grained material; the id is baltic-birch-18mm." },
+    { command: `${PROGRAM} materials add shelf.cutplan.json --name "Baltic birch 18mm" --thickness 18mm`, description: "Add a material with no grain; the id is baltic-birch-18mm." },
     { command: `${PROGRAM} materials add shelf.cutplan.json --name "Shop birch" --thickness 23/32 --id shop-birch`, description: "Add a material at its measured thickness." },
     { command: `${PROGRAM} materials add shelf.cutplan.json --catalog baltic-birch-18mm`, description: "Add Baltic birch 3/4\" (18 mm) from the catalogue." },
   ],
@@ -125,7 +125,7 @@ const add: CommandSpec = {
       id: newId(project.materials, str(options, "id"), name, "material"),
       name,
       thickness,
-      grained: optionalBoolean(options, "grained") ?? true,
+      grained: optionalBoolean(options, "grained") ?? false,
     };
     const color = str(options, "color");
     if (color !== undefined) material.color = color;

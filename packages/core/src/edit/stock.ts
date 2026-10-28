@@ -13,7 +13,7 @@ export function addMaterial(project: Project): Project {
     id: uniqueId(slugify(name), idsOf(project.materials)),
     name,
     thickness: DEFAULT_THICKNESS[project.project.units],
-    grained: true,
+    grained: false,
   };
   return { ...project, materials: [...project.materials, material] };
 }

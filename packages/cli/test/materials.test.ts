@@ -67,6 +67,7 @@ describe("materials and nominal thickness", () => {
     const added = await cli(["materials", "add", SHELF, "--name", "Plywood 3/4", "--thickness", "3/4", "--json"], io);
     expect(added.code).toBe(0);
     expect(added.json().warnings).toContainEqual(expect.stringContaining('nominal-thickness: 3/4" is a nominal thickness. Stock sold as 3/4" is often 45/64" or 11/16" thick.'));
+    expect(added.json().material).toMatchObject({ grained: false });
     const measured = await cli(["materials", "add", SHELF, "--name", "Shop MDF", "--thickness", "3/4", "--measured", "true", "--json"], io);
     expect(measured.json().material).toMatchObject({ name: "Shop MDF", measured: true });
     expect(measured.json().warnings ?? []).not.toContainEqual(expect.stringContaining("nominal-thickness"));

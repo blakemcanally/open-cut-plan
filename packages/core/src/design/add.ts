@@ -13,8 +13,8 @@ import { MIN_POCKET_THICKNESS_MM } from "./systems.ts";
 export type DesignAdd = { ok: true; project: Project; id: string } | { ok: false; issues: PlanIssue[] };
 
 const BACK_MATERIAL: Readonly<Record<Units, Omit<Material, "id">>> = {
-  in: { name: 'Plywood 1/4"', thickness: 0.25, grained: true },
-  mm: { name: "Plywood 6 mm", thickness: 6, grained: true },
+  in: { name: 'Plywood 1/4"', thickness: 0.25, grained: false },
+  mm: { name: "Plywood 6 mm", thickness: 6, grained: false },
 };
 
 /** The first material that is thick enough for pocket screws, or the first material. */

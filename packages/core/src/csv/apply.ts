@@ -30,7 +30,7 @@ function resolveMaterials(project: Project, rows: readonly MaterialRow[]) {
   const create = (name: string, thickness: number): string => {
     const id = uniqueId(slugify(name), taken);
     taken.add(id);
-    const material: Material = { id, name, thickness, grained: true };
+    const material: Material = { id, name, thickness, grained: false };
     materials.push(material);
     created.push(material);
     return id;
