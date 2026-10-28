@@ -17,7 +17,7 @@ describe("design starters", () => {
     const result = await cli(["design", "starters", "--json"]);
     expect(result.code).toBe(0);
     const json = result.json();
-    expect(json.starters.map((starter: { id: string }) => starter.id)).toEqual(["cube-shelf", "tv-bench", "media-unit", "bookcase", "wall-cubes", "nightstand", "crate", "custom-grid"]);
+    expect(json.starters.map((starter: { id: string }) => starter.id)).toEqual(["cube-shelf", "tv-bench", "media-unit", "bookcase", "wall-cubes", "nightstand", "crate", "stacking-shelf", "custom-grid"]);
     expect(json.starters).toEqual(JSON.parse(JSON.stringify(STARTERS.map(({ id, name, group, note, choices, defaults }) => ({ id, name, group, note, choices, defaults })))));
     expect(json.notice).toBe(IKEA_NOTICE);
   });

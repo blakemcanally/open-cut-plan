@@ -27,6 +27,8 @@ export function openBoxErrors(design: Design, geometry: DesignGeometry): PlanIss
   const issues: PlanIssue[] = [];
   if (design.back) issues.push(refuse(", so it has no back."));
   if (design.mount !== undefined && design.mount !== "floor") issues.push(refuse(", so it has no mount other than the floor."));
+  if (design.corners !== undefined) issues.push(refuse(", so it has no corners setting."));
+  if (design.fastener !== undefined) issues.push(refuse(", so it has no fastener setting."));
   if (geometry.combined) issues.push(refuse(", so it has no combined cells."));
   const outsideSize = (axis: Design["width"]) => "outside" in axis && axis.cells === 1;
   if (!outsideSize(design.width) || !outsideSize(design.height)) {

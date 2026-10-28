@@ -112,6 +112,9 @@ describe("the errors of an open-top box", () => {
   it.each<[string, Partial<Design>, string]>([
     ["back", { back: { material: "ply" } }, "has no back"],
     ["mount", { mount: "legs" }, "has no mount other than the floor"],
+    ["corners", { corners: "sides-over-top" }, "has no corners setting"],
+    ["fastener", { fastener: "face-screws" }, "has no fastener setting"],
+    ["cleats", { mount: "cleats" }, "has no mount other than the floor"],
     ["combined", { combined: [{ column: 1, row: 1, columns: 1, rows: 1 }] }, "has no combined cells"],
     ["eket", { system: "eket" }, "Use the system kallax or custom"],
     ["openings", { width: { openings: [300] } }, "Give its width and height as outside sizes with 1 cell"],
@@ -261,6 +264,18 @@ describe("the assembly steps of an open-top box", () => {
     expect(all.map((s) => s.action)).not.toContain("mount");
     expect(all.map((s) => s.title)).not.toContain("Fit the back");
   });
+
+  it.each<Partial<Design>>([{ corners: "sides-over-top" }, { fastener: "face-screws" }, { mount: "cleats" }])(
+    "gives no parts, steps, drawings, or front view for an open-top box with %j",
+    (patch) => {
+      const project = crate(patch);
+      expect(codes(project)).toEqual(["design-open-box"]);
+      expect(designParts(project, design(project))).toBeNull();
+      expect(assemblySteps(project, "crate")).toBeNull();
+      expect(assemblyDrawings(project, "crate")).toBeNull();
+      expect(designElevationSvg(project, "crate")).toBeNull();
+    },
+  );
 
   it("gives no steps, no drawings, and no front view for an open-top box with an error", () => {
     const small = openBoxProject("in", 23 / 32, { width: 1.4, height: 12.5, depth: 13.5 });

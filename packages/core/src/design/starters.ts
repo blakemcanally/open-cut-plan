@@ -9,8 +9,8 @@ import { isOpenBox } from "./openBox.ts";
 import { roundLength } from "./geometry.ts";
 import { EKET, KALLAX, presetAxis, presetDepth, type DesignMount, type SystemValue } from "./systems.ts";
 
-export type StarterId = "cube-shelf" | "tv-bench" | "media-unit" | "bookcase" | "wall-cubes" | "nightstand" | "crate" | "custom-grid";
-export type StarterGroup = "Cube shelves" | "Low units" | "Bookcases" | "Wall units" | "Small units" | "Accessories" | null;
+export type StarterId = "cube-shelf" | "tv-bench" | "media-unit" | "bookcase" | "wall-cubes" | "nightstand" | "crate" | "stacking-shelf" | "custom-grid";
+export type StarterGroup = "Cube shelves" | "Low units" | "Bookcases" | "Wall units" | "Small units" | "Accessories" | "Shop storage" | null;
 
 export interface GridChoice {
   kind: "grid";
@@ -61,6 +61,11 @@ const BILLY_ROWS = { "106": 3, "202": 6 } as const;
 const CRATE_SIZE: Readonly<Record<Units, { width: number; height: number; depth: number }>> = {
   in: { width: 12.5, height: 12.5, depth: 13.5 },
   mm: { width: 318, height: 318, depth: 343 },
+};
+
+const STACKING_SHELF_SIZE: Readonly<Record<Units, { width: number; height: number; depth: number }>> = {
+  in: { width: 52.5, height: 40, depth: 16 },
+  mm: { width: 1334, height: 1016, depth: 406 },
 };
 
 const crateFinish = (units: Units): string[] => {
@@ -210,6 +215,21 @@ export const STARTERS: readonly Starter[] = [
     },
   },
   {
+    id: "stacking-shelf",
+    name: "Stacking shelf",
+    group: "Shop storage",
+    note: 'A shelf module that stacks on cleats, after the shelf system of Evan Monsma. The four openings fit storage boxes 8" high.',
+    choices: [],
+    defaults: { columns: 1, rows: 4, options: {} },
+    sources: {
+      size: {
+        mm: 1333.5,
+        derived: false,
+        source: 'Evan Monsma, "Starting the shelf system I\'ve always wanted", https://www.youtube.com/watch?v=cRj2tih1IaI: 3/4" plywood, 16" deep, sides 40", panels 51", cleats from 3/4" stock 3 1/2" wide',
+      },
+    },
+  },
+  {
     id: "custom-grid",
     name: "Custom grid",
     group: null,
@@ -260,7 +280,7 @@ const size = (starter: Starter, values: StarterValues): { columns: number; rows:
   gridOf(starter) ? { columns: values.columns, rows: values.rows } : { columns: starter.defaults.columns, rows: starter.defaults.rows };
 
 export function starterName(starter: Starter, values: StarterValues): string {
-  if (starter.id === "media-unit" || starter.id === "crate") return starter.name;
+  if (starter.id === "media-unit" || starter.id === "crate" || starter.id === "stacking-shelf") return starter.name;
   if (starter.id === "bookcase") return `${starter.name} ${option(starter, values, "width")} × ${option(starter, values, "height")}`;
   const { columns, rows } = size(starter, values);
   return `${starter.name} ${columns} × ${rows}`;
@@ -289,6 +309,20 @@ export function starterDesign(starter: Starter, values: StarterValues, target: S
         height: { outside: height, cells: 1 },
         depth,
         finish: crateFinish(units),
+      };
+    }
+    case "stacking-shelf": {
+      const { width, height, depth } = STACKING_SHELF_SIZE[units];
+      return {
+        ...base,
+        system: "custom",
+        width: { outside: width, cells: 1 },
+        height: { outside: height, cells: 4 },
+        depth,
+        corners: "sides-over-top",
+        fastener: "face-screws",
+        mount: "cleats",
+        hiddenWarnings: ["shelf-span"],
       };
     }
     case "cube-shelf":
@@ -332,7 +366,7 @@ export function addStarterDesign(
   if (errors.length > 0) return { ok: false, issues: errors.map((message) => planError("starter-values", message)) };
   const box = options.material === undefined ? pickBoxMaterial(project) : { project: withStockFor(project, [options.material]), material: options.material };
   const back =
-    starter.id === "crate"
+    starter.id === "crate" || starter.id === "stacking-shelf"
       ? { project: box.project, material: null }
       : options.back === undefined
       ? pickBackMaterial(box.project, box.material)

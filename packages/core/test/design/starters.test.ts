@@ -5,6 +5,7 @@ import {
   createProject,
   designGeometry,
   EKET_TOLERANCE_MM,
+  hardwareList,
   materialsById,
   presetAxis,
   regenerateDesigns,
@@ -72,8 +73,8 @@ describe.each(["mm", "in"] as const)("every allowed value in %s", (units) => {
 });
 
 describe("the data", () => {
-  it("lists the eight starters in order, with the custom grid last and in no group", () => {
-    expect(STARTERS.map((starter) => starter.id)).toEqual(["cube-shelf", "tv-bench", "media-unit", "bookcase", "wall-cubes", "nightstand", "crate", "custom-grid"]);
+  it("lists the nine starters in order, with the custom grid last and in no group", () => {
+    expect(STARTERS.map((starter) => starter.id)).toEqual(["cube-shelf", "tv-bench", "media-unit", "bookcase", "wall-cubes", "nightstand", "crate", "stacking-shelf", "custom-grid"]);
     expect(STARTERS.at(-1)!.group).toBeNull();
     expect(starterById("nothing")).toBeUndefined();
   });
@@ -416,7 +417,7 @@ describe("the crate", () => {
     expect(crate.defaults).toEqual({ columns: 1, rows: 1, options: {} });
     const ids = STARTERS.map((starter) => starter.id);
     expect(ids.indexOf("crate")).toBe(ids.indexOf("nightstand") + 1);
-    expect(ids.indexOf("crate")).toBe(ids.indexOf("custom-grid") - 1);
+    expect(ids.indexOf("crate")).toBe(ids.indexOf("custom-grid") - 2);
   });
 
   it("refuses a value for the crate", () => {
@@ -437,5 +438,116 @@ describe("the crate", () => {
     const project = regenerateDesigns(result.project);
     expect(checkDesigns(project).map((issue) => issue.code)).toEqual(["nominal-thickness"]);
     expect(starterFits(project, result.id)).toEqual(["KALLAX cells"]);
+  });
+});
+
+describe("the stacking shelf", () => {
+  const stacking = starterById("stacking-shelf")!;
+  const sheet = (units: Units, thickness: number): Project => {
+    const base = createProject("Shelf", units);
+    const size = units === "mm" ? { length: 2440, width: 1220 } : { length: 96, width: 48 };
+    return {
+      ...base,
+      materials: [{ id: "ply", name: "Plywood", thickness, grained: true, measured: true }],
+      stock: [{ id: "ply-sheet", material: "ply", ...size, quantity: null, kind: "sheet" }],
+    };
+  };
+  const made = (project: Project, options?: Parameters<typeof addStarterDesign>[3]) => {
+    const result = addStarterDesign(project, stacking, stacking.defaults, options);
+    if (!result.ok) throw new Error("add failed");
+    return { project: regenerateDesigns(result.project), id: result.id };
+  };
+
+  it("makes his module in a new in project", () => {
+    const { project } = made(sheet("in", 0.75));
+    expect(project.parts.map((part) => [part.name, part.length, part.width, part.quantity])).toEqual([
+      ["Top", 51, 16, 1],
+      ["Bottom", 51, 16, 1],
+      ["Side", 40, 16, 2],
+      ["Shelf", 51, 16, 3],
+      ["Foot", 16, 3.5, 2],
+      ["Top cleat", 16, 3.5, 2],
+    ]);
+    expect(checkDesigns(project)).toEqual([]);
+    expect(checkDesigns(project, { keepHidden: true }).map((issue) => issue.code)).toEqual(["shelf-span"]);
+    const design = project.designs![0]!;
+    expect(design).toEqual({
+      id: "stacking-shelf",
+      system: "custom",
+      name: "Stacking shelf",
+      material: "ply",
+      width: { outside: 52.5, cells: 1 },
+      height: { outside: 40, cells: 4 },
+      depth: 16,
+      corners: "sides-over-top",
+      fastener: "face-screws",
+      mount: "cleats",
+      hiddenWarnings: ["shelf-span"],
+    });
+    const geometry = designGeometry(design, materialsById(project))!;
+    expect([geometry.outsideWidth, geometry.outsideHeight, geometry.depth]).toEqual([52.5, 40, 16]);
+    expect(hardwareList(project).map((line) => [line.item, line.name, line.quantity])).toEqual([
+      ["face-screws", 'Wood screws for the joints, #8 × 2"', 44],
+      ["cleat-screws", 'Wood screws for the cleats, #8 × 1 1/4"', 18],
+      ["glue", "Wood glue (PVA)", null],
+    ]);
+    expect(project.materials.map((material) => material.id)).toEqual(["ply"]);
+  });
+
+  it("makes his module with no warnings in a new mm project", () => {
+    const { project, id } = made(sheet("mm", 18));
+    const design = project.designs![0]!;
+    expect([design.width, design.height, design.depth]).toEqual([{ outside: 1334, cells: 1 }, { outside: 1016, cells: 4 }, 406]);
+    expect(checkDesigns(project)).toEqual([]);
+    expect(starterFits(project, id)).toEqual([]);
+    expect(project.parts.map((part) => [part.name, part.length, part.width, part.quantity])).toEqual([
+      ["Top", 1298, 406, 1],
+      ["Bottom", 1298, 406, 1],
+      ["Side", 1016, 406, 2],
+      ["Shelf", 1298, 406, 3],
+      ["Foot", 406, 89, 2],
+      ["Top cleat", 406, 89, 2],
+    ]);
+    expect(hardwareList(project).map((line) => [line.item, line.name, line.quantity])).toEqual([
+      ["face-screws", "Wood screws for the joints, 4 × 50 mm", 44],
+      ["cleat-screws", "Wood screws for the cleats, 4 × 30 mm", 18],
+      ["glue", "Wood glue (PVA)", null],
+    ]);
+  });
+
+  it("hides the shelf span, but starterFits reads it", () => {
+    const { project, id } = made(sheet("in", 0.75));
+    expect(checkDesigns(project, { keepHidden: true }).map((issue) => issue.code)).toContain("shelf-span");
+    expect(checkDesigns(project).map((issue) => issue.code)).not.toContain("shelf-span");
+    expect(starterFits(project, id)).toEqual([]);
+  });
+
+  it("adds no back, even when a back is given", () => {
+    for (const back of ["ply6", null]) {
+      const result = addStarterDesign(createProject("New", "in"), stacking, stacking.defaults, { back });
+      expect(result.ok).toBe(true);
+      if (!result.ok) continue;
+      expect(result.project.materials).toHaveLength(1);
+      expect(result.project.designs![0]!.back).toBeUndefined();
+    }
+    const { project } = made(sheet("in", 0.75), { back: "ply" });
+    expect(project.designs![0]!.back).toBeUndefined();
+  });
+
+  it("lists the starter in the Shop storage group, after the crate", () => {
+    expect(stacking.group).toBe("Shop storage");
+    expect(stacking.name).toBe("Stacking shelf");
+    expect(stacking.choices).toEqual([]);
+    expect(stacking.defaults).toEqual({ columns: 1, rows: 4, options: {} });
+    expect(stacking.note).toBe("A shelf module that stacks on cleats, after the shelf system of Evan Monsma. The four openings fit storage boxes 8\" high.");
+    expect(stacking.sources.size).toEqual({
+      mm: 1333.5,
+      derived: false,
+      source: 'Evan Monsma, "Starting the shelf system I\'ve always wanted", https://www.youtube.com/watch?v=cRj2tih1IaI: 3/4" plywood, 16" deep, sides 40", panels 51", cleats from 3/4" stock 3 1/2" wide',
+    });
+    const ids = STARTERS.map((starter) => starter.id);
+    expect(ids.indexOf("stacking-shelf")).toBe(ids.indexOf("crate") + 1);
+    expect(ids.indexOf("stacking-shelf")).toBe(ids.indexOf("custom-grid") - 1);
+    expect(starterName(stacking, stacking.defaults)).toBe("Stacking shelf");
   });
 });
