@@ -23,3 +23,12 @@ export interface AssemblyStep {
 export function buildCountText(quantity: number): string {
   return quantity > 1 ? `Build ${quantity} of these. The numbers in these steps are for one unit. ` : "";
 }
+
+export const LEFT: AssemblyBoard = { kind: "side", side: "left" };
+export const RIGHT: AssemblyBoard = { kind: "side", side: "right" };
+export const TOP: AssemblyBoard = { kind: "top" };
+export const BOTTOM: AssemblyBoard = { kind: "bottom" };
+
+export function joinList(items: readonly string[]): string {
+  return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+}

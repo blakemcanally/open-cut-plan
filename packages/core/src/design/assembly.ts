@@ -2,31 +2,24 @@ import { formatLength } from "../geometry/format.ts";
 import { convertLength } from "../geometry/units.ts";
 import type { Design, Project } from "../format/schema.ts";
 import { designParts } from "./generate.ts";
-import { buildCountText, type AssemblyAction, type AssemblyBoard, type AssemblyStep } from "./assemblyTypes.ts";
+import { BOTTOM, buildCountText, joinList, LEFT, RIGHT, TOP, type AssemblyAction, type AssemblyBoard, type AssemblyStep } from "./assemblyTypes.ts";
 import { designGeometry, materialsById, roundLength, type DesignGeometry } from "./geometry.ts";
 import { backScrewCount, backScrewName, pocketHolesPerEnd, pocketScrew, railsFor } from "./hardware.ts";
 import { jigSettingText, pocketScrewsText } from "./pocket.ts";
 import { boardLength, cellStarts, designLayout, segments, spanLength, type Board, type BoardLayout } from "./layout.ts";
 import { isOpenBox, openBoxSteps } from "./openBox.ts";
+import { oneColumnSteps } from "./oneColumnSteps.ts";
+import { cleatScrew } from "./screws.ts";
 import { dividerName, shelfName } from "./parts.ts";
 import { IKEA_FEET, IKEA_LEGS, IKEA_RAIL_35, IKEA_RAIL_70, RAIL_CLEARANCE_MM } from "./ikea.ts";
-import { DEFAULT_DESIGN_MOUNT, DEFAULT_DESIGN_QUANTITY, isDesignMount } from "./systems.ts";
+import { CLEAT_WIDTH, DEFAULT_DESIGN_MOUNT, DEFAULT_DESIGN_QUANTITY, designCorners, designFastener, isDesignMount } from "./systems.ts";
 
 export type { AssemblyAction, AssemblyBoard, AssemblyStep };
-
-const LEFT: AssemblyBoard = { kind: "side", side: "left" };
-const RIGHT: AssemblyBoard = { kind: "side", side: "right" };
-const TOP: AssemblyBoard = { kind: "top" };
-const BOTTOM: AssemblyBoard = { kind: "bottom" };
 
 export function assemblyBoardKey(board: AssemblyBoard): string {
   if (board.kind === "side") return `side-${board.side}`;
   if (board.kind === "divider" || board.kind === "shelf") return `${board.kind}-${board.line}-${board.from}-${board.to}`;
   return board.kind;
-}
-
-function joinList(items: readonly string[]): string {
-  return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 }
 
 export function finishSteps(design: Design): AssemblyStep[] {
@@ -54,82 +47,86 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
   const uprights = dividers === 0 ? "the sides" : "the sides and the dividers";
   const steps: AssemblyStep[] = [];
 
-  const setting = jigSettingText(screw);
-  const drilled =
-    dividers === 0
-      ? "the 2 sides, on the inside face of each side"
-      : `the 2 sides and the ${dividers} ${dividers === 1 ? "divider" : "dividers"}, on the inside face of each side and on one face of ${dividers === 1 ? "the divider" : "each divider"}`;
-  const drilledShelves = shelves === 0 ? "" : `, and in each end of ${shelves === 1 ? "the shelf" : `the ${shelves} shelves`}, on the underside`;
-  steps.push({
-    title: "Drill the pocket holes",
-    body: `${buildCountText(quantity)}Drill ${pocketHolesPerEnd(mm(geometry.panelDepth))} pocket holes in each end of ${drilled}${drilledShelves}, for ${show(thickness)} stock.${setting}`,
-    action: "drill",
-    boards: [LEFT, RIGHT, ...layout.dividers, ...layout.shelves],
-  });
-
-  if (geometry.combined) {
-    steps.push(...combinedSteps(geometry, layout, show, screws));
+  if (designCorners(design) === "sides-over-top" || designFastener(design) === "face-screws") {
+    steps.push(...oneColumnSteps(project, design, geometry));
   } else {
-    const perColumn = rows.length - 1;
-    if (perColumn > 0) {
-      const marks = [rows.at(-1)!];
-      for (let row = rows.length - 2; row > 0; row--) marks.push(roundLength(marks.at(-1)! + thickness + rows[row]!));
-      steps.push({
-        title: "Mark the shelf positions",
-        body: `Mark the underside of each shelf on ${uprights} at ${joinList(marks.map(show))} from the bottom end.`,
-        action: "mark",
-        boards: [LEFT, RIGHT, ...layout.dividers],
-      });
-    }
+    const setting = jigSettingText(screw);
+    const drilled =
+      dividers === 0
+        ? "the 2 sides, on the inside face of each side"
+        : `the 2 sides and the ${dividers} ${dividers === 1 ? "divider" : "dividers"}, on the inside face of each side and on one face of ${dividers === 1 ? "the divider" : "each divider"}`;
+    const drilledShelves = shelves === 0 ? "" : `, and in each end of ${shelves === 1 ? "the shelf" : `the ${shelves} shelves`}, on the underside`;
+    steps.push({
+      title: "Drill the pocket holes",
+      body: `${buildCountText(quantity)}Drill ${pocketHolesPerEnd(mm(geometry.panelDepth))} pocket holes in each end of ${drilled}${drilledShelves}, for ${show(thickness)} stock.${setting}`,
+      action: "drill",
+      boards: [LEFT, RIGHT, ...layout.dividers, ...layout.shelves],
+    });
 
-    if (dividers > 0) {
-      const marks: number[] = [];
-      let x = 0;
-      for (let column = 0; column < dividers; column++) {
-        x = roundLength(x + thickness + columns[column]!);
-        marks.push(x);
-      }
-      steps.push({
-        title: "Mark the divider positions",
-        body: `Mark the left face of each divider on the top and the bottom at ${joinList(marks.map(show))} from the left end.`,
-        action: "mark",
-        boards: [TOP, BOTTOM],
-      });
-    }
-
-    if (perColumn > 0) {
-      const spacers = [...new Set(rows.slice(1))].map((opening) => `2 spacers to ${show(opening)}`);
-      steps.push({ title: "Cut spacers", body: `Cut ${joinList(spacers)} from an offcut. They hold each shelf on its mark while you drive the screws.`, action: "spacers", boards: [] });
-
-      columns.forEach((opening, index) => {
-        const start = index === 0 ? "Lay the left side on its outside face, with the marks up." : `Use the divider on the right of column ${index} as the left panel.`;
-        const put =
-          perColumn === 1
-            ? `Put the shelf of this column (${show(opening)} long) on its mark, with the pocket holes down, and screw it to the panel with ${screws}.`
-            : `Put the ${perColumn} shelves of this column (${show(opening)} long) on their marks, with the pocket holes down, and screw them to the panel with ${screws}.`;
-        const next = index === dividers ? "the right side" : "the next divider";
+    if (geometry.combined) {
+      steps.push(...combinedSteps(geometry, layout, show, screws));
+    } else {
+      const perColumn = rows.length - 1;
+      if (perColumn > 0) {
+        const marks = [rows.at(-1)!];
+        for (let row = rows.length - 2; row > 0; row--) marks.push(roundLength(marks.at(-1)! + thickness + rows[row]!));
         steps.push({
-          title: `Assemble column ${index + 1} of ${columns.length}`,
-          body: `${start} ${put} Then put ${next} on the other ends of the ${perColumn === 1 ? "shelf" : "shelves"}, and screw it on.`,
-          action: "join",
-          boards: [...(index === 0 ? [LEFT] : []), ...layout.shelves.filter((board) => board.from === index), index === dividers ? RIGHT : layout.dividers[index]!],
+          title: "Mark the shelf positions",
+          body: `Mark the underside of each shelf on ${uprights} at ${joinList(marks.map(show))} from the bottom end.`,
+          action: "mark",
+          boards: [LEFT, RIGHT, ...layout.dividers],
         });
-      });
-    }
-  }
+      }
 
-  const reach = geometry.combined && layout.dividers.some((board) => board.from > 0 || board.to < rows.length - 1) ? " that reach it" : "";
-  const onMark = dividers === 0 ? "" : ", with each divider on its mark";
-  const joined = new Set(steps.filter((step) => step.action === "join").flatMap((step) => step.boards!.map(assemblyBoardKey)));
-  steps.push({
-    title: "Fit the bottom and the top",
-    body:
-      shelves > 0
-        ? `Lay the frame on its back. Put the bottom on the lower ends of ${uprights}${reach}${onMark}, and screw it on through the pocket holes in their ends. Then fit the top the same way.`
-        : `Stand ${uprights} on the bottom${onMark}, and screw them to it through the pocket holes in their ends. Then fit the top the same way.`,
-    action: "join",
-    boards: [BOTTOM, TOP, ...[LEFT, RIGHT, ...layout.dividers, ...layout.shelves].filter((board) => !joined.has(assemblyBoardKey(board)))],
-  });
+      if (dividers > 0) {
+        const marks: number[] = [];
+        let x = 0;
+        for (let column = 0; column < dividers; column++) {
+          x = roundLength(x + thickness + columns[column]!);
+          marks.push(x);
+        }
+        steps.push({
+          title: "Mark the divider positions",
+          body: `Mark the left face of each divider on the top and the bottom at ${joinList(marks.map(show))} from the left end.`,
+          action: "mark",
+          boards: [TOP, BOTTOM],
+        });
+      }
+
+      if (perColumn > 0) {
+        const spacers = [...new Set(rows.slice(1))].map((opening) => `2 spacers to ${show(opening)}`);
+        steps.push({ title: "Cut spacers", body: `Cut ${joinList(spacers)} from an offcut. They hold each shelf on its mark while you drive the screws.`, action: "spacers", boards: [] });
+
+        columns.forEach((opening, index) => {
+          const start = index === 0 ? "Lay the left side on its outside face, with the marks up." : `Use the divider on the right of column ${index} as the left panel.`;
+          const put =
+            perColumn === 1
+              ? `Put the shelf of this column (${show(opening)} long) on its mark, with the pocket holes down, and screw it to the panel with ${screws}.`
+              : `Put the ${perColumn} shelves of this column (${show(opening)} long) on their marks, with the pocket holes down, and screw them to the panel with ${screws}.`;
+          const next = index === dividers ? "the right side" : "the next divider";
+          steps.push({
+            title: `Assemble column ${index + 1} of ${columns.length}`,
+            body: `${start} ${put} Then put ${next} on the other ends of the ${perColumn === 1 ? "shelf" : "shelves"}, and screw it on.`,
+            action: "join",
+            boards: [...(index === 0 ? [LEFT] : []), ...layout.shelves.filter((board) => board.from === index), index === dividers ? RIGHT : layout.dividers[index]!],
+          });
+        });
+      }
+    }
+
+    const reach = geometry.combined && layout.dividers.some((board) => board.from > 0 || board.to < rows.length - 1) ? " that reach it" : "";
+    const onMark = dividers === 0 ? "" : ", with each divider on its mark";
+    const joined = new Set(steps.filter((step) => step.action === "join").flatMap((step) => step.boards!.map(assemblyBoardKey)));
+    steps.push({
+      title: "Fit the bottom and the top",
+      body:
+        shelves > 0
+          ? `Lay the frame on its back. Put the bottom on the lower ends of ${uprights}${reach}${onMark}, and screw it on through the pocket holes in their ends. Then fit the top the same way.`
+          : `Stand ${uprights} on the bottom${onMark}, and screw them to it through the pocket holes in their ends. Then fit the top the same way.`,
+      action: "join",
+      boards: [BOTTOM, TOP, ...[LEFT, RIGHT, ...layout.dividers, ...layout.shelves].filter((board) => !joined.has(assemblyBoardKey(board)))],
+    });
+  }
 
   const diagonal = roundLength(Math.hypot(geometry.outsideWidth, geometry.outsideHeight));
   steps.push({
@@ -156,7 +153,15 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
   if (mount === "feet") {
     steps.push({ title: "Fit the feet", body: `Screw the 4 EKET adjustable feet to the bottom panel, as IKEA assembly guide ${IKEA_FEET.guide} shows.`, action: "mount", boards: [] });
   }
-  if (mount === "wall-rail") {
+  if (mount === "cleats") {
+    const strip = `${pocketHolesPerEnd(mm(geometry.panelDepth))} ${cleatScrew(mm(thickness), units)} screws`;
+    steps.push({
+      title: "Fit the cleats",
+      body: `Glue the 2 feet under the bottom, flush with the left and the right outer edges. Screw each foot on with ${strip}. Then glue the 2 top cleats on the top, ${show(CLEAT_WIDTH[units])} in from the left and the right outer edges. Screw each cleat on with ${strip}. The feet of the next unit fit outside the top cleats.`,
+      action: "mount",
+      boards: [],
+    });
+  } else if (mount === "wall-rail") {
     const rails = railsFor(mm(geometry.outsideWidth));
     const names = [...(rails.long > 0 ? [`${rails.long} × ${IKEA_RAIL_70.name}`] : []), ...(rails.short > 0 ? [`${rails.short} × ${IKEA_RAIL_35.name}`] : [])];
     steps.push({

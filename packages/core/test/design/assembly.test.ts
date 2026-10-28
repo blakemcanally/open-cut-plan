@@ -330,3 +330,138 @@ describe("the boards of each assembly step", () => {
     );
   });
 });
+
+describe("the steps of one column", () => {
+  const inches = () => {
+    const base = designProject();
+    return { ...base, project: { ...base.project, units: "in" as const }, materials: [{ id: "ply18", name: "Plywood 3/4", thickness: 0.75, grained: true }] };
+  };
+  const module = (patch: Partial<Design> = {}): Design => ({
+    id: "sh",
+    name: "Module",
+    system: "custom",
+    material: "ply18",
+    width: { outside: 52.5, cells: 1 },
+    height: { outside: 40, cells: 4 },
+    depth: 16,
+    corners: "sides-over-top",
+    fastener: "face-screws",
+    mount: "cleats",
+    ...patch,
+  });
+  const stepsOf = (design: Design) => assemblySteps({ ...inches(), designs: [design] }, "sh")!;
+  const body = (steps: ReturnType<typeof stepsOf>, title: string) => steps.find((step) => step.title === title)!.body;
+
+  it("builds his module in the order of sides over top", () => {
+    const steps = stepsOf(module());
+    expect(steps.map((step) => step.title)).toEqual([
+      "Mark the shelf positions",
+      "Drill the pilot holes",
+      "Cut spacers",
+      "Fit the top and the bottom",
+      "Fit the shelves",
+      "Check that it is square",
+      "Fit the cleats",
+    ]);
+    expect(steps.map((step) => step.action)).toEqual(["mark", "drill", "spacers", "join", "join", "square", "mount"]);
+    expect(steps.some((step) => step.title === "Anchor the unit")).toBe(false);
+    expect(steps[0]!.boards).toEqual([LEFT, RIGHT]);
+    expect(steps[3]!.boards).toEqual([TOP, BOTTOM, LEFT, RIGHT]);
+    expect(steps[4]!.boards).toEqual([shelf(1, 0, 0), shelf(2, 0, 0), shelf(3, 0, 0)]);
+    expect(steps[6]!.boards).toEqual([]);
+  });
+
+  it("marks the shelves from the bottom end of a full-height side", () => {
+    expect(body(stepsOf(module()), "Mark the shelf positions")).toBe('Mark the underside of each shelf on the sides at 9 13/16", 19 5/8" and 29 7/16" from the bottom end.');
+  });
+
+  it("says that the heads show and that pilot holes stop splits", () => {
+    const text = body(stepsOf(module()), "Drill the pilot holes");
+    expect(text).toBe(
+      'Drill 4 pilot holes for each joint, through each side, at the ends of the top, the bottom and the 3 shelves. Put each hole in line with the middle of the board that it joins. Use #8 × 2" screws. The screw heads show on the outer face. A pilot hole keeps the plywood from splitting.',
+    );
+  });
+
+  it("gives the other steps of his module", () => {
+    const steps = stepsOf(module());
+    expect(body(steps, "Cut spacers")).toBe('Cut 2 spacers to 9 1/16" from an offcut. They hold each shelf on its mark while you drive the screws.');
+    expect(body(steps, "Fit the top and the bottom")).toBe(
+      "Glue the ends of the top and the bottom. Put them between the sides, flush with the ends of the sides. Drive the screws through the pilot holes in the sides.",
+    );
+    expect(body(steps, "Fit the shelves")).toBe(
+      "Glue the ends of each shelf. Put the shelves between the sides, from the bottom up, with the underside of each on its marks. Rest each shelf on the spacers while you drive the screws through the pilot holes in the sides.",
+    );
+  });
+
+  it("fits the cleats with 4 screws each", () => {
+    const text = body(stepsOf(module()), "Fit the cleats");
+    expect(text).toBe(
+      'Glue the 2 feet under the bottom, flush with the left and the right outer edges. Screw each foot on with 4 #8 × 1 1/4" screws. Then glue the 2 top cleats on the top, 3 1/2" in from the left and the right outer edges. Screw each cleat on with 4 #8 × 1 1/4" screws. The feet of the next unit fit outside the top cleats.',
+    );
+  });
+
+  it("uses pocket holes in the top, the bottom, and the shelves with sides over top and pocket screws", () => {
+    const steps = stepsOf(module({ fastener: "pocket-screws" }));
+    expect(steps.map((step) => step.title)).toEqual([
+      "Mark the shelf positions",
+      "Drill the pocket holes",
+      "Cut spacers",
+      "Fit the top and the bottom",
+      "Fit the shelves",
+      "Check that it is square",
+      "Fit the cleats",
+    ]);
+    expect(body(steps, "Drill the pocket holes")).toBe(
+      'Drill 4 pocket holes in each end of the top, on the upper face, in each end of the bottom, on the lower face, and in each end of the 3 shelves, on the underside, for 3/4" stock. Set the jig and the drill collar to the 3/4" mark.',
+    );
+    expect(steps[1]!.boards).toEqual([TOP, BOTTOM, shelf(1, 0, 0), shelf(2, 0, 0), shelf(3, 0, 0)]);
+    expect(body(steps, "Fit the shelves")).toContain('screw each shelf on with 1 1/4" (32 mm) coarse-thread pocket screws through the pocket holes in its ends.');
+  });
+
+  it("screws through the pilot holes with top over sides and face screws", () => {
+    const steps = stepsOf(module({ corners: "top-over-sides", mount: "floor" }));
+    expect(steps.map((step) => step.title)).toEqual([
+      "Mark the shelf positions",
+      "Drill the pilot holes",
+      "Cut spacers",
+      "Assemble column 1 of 1",
+      "Fit the bottom and the top",
+      "Check that it is square",
+      "Anchor the unit",
+    ]);
+    expect(body(steps, "Mark the shelf positions")).toBe('Mark the underside of each shelf on the sides at 9 1/16", 18 7/8" and 28 11/16" from the bottom end.');
+    expect(body(steps, "Drill the pilot holes")).toMatch(/^Drill 4 pilot holes for each joint: through the top and the bottom, at each end, and through each side, at the ends of the 3 shelves\./);
+    expect(steps[3]!.boards).toEqual([LEFT, shelf(1, 0, 0), shelf(2, 0, 0), shelf(3, 0, 0), RIGHT]);
+    expect(steps[4]!.boards).toEqual([BOTTOM, TOP]);
+    expect(steps[4]!.action).toBe("join");
+  });
+
+  it("builds a sides-over-top box with merged rows", () => {
+    const steps = stepsOf(module({ combined: [{ column: 1, row: 1, columns: 1, rows: 2 }] }));
+    expect(body(steps, "Mark the shelf positions")).toBe('Mark the underside of each shelf on the sides at 9 13/16" and 19 5/8" from the bottom end.');
+    expect(steps.find((step) => step.title === "Fit the shelves")!.boards).toEqual([shelf(2, 0, 0), shelf(3, 0, 0)]);
+    expect(body(steps, "Drill the pilot holes")).toContain("the top, the bottom and the 2 shelves");
+  });
+
+  it("builds a box with no shelf", () => {
+    const sidesOver = stepsOf(module({ height: { outside: 10, cells: 1 } }));
+    expect(sidesOver.map((step) => step.title)).toEqual(["Drill the pilot holes", "Fit the top and the bottom", "Check that it is square", "Fit the cleats"]);
+    const topOver = stepsOf(module({ height: { outside: 10, cells: 1 }, corners: "top-over-sides", mount: "floor" }));
+    expect(topOver.map((step) => step.title)).toEqual(["Drill the pilot holes", "Fit the bottom and the top", "Check that it is square", "Anchor the unit"]);
+    expect(topOver[1]!.boards).toEqual([BOTTOM, TOP, LEFT, RIGHT]);
+  });
+
+  it("starts with the build count for a quantity of 2", () => {
+    const steps = stepsOf(module({ quantity: 2 }));
+    expect(steps[0]!.title).toBe("Mark the shelf positions");
+    expect(steps[0]!.body).toMatch(/^Build 2 of these\. The numbers in these steps are for one unit\. Mark the underside/);
+    expect(steps.slice(1).some((step) => step.body.startsWith("Build"))).toBe(false);
+  });
+
+  it("fits the cleats to a box of today, with no anchor step", () => {
+    const base = designProject([kallaxDesign({ mount: "cleats" })]);
+    const steps = assemblySteps(regenerateDesigns(base), "kx")!;
+    expect(steps.slice(-2).map((step) => step.title)).toEqual(["Check that it is square", "Fit the cleats"]);
+    expect(steps[0]!.title).toBe("Drill the pocket holes");
+  });
+});
