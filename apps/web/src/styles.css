@@ -262,7 +262,7 @@ fieldset.choice label { display: inline-flex; align-items: center; gap: 4px; }
 .grid-picker-cell { width: 14px; height: 14px; background: #fff; border: 1px solid var(--line); border-radius: 2px; cursor: pointer; }
 .grid-picker-cell.on { background: #eaf1fb; border-color: var(--focus); }
 .grid-picker-label { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
-.dialog.starter-dialog { width: min(960px, 94vw); height: min(680px, 90vh); }
+.dialog.starter-dialog { width: min(960px, 94vw); height: min(720px, 90vh); }
 .starter { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: start; }
 .starter-list { min-width: 0; font-size: 13px; }
 .starter-list h4 { margin: 12px 0 2px; font-size: 11px; font-weight: 600; }

@@ -101,6 +101,23 @@ describe("StarterDialog", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("lists the Stacking shelf in the Shop storage group, with its note and no Fits fact", async () => {
+    const project = createProject("New", "mm");
+    const { onUse } = renderDialog(project);
+    const group = within(dialog()).getByRole("heading", { level: 4, name: "Shop storage" }).parentElement!;
+    expect(within(group).getByRole("button", { name: /^Stacking shelf/ })).toBeTruthy();
+    await userEvent.click(row(/^Stacking shelf/));
+    expect(heading()).toBe("Stacking shelf");
+    expect(within(dialog()).getByText(starterById("stacking-shelf")!.note)).toBeTruthy();
+    expect(fact("Mount")).toBe("Cleats");
+    expect(screen.queryByText("Fits", { selector: "dt" })).toBeNull();
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Use this design" }));
+    const added = addStarterDesign(project, starterById("stacking-shelf")!, { columns: 1, rows: 4, options: {} });
+    if (!added.ok) throw new Error("the stacking shelf is refused");
+    expect(onUse).toHaveBeenCalledWith({ project: added.project, id: added.id });
+    expect(added.project.designs![0]).toMatchObject({ id: "stacking-shelf", mount: "cleats" });
+  });
+
   it("closes with Cancel and adds nothing", async () => {
     const { onUse, onClose } = renderDialog();
     await userEvent.click(within(dialog()).getByRole("button", { name: "Cancel" }));

@@ -68,13 +68,13 @@ an open-top box, such as the crate. The app makes its parts from the design, and
   as a normal design and shows it in the editor. **Cancel**, Escape, and a click outside the dialog add nothing. The CLI
   has the same catalogue: see [cli.md](cli.md).
 - The list on the left of the dialog is one third of its width. It has the starters in groups: Cube shelves, Low units,
-  Bookcases, Wall units, Small units, and Accessories. **Custom grid** is last. Each row shows a small front view, the name, and the
+  Bookcases, Wall units, Small units, Accessories, and Shop storage. **Custom grid** is last. Each row shows a small front view, the name, and the
   outside size. A starter with a grid shows the range of the grid instead, for example "1 × 1 to 6 × 6". The outside
   size is the size that the app makes for the materials that **Use this design** picks.
 - The preview on the right is two thirds of the dialog. It follows the selected row. It shows the name of the design, a
   note, the quick choices, the front view, and these facts:
   - **Outside:** the width, height, and depth, without legs or feet.
-  - **Mount:** floor, legs, feet, or wall rail. An open-top box has no mount, so it shows no row.
+  - **Mount:** floor, legs, feet, wall rail, or cleats. An open-top box has no mount, so it shows no row.
   - **Fits:** the IKEA items that fit, for example "KALLAX inserts and boxes, EKET legs". A starter with no item shows
     no row. The row leaves out an item when a design check warns that it does not fit. The crate shows "KALLAX cells"
     when it fits a KALLAX-style cube.
@@ -104,8 +104,22 @@ an open-top box, such as the crate. The app makes its parts from the design, and
 - The **Crate** is the one starter in the Accessories group. It is an open-top box that slides into a KALLAX-style
   cube. It has a front, a back, two sides, and a bottom. It has no quick choices. Its note says that the holes in the
   front and the back are the handles. It comes with three [finish steps](#finish-steps).
+- The **Stacking shelf** is the one starter in the Shop storage group. It follows the shelf module of Evan Monsma. It
+  is a box with 1 column and 4 rows, with the sides over the top, face screws, and cleats. It has no quick choices and
+  no **Fits** row. Its note names Evan Monsma.
 - The design list on the left of the Design tab selects a design. The form has the name, the system, how many to build, the columns and rows,
-  the depth, the material, the back, and the mount.
+  the depth, the material, the back, the mount, the corners, and the fastener.
+- **Corners** is **Top over the sides** (the default) or **Sides over the top**. **Fastener** is **Pocket screws** (the
+  default) or **Face screws**. The two lists are next to **Mount**. The default value removes the field from the
+  design. The sides-over-top corners and face screws need a box with 1 column. For more columns, the app refuses the
+  change and shows the error under the form, as for the other fields. A value that the app does not know shows as the
+  value and "(unknown)". The form then locks, and the parts of the design stay as they are.
+- **Mount** can also be **Cleats**. The design then gets the parts Foot and Top cleat, and the assembly gets the step
+  **Fit the cleats**.
+- Some designs hide warnings. The Stacking shelf hides the shelf span warning. The **Checks** list then ends with a
+  line such as "This design hides 1 warning: shelf span." **Show it** (or **Show them**, for more than 1 warning) shows
+  all the hidden warnings of the design. The line goes, and the warnings show in **Checks**. The app has no button to
+  hide a warning.
 - The form of an open-top box has the name, how many to build, **Fits a KALLAX-style cube**, **Outside width**,
   **Outside height**, **Outside depth**, and the material. It has no system list, cells, back, mount, or combined
   cells. The front view is a drawing of the front of the box, and it does not mark cells. The kind of a design does not

@@ -3,6 +3,8 @@ import {
   CATALOG_FAMILIES,
   catalogFor,
   projectMaterialFor,
+  DESIGN_CORNERS,
+  DESIGN_FASTENERS,
   DESIGN_MOUNTS,
   DESIGN_SYSTEM_NAMES,
   DESIGN_SYSTEMS,
@@ -13,11 +15,16 @@ import {
   designGeometry,
   designParts,
   detachDesign,
+  designCorners,
+  designFastener,
   fitCombined,
   formatLength,
+  isDesignCorners,
+  isDesignFastener,
   isDesignKind,
   isDesignMount,
   isOpenBox,
+  joinList,
   isDesignSystem,
   isNewerMinor,
   materialsById,
@@ -30,9 +37,12 @@ import {
   removeDesign,
   setDesignColor,
   setFinishSteps,
+  showHiddenWarnings,
   type CombinedCell,
   type Design,
   type DesignAxis,
+  type DesignCorners,
+  type DesignFastener,
   type DesignMount,
   type DesignSystem,
   type PlanIssue,
@@ -49,6 +59,8 @@ import { axisMode, CATALOG_VALUE, openingsText, outsideText, parseOpenings, pick
 import type { ProjectStore } from "../state/useProject.ts";
 
 const MOUNT_LABELS: Readonly<Record<DesignMount, string>> = { floor: "Floor", legs: "EKET legs", feet: "EKET feet", "wall-rail": "EKET wall rail", cleats: "Cleats" };
+const CORNERS_LABELS: Readonly<Record<DesignCorners, string>> = { "top-over-sides": "Top over the sides", "sides-over-top": "Sides over the top" };
+const FASTENER_LABELS: Readonly<Record<DesignFastener, string>> = { "pocket-screws": "Pocket screws", "face-screws": "Face screws" };
 
 interface DesignTabProps {
   store: ProjectStore;
@@ -165,9 +177,14 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
       ? `This design has the kind "${designKind(design)}", which this app does not know. Its parts stay as they are.`
       : !isDesignSystem(design.system)
         ? `This design uses the system "${design.system}", which this app does not know. Its parts stay as they are.`
-        : null;
+        : !isDesignCorners(designCorners(design))
+          ? `This design has the corners "${designCorners(design)}", which this app does not know. Its parts stay as they are.`
+          : !isDesignFastener(designFastener(design))
+            ? `This design uses the fastener "${designFastener(design)}", which this app does not know. Its parts stay as they are.`
+            : null;
   const system: DesignSystem = isDesignSystem(design.system) ? design.system : "custom";
   const open = isOpenBox(design);
+  const hidden = design.hiddenWarnings ?? [];
 
   const apply = (field: string, change: (design: Design) => Design, base: Project = project): boolean => {
     const result = tryDesign(base, change(design));
@@ -180,6 +197,9 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
     edit(result.project);
     return true;
   };
+
+  const setting = (field: "corners" | "fastener", value: string, fallback: string) =>
+    apply(field, ({ [field]: _unset, ...rest }) => (value === fallback ? rest : { ...rest, [field]: value }));
 
   /** Draws the design with the text in the field before the field commits it. */
   const live = (change: (design: Design, text: string) => Design | null): Pick<InputHTMLAttributes<HTMLInputElement>, "onInput" | "onBlur" | "onKeyDown"> => ({
@@ -451,6 +471,30 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
                   {design.mount !== undefined && !isDesignMount(design.mount) && <option value={design.mount}>{design.mount} (unknown)</option>}
                 </select>
               </label>
+              <div className="pair">
+                <label className="stack">
+                  Corners
+                  <select value={designCorners(design)} onChange={(event) => setting("corners", event.target.value, DESIGN_CORNERS[0])}>
+                    {DESIGN_CORNERS.map((corners) => (
+                      <option key={corners} value={corners}>
+                        {CORNERS_LABELS[corners]}
+                      </option>
+                    ))}
+                    {!isDesignCorners(designCorners(design)) && <option value={designCorners(design)}>{designCorners(design)} (unknown)</option>}
+                  </select>
+                </label>
+                <label className="stack">
+                  Fastener
+                  <select value={designFastener(design)} onChange={(event) => setting("fastener", event.target.value, DESIGN_FASTENERS[0])}>
+                    {DESIGN_FASTENERS.map((fastener) => (
+                      <option key={fastener} value={fastener}>
+                        {FASTENER_LABELS[fastener]}
+                      </option>
+                    ))}
+                    {!isDesignFastener(designFastener(design)) && <option value={designFastener(design)}>{designFastener(design)} (unknown)</option>}
+                  </select>
+                </label>
+              </div>
             </fieldset>
           </>
         )}
@@ -537,6 +581,14 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
                   </li>
                 ))}
             </ul>
+          )}
+          {hidden.length > 0 && (
+            <p className="muted">
+              This design hides {hidden.length} {hidden.length === 1 ? "warning" : "warnings"}: {joinList(hidden.map((code) => code.replaceAll("-", " ")))}.{" "}
+              <button type="button" disabled={locked !== null} onClick={() => apply("hiddenWarnings", showHiddenWarnings)}>
+                {hidden.length === 1 ? "Show it" : "Show them"}
+              </button>
+            </p>
           )}
         </section>
       </div>

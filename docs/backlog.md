@@ -148,3 +148,38 @@ or oil.
   `wall-cubes` `"5x2": 1750` is not checked against the geometry.
 - **CLI tests:** No CLI test for the nightstand with `--mount feet`, or for the media unit.
 - **Docs:** One line in `docs/web-app.md` (the design list on the Design tab) is about 141 characters long.
+
+## 34. The stacking shelf of Evan Monsma
+
+**Status:** Done. See `docs/superpowers/specs/2026-10-28-stacking-shelf-design.md`.
+
+**Size:** L.
+
+**Request:** A starter for the stackable shelf module in the video "Starting the shelf system I've always wanted" by
+Evan Monsma, true to his design: the same parts, the same joints, the same cleats.
+
+**Now:** A box has its top and bottom over the full width, with the sides between them. It uses pocket screws only.
+Its mounts are floor, legs, feet, and the wall rail. So the box cannot make his module.
+
+**Chosen approach:**
+
+- A box has a `corners` setting: `"top-over-sides"` (the box of today) or `"sides-over-top"` (his corners, with the
+  sides over the top and the bottom). No field means `"top-over-sides"`.
+- A box has a `fastener` setting: `"pocket-screws"` (today) or `"face-screws"` (screws through the sides into the ends
+  of the panels). No field means `"pocket-screws"`. Face screws and the sides-over-top corners need a box with 1
+  column. A box with more columns gets the error `design-one-column`.
+- The mount `cleats` adds two feet under the bottom and two cleats on the top, so that one module stands on another.
+  The parts are Foot and Top cleat. The assembly gets the step **Fit the cleats**.
+- A design can have `hiddenWarnings`, a list of warning codes. A check leaves out a hidden warning. It never hides an
+  error. The Design tab and `design set --show-warnings` show the warnings again.
+- An open-top box refuses all three settings (`design-open-box`). A value that the app does not know keeps the stored
+  parts of the design and gives a warning.
+- The starter `stacking-shelf`, in the new group Shop storage, makes 1 column and 4 rows, 16" deep, with the sides
+  40" long. It uses the three settings and hides the warning `shelf-span`. Its note credits Evan Monsma, and adds no
+  other note about his corners.
+- The Design tab has the **Corners** and **Fastener** lists next to **Mount**, and a line for the hidden warnings
+  with a **Show it** or **Show them** button. The CLI has `--corners`, `--fastener`, and `--show-warnings`. File format
+  1.12 adds `corners`, `fastener`, and `hiddenWarnings`, and the mount `cleats`. See [web-app.md](web-app.md) and
+  [cli.md](cli.md).
+- Not done: his metal-bracket repair, storage boxes that fit the openings, a wall plan for many modules, and his
+  corners or face screws in a box with more than 1 column.

@@ -79,6 +79,7 @@ export * from "./design/ikea.ts";
 export * from "./design/hardware.ts";
 export * from "./design/screws.ts";
 export * from "./design/assembly.ts";
+export { joinList } from "./design/assemblyTypes.ts";
 export * from "./design/estimate.ts";
 export * from "./reports/elevation.ts";
 export * from "./reports/openBoxDrawings.ts";

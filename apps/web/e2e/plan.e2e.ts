@@ -389,3 +389,25 @@ test("adds a crate, sees its parts, and sees its finish steps on the Assembly ta
   await page.getByRole("tab", { name: "Assembly" }).click();
   await expect(page.getByRole("tabpanel", { name: "Assembly" }).getByText("Sand lightly.")).toBeVisible();
 });
+
+test("adds a stacking shelf, sees its feet and top cleats, and sees the cleat step on the Assembly tab", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Name").fill("E2E stacking shelf");
+  await page.getByRole("button", { name: "Create project" }).click();
+
+  await page.getByRole("button", { name: "Add design" }).click();
+  await page.getByRole("button", { name: /^Stacking shelf/ }).click();
+  await page.getByRole("button", { name: "Use this design" }).click();
+  await expect(page.getByLabel("Corners")).toHaveValue("sides-over-top");
+  await expect(page.getByLabel("Fastener")).toHaveValue("face-screws");
+  await expect(page.getByLabel("Mount")).toHaveValue("cleats");
+  await expect(page.getByText("This design hides 1 warning: shelf span.")).toBeVisible();
+
+  await page.getByRole("tab", { name: "Parts" }).click();
+  for (const name of ["Foot", "Top cleat"]) {
+    await expect(page.getByRole("row", { name: new RegExp(`^${name}`) })).toContainText("From design: Stacking shelf");
+  }
+
+  await page.getByRole("tab", { name: "Assembly" }).click();
+  await expect(page.getByRole("tabpanel", { name: "Assembly" }).getByText("Fit the cleats")).toBeVisible();
+});

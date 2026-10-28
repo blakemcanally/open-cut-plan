@@ -1,4 +1,4 @@
-import { analyzeProject, convertProjectUnits, createProject, PART_PALETTE, regenerateDesigns, type CombinedCell, type Project } from "@opencutplan/core";
+import { analyzeProject, convertProjectUnits, createProject, designGeometry, materialsById, PART_PALETTE, presetDesign, regenerateDesigns, type CombinedCell, type Project } from "@opencutplan/core";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo } from "react";
@@ -290,6 +290,86 @@ describe("DesignTab", () => {
     renderDesign({ ...project, designs: [{ ...project.designs![0]!, kind: "tray", system: "pax" }] });
     expect(screen.getByRole("status").textContent).toBe('⚠ This design has the kind "tray", which this app does not know. Its parts stay as they are.');
     expect(screen.getByLabelText("Rows").matches(":disabled")).toBe(true);
+  });
+
+  it("sets the corners and the fastener of a box", async () => {
+    const base = designProject();
+    const current = renderDesign({ ...base, designs: [presetDesign({ system: "kallax", id: "hall", name: "Hall", material: "ply18", cols: 2, rows: 2, units: "mm" })] });
+    await userEvent.selectOptions(screen.getByLabelText("Corners"), "Sides over the top");
+    expect(screen.getByRole("alert").textContent).toContain("1 column");
+    expect(design(current)).not.toHaveProperty("corners");
+    await userEvent.selectOptions(screen.getByLabelText("Fastener"), "Face screws");
+    expect(screen.getByRole("alert").textContent).toContain("1 column");
+    expect(design(current)).not.toHaveProperty("fastener");
+  });
+
+  it("sets the corners and the fastener of a box with 1 column, and the default removes the field", async () => {
+    const base = designProject();
+    const hall = presetDesign({ system: "kallax", id: "hall", name: "Hall", material: "ply18", cols: 1, rows: 2, units: "mm" });
+    const current = renderDesign(regenerateDesigns({ ...base, designs: [hall] }));
+    const side = () => current().project.parts.find((part) => part.id === "hall-side")!;
+    const before = side().length;
+    await userEvent.selectOptions(screen.getByLabelText("Corners"), "Sides over the top");
+    expect(design(current).corners).toBe("sides-over-top");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(side().length).toBe(designGeometry(design(current), materialsById(current().project))!.outsideHeight);
+    expect(side().length).toBeGreaterThan(before);
+    await userEvent.selectOptions(screen.getByLabelText("Fastener"), "Face screws");
+    expect(design(current).fastener).toBe("face-screws");
+    expect(screen.getByLabelText("Corners")).toHaveProperty("value", "sides-over-top");
+    await userEvent.selectOptions(screen.getByLabelText("Corners"), "Top over the sides");
+    await userEvent.selectOptions(screen.getByLabelText("Fastener"), "Pocket screws");
+    expect(design(current)).not.toHaveProperty("corners");
+    expect(design(current)).not.toHaveProperty("fastener");
+    expect(side().length).toBe(before);
+  });
+
+  it("shows the cleats in the mount select", async () => {
+    const current = renderDesign();
+    const mount = screen.getByLabelText("Mount");
+    expect(within(mount).getByRole("option", { name: "Cleats" })).toBeTruthy();
+    await userEvent.selectOptions(mount, "Cleats");
+    expect(design(current).mount).toBe("cleats");
+    const names = current().project.parts.map((part) => part.name);
+    expect(names).toContain("Foot");
+    expect(names).toContain("Top cleat");
+  });
+
+  it("shows the hidden warnings and shows them again", async () => {
+    const base = designProject();
+    const hall = { ...base.designs![0]!, system: "custom", width: { openings: [1500] }, hiddenWarnings: ["shelf-span"] };
+    const current = renderDesign(regenerateDesigns({ ...base, designs: [hall] }));
+    const checks = within(screen.getByRole("region", { name: "Checks" }));
+    expect(screen.getByText("This design hides 1 warning: shelf span.")).toBeTruthy();
+    expect(checks.queryByText(/can sag/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Show it" }));
+    expect(screen.queryByText(/^This design hides/)).toBeNull();
+    expect(design(current)).not.toHaveProperty("hiddenWarnings");
+    expect(checks.getByText(/can sag/)).toBeTruthy();
+  });
+
+  it("names two hidden warnings, and shows them with one button", async () => {
+    const base = designProject();
+    const current = renderDesign({ ...base, designs: [{ ...base.designs![0]!, hiddenWarnings: ["shelf-span", "mount-system"] }] });
+    expect(screen.getByText("This design hides 2 warnings: shelf span and mount system.")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Show them" }));
+    expect(design(current)).not.toHaveProperty("hiddenWarnings");
+  });
+
+  it("locks a design with unknown corners", () => {
+    const base = designProject();
+    renderDesign({ ...base, designs: [{ ...base.designs![0]!, corners: "V" }] });
+    expect(screen.getByRole("status").textContent).toBe('⚠ This design has the corners "V", which this app does not know. Its parts stay as they are.');
+    expect(screen.getByLabelText("Corners").matches(":disabled")).toBe(true);
+    expect(within(screen.getByLabelText("Corners")).getByRole("option", { name: "V (unknown)" })).toBeTruthy();
+  });
+
+  it("locks a design with an unknown fastener", () => {
+    const base = designProject();
+    renderDesign({ ...base, designs: [{ ...base.designs![0]!, fastener: "nails" }] });
+    expect(screen.getByRole("status").textContent).toBe('⚠ This design uses the fastener "nails", which this app does not know. Its parts stay as they are.');
+    expect(screen.getByLabelText("Fastener").matches(":disabled")).toBe(true);
+    expect(within(screen.getByLabelText("Fastener")).getByRole("option", { name: "nails (unknown)" })).toBeTruthy();
   });
 
   it("does not add a design to a file from a newer version", async () => {
