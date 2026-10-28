@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { convertProjectUnits, designElevationSvg, regenerateDesigns } from "../../src/index.ts";
+import { convertProjectUnits, designElevationSvg, regenerateDesigns, type Design } from "../../src/index.ts";
 import { designProject, eketDesign, kallaxDesign } from "../helpers.ts";
 
 const project = regenerateDesigns(designProject([kallaxDesign(), eketDesign(), eketDesign({ id: "l", name: "Legs", mount: "legs", back: undefined })]));
@@ -87,5 +87,56 @@ describe("designElevationSvg", () => {
   it("gives null for a missing design or a design with an error", () => {
     expect(designElevationSvg(project, "nope")).toBeNull();
     expect(designElevationSvg(designProject([kallaxDesign({ material: "missing" })]), "kx")).toBeNull();
+  });
+
+  describe("the corners and the cleats of his module", () => {
+    const inches = () => {
+      const base = designProject();
+      return { ...base, project: { ...base.project, units: "in" as const }, materials: [{ id: "ply18", name: "Plywood 3/4", thickness: 0.75, grained: true }] };
+    };
+    const module = (patch: Partial<Design> = {}): Design => ({
+      id: "sh",
+      name: "Module",
+      system: "custom",
+      material: "ply18",
+      width: { outside: 52.5, cells: 1 },
+      height: { outside: 40, cells: 4 },
+      depth: 16,
+      corners: "sides-over-top",
+      fastener: "face-screws",
+      mount: "cleats",
+      ...patch,
+    });
+    const svgOf = (design: Design) => designElevationSvg({ ...inches(), designs: [design] }, "sh")!;
+    const viewBox = (svg: string) => svg.match(/viewBox="(\S+) (\S+) (\S+) (\S+)"/)!.slice(1).map(Number) as [number, number, number, number];
+
+    it("draws full-height sides with sides over top", () => {
+      const svg = svgOf(module());
+      expect(svg).toContain('<rect data-panel="side" x="0" y="0" width="0.75" height="40"');
+      expect(svg).toContain('<rect data-panel="side" x="51.75" y="0" width="0.75" height="40"');
+      expect(svg).toContain('<rect data-panel="top" x="0.75" y="0" width="51" height="0.75"');
+    });
+
+    it("draws the sides and the top of today with top over sides", () => {
+      const svg = svgOf(module({ corners: undefined, fastener: undefined }));
+      expect(svg).toContain('<rect data-panel="side" x="0" y="0.75" width="0.75" height="38.5"');
+      expect(svg).toContain('<rect data-panel="top" x="0" y="0" width="52.5" height="0.75"');
+    });
+
+    it("draws the feet under the box and the top cleats on it", () => {
+      const svg = svgOf(module());
+      expect(count(svg, /data-mount="foot"/g)).toBe(2);
+      expect(count(svg, /data-mount="top-cleat"/g)).toBe(2);
+      expect(svg).toContain('<rect data-mount="foot" x="0" y="40" width="3.5" height="0.75" fill="#444"/>');
+      expect(svg).toContain('<rect data-mount="foot" x="49" y="40" width="3.5" height="0.75" fill="#444"/>');
+      expect(svg).toContain('<rect data-mount="top-cleat" x="3.5" y="-0.75" width="3.5" height="0.75" fill="#444"/>');
+      expect(svg).toContain('<rect data-mount="top-cleat" x="45.5" y="-0.75" width="3.5" height="0.75" fill="#444"/>');
+    });
+
+    it("makes the view box tall enough for the feet and the top cleats", () => {
+      const [, top, , height] = viewBox(svgOf(module()));
+      expect(top).toBeLessThan(-0.75);
+      expect(top + height).toBeGreaterThan(40.75);
+    });
   });
 });

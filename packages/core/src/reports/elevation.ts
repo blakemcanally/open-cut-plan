@@ -8,7 +8,8 @@ import { railsFor } from "../design/hardware.ts";
 import { cellStarts, designLayout, type Board } from "../design/layout.ts";
 import { isOpenBox } from "../design/openBox.ts";
 import { designPanels, type Panel } from "../design/panels.ts";
-import { DEFAULT_DESIGN_MOUNT } from "../design/systems.ts";
+import { cleatPositions } from "../design/parts.ts";
+import { CLEAT_WIDTH, DEFAULT_DESIGN_MOUNT, designCorners } from "../design/systems.ts";
 import { ACCENT_STROKE, ASSEMBLY_ACCENT, boardPaint, designFill, dimensionsSvg, drawLine, LATER_COLOR, num, type AssemblyDrawing, type DrawState } from "./drawing.ts";
 import { openBoxAssemblyDrawings, openBoxElevationSvg } from "./openBoxDrawings.ts";
 import { escapeXml } from "./svg.ts";
@@ -21,25 +22,34 @@ const FOOT_HEIGHT_MM = 24;
 const RAIL_HEIGHT_MM = 40;
 const RAIL_LENGTH_MM = { long: 630, short: 295 };
 
-function mountHeight(mount: string, units: Project["project"]["units"]): number {
-  return convertLength(mount === "legs" ? LEG_HEIGHT_MM : mount === "feet" ? FOOT_HEIGHT_MM : 0, "mm", units);
+function mountHeight(mount: string, units: Project["project"]["units"], thickness: number): number {
+  return mount === "cleats" ? thickness : convertLength(mount === "legs" ? LEG_HEIGHT_MM : mount === "feet" ? FOOT_HEIGHT_MM : 0, "mm", units);
+}
+
+function topCleatHeight(mount: string, thickness: number): number {
+  return mount === "cleats" ? thickness : 0;
 }
 
 interface MountShape {
-  kind: "legs" | "feet" | "wall-rail";
+  kind: "legs" | "feet" | "wall-rail" | "foot" | "top-cleat";
   x: number;
   y: number;
   width: number;
   height: number;
 }
 
-/** The legs or the feet under the unit (the front two), or the wall rails behind its top. */
+/** The legs or the feet under the unit (the front two), the wall rails behind its top, or the feet under it and the top cleats on it. */
 function mountShapes(geometry: DesignGeometry, mount: string, units: Project["project"]["units"]): MountShape[] {
   const fromMm = (value: number) => convertLength(value, "mm", units);
   const { thickness: t, outsideWidth: width, outsideHeight: height } = geometry;
   if (mount === "legs" || mount === "feet") {
     const foot = mount === "legs" ? fromMm(LEG_DIAMETER_MM) : fromMm(40);
-    return [t, width - t - foot].map((x) => ({ kind: mount, x, y: height, width: foot, height: mountHeight(mount, units) }));
+    return [t, width - t - foot].map((x) => ({ kind: mount, x, y: height, width: foot, height: mountHeight(mount, units, t) }));
+  }
+  if (mount === "cleats") {
+    const { feet, topCleats } = cleatPositions(geometry, units);
+    const strip = (kind: "foot" | "top-cleat", y: number) => (x: number): MountShape => ({ kind, x, y, width: CLEAT_WIDTH[units], height: t });
+    return [...feet.map(strip("foot", height)), ...topCleats.map(strip("top-cleat", -t))];
   }
   if (mount !== "wall-rail") return [];
   const rails = railsFor(convertLength(width, units, "mm"));
@@ -85,19 +95,20 @@ export function designElevationSvg(project: Project, designId: string, options: 
   const mount = design.mount ?? DEFAULT_DESIGN_MOUNT;
   const { outsideWidth: width, outsideHeight: height } = geometry;
   const unit = Math.max(width, height) / 40;
-  const below = mountHeight(mount, units);
+  const below = mountHeight(mount, units, geometry.thickness);
+  const above = topCleatHeight(mount, geometry.thickness);
   const margin = unit * 4;
   const fill = designFill(project, design);
   const stroke = `stroke="#333" stroke-width="${num(unit * 0.08)}"`;
   const font = (scale: number) => `font-size="${num(unit * scale)}"`;
   const viewWidth = width + 2 * margin;
-  const viewHeight = height + below + 2 * margin;
+  const viewHeight = height + above + below + 2 * margin;
   const out: string[] = [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${num(-margin)} ${num(-margin)} ${num(viewWidth)} ${num(viewHeight)}" width="${num(viewWidth)}${units}" height="${num(viewHeight)}${units}" font-family="Helvetica, Arial, sans-serif">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${num(-margin)} ${num(-margin - above)} ${num(viewWidth)} ${num(viewHeight)}" width="${num(viewWidth)}${units}" height="${num(viewHeight)}${units}" font-family="Helvetica, Arial, sans-serif">`,
     `<title>${escapeXml(`${design.name}: ${show(width)} × ${show(height)} × ${show(geometry.depth)}`)}</title>`,
     `<g data-design="${escapeXml(design.id)}">`,
   ];
-  const { panels, cells } = designPanels(geometry);
+  const { panels, cells } = designPanels(geometry, designCorners(design));
   for (const p of panels) {
     out.push(
       `<rect data-panel="${p.kind}" x="${num(p.x)}" y="${num(p.y)}" width="${num(p.width)}" height="${num(p.height)}" fill="${escapeXml(fill)}" ${stroke}><title>${escapeXml(p.name)}</title></rect>`,
@@ -203,11 +214,12 @@ export function assemblyDrawings(project: Project, designId: string): AssemblyDr
   const { thickness: t, columns, rows, outsideWidth: width, outsideHeight: height } = geometry;
   const unit = Math.max(width, height) / 40;
   const margin = unit * 1.5;
-  const below = mountHeight(mount, units);
+  const below = mountHeight(mount, units, t);
+  const above = topCleatHeight(mount, t);
   const fill = designFill(project, design);
   const viewWidth = width + 2 * margin;
-  const viewHeight = height + below + 2 * margin;
-  const { panels } = designPanels(geometry);
+  const viewHeight = height + above + below + 2 * margin;
+  const { panels } = designPanels(geometry, designCorners(design));
   const shapes = mountShapes(geometry, mount, units);
 
   const cellX = cellStarts(columns, t);
@@ -269,7 +281,7 @@ export function assemblyDrawings(project: Project, designId: string): AssemblyDr
     const states = panels.map((p) => stateOf(keyOf(p)));
     const description = drawingText(step, rows.length, mount, states.includes("placed"), states.includes("later"));
     const out: string[] = [
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${num(-margin)} ${num(-margin)} ${num(viewWidth)} ${num(viewHeight)}" width="${num(viewWidth)}${units}" height="${num(viewHeight)}${units}" font-family="Helvetica, Arial, sans-serif">`,
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${num(-margin)} ${num(-margin - above)} ${num(viewWidth)} ${num(viewHeight)}" width="${num(viewWidth)}${units}" height="${num(viewHeight)}${units}" font-family="Helvetica, Arial, sans-serif">`,
       `<title>${escapeXml(description)}</title>`,
       `<g data-design="${escapeXml(design.id)}" data-step="${index + 1}">`,
     ];

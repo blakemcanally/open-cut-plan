@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assemblyDrawings, assemblySteps, regenerateDesigns, setFinishSteps, type CombinedCell } from "../../src/index.ts";
+import { assemblyDrawings, assemblySteps, regenerateDesigns, setFinishSteps, type CombinedCell, type Design } from "../../src/index.ts";
 import { designProject, eketDesign, kallaxDesign } from "../helpers.ts";
 
 const project = regenerateDesigns(designProject([kallaxDesign(), eketDesign(), eketDesign({ id: "l", name: "Legs", mount: "legs", back: undefined, quantity: 1 })]));
@@ -106,5 +106,73 @@ describe("assemblyDrawings", () => {
   it("gives null for a missing design or a design with an error", () => {
     expect(assemblyDrawings(project, "nope")).toBeNull();
     expect(assemblyDrawings(designProject([kallaxDesign({ material: "missing" })]), "kx")).toBeNull();
+  });
+
+  describe("his module", () => {
+    const inches = () => {
+      const base = designProject();
+      return { ...base, project: { ...base.project, units: "in" as const }, materials: [{ id: "ply18", name: "Plywood 3/4", thickness: 0.75, grained: true }] };
+    };
+    const module = (patch: Partial<Design> = {}): Design => ({
+      id: "sh",
+      name: "Module",
+      system: "custom",
+      material: "ply18",
+      width: { outside: 52.5, cells: 1 },
+      height: { outside: 40, cells: 4 },
+      depth: 16,
+      corners: "sides-over-top",
+      fastener: "face-screws",
+      mount: "cleats",
+      ...patch,
+    });
+    const projectOf = (design: Design) => ({ ...inches(), designs: [design] });
+    const viewBox = (svg: string) => svg.match(/viewBox="(\S+) (\S+) (\S+) (\S+)"/)!.slice(1).map(Number) as [number, number, number, number];
+
+    it("gives a drawing for each step", () => {
+      const design = module();
+      expect(assemblyDrawings(projectOf(design), "sh")).toHaveLength(assemblySteps(projectOf(design), "sh")!.length);
+    });
+
+    it("draws the boards of each step on full-height sides", () => {
+      const drawings = assemblyDrawings(projectOf(module()), "sh")!;
+      const steps = assemblySteps(projectOf(module()), "sh")!;
+      const at = (title: string) => drawings[steps.findIndex((step) => step.title === title)]!.svg;
+      expect(state(at("Mark the shelf positions"), "side")).toEqual(["current", "current"]);
+      expect(state(at("Mark the shelf positions"), "top")).toEqual(["later"]);
+      expect(at("Mark the shelf positions")).toContain('data-panel="side" data-state="current" x="0" y="0" width="0.75" height="40"');
+      expect(count(at("Mark the shelf positions"), /data-mark/g)).toBe(6);
+      expect(at("Mark the shelf positions")).toContain('<line data-mark x1="0" y1="10.563" x2="2.063" y2="10.563"');
+      expect(state(at("Fit the top and the bottom"), "side")).toEqual(["current", "current"]);
+      expect(state(at("Fit the top and the bottom"), "top")).toEqual(["current"]);
+      expect(state(at("Fit the shelves"), "shelf")).toEqual(["current", "current", "current"]);
+      expect(state(at("Fit the shelves"), "side")).toEqual(["placed", "placed"]);
+    });
+
+    it("marks the cleats in the step of the cleats", () => {
+      const drawings = assemblyDrawings(projectOf(module()), "sh")!;
+      const last = drawings.at(-1)!;
+      expect(last.description).toBe("Front view with the cleats marked.");
+      expect(count(last.svg, /data-mount="foot" data-state="current"/g)).toBe(2);
+      expect(count(last.svg, /data-mount="top-cleat" data-state="current"/g)).toBe(2);
+      expect(last.svg).toContain('<rect data-mount="foot" data-state="current" x="0" y="40" width="3.5" height="0.75"');
+      expect(last.svg).toContain('<rect data-mount="top-cleat" data-state="current" x="3.5" y="-0.75" width="3.5" height="0.75"');
+      expect(count(drawings[0]!.svg, /data-mount="foot" data-state="later"/g)).toBe(2);
+      expect(drawings[0]!.svg).toContain('data-mount="top-cleat" data-state="later"');
+    });
+
+    it("makes the view box tall enough for the feet and the top cleats", () => {
+      for (const drawing of assemblyDrawings(projectOf(module()), "sh")!) {
+        const [, top, , height] = viewBox(drawing.svg);
+        expect(top).toBeLessThan(-0.75);
+        expect(top + height).toBeGreaterThan(40.75);
+      }
+    });
+
+    it("draws the boards of one column with combined rows", () => {
+      const design = module({ height: { openings: [8, 8, 8, 8, 8] }, combined: [{ column: 1, row: 2, columns: 1, rows: 2 }] });
+      const drawings = assemblyDrawings(projectOf(design), "sh")!;
+      expect(drawings).toHaveLength(assemblySteps(projectOf(design), "sh")!.length);
+    });
   });
 });
