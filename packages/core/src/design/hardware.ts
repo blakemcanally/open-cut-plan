@@ -6,7 +6,8 @@ import { boardLength, designLayout } from "./layout.ts";
 import { isOpenBox, openBoxPocketHoles } from "./openBox.ts";
 import { CHART_TOLERANCE_MM, COUNT_EPSILON, pocketHolesPerEnd, pocketScrew, POCKET_SCREWS, type PocketScrew } from "./pocket.ts";
 import { IKEA_FEET, IKEA_LEGS, IKEA_RAIL_35, IKEA_RAIL_70 } from "./ikea.ts";
-import { DEFAULT_DESIGN_MOUNT, DEFAULT_DESIGN_QUANTITY, EKET, EKET_TOLERANCE_MM, isDesignMount } from "./systems.ts";
+import { faceScrew } from "./screws.ts";
+import { DEFAULT_DESIGN_MOUNT, DEFAULT_DESIGN_QUANTITY, designFastener, EKET, EKET_TOLERANCE_MM, isDesignMount } from "./systems.ts";
 
 export { pocketHolesPerEnd, pocketScrew, POCKET_SCREWS, type PocketScrew };
 
@@ -51,7 +52,7 @@ export function railsFor(outsideWidthMm: number): Rails {
   return { long, short };
 }
 
-export type HardwareItem = "pocket-screws" | "back-screws" | "eket-legs" | "eket-feet" | "eket-rail-70" | "eket-rail-35" | "anti-tip" | "wall-fixings" | "glue";
+export type HardwareItem = "pocket-screws" | "face-screws" | "cleat-screws" | "back-screws" | "eket-legs" | "eket-feet" | "eket-rail-70" | "eket-rail-35" | "anti-tip" | "wall-fixings" | "glue";
 
 export interface HardwareChoice {
   name: string;
@@ -87,14 +88,18 @@ export function hardwareList(project: Project): HardwareLine[] {
 
     const open = isOpenBox(design);
     const holes = (open ? openBoxPocketHoles(geometry, units).total : pocketHoleEnds(geometry) * pocketHolesPerEnd(mm(geometry.panelDepth))) * quantity;
-    const screw = pocketScrew(mm(geometry.thickness));
-    add({
-      item: "pocket-screws",
-      name: screw ? `Pocket screws, coarse thread, ${screw.screw}` : "Pocket screws, coarse thread (the chart has no length for this stock)",
-      quantity: Math.ceil((holes * 11) / 10),
-      unit: "each",
-      source: POCKET_SCREW_SOURCE,
-    });
+    if (designFastener(design) === "face-screws") {
+      add({ item: "face-screws", name: `Wood screws for the joints, ${faceScrew(mm(geometry.thickness), units)}`, quantity: Math.ceil((holes * 11) / 10), unit: "each" });
+    } else {
+      const screw = pocketScrew(mm(geometry.thickness));
+      add({
+        item: "pocket-screws",
+        name: screw ? `Pocket screws, coarse thread, ${screw.screw}` : "Pocket screws, coarse thread (the chart has no length for this stock)",
+        quantity: Math.ceil((holes * 11) / 10),
+        unit: "each",
+        source: POCKET_SCREW_SOURCE,
+      });
+    }
     if (open) continue;
     if (design.back) add({ item: "back-screws", name: backScrewName(mm(geometry.backThickness)), quantity: backScrewCount(geometry, units) * quantity, unit: "each" });
 

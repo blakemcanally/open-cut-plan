@@ -70,7 +70,7 @@ export function checkDesigns(project: Project, options: { keepHidden?: boolean }
     if (errors.length > 0) continue;
     const geometry = designGeometry(design, materials)!;
 
-    if (geometry.thickness > mm(MAX_POCKET_CHART_MM) + EPSILON) {
+    if (designFastener(design) === "pocket-screws" && geometry.thickness > mm(MAX_POCKET_CHART_MM) + EPSILON) {
       issues.push(planWarning("pocket-chart", `${name} uses stock thicker than 1 1/2" (38 mm). The pocket screw chart has no screw for it.`, ref));
     }
     const exact = (value: number) => formatExactLength(value, units);

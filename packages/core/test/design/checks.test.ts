@@ -39,6 +39,15 @@ describe("checkDesigns", () => {
     expect(codes(regenerateDesigns(project))).toEqual(["warning:pocket-chart"]);
   });
 
+  it("gives no pocket-chart warning for face screws", () => {
+    const project = designProject([
+      { id: "sh", name: "Module", system: "custom", material: "ply18", width: { outside: 52.5, cells: 1 }, height: { outside: 40, cells: 4 }, depth: 16, corners: "sides-over-top", fastener: "face-screws" },
+    ]);
+    project.project.units = "in";
+    project.materials = [{ id: "ply18", name: "Plywood 1 3/4", thickness: 1.75, grained: true }];
+    expect(codes(regenerateDesigns(project))).not.toContain("warning:pocket-chart");
+  });
+
   it("has a screw for stock of exactly 1 1/2 inches", () => {
     const project = designProject([eketDesign({ system: "custom" })]);
     project.materials = project.materials.map((m) => (m.id === "ply18" ? { ...m, thickness: 38.1 } : m));

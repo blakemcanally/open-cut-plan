@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { backScrewCount, designGeometry, hardwareList, materialsById, pocketHoleEnds, pocketHolesPerEnd, pocketScrew, railsFor, regenerateDesigns, type Design, type HardwareLine } from "../../src/index.ts";
+import { backScrewCount, designGeometry, hardwareList, materialsById, pocketHoleEnds, pocketHolesPerEnd, pocketScrew, POCKET_SCREW_SOURCE, railsFor, regenerateDesigns, type Design, type HardwareLine } from "../../src/index.ts";
 import { designProject, eketDesign, kallaxDesign } from "../helpers.ts";
 
 const counts = (lines: HardwareLine[]) => lines.map((line) => [line.item, line.quantity, line.design]);
@@ -113,5 +113,59 @@ describe("hardwareList", () => {
   it("leaves out a design with an error and gives no glue line without designs", () => {
     expect(hardwareList(designProject([kallaxDesign({ material: "missing" })]))).toEqual([]);
     expect(hardwareList(designProject([]))).toEqual([]);
+  });
+});
+
+describe("face screws", () => {
+  const inches = (thickness = 0.75) => {
+    const project = designProject();
+    project.project.units = "in";
+    project.materials = [{ id: "ply18", name: "Plywood", thickness, grained: true }];
+    return project;
+  };
+  const module = (patch: Partial<Design> = {}): Design => ({
+    id: "sh",
+    name: "Module",
+    system: "custom",
+    material: "ply18",
+    width: { outside: 52.5, cells: 1 },
+    height: { outside: 40, cells: 4 },
+    depth: 16,
+    corners: "sides-over-top",
+    fastener: "face-screws",
+    mount: "floor",
+    ...patch,
+  });
+  const linesOf = (design: Design, thickness?: number) => {
+    const project = inches(thickness);
+    project.designs = [design];
+    return hardwareList(regenerateDesigns(project));
+  };
+
+  it("gives 44 face screws and no pocket screws for his module", () => {
+    const lines = linesOf(module());
+    expect(lines.find((line) => line.item === "pocket-screws")).toBeUndefined();
+    expect(lines.find((line) => line.item === "face-screws")).toEqual({
+      item: "face-screws",
+      name: 'Wood screws for the joints, #8 × 2"',
+      quantity: 44,
+      unit: "each",
+      design: "sh",
+    });
+  });
+
+  it("doubles the face screws for a quantity of 2", () => {
+    expect(linesOf(module({ quantity: 2 })).find((line) => line.item === "face-screws")!.quantity).toBe(88);
+  });
+
+  it("keeps the pocket screws of today", () => {
+    const lines = linesOf(module({ fastener: undefined, corners: undefined, width: { outside: 52.5, cells: 2 } }));
+    expect(lines.find((line) => line.item === "face-screws")).toBeUndefined();
+    expect(lines.find((line) => line.item === "pocket-screws")).toMatchObject({ name: 'Pocket screws, coarse thread, 1 1/4" (32 mm)', source: POCKET_SCREW_SOURCE });
+  });
+
+  it("gives a screw length for stock outside the pocket chart", () => {
+    expect(linesOf(module(), 0.25).find((line) => line.item === "face-screws")!.name).toBe('Wood screws for the joints, #8 × 1 1/2"');
+    expect(linesOf(module(), 1.75).find((line) => line.item === "face-screws")!.name).toBe('Wood screws for the joints, #8 × 3"');
   });
 });

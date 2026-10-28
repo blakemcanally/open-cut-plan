@@ -77,6 +77,7 @@ export * from "./design/add.ts";
 export * from "./design/starters.ts";
 export * from "./design/ikea.ts";
 export * from "./design/hardware.ts";
+export * from "./design/screws.ts";
 export * from "./design/assembly.ts";
 export * from "./design/estimate.ts";
 export * from "./reports/elevation.ts";
