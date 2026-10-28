@@ -138,6 +138,10 @@ function refuseGridFlags(options: OptionValues, subject: string): void {
   }
 }
 
+function refuseEket(system: DesignSystem): void {
+  if (system === "eket") throw usageError("An open-top box does not use the system eket. Give --system kallax or custom.", "invalid-value", { option: "system", value: system });
+}
+
 function outsideAxis(options: OptionValues, name: "width" | "height", units: Units, current: DesignAxis | undefined): DesignAxis {
   const outside = optionalLength(options, name, units);
   if (outside !== undefined) return { outside, cells: 1 };
@@ -242,10 +246,6 @@ function sizeText(project: Project, design: Design): string {
   return outside ? `${len(project, outside.width)} × ${len(project, outside.height)} × ${len(project, outside.depth)}` : "no size";
 }
 
-function kindText(design: Design): string {
-  return isOpenBox(design) ? "open-top box" : designKind(design);
-}
-
 function line(project: Project, design: Design): string {
   const shape = isOpenBox(design) ? `open-top box, ${design.system}` : `${design.system} ${axisCells(design.width)}x${axisCells(design.height)}`;
   return `${design.id} (${design.name}, ${shape}, ${sizeText(project, design)}, ×${design.quantity ?? 1})`;
@@ -319,8 +319,17 @@ const list: CommandSpec = {
       designs.length === 0
         ? "The project has no designs."
         : table(
-            ["id", "name", "system", "size", "qty", "mount", "parts", "copies", "kind"],
-            designs.map((d, i) => [d.id, d.name, d.system, sizeText(project, project.designs![i]!), String(d.quantity), d.mount, String(d.parts), String(d.copies), kindText(project.designs![i]!)]),
+            ["id", "name", "system", "size", "qty", "mount", "parts", "copies"],
+            designs.map((d, i) => [
+              d.id,
+              d.name,
+              isOpenBox(project.designs![i]!) ? `${d.system} (open-top box)` : d.system,
+              sizeText(project, project.designs![i]!),
+              String(d.quantity),
+              d.mount,
+              String(d.parts),
+              String(d.copies),
+            ]),
           );
     return { data: { units: project.project.units, designs }, text, warnings: warningLines(loaded) };
   },
@@ -363,7 +372,7 @@ function openBox(project: Project, options: OptionValues): { project: Project; i
   const units = project.project.units;
   refuseGridFlags(options, "--kind open-box");
   const system = choiceValue(str(options, "system") ?? "custom", "system", DESIGN_SYSTEMS);
-  if (system === "eket") throw usageError("An open-top box does not use the system eket. Give --system kallax or custom.", "invalid-value", { option: "system", value: system });
+  refuseEket(system);
   const width = outsideAxis(options, "width", units, undefined);
   const height = outsideAxis(options, "height", units, undefined);
   const depth = optionalLength(options, "depth", units);
@@ -490,6 +499,9 @@ function starterProject(project: Project, options: OptionValues, id: string): { 
     ...(requested === undefined ? {} : { id: newId(project.designs ?? [], requested, "", "design") }),
   });
   if (!added.ok) throw designRefused(added.issues);
+  if (back !== undefined && isOpenBox(findById(added.project.designs ?? [], added.id, "design"))) {
+    throw usageError(`The ${starter.name} has no --back choice. An open-top box has no back.`, "invalid-value", { option: "back", starter: starter.id });
+  }
   const quantity = str(options, "quantity");
   const depth = optionalLength(options, "depth", project.project.units);
   const changes: Partial<Design> = { ...(quantity === undefined ? {} : { quantity: integerValue(quantity, "quantity", 1, MAX_DESIGN_QUANTITY) }), ...(depth === undefined ? {} : { depth }) };
@@ -598,7 +610,10 @@ const set: CommandSpec = {
     const current: Design = { ...old, id, system };
     const fields = clearFinish ? setFinishSteps(current, []) : steps === undefined ? current : setFinishSteps(current, steps);
     const boxed = isOpenBox(old);
-    if (boxed) refuseGridFlags(options, "an open-top box");
+    if (boxed) {
+      refuseGridFlags(options, "an open-top box");
+      if (systemText !== undefined) refuseEket(known);
+    }
     fields.width = boxed ? outsideAxis(options, "width", units, old.width) : axisValue(options, WIDTH, known, units, old.width)!;
     fields.height = boxed ? outsideAxis(options, "height", units, old.height) : axisValue(options, HEIGHT, known, units, old.height)!;
     const design = fitCombined(fields);

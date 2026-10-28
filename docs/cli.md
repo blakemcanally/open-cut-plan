@@ -223,9 +223,10 @@ name is `Open-top box`.
 - `--material`, `--quantity`, `--name`, `--id`, and `--finish` work as for other designs.
 - With `--system kallax`, the design checks warn when the box does not fit a KALLAX-style cube.
 
-`design set` on an open-top box takes `--width`, `--height`, and `--depth` for the outside sizes. The flags that give a
-`conflict` above give it also on `design set`. `design list` shows `open-top box` in its `kind` column, and the JSON
-has `kind` for a design that has one.
+`design set` on an open-top box takes `--width`, `--height`, and `--depth` for the outside sizes. These flags give exit
+2 and `conflict` on `design set` too: `--cols`, `--rows`, `--column-openings`, `--row-openings`, `--back`, and
+`--mount`. `--system eket` gives exit 2 and `invalid-value`. In the text of `design list`, the system column of an
+open-top box ends with `(open-top box)`. The JSON has `kind` for a design that has one.
 
 #### Starters
 
@@ -260,7 +261,8 @@ These flags work with `--starter`:
   the finish steps of the starter.
 
 The `crate` starter is an open-top box that fits a KALLAX-style cube. It has no choices, so `--cols`, `--rows`,
-`--mount`, and `--size` are refused, and so is `--back`, because an open-top box has no back. It has 3 finish steps.
+`--mount`, and `--size` are refused (exit 2, `invalid-value`). `--back` is refused too, because an open-top box has no
+back. `--back none` is refused as well. It has 3 finish steps.
 
 `addedStock` lists the stock that the command added, also for the materials that it picked.
 

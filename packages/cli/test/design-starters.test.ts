@@ -161,6 +161,17 @@ describe("design add --starter", () => {
     expect(crate).toMatchObject({ group: "Accessories", choices: [] });
   });
 
+  it.each(["birch", "none"])("refuses --back %s for the crate", async (back) => {
+    const io = await fresh("in");
+    await cli(["materials", "add", F, "--name", "Birch", "--id", "birch", "--thickness", "0.75"], io);
+    const before = io.files.get(F);
+    const result = await cli(["design", "add", F, "--starter", "crate", "--back", back, "--json"], io);
+    expect(result.code).toBe(2);
+    expect(errorOf(result)).toMatchObject({ code: "invalid-value", option: "back", starter: "crate" });
+    expect(errorOf(result).message).toContain("The Crate has no --back choice.");
+    expect(io.files.get(F)).toBe(before);
+  });
+
   it("replaces the finish steps of the crate with --finish", async () => {
     const result = await cli(["design", "add", F, "--starter", "crate", "--finish", "Paint it.", "--json"], await fresh("in"));
     expect(result.code).toBe(0);

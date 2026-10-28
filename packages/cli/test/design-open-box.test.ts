@@ -121,6 +121,15 @@ describe("design set on an open-top box", () => {
     expect(io.files.get(F)).toBe(before);
   });
 
+  it("refuses the system eket, as design add does", async () => {
+    const io = await withBox();
+    const before = io.files.get(F);
+    const result = await cli(["design", "set", F, "open-top-box", "--system", "eket", "--json"], io);
+    expect(result.code).toBe(2);
+    expect(errorOf(result)).toMatchObject({ code: "invalid-value", option: "system" });
+    expect(io.files.get(F)).toBe(before);
+  });
+
   it("refuses --kind on design set", async () => {
     const result = await cli(["design", "set", F, "open-top-box", "--kind", "box", "--json"], await withBox());
     expect(result.code).toBe(2);
@@ -166,9 +175,14 @@ describe("finish steps", () => {
     expect(io.files.get(F)).toBe(before);
   });
 
-  it.each([["add", BOX], ["set", ["design", "set", F, "open-top-box"]]])("refuses an empty finish step on design %s", async (verb, argv) => {
-    const io = await withBox();
-    const result = await cli([...argv, "--finish", "  ", "--json"], verb === "add" ? await fresh("in") : io);
+  it("refuses an empty finish step on design add", async () => {
+    const result = await cli([...BOX, "--finish", "  ", "--json"], await fresh("in"));
+    expect(result.code).toBe(2);
+    expect(errorOf(result)).toMatchObject({ code: "invalid-value", option: "finish" });
+  });
+
+  it("refuses an empty finish step on design set", async () => {
+    const result = await cli(["design", "set", F, "open-top-box", "--finish", "  ", "--json"], await withBox());
     expect(result.code).toBe(2);
     expect(errorOf(result)).toMatchObject({ code: "invalid-value", option: "finish" });
   });
@@ -185,9 +199,17 @@ describe("design list and get", () => {
   it("lists an open-top box as an open-top box", async () => {
     const io = await withBox();
     const text = await cli(["design", "list", F], io);
-    expect(text.stdout).toContain("open-top box");
+    expect(text.stdout).toMatch(/open-top-box\s+Open-top box\s+kallax \(open-top box\)\s+/);
     const json = await cli(["design", "list", F, "--json"], io);
     expect(json.json().designs[0]).toMatchObject({ id: "open-top-box", kind: "open-box" });
+  });
+
+  it("keeps the text table of a shelf design as it was", async () => {
+    const io = await fresh();
+    await cli(["design", "add", F, "--system", "kallax", "--cols", "2", "--rows", "2"], io);
+    const text = await cli(["design", "list", F], io);
+    expect(text.stdout.split("\n")[0]!.split(/\s+/).filter(Boolean)).toEqual(["id", "name", "system", "size", "qty", "mount", "parts", "copies"]);
+    expect(text.stdout).not.toContain("open-top box");
   });
 
   it("shows the kind and the finish steps in design get", async () => {
