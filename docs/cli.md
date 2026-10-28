@@ -229,17 +229,17 @@ name is `Open-top box`.
 - `--width`, `--height`, and `--depth` are required (exit 2, `missing-option`). They are the outside sizes.
 - `--system` is `kallax` or `custom`. The default is `custom`. `eket` gives exit 2 and `invalid-value`.
 - `--cols`, `--rows`, `--column-openings`, `--row-openings`, `--back`, `--mount`, `--corners`, and `--fastener` give
-  exit 2 and `conflict`.
+  exit 2 and `conflict`, for every value.
 - `--material`, `--quantity`, `--name`, `--id`, and `--finish` work as for other designs.
 - With `--system kallax`, the design checks warn when the box does not fit a KALLAX-style cube.
 
 `design set` on an open-top box takes `--width`, `--height`, and `--depth` for the outside sizes. These flags give exit
-2 and `conflict` on `design set` too: `--cols`, `--rows`, `--column-openings`, and `--row-openings`. `--back` and
-`--mount` give exit 2 and `conflict` as well, with two exceptions. `--back none` removes the `back` field of the
-design, and `--mount floor` removes the `mount` field. `--corners` and `--fastener` give exit 2 and `conflict` with no
-exception. `--system eket` gives exit 2 and `invalid-value`. In the text of
-`design list`, the system column of an open-top box ends with `(open-top box)`, and its mount column shows `-`. The
-JSON has `kind` for a design that has one.
+2 and `conflict` on `design set` too: `--cols`, `--rows`, `--column-openings`, and `--row-openings`. `--back`,
+`--mount`, `--corners`, and `--fastener` give exit 2 and `conflict` as well, with four exceptions. `--back none`
+removes the `back` field of the design, `--mount floor` removes the `mount` field, `--corners top-over-sides` removes
+the `corners` field, and `--fastener pocket-screws` removes the `fastener` field. `--system eket` gives exit 2 and
+`invalid-value`. In the text of `design list`, the system column of an open-top box ends with `(open-top box)`, and its
+mount column shows `-`. The JSON has `kind` for a design that has one.
 
 #### Starters
 
@@ -260,8 +260,8 @@ A flag that the starter has no choice for, or a value that the starter does not 
 to 6). An id that is not a starter gives `invalid-value` and lists the ids.
 
 The flags that set the shape of the design (`--kind`, `--system`, `--width`, `--height`, `--column-openings`,
-`--row-openings`, `--corners`, and `--fastener`) give exit 2 and `conflict` with `--starter`. To change the grid past the choices, run `design set`
-after `design add`.
+`--row-openings`, `--corners`, and `--fastener`) give exit 2 and `conflict` with `--starter`. To change the grid past
+the choices, run `design set` after `design add`.
 
 These flags work with `--starter`:
 
@@ -278,9 +278,10 @@ The `crate` starter is an open-top box that fits a KALLAX-style cube. It has no 
 back. `--back none` is refused as well. It has 3 finish steps.
 
 The `stacking-shelf` starter is a shelf module that stacks on cleats, after the shelf system of Evan Monsma. It has no
-choices, so `--cols`, `--rows`, `--mount`, and `--size` are refused (exit 2, `invalid-value`). `--back` gives exit 2
-and `conflict`, because the module has no back. The design has the corners `sides-over-top`, the fastener
-`face-screws`, and the mount `cleats`. It hides the warning `shelf-span`. `design set --show-warnings` shows it again.
+choices, so `--cols`, `--rows`, `--mount`, and `--size` are refused (exit 2, `invalid-value`). `--back` is refused
+too (exit 2, `invalid-value`), because the module has no back. `--back none` is refused as well. The design has the
+corners `sides-over-top`, the fastener `face-screws`, and the mount `cleats`. It hides the warning `shelf-span`.
+`design set --show-warnings` shows it again.
 
 ```sh
 opencutplan design add hall.cutplan.json --starter stacking-shelf

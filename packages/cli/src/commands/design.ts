@@ -149,7 +149,7 @@ function refuseGridFlags(options: OptionValues, subject: string): void {
   }
 }
 
-/** An open-top box has no back, no mount, no corners, and no fastener. The values that already mean that are allowed when `allowed` is true. */
+/** An open-top box has no back, no mount, no corners, and no fastener. The values that mean that (none, floor, top-over-sides, pocket-screws) are allowed when `allowed` is true. */
 function refuseBoxSettings(options: OptionValues, allowed: boolean): void {
   const back = str(options, "back");
   if (back !== undefined && !(allowed && back === "none")) {
@@ -159,8 +159,11 @@ function refuseBoxSettings(options: OptionValues, allowed: boolean): void {
   if (mount !== undefined && !(allowed && mount === "floor")) {
     throw usageError(`--mount does not work with an open-top box. An open-top box has no mount.${allowed ? " Give --mount floor to remove the field." : ""}`, "conflict", { option: "mount" });
   }
-  for (const name of ["corners", "fastener"]) {
-    if (str(options, name) !== undefined) throw usageError(`--${name} does not work with an open-top box. An open-top box has no ${name}.`, "conflict", { option: name });
+  for (const [name, plain] of [["corners", "top-over-sides"], ["fastener", "pocket-screws"]] as const) {
+    const value = str(options, name);
+    if (value !== undefined && !(allowed && value === plain)) {
+      throw usageError(`--${name} does not work with an open-top box. An open-top box has no ${name}.${allowed ? ` Give --${name} ${plain} to remove the field.` : ""}`, "conflict", { option: name });
+    }
   }
 }
 
@@ -476,6 +479,8 @@ function customDesign(project: Project, options: OptionValues): { project: Proje
 const STARTER_OPTION: OptionSpec = { name: "starter", type: "string", value: "<id>", description: "Make the design from a starter. Run design starters for the ids and the choices." };
 const SIZE_OPTION: OptionSpec = { name: "size", type: "string", value: "<width>x<height>", description: "With --starter bookcase: the width and the height in cm, for example 80x202." };
 
+const BACKLESS_STARTERS: readonly string[] = ["crate", "stacking-shelf"];
+
 const SHAPE_FLAGS = ["kind", "system", "width", "height", "column-openings", "row-openings", "corners", "fastener"] as const;
 
 interface StarterFlag {
@@ -537,8 +542,8 @@ function starterProject(project: Project, options: OptionValues, id: string): { 
     if (str(options, name) !== undefined) throw usageError(`--${name} does not work with --starter. Use --cols, --rows, --mount, or --size, or change the design with design set.`, "conflict", { option: name });
   }
   const back = str(options, "back");
-  if (starter.id === "stacking-shelf" && back !== undefined) {
-    throw usageError(`The ${starter.name} has no --back choice. It has no back.`, "conflict", { option: "back", starter: starter.id });
+  if (back !== undefined && BACKLESS_STARTERS.includes(starter.id)) {
+    throw usageError(`The ${starter.name} has no --back choice. It has no back.`, "invalid-value", { option: "back", starter: starter.id });
   }
   const values = starterValues(starter, options);
   const material = str(options, "material");
@@ -551,9 +556,6 @@ function starterProject(project: Project, options: OptionValues, id: string): { 
     ...(requested === undefined ? {} : { id: newId(project.designs ?? [], requested, "", "design") }),
   });
   if (!added.ok) throw designRefused(added.issues);
-  if (back !== undefined && isOpenBox(findById(added.project.designs ?? [], added.id, "design"))) {
-    throw usageError(`The ${starter.name} has no --back choice. An open-top box has no back.`, "invalid-value", { option: "back", starter: starter.id });
-  }
   const quantity = str(options, "quantity");
   const depth = optionalLength(options, "depth", project.project.units);
   const changes: Partial<Design> = { ...(quantity === undefined ? {} : { quantity: integerValue(quantity, "quantity", 1, MAX_DESIGN_QUANTITY) }), ...(depth === undefined ? {} : { depth }) };
@@ -590,7 +592,7 @@ const add: CommandSpec = {
   name: "design add",
   summary: "Add a design and make its parts.",
   description:
-    "Add a cabinet design and make its parts: the top, the bottom, the sides, the dividers, the shelves, and the back. Give each axis as --cols with --width (or --rows with --height), or as a list of openings. For kallax and eket, --cols and --rows alone give IKEA-size cells, and the depth is the IKEA depth; the numbers are converted to the project units. A design with an error (such as stock too thin for pocket screws) is refused with exit 1, invalid-value, and the checks in error.issues. When the material or the back material has no enabled stock, the suggested sheet of it is added (as with stock add --suggested); addedStock lists it. The new parts are not placed; run optimize. With --starter, the design is a starter from design starters: the grid, the mount, and the size come from --cols, --rows, --mount, and --size, and the command picks the materials, a thin back, and the stock as the app does. --material and --back replace the pick, and --back none gives no back. --name, --id, --quantity, --depth, and --color change the design after the starter makes it. With --kind open-box, the design is an open-top box with 4 walls and a bottom: --width, --height, and --depth are required (exit 2, missing-option), and --system is kallax or custom (default custom). An open-top box does not work with --cols, --rows, --column-openings, --row-openings, --back, --mount, --corners, or --fastener (exit 2, conflict). --finish adds one finish step of plain text; give it one time for each step, in order. A starter does not work with --kind, --system, --width, --height, --column-openings, --row-openings, --corners, or --fastener (exit 2, conflict); the stacking-shelf starter does not work with --back either; use design set after design add. A flag that the starter has no choice for, or a value that it does not allow, is refused with exit 2 and invalid-value.",
+    "Add a cabinet design and make its parts: the top, the bottom, the sides, the dividers, the shelves, and the back. Give each axis as --cols with --width (or --rows with --height), or as a list of openings. For kallax and eket, --cols and --rows alone give IKEA-size cells, and the depth is the IKEA depth; the numbers are converted to the project units. A design with an error (such as stock too thin for pocket screws) is refused with exit 1, invalid-value, and the checks in error.issues. When the material or the back material has no enabled stock, the suggested sheet of it is added (as with stock add --suggested); addedStock lists it. The new parts are not placed; run optimize. With --starter, the design is a starter from design starters: the grid, the mount, and the size come from --cols, --rows, --mount, and --size, and the command picks the materials, a thin back, and the stock as the app does. --material and --back replace the pick, and --back none gives no back. --name, --id, --quantity, --depth, and --color change the design after the starter makes it. With --kind open-box, the design is an open-top box with 4 walls and a bottom: --width, --height, and --depth are required (exit 2, missing-option), and --system is kallax or custom (default custom). An open-top box does not work with --cols, --rows, --column-openings, --row-openings, --back, --mount, --corners, or --fastener (exit 2, conflict). --finish adds one finish step of plain text; give it one time for each step, in order. A starter does not work with --kind, --system, --width, --height, --column-openings, --row-openings, --corners, or --fastener (exit 2, conflict); the crate and stacking-shelf starters do not work with --back (exit 2, invalid-value); use design set after design add. A flag that the starter has no choice for, or a value that it does not allow, is refused with exit 2 and invalid-value.",
   args: [FILE_ARG],
   options: [...FIELD_OPTIONS, KIND_OPTION, FINISH_OPTION, STARTER_OPTION, SIZE_OPTION, ID_OPTION, ...OUTPUT_OPTIONS],
   examples: [
@@ -632,7 +634,7 @@ const set: CommandSpec = {
   name: "design set",
   summary: "Change a design and make its parts again.",
   description:
-    "Change the fields of a design, then make its parts again. Only the fields you give change. --id gives the design a new id; its parts get new ids, and their copies stay on the sheets. A copy stays on its sheet when its part keeps the same id, size, and material; the other copies go to the tray, and removedPlacements lists them. On an open-top box, --width, --height, and --depth set the outside sizes, and --cols, --rows, --column-openings, and --row-openings give exit 2 and conflict. --back, --mount, --corners, and --fastener do the same, except --back none and --mount floor, which remove the back field and the mount field. On a box, --corners top-over-sides and --fastener pocket-screws remove the corners field and the fastener field, and --mount cleats adds the feet and the top cleats. --show-warnings removes the hiddenWarnings field, so the design shows its warnings again. --finish replaces the finish steps with the steps that you give, one flag for each step. --clear-finish removes them; with --finish it gives exit 2 and conflict. A change that gives a design error is refused with exit 1, invalid-value, and the checks in error.issues. A --material or --back with no enabled stock gets the suggested sheet (as with stock add --suggested); addedStock lists it.",
+    "Change the fields of a design, then make its parts again. Only the fields you give change. --id gives the design a new id; its parts get new ids, and their copies stay on the sheets. A copy stays on its sheet when its part keeps the same id, size, and material; the other copies go to the tray, and removedPlacements lists them. On an open-top box, --width, --height, and --depth set the outside sizes, and --cols, --rows, --column-openings, and --row-openings give exit 2 and conflict. --back, --mount, --corners, and --fastener do the same, except --back none, --mount floor, --corners top-over-sides, and --fastener pocket-screws, which remove the back, mount, corners, and fastener fields. On a box, --corners top-over-sides and --fastener pocket-screws remove the corners field and the fastener field, and --mount cleats adds the feet and the top cleats. --show-warnings removes the hiddenWarnings field, so the design shows its warnings again. --finish replaces the finish steps with the steps that you give, one flag for each step. --clear-finish removes them; with --finish it gives exit 2 and conflict. A change that gives a design error is refused with exit 1, invalid-value, and the checks in error.issues. A --material or --back with no enabled stock gets the suggested sheet (as with stock add --suggested); addedStock lists it.",
   args: [FILE_ARG, DESIGN_ARG],
   options: [...FIELD_OPTIONS, FINISH_OPTION, CLEAR_FINISH_OPTION, SHOW_WARNINGS_OPTION, { ...ID_OPTION, description: "A new id for the design. Its parts get new ids with it." }, ...OUTPUT_OPTIONS],
   examples: [

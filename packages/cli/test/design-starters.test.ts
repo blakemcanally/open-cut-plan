@@ -188,14 +188,14 @@ describe("design add --starter", () => {
     ]);
   });
 
-  it("refuses --back with the stacking shelf", async () => {
+  it.each(["birch", "none"])("refuses --back %s for the stacking shelf, as for the crate", async (back) => {
     const io = await fresh("in");
+    await cli(["materials", "add", F, "--name", "Birch", "--id", "birch", "--thickness", "0.75"], io);
     const before = io.files.get(F);
-    for (const back of ["birch", "none"]) {
-      const result = await cli(["design", "add", F, "--starter", "stacking-shelf", "--back", back, "--json"], io);
-      expect(result.code).toBe(2);
-      expect(errorOf(result)).toMatchObject({ code: "conflict", option: "back" });
-    }
+    const result = await cli(["design", "add", F, "--starter", "stacking-shelf", "--back", back, "--json"], io);
+    expect(result.code).toBe(2);
+    expect(errorOf(result)).toMatchObject({ code: "invalid-value", option: "back", starter: "stacking-shelf" });
+    expect(errorOf(result).message).toContain("The Stacking shelf has no --back choice.");
     expect(io.files.get(F)).toBe(before);
   });
 

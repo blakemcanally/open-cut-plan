@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cli, memoryIo, type MemoryIo } from "./helpers.ts";
+import { cli, editFile, memoryIo, type MemoryIo } from "./helpers.ts";
 
 const F = "hall.cutplan.json";
 
@@ -112,7 +112,7 @@ describe("design set on an open-top box", () => {
     expect(result.json().design).toMatchObject({ width: { outside: 12.5, cells: 1 }, height: { outside: 6, cells: 1 }, depth: 15 });
   });
 
-  it.each([["--cols", "2"], ["--rows", "2"], ["--column-openings", "300"], ["--row-openings", "300"], ["--back", "ply6"], ["--mount", "legs"], ["--corners", "sides-over-top"], ["--fastener", "face-screws"], ["--corners", "top-over-sides"], ["--fastener", "pocket-screws"]])("refuses %s", async (flag, value) => {
+  it.each([["--cols", "2"], ["--rows", "2"], ["--column-openings", "300"], ["--row-openings", "300"], ["--back", "ply6"], ["--mount", "legs"], ["--corners", "sides-over-top"], ["--fastener", "face-screws"]])("refuses %s", async (flag, value) => {
     const io = await withBox();
     const before = io.files.get(F);
     const result = await cli(["design", "set", F, "open-top-box", flag, value, "--json"], io);
@@ -132,6 +132,17 @@ describe("design set on an open-top box", () => {
     const set = await cli(["design", "set", F, "open-top-box", flag, value, "--json"], await withBox());
     expect(errorOf(set).message).toContain(text);
     expect(errorOf(set).message).not.toContain("--width");
+  });
+
+  it.each([["corners", "top-over-sides"], ["fastener", "pocket-screws"]])("removes the %s field of an open-top box with %s", async (field, value) => {
+    const io = await withBox();
+    editFile(io, F, (file) => {
+      file.designs[0][field] = field === "corners" ? "sides-over-top" : "face-screws";
+    });
+    const result = await cli(["design", "set", F, "open-top-box", `--${field}`, value, "--json"], io);
+    expect(result.code).toBe(0);
+    expect(result.json().design).not.toHaveProperty(field);
+    expect(result.file(F).designs![0]).not.toHaveProperty(field);
   });
 
   it("removes the back field of an open-top box with --back none", async () => {
