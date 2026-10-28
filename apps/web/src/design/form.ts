@@ -96,6 +96,11 @@ export function withMode(axis: DesignAxis, mode: AxisMode, openings: readonly nu
   return mode === "openings" ? { openings: [...openings] } : { outside, cells: axisCells(axis) };
 }
 
+/** The outside width or height of an open-top box is one cell of that size, and the depth is the outside depth. */
+export function withOpenBoxSize(design: Design, which: "width" | "height" | "depth", value: number): Design {
+  return which === "depth" ? { ...design, depth: value } : { ...design, [which]: { outside: value, cells: 1 } };
+}
+
 /** kallax and eket set IKEA cells and the IKEA depth; custom keeps the sizes. */
 export function withSystem(design: Design, system: DesignSystem, units: Units): Design {
   if (!isPresetSystem(system)) return { ...design, system };

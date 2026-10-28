@@ -6,7 +6,7 @@ that an old link to an item number is not ambiguous.
 
 ## 24. The crate: the first open-top box
 
-**Status:** Designing. See `docs/superpowers/specs/2026-10-28-crate-design.md`.
+**Status:** Done. See `docs/superpowers/specs/2026-10-28-crate-design.md`.
 
 **Size:** M.
 
@@ -14,6 +14,28 @@ that an old link to an item number is not ambiguous.
 
 **Now:** The only design is a box that is open on the front. A crate made from it has the wrong bottom (an overlay
 back with face screws), is 1/32" too tall for the opening, has cabinet part names, and ends with a wall-anchor step.
+
+**Chosen approach:**
+
+- A design has a `kind`. No `kind` or `"box"` is the box of today. `"open-box"` is an open-top box: a front, a back,
+  two sides, and a bottom inside the walls, all of one material, with no top, back panel, cells, or mount. The user
+  cannot change the kind of a design.
+- The joinery is pocket screws and glue, with the pocket-hole spacing of today. The sides screw into the front and the
+  back. The bottom screws into the walls from its underside, where the cube hides the holes.
+- A design has a list of `finish` steps, in plain text, for both kinds. The assembly steps show them after the
+  build steps. They do not change the parts, the cut plan, or the hardware. File format 1.11 adds `kind` and
+  `finish`.
+- The system `kallax` on an open-top box means that the box goes in a KALLAX-style cube. The check `kallax-fit` gives
+  a warning when the box is more than 333 mm wide or tall, or more than 390 mm deep. The dialog shows **Fits** "KALLAX
+  cells" only when the check is quiet.
+- The starter `crate`, in the new group Accessories, is 12 1/2" × 12 1/2" × 13 1/2" (318 × 318 × 343 mm). It comes
+  with three finish steps: the two handle holes, the roundover, and a light sand.
+- The Design tab has an editor for the open-top box with the name, **Fits a KALLAX-style cube**, the quantity, the
+  outside width, height, and depth, the material, and the colours. Every design has the finish-steps editor. The CLI
+  makes and changes both kinds, and sets and removes the finish steps. See [web-app.md](web-app.md) and
+  [cli.md](cli.md).
+- Not done: other sizes (item 25), sizes from the cells of a shelf (item 26), grooved bottoms and drawers (item 27),
+  trays (item 28), cells in an open-top box (item 29), and holes as geometry (item 31).
 
 ## 25. More crate sizes: half height, double stack, and others
 

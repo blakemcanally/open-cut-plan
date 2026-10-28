@@ -8,13 +8,16 @@ import {
   DESIGN_SYSTEMS,
   designColorKey,
   designElevationSvg,
+  designKind,
   designUnitLabel,
   designGeometry,
   designParts,
   detachDesign,
   fitCombined,
   formatLength,
+  isDesignKind,
   isDesignMount,
+  isOpenBox,
   isDesignSystem,
   isNewerMinor,
   materialsById,
@@ -42,7 +45,7 @@ import { CellGrid } from "../design/CellGrid.tsx";
 import { FinishSteps } from "../design/FinishSteps.tsx";
 import { SheetEstimate } from "../design/SheetEstimate.tsx";
 import { StarterDialog } from "../design/StarterDialog.tsx";
-import { axisMode, CATALOG_VALUE, openingsText, outsideText, parseOpenings, pickMaterial, tryDesign, withCells, withMode, withSystem, type AxisMode } from "../design/form.ts";
+import { axisMode, CATALOG_VALUE, openingsText, outsideText, parseOpenings, pickMaterial, tryDesign, withCells, withMode, withOpenBoxSize, withSystem, type AxisMode } from "../design/form.ts";
 import type { ProjectStore } from "../state/useProject.ts";
 
 const MOUNT_LABELS: Readonly<Record<DesignMount, string>> = { floor: "Floor", legs: "EKET legs", feet: "EKET feet", "wall-rail": "EKET wall rail" };
@@ -158,10 +161,13 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
   const geometry = designGeometry(design, materialsById(project));
   const locked = isNewerMinor(project.version)
     ? `This file has the format version ${project.version}, from a newer OpenCutPlan. Update the app to change its designs.`
-    : !isDesignSystem(design.system)
-      ? `This design uses the system "${design.system}", which this app does not know. Its parts stay as they are.`
-      : null;
+    : !isDesignKind(designKind(design))
+      ? `This design has the kind "${designKind(design)}", which this app does not know. Its parts stay as they are.`
+      : !isDesignSystem(design.system)
+        ? `This design uses the system "${design.system}", which this app does not know. Its parts stay as they are.`
+        : null;
   const system: DesignSystem = isDesignSystem(design.system) ? design.system : "custom";
+  const open = isOpenBox(design);
 
   const apply = (field: string, change: (design: Design) => Design, base: Project = project): boolean => {
     const result = tryDesign(base, change(design));
@@ -273,6 +279,59 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
     );
   };
 
+  const openSizeField = (which: "width" | "height" | "depth", label: string) => {
+    const axis = which === "depth" ? null : design[which];
+    return (
+      <label className="stack">
+        {label}
+        <LengthInput
+          value={axis === null ? design.depth : "outside" in axis ? axis.outside : undefined}
+          units={units}
+          onChange={(value) => value !== undefined && apply(`${which}-outside`, (d) => withOpenBoxSize(d, which, value))}
+          {...live((d, t) => {
+            const value = parseLength(t, units);
+            return value !== null && value > 0 ? withOpenBoxSize(d, which, value) : null;
+          })}
+        />
+      </label>
+    );
+  };
+
+  const quantityField = (
+    <label className="stack">
+      How many to build
+      <NumberInput
+        value={design.quantity ?? 1}
+        integer
+        minimum={1}
+        maximum={MAX_DESIGN_QUANTITY}
+        onChange={(value) => value !== undefined && apply("quantity", (d) => ({ ...d, quantity: value }))}
+      />
+    </label>
+  );
+
+  const materialSelect = (
+    <label className="stack">
+      Material
+      <select
+        aria-invalid={invalid("material")}
+        value={design.material}
+        onChange={(event) => {
+          const picked = pickMaterial(project, event.target.value);
+          apply("material", (d) => ({ ...d, material: picked.material }), picked.project);
+        }}
+      >
+        {project.materials.map((material) => (
+          <option key={material.id} value={material.id}>
+            {material.name} ({formatLength(material.thickness, units, display)})
+          </option>
+        ))}
+        {!project.materials.some((material) => material.id === design.material) && <option value={design.material}>{design.material} (missing)</option>}
+        <CatalogOptions project={project} />
+      </select>
+    </label>
+  );
+
   return (
     <div className="design-editor">
       <form className="design-form" aria-label={`Design ${design.name}`} onSubmit={(event) => event.preventDefault()}>
@@ -287,115 +346,114 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
             Name
             <TextInput value={design.name} required onChange={(name) => apply("name", (d) => ({ ...d, name }))} />
           </label>
-          <div className="pair">
-            <label className="stack">
-              System
-              <select aria-invalid={invalid("system")} value={system} onChange={(event) => apply("system", (d) => withSystem(d, event.target.value as DesignSystem, units))}>
-                {DESIGN_SYSTEMS.map((value) => (
-                  <option key={value} value={value}>
-                    {DESIGN_SYSTEM_NAMES[value]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="stack">
-              How many to build
-              <NumberInput
-                value={design.quantity ?? 1}
-                integer
-                minimum={1}
-                maximum={MAX_DESIGN_QUANTITY}
-                onChange={(value) => value !== undefined && apply("quantity", (d) => ({ ...d, quantity: value }))}
-              />
-            </label>
-          </div>
+          {open ? (
+            <>
+              {quantityField}
+              <label className="inline">
+                <input
+                  type="checkbox"
+                  checked={design.system === "kallax"}
+                  onChange={(event) => apply("system", (d) => ({ ...d, system: event.target.checked ? "kallax" : "custom" }))}
+                />
+                Fits a KALLAX-style cube
+              </label>
+            </>
+          ) : (
+            <div className="pair">
+              <label className="stack">
+                System
+                <select aria-invalid={invalid("system")} value={system} onChange={(event) => apply("system", (d) => withSystem(d, event.target.value as DesignSystem, units))}>
+                  {DESIGN_SYSTEMS.map((value) => (
+                    <option key={value} value={value}>
+                      {DESIGN_SYSTEM_NAMES[value]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {quantityField}
+            </div>
+          )}
         </fieldset>
-        {axisFields("width")}
-        {axisFields("height")}
-        <CellGrid
-          design={design}
-          columns={geometry?.columns ?? null}
-          rows={geometry?.rows ?? null}
-          disabled={locked !== null}
-          onEdit={(change) => apply("cells", change)}
-          onSelect={setSelected}
-        />
-        <fieldset disabled={locked !== null}>
-          <legend>Box</legend>
-          <label className="stack">
-            Depth, with the back
-            <LengthInput
-              value={design.depth}
-              units={units}
-              onChange={(depth) => depth !== undefined && apply("depth", (d) => ({ ...d, depth }))}
-              {...live((d, t) => {
-                const depth = parseLength(t, units);
-                return depth !== null && depth > 0 ? { ...d, depth } : null;
-              })}
+        {open ? (
+          <fieldset disabled={locked !== null}>
+            <legend>Size</legend>
+            {openSizeField("width", "Outside width")}
+            {openSizeField("height", "Outside height")}
+            {openSizeField("depth", "Outside depth")}
+            {materialSelect}
+          </fieldset>
+        ) : (
+          <>
+            {axisFields("width")}
+            {axisFields("height")}
+            <CellGrid
+              design={design}
+              columns={geometry?.columns ?? null}
+              rows={geometry?.rows ?? null}
+              disabled={locked !== null}
+              onEdit={(change) => apply("cells", change)}
+              onSelect={setSelected}
             />
-          </label>
-          <div className="pair">
-            <label className="stack">
-              Material
-              <select
-                aria-invalid={invalid("material")}
-                value={design.material}
-                onChange={(event) => {
-                  const picked = pickMaterial(project, event.target.value);
-                  apply("material", (d) => ({ ...d, material: picked.material }), picked.project);
-                }}
-              >
-                {project.materials.map((material) => (
-                  <option key={material.id} value={material.id}>
-                    {material.name} ({formatLength(material.thickness, units, display)})
-                  </option>
-                ))}
-                {!project.materials.some((material) => material.id === design.material) && <option value={design.material}>{design.material} (missing)</option>}
-                <CatalogOptions project={project} />
-              </select>
-            </label>
-            <label className="stack">
-              Back
-              <select
-                aria-invalid={invalid("back")}
-                value={design.back?.material ?? ""}
-                onChange={(event) => {
-                  const picked = pickMaterial(project, event.target.value);
-                  apply(
-                    "back",
-                    (d) => {
-                      const { back: _back, ...rest } = d;
-                      return picked.material === "" ? rest : { ...rest, back: { material: picked.material } };
-                    },
-                    picked.project,
-                  );
-                }}
-              >
-                <option value="">No back</option>
-                {project.materials.map((material) => (
-                  <option key={material.id} value={material.id}>
-                    {material.name} ({formatLength(material.thickness, units, display)})
-                  </option>
-                ))}
-                {design.back && !project.materials.some((material) => material.id === design.back!.material) && (
-                  <option value={design.back.material}>{design.back.material} (missing)</option>
-                )}
-                <CatalogOptions project={project} />
-              </select>
-            </label>
-          </div>
-          <label className="stack">
-            Mount
-            <select value={design.mount ?? "floor"} onChange={(event) => apply("mount", (d) => ({ ...d, mount: event.target.value }))}>
-              {DESIGN_MOUNTS.map((mount) => (
-                <option key={mount} value={mount}>
-                  {MOUNT_LABELS[mount]}
-                </option>
-              ))}
-              {design.mount !== undefined && !isDesignMount(design.mount) && <option value={design.mount}>{design.mount} (unknown)</option>}
-            </select>
-          </label>
-        </fieldset>
+            <fieldset disabled={locked !== null}>
+              <legend>Box</legend>
+              <label className="stack">
+                Depth, with the back
+                <LengthInput
+                  value={design.depth}
+                  units={units}
+                  onChange={(depth) => depth !== undefined && apply("depth", (d) => ({ ...d, depth }))}
+                  {...live((d, t) => {
+                    const depth = parseLength(t, units);
+                    return depth !== null && depth > 0 ? { ...d, depth } : null;
+                  })}
+                />
+              </label>
+              <div className="pair">
+                {materialSelect}
+                <label className="stack">
+                  Back
+                  <select
+                    aria-invalid={invalid("back")}
+                    value={design.back?.material ?? ""}
+                    onChange={(event) => {
+                      const picked = pickMaterial(project, event.target.value);
+                      apply(
+                        "back",
+                        (d) => {
+                          const { back: _back, ...rest } = d;
+                          return picked.material === "" ? rest : { ...rest, back: { material: picked.material } };
+                        },
+                        picked.project,
+                      );
+                    }}
+                  >
+                    <option value="">No back</option>
+                    {project.materials.map((material) => (
+                      <option key={material.id} value={material.id}>
+                        {material.name} ({formatLength(material.thickness, units, display)})
+                      </option>
+                    ))}
+                    {design.back && !project.materials.some((material) => material.id === design.back!.material) && (
+                      <option value={design.back.material}>{design.back.material} (missing)</option>
+                    )}
+                    <CatalogOptions project={project} />
+                  </select>
+                </label>
+              </div>
+              <label className="stack">
+                Mount
+                <select value={design.mount ?? "floor"} onChange={(event) => apply("mount", (d) => ({ ...d, mount: event.target.value }))}>
+                  {DESIGN_MOUNTS.map((mount) => (
+                    <option key={mount} value={mount}>
+                      {MOUNT_LABELS[mount]}
+                    </option>
+                  ))}
+                  {design.mount !== undefined && !isDesignMount(design.mount) && <option value={design.mount}>{design.mount} (unknown)</option>}
+                </select>
+              </label>
+            </fieldset>
+          </>
+        )}
         <fieldset>
           <legend>Colours in the layout</legend>
           <ul className="color-list">

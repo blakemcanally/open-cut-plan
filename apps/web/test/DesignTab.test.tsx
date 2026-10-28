@@ -285,6 +285,13 @@ describe("DesignTab", () => {
     expect(current().project.plan!.sheets[0]!.placements).toHaveLength(2);
   });
 
+  it("locks the form of a design with an unknown kind, and says so before it says anything about the system", () => {
+    const project = designProject();
+    renderDesign({ ...project, designs: [{ ...project.designs![0]!, kind: "tray", system: "pax" }] });
+    expect(screen.getByRole("status").textContent).toBe('⚠ This design has the kind "tray", which this app does not know. Its parts stay as they are.');
+    expect(screen.getByLabelText("Rows").matches(":disabled")).toBe(true);
+  });
+
   it("does not add a design to a file from a newer version", async () => {
     const current = renderDesign({ ...designProject(), version: "1.12" });
     const before = current().project;
@@ -468,5 +475,74 @@ describe("DesignTab cells", () => {
       expect(current().project.stock).toEqual([{ id: "ply18-2440x1220", material: "ply18", length: 2440, width: 1220, quantity: null, kind: "sheet" }]);
       expect(lines()).toEqual(["About 1 sheet of Plywood 18 (18 mm), 2440 mm × 1220 mm."]);
     });
+  });
+});
+
+describe("DesignTab open-top box", () => {
+  function crateProject(): Project {
+    const base = createProject("Crates", "in");
+    return {
+      ...base,
+      materials: [{ id: "ply", name: "Plywood", thickness: 0.71875, grained: true, measured: true }],
+      stock: [{ id: "ply-4x8", material: "ply", length: 96, width: 48, quantity: null, kind: "sheet" }],
+    };
+  }
+
+  async function addCrate() {
+    await userEvent.click(screen.getByRole("button", { name: "Add design" }));
+    const dialog = screen.getByRole("dialog", { name: "Add a design" });
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Crate/ }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Use this design" }));
+  }
+
+  const side = (current: () => ProjectStore) => current().project.parts.find((part) => part.id === "crate-side")!;
+
+  it("edits an open-top box with its own fields", async () => {
+    const current = renderDesign(crateProject());
+    await addCrate();
+    expect(design(current)).toMatchObject({ kind: "open-box", system: "kallax" });
+    expect(screen.queryByLabelText("Columns")).toBeNull();
+    expect(screen.queryByLabelText("Rows")).toBeNull();
+    expect(screen.queryByLabelText("System")).toBeNull();
+    expect(screen.queryByLabelText("Back")).toBeNull();
+    expect(screen.queryByLabelText("Mount")).toBeNull();
+    expect(screen.getByLabelText("Fits a KALLAX-style cube")).toHaveProperty("checked", true);
+    expect(screen.getByLabelText("Finish step 3")).toHaveProperty("value", "Sand lightly.");
+    expect(preview()).toBe('Front view of Crate: 12 1/2" × 12 1/2" × 13 1/2"');
+    expect(side(current).length).toBe(12.0625);
+    const depth = screen.getByLabelText("Outside depth");
+    await userEvent.clear(depth);
+    await userEvent.type(depth, "12{Enter}");
+    expect(design(current).depth).toBe(12);
+    expect(side(current).length).toBe(10.5625);
+    const width = screen.getByLabelText("Outside width");
+    await userEvent.clear(width);
+    await userEvent.type(width, "11{Enter}");
+    expect(design(current).width).toEqual({ outside: 11, cells: 1 });
+    const height = screen.getByLabelText("Outside height");
+    await userEvent.clear(height);
+    await userEvent.type(height, "10{Enter}");
+    expect(design(current).height).toEqual({ outside: 10, cells: 1 });
+    expect(preview()).toBe('Front view of Crate: 11" × 10" × 12"');
+    await userEvent.click(screen.getByRole("button", { name: "Add a finish step" }));
+    await userEvent.keyboard("Oil the wood.{Enter}");
+    expect(design(current).finish?.at(-1)).toBe("Oil the wood.");
+  });
+
+  it("turns the KALLAX fit off and on", async () => {
+    const current = renderDesign(crateProject());
+    await addCrate();
+    const width = screen.getByLabelText("Outside width");
+    await userEvent.clear(width);
+    await userEvent.type(width, "14{Enter}");
+    const checks = within(screen.getByRole("region", { name: "Checks" }));
+    expect(checks.getByRole("listitem").textContent).toContain("too wide for a KALLAX-style cube");
+    const fit = screen.getByLabelText("Fits a KALLAX-style cube");
+    await userEvent.click(fit);
+    expect(design(current).system).toBe("custom");
+    expect(checks.queryByText(/KALLAX-style cube/)).toBeNull();
+    await userEvent.click(fit);
+    expect(design(current).system).toBe("kallax");
+    expect(checks.getByRole("listitem").textContent).toContain("too wide for a KALLAX-style cube");
   });
 });

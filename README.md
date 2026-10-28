@@ -10,9 +10,10 @@ save.
 
 ## What it does
 
-- **Designs.** Pick a starter design (a cube shelf, a TV bench, a bookcase, wall cubes, and more), or a custom grid of
-  cells. Change the design to fit your room. Combine cells into one larger cell. The app makes the parts, checks the
-  design, and estimates the sheets.
+- **Designs.** Pick a starter design (a cube shelf, a TV bench, a bookcase, wall cubes, a crate for a KALLAX-style
+  cube, and more), or a custom grid of cells. Change the design to fit your room. Combine cells into one larger cell.
+  Add finish steps, such as sanding, to the assembly steps. The app makes the parts, checks the design, and estimates
+  the sheets.
 - **Parts, stock, and tools.** Type or paste the parts, or import a CSV file. Lengths accept fractions, feet, and
   millimetres. Add the sheets that you buy and the offcuts that you own. Add your saws: table saw, track saw, circular
   saw, panel saw, or mitre saw, each with its kerf and limits.

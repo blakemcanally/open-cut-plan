@@ -4,6 +4,7 @@ import {
   designSheetEstimate,
   formatLength,
   IKEA_NOTICE,
+  isOpenBox,
   regenerateDesigns,
   starterFits,
   starterName,
@@ -161,8 +162,12 @@ export function StarterDialog({ project, onUse, onClose }: StarterDialogProps) {
             <dl className="starter-facts">
               <dt>Outside</dt>
               <dd>{outsideText(shown.project, shown.design)}</dd>
-              <dt>Mount</dt>
-              <dd>{MOUNT_TEXT[(shown.design.mount ?? "floor") as DesignMount] ?? shown.design.mount}</dd>
+              {!isOpenBox(shown.design) && (
+                <>
+                  <dt>Mount</dt>
+                  <dd>{MOUNT_TEXT[(shown.design.mount ?? "floor") as DesignMount] ?? shown.design.mount}</dd>
+                </>
+              )}
               {fits.length > 0 && (
                 <>
                   <dt>Fits</dt>

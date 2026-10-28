@@ -368,3 +368,24 @@ test("keeps the starter dialog and its grid in place while the pointer moves ove
     expect(await dialog.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
   }
 });
+
+test("adds a crate, sees its parts, and sees its finish steps on the Assembly tab", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Name").fill("E2E crate");
+  await page.getByRole("button", { name: "Create project" }).click();
+
+  await page.getByRole("button", { name: "Add design" }).click();
+  await page.getByRole("button", { name: /^Crate/ }).click();
+  await page.getByRole("button", { name: "Use this design" }).click();
+  await expect(page.getByRole("img", { name: /^Front view of Crate: / })).toBeVisible();
+  await expect(page.getByLabel("Outside depth")).toBeVisible();
+  await expect(page.getByLabel("Finish step 3", { exact: true })).toHaveValue("Sand lightly.");
+
+  await page.getByRole("tab", { name: "Parts" }).click();
+  for (const name of ["Front", "Back", "Side", "Bottom"]) {
+    await expect(page.getByRole("row", { name: new RegExp(`^${name}`) })).toContainText("From design: Crate");
+  }
+
+  await page.getByRole("tab", { name: "Assembly" }).click();
+  await expect(page.getByRole("tabpanel", { name: "Assembly" }).getByText("Sand lightly.")).toBeVisible();
+});

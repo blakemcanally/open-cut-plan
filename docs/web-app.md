@@ -60,23 +60,24 @@ The tabs are **Design**, **Parts**, **Stock**, **Tools**, **Layout**, **Cut**, *
 
 ### Design
 
-A design describes a cabinet unit: a KALLAX-style or EKET-style grid of cells, or a custom grid. The app makes its
-parts from the design, and the Parts tab lists them. The file format is in [format.md](format.md#designs-added-in-11).
+A design describes a cabinet unit: a KALLAX-style or EKET-style grid of cells, or a custom grid. It can also describe
+an open-top box, such as the crate. The app makes its parts from the design, and the Parts tab lists them. The file format is in [format.md](format.md#designs-added-in-11).
 
 - **Add design** opens a dialog with a catalogue of starter designs. The starters follow IKEA sizes. So KALLAX inserts
   and boxes, EKET legs, and the EKET wall rail fit where the **Fits** row says so. **Use this design** adds the starter
   as a normal design and shows it in the editor. **Cancel**, Escape, and a click outside the dialog add nothing. The CLI
   has the same catalogue: see [cli.md](cli.md).
 - The list on the left of the dialog is one third of its width. It has the starters in groups: Cube shelves, Low units,
-  Bookcases, Wall units, and Small units. **Custom grid** is last. Each row shows a small front view, the name, and the
+  Bookcases, Wall units, Small units, and Accessories. **Custom grid** is last. Each row shows a small front view, the name, and the
   outside size. A starter with a grid shows the range of the grid instead, for example "1 × 1 to 6 × 6". The outside
   size is the size that the app makes for the materials that **Use this design** picks.
 - The preview on the right is two thirds of the dialog. It follows the selected row. It shows the name of the design, a
   note, the quick choices, the front view, and these facts:
   - **Outside:** the width, height, and depth, without legs or feet.
-  - **Mount:** floor, legs, feet, or wall rail.
+  - **Mount:** floor, legs, feet, or wall rail. An open-top box has no mount, so it shows no row.
   - **Fits:** the IKEA items that fit, for example "KALLAX inserts and boxes, EKET legs". A starter with no item shows
-    no row. The row leaves out an item when a design check warns that it does not fit.
+    no row. The row leaves out an item when a design check warns that it does not fit. The crate shows "KALLAX cells"
+    when it fits a KALLAX-style cube.
   - **Sheets:** an estimate of the sheets, the same as the **Sheets** estimate in the editor.
   - The warnings of the design checks, in small text. Unmeasured stock gives a nominal thickness warning for each
     part of the design. The dialog shows one short line for them all. A design that the materials refuse shows its
@@ -100,8 +101,18 @@ parts from the design, and the Parts tab lists them. The file format is in [form
 - IKEA, KALLAX, EKET, and BILLY are trademarks of Inter IKEA Systems B.V. OpenCutPlan is not affiliated with or
   endorsed by IKEA. The names of the starters are generic. An IKEA name says only what fits or which sizes a starter
   follows. The dialog shows this notice at the bottom of the list.
+- The **Crate** is the one starter in the Accessories group. It is an open-top box that slides into a KALLAX-style
+  cube. It has a front, a back, two sides, and a bottom. It has no quick choices. Its note says that the holes in the
+  front and the back are the handles. It comes with three [finish steps](#finish-steps).
 - The design list on the left of the Design tab selects a design. The form has the name, the system, how many to build, the columns and rows,
   the depth, the material, the back, and the mount.
+- The form of an open-top box has the name, how many to build, **Fits a KALLAX-style cube**, **Outside width**,
+  **Outside height**, **Outside depth**, and the material. It has no system list, cells, back, mount, or combined
+  cells. The front view is a drawing of the front of the box, and it does not mark cells. The kind of a design does not
+  change after the app makes the design.
+- **Fits a KALLAX-style cube** sets the system to KALLAX. Clear it to set the system to Custom. When it is set, a
+  box that is too wide, too tall, or too deep for a KALLAX-style cube gets a warning in **Checks**. The warning does
+  not stop the plan.
 - The **Material** and **Back** lists also show the [catalogue](catalog.md) materials that the project does not have,
   in groups by family. A catalogue material adds the material, and its largest sheet size as stock when the project
   has no sheet of it. A project material with no enabled stock gets the suggested sheet. When the design refuses the
@@ -143,8 +154,16 @@ parts from the design, and the Parts tab lists them. The file format is in [form
   check when the unit stands on legs or feet, or hangs on the wall rail.
 - **Detach** turns the parts into normal parts and removes the design. **Delete design** removes the design and its
   parts. **Undo** brings back either one.
-- A file from a newer version, or with a system that this app does not know, shows the design but does not let the
-  user change it. **Detach** and **Delete design** still work.
+- A file from a newer version, or with a kind or a system that this app does not know, shows the design but does not
+  let the user change it. **Detach** and **Delete design** still work.
+
+#### Finish steps
+
+- **Finish steps** is a list at the bottom of the form of every design. A finish step is one line of plain text, for
+  example "Sand lightly." **Add a finish step** adds a line. The lines have buttons to move a step up or down and to
+  remove it. A design can have 50 steps.
+- The Assembly tab shows the finish steps after the build steps, in their order. They have boxes to tick, as the other
+  steps do. A finish step does not change the parts, the sheets, or the hardware.
 
 ### Parts
 
@@ -420,6 +439,8 @@ works before the first optimize run.
   so **Undo** removes it. When a design change changes the steps, the same **Start over** and **Keep my ticks** banner
   as on the Cut tab shows for the assembly steps. **Reset assembly** clears the assembly ticks after a confirmation.
 - **Print assembly steps** prints a booklet with only the assembly steps.
+- The finish steps of the design are the last steps of its list. They have the title "Finish", and a drawing of the
+  finished unit.
 - A design that makes no parts has no steps. A note names it and links to the Design tab. With no designs, the tab
   links to the Design tab.
 

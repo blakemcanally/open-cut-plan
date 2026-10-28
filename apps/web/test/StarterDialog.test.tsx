@@ -79,6 +79,16 @@ describe("StarterDialog", () => {
     expect(heading()).toBe("Bookcase 40 × 202");
   });
 
+  it("shows the crate with the KALLAX cells that it fits, and no Mount fact", async () => {
+    renderDialog();
+    await userEvent.click(row(/^Crate/));
+    expect(heading()).toBe("Crate");
+    expect(within(dialog()).getByRole("heading", { level: 4, name: "Accessories" })).toBeTruthy();
+    expect(fact("Fits")).toBe("KALLAX cells");
+    expect(screen.queryByText("Mount", { selector: "dt" })).toBeNull();
+    expect(screen.getByText("Outside", { selector: "dt" })).toBeTruthy();
+  });
+
   it("adds the starter with the project of addStarterDesign", async () => {
     const project = createProject("New", "mm");
     const { onUse, onClose } = renderDialog(project);
