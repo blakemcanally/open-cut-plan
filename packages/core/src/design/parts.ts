@@ -1,5 +1,6 @@
 import type { Design, Part } from "../format/schema.ts";
 import { roundLength, type DesignGeometry } from "./geometry.ts";
+import { isOpenBox, openBoxParts } from "./openBox.ts";
 import { boardLength, designLayout, type Board } from "./layout.ts";
 import { DEFAULT_DESIGN_QUANTITY } from "./systems.ts";
 
@@ -26,6 +27,7 @@ export function dividerName(board: Board, rows: number): string {
 }
 
 export function buildDesignParts(design: Design, geometry: DesignGeometry): Part[] {
+  if (isOpenBox(design)) return openBoxParts(design, geometry);
   const quantity = design.quantity ?? DEFAULT_DESIGN_QUANTITY;
   const part = (id: string, name: string, material: string, length: number, width: number, count: number): Part => ({
     id: `${design.id}-${id}`,

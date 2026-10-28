@@ -1,5 +1,5 @@
 import { nominalThickness } from "../catalog/nominal.ts";
-import type { Project } from "../format/schema.ts";
+import type { Design, Project } from "../format/schema.ts";
 import { formatExactLength, formatLength } from "../geometry/format.ts";
 import { fromNm, toNm } from "../geometry/precision.ts";
 import { EPSILON } from "../geometry/rect.ts";
@@ -9,6 +9,7 @@ import { designErrors, designRef } from "./errors.ts";
 import { designParts, generatedParts, sameParts } from "./generate.ts";
 import { designGeometry, materialsById } from "./geometry.ts";
 import { freeSpans } from "./layout.ts";
+import { isOpenBox, kallaxFitIssues } from "./openBox.ts";
 import { shelfName } from "./parts.ts";
 import {
   EKET,
@@ -24,6 +25,12 @@ import {
 } from "./systems.ts";
 
 const LIFTED = { legs: "stands on legs", feet: "stands on feet", "wall-rail": "hangs on the wall rail" } as const;
+
+function staleWarnings(project: Project, design: Design): PlanIssue[] {
+  const parts = designParts(project, design);
+  if (!parts || sameParts(generatedParts(project, design.id), parts)) return [];
+  return [planWarning("design-stale", `The parts of design "${design.name}" do not match the design. The next change makes them again.`, designRef(design))];
+}
 
 export function checkDesigns(project: Project): PlanIssue[] {
   const units = project.project.units;
@@ -68,6 +75,10 @@ export function checkDesigns(project: Project): PlanIssue[] {
           ref,
         ),
       );
+    }
+    if (isOpenBox(design)) {
+      issues.push(...kallaxFitIssues(design, geometry, project), ...staleWarnings(project, design));
+      continue;
     }
     const backMaterial = design.back ? materials.get(design.back.material) : undefined;
     const backNominal = backMaterial ? nominalThickness(project, backMaterial.id) : null;
@@ -130,10 +141,7 @@ export function checkDesigns(project: Project): PlanIssue[] {
     if (design.mount === "wall-rail" && design.system !== "eket") {
       issues.push(planWarning("mount-system", `${name} uses the EKET wall rail, which is made for EKET units.`, ref));
     }
-    const parts = designParts(project, design);
-    if (parts && !sameParts(generatedParts(project, design.id), parts)) {
-      issues.push(planWarning("design-stale", `The parts of design "${design.name}" do not match the design. The next change makes them again.`, ref));
-    }
+    issues.push(...staleWarnings(project, design));
   }
   return issues;
 }

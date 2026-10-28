@@ -5,6 +5,7 @@ import { designParts } from "./generate.ts";
 import { designGeometry, materialsById, roundLength, type DesignGeometry } from "./geometry.ts";
 import { backScrewCount, backScrewName, pocketHolesPerEnd, pocketScrew, railsFor } from "./hardware.ts";
 import { boardLength, cellStarts, designLayout, segments, spanLength, type Board, type BoardLayout } from "./layout.ts";
+import { isOpenBox } from "./openBox.ts";
 import { dividerName, shelfName } from "./parts.ts";
 import { IKEA_FEET, IKEA_LEGS, IKEA_RAIL_35, IKEA_RAIL_70, RAIL_CLEARANCE_MM } from "./ikea.ts";
 import { DEFAULT_DESIGN_MOUNT, DEFAULT_DESIGN_QUANTITY, isDesignMount } from "./systems.ts";
@@ -50,7 +51,7 @@ export function finishSteps(design: Design): AssemblyStep[] {
 /** The steps to build one unit of a design, or null when the design does not exist or cannot make parts. */
 export function assemblySteps(project: Project, designId: string): AssemblyStep[] | null {
   const design = project.designs?.find((candidate) => candidate.id === designId);
-  if (!design || designParts(project, design) === null) return null;
+  if (!design || isOpenBox(design) || designParts(project, design) === null) return null;
   const geometry = designGeometry(design, materialsById(project))!;
   const units = project.project.units;
   const show = (value: number) => formatLength(value, units, project.settings.display);

@@ -67,6 +67,7 @@ export * from "./design/geometry.ts";
 export * from "./design/combined.ts";
 export * from "./design/layout.ts";
 export * from "./design/parts.ts";
+export * from "./design/openBox.ts";
 export * from "./design/panels.ts";
 export * from "./design/errors.ts";
 export * from "./design/generate.ts";

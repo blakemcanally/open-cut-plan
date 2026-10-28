@@ -6,6 +6,7 @@ import { assemblyBoardKey, assemblySteps, type AssemblyBoard, type AssemblyStep 
 import { designGeometry, materialsById, roundLength, type DesignGeometry } from "../design/geometry.ts";
 import { railsFor } from "../design/hardware.ts";
 import { cellStarts, designLayout, type Board } from "../design/layout.ts";
+import { isOpenBox } from "../design/openBox.ts";
 import { designPanels, type Panel } from "../design/panels.ts";
 import { DEFAULT_DESIGN_MOUNT } from "../design/systems.ts";
 import { designColorKey, NO_GROUP_COLOR, partColors } from "./colors.ts";
@@ -77,7 +78,7 @@ export interface ElevationOptions {
  */
 export function designElevationSvg(project: Project, designId: string, options: ElevationOptions = {}): string | null {
   const design = project.designs?.find((candidate) => candidate.id === designId);
-  if (!design || designParts(project, design) === null) return null;
+  if (!design || isOpenBox(design) || designParts(project, design) === null) return null;
   const geometry = designGeometry(design, materialsById(project))!;
   const units = project.project.units;
   const show = (value: number) => formatLength(value, units, project.settings.display);

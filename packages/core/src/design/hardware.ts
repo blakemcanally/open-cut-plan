@@ -3,6 +3,7 @@ import { convertLength, type Units } from "../geometry/units.ts";
 import { designParts } from "./generate.ts";
 import { designGeometry, materialsById, type DesignGeometry } from "./geometry.ts";
 import { boardLength, designLayout } from "./layout.ts";
+import { isOpenBox, openBoxPocketHoles } from "./openBox.ts";
 import { IKEA_FEET, IKEA_LEGS, IKEA_RAIL_35, IKEA_RAIL_70 } from "./ikea.ts";
 import { DEFAULT_DESIGN_MOUNT, DEFAULT_DESIGN_QUANTITY, EKET, EKET_TOLERANCE_MM, isDesignMount, MAX_POCKET_CHART_MM, MIN_POCKET_THICKNESS_MM } from "./systems.ts";
 
@@ -115,7 +116,8 @@ export function hardwareList(project: Project): HardwareLine[] {
     const quantity = design.quantity ?? DEFAULT_DESIGN_QUANTITY;
     const add = (line: Omit<HardwareLine, "design">) => lines.push({ ...line, design: design.id });
 
-    const holes = pocketHoleEnds(geometry) * pocketHolesPerEnd(mm(geometry.panelDepth)) * quantity;
+    const open = isOpenBox(design);
+    const holes = (open ? openBoxPocketHoles(geometry, units).total : pocketHoleEnds(geometry) * pocketHolesPerEnd(mm(geometry.panelDepth))) * quantity;
     const screw = pocketScrew(mm(geometry.thickness));
     add({
       item: "pocket-screws",
@@ -124,6 +126,7 @@ export function hardwareList(project: Project): HardwareLine[] {
       unit: "each",
       source: POCKET_SCREW_SOURCE,
     });
+    if (open) continue;
     if (design.back) add({ item: "back-screws", name: backScrewName(mm(geometry.backThickness)), quantity: backScrewCount(geometry, units) * quantity, unit: "each" });
 
     const mount = design.mount ?? DEFAULT_DESIGN_MOUNT;
