@@ -179,12 +179,12 @@ describe("design add --starter", () => {
     expect(result.json().design).toMatchObject({ id: "stacking-shelf", corners: "sides-over-top", fastener: "face-screws", mount: "cleats", hiddenWarnings: ["shelf-span"] });
     expect(result.json().design).not.toHaveProperty("back");
     expect(result.json().parts.map((part: { name: string; length: number; width: number; quantity: number }) => [part.name, part.length, part.width, part.quantity])).toEqual([
-      ["Top", 51, 16, 1],
-      ["Bottom", 51, 16, 1],
-      ["Side", 40, 16, 2],
-      ["Shelf", 51, 16, 3],
-      ["Foot", 16, 3.5, 2],
-      ["Top cleat", 16, 3.5, 2],
+      ["Top", 51, 15.875, 1],
+      ["Bottom", 51, 15.875, 1],
+      ["Side", 40, 15.875, 2],
+      ["Shelf", 51, 15.875, 3],
+      ["Foot", 15.875, 3.5, 2],
+      ["Top cleat", 15.875, 3.5, 2],
     ]);
   });
 
