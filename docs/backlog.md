@@ -175,8 +175,9 @@ Its mounts are floor, legs, feet, and the wall rail. So the box cannot make his 
 - An open-top box refuses a `mount` other than `floor`, `corners` other than `top-over-sides`, and `fastener` other than
   `pocket-screws` (`design-open-box`). A value that the app does not know keeps the stored
   parts of the design and gives a warning.
-- The starter `stacking-shelf`, in the new group Shop storage, makes 1 column and 4 rows, 16" deep, with the sides
-  40" long. It uses the three settings and hides the warning `shelf-span`. Its note credits Evan Monsma, and adds no
+- The starter `stacking-shelf`, in the new group Shop storage, makes 1 column and 4 rows, 15 7/8" (403 mm) deep,
+  with the sides 40" long. His video says 16" deep. The starter is 1/8" less, so that three panels fit across a 48"
+  sheet with the kerfs of two cuts. It uses the three settings and hides the warning `shelf-span`. Its note credits Evan Monsma, and adds no
   other note about his corners.
 - The Design tab has the **Corners** and **Fastener** lists next to **Mount**, and a line for the hidden warnings
   with a **Show it** or **Show them** button. The CLI has `--corners`, `--fastener`, and `--show-warnings`. File format

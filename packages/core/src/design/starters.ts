@@ -64,8 +64,8 @@ const CRATE_SIZE: Readonly<Record<Units, { width: number; height: number; depth:
 };
 
 const STACKING_SHELF_SIZE: Readonly<Record<Units, { width: number; height: number; depth: number }>> = {
-  in: { width: 52.5, height: 40, depth: 16 },
-  mm: { width: 1334, height: 1016, depth: 406 },
+  in: { width: 52.5, height: 40, depth: 15.875 },
+  mm: { width: 1334, height: 1016, depth: 403 },
 };
 
 const crateFinish = (units: Units): string[] => {

@@ -459,15 +459,24 @@ describe("the stacking shelf", () => {
     return { project: regenerateDesigns(result.project), id: result.id };
   };
 
+  it.each([
+    ["in", 48, 0.125],
+    ["mm", 1220, 3],
+  ] as const)("cuts three panels across a %s sheet with a kerf", (units, sheetWidth, kerf) => {
+    const { project } = made(sheet(units, units === "in" ? 0.75 : 18));
+    const depth = project.designs![0]!.depth;
+    expect(3 * depth + 2 * kerf).toBeLessThanOrEqual(sheetWidth);
+  });
+
   it("makes his module in a new in project", () => {
     const { project } = made(sheet("in", 0.75));
     expect(project.parts.map((part) => [part.name, part.length, part.width, part.quantity])).toEqual([
-      ["Top", 51, 16, 1],
-      ["Bottom", 51, 16, 1],
-      ["Side", 40, 16, 2],
-      ["Shelf", 51, 16, 3],
-      ["Foot", 16, 3.5, 2],
-      ["Top cleat", 16, 3.5, 2],
+      ["Top", 51, 15.875, 1],
+      ["Bottom", 51, 15.875, 1],
+      ["Side", 40, 15.875, 2],
+      ["Shelf", 51, 15.875, 3],
+      ["Foot", 15.875, 3.5, 2],
+      ["Top cleat", 15.875, 3.5, 2],
     ]);
     expect(checkDesigns(project)).toEqual([]);
     expect(checkDesigns(project, { keepHidden: true }).map((issue) => issue.code)).toEqual(["shelf-span"]);
@@ -479,14 +488,14 @@ describe("the stacking shelf", () => {
       material: "ply",
       width: { outside: 52.5, cells: 1 },
       height: { outside: 40, cells: 4 },
-      depth: 16,
+      depth: 15.875,
       corners: "sides-over-top",
       fastener: "face-screws",
       mount: "cleats",
       hiddenWarnings: ["shelf-span"],
     });
     const geometry = designGeometry(design, materialsById(project))!;
-    expect([geometry.outsideWidth, geometry.outsideHeight, geometry.depth]).toEqual([52.5, 40, 16]);
+    expect([geometry.outsideWidth, geometry.outsideHeight, geometry.depth]).toEqual([52.5, 40, 15.875]);
     expect(hardwareList(project).map((line) => [line.item, line.name, line.quantity])).toEqual([
       ["face-screws", 'Wood screws for the joints, #8 × 2"', 44],
       ["cleat-screws", 'Wood screws for the cleats, #8 × 1 1/4"', 18],
@@ -498,16 +507,16 @@ describe("the stacking shelf", () => {
   it("makes his module with no warnings in a new mm project", () => {
     const { project, id } = made(sheet("mm", 18));
     const design = project.designs![0]!;
-    expect([design.width, design.height, design.depth]).toEqual([{ outside: 1334, cells: 1 }, { outside: 1016, cells: 4 }, 406]);
+    expect([design.width, design.height, design.depth]).toEqual([{ outside: 1334, cells: 1 }, { outside: 1016, cells: 4 }, 403]);
     expect(checkDesigns(project)).toEqual([]);
     expect(starterFits(project, id)).toEqual([]);
     expect(project.parts.map((part) => [part.name, part.length, part.width, part.quantity])).toEqual([
-      ["Top", 1298, 406, 1],
-      ["Bottom", 1298, 406, 1],
-      ["Side", 1016, 406, 2],
-      ["Shelf", 1298, 406, 3],
-      ["Foot", 406, 89, 2],
-      ["Top cleat", 406, 89, 2],
+      ["Top", 1298, 403, 1],
+      ["Bottom", 1298, 403, 1],
+      ["Side", 1016, 403, 2],
+      ["Shelf", 1298, 403, 3],
+      ["Foot", 403, 89, 2],
+      ["Top cleat", 403, 89, 2],
     ]);
     expect(hardwareList(project).map((line) => [line.item, line.name, line.quantity])).toEqual([
       ["face-screws", "Wood screws for the joints, 4 × 50 mm", 44],
