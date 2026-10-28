@@ -199,6 +199,32 @@ describe("design list and get", () => {
   });
 });
 
+describe("design get with the corners, the fastener, and hidden warnings", () => {
+  async function stacking(): Promise<MemoryIo> {
+    const io = memoryIo();
+    await cli(["new", F, "--name", "Hall", "--units", "in"], io);
+    await cli(["design", "add", F, "--starter", "stacking-shelf"], io);
+    return io;
+  }
+
+  it("shows them in the text and in the JSON", async () => {
+    const io = await stacking();
+    const text = await cli(["design", "get", F, "stacking-shelf"], io);
+    expect(text.stdout).toContain("corners: sides-over-top");
+    expect(text.stdout).toContain("fastener: face-screws");
+    expect(text.stdout).toContain("hidden warnings: shelf-span");
+    const json = await cli(["design", "get", F, "stacking-shelf", "--json"], io);
+    expect(json.json().design).toMatchObject({ corners: "sides-over-top", fastener: "face-screws", hiddenWarnings: ["shelf-span"] });
+  });
+
+  it("shows none of them for a design that has none", async () => {
+    const result = await cli(["design", "get", KALLAX, "kallax"], withDesignExamples());
+    expect(result.stdout).not.toContain("corners:");
+    expect(result.stdout).not.toContain("fastener:");
+    expect(result.stdout).not.toContain("hidden warnings:");
+  });
+});
+
 describe("design get estimate", () => {
   it("says when the material of a design has no sheet stock", async () => {
     const io = withDesignExamples();

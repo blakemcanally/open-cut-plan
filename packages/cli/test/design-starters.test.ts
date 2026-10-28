@@ -172,6 +172,39 @@ describe("design add --starter", () => {
     expect(io.files.get(F)).toBe(before);
   });
 
+  it("adds his module with --starter stacking-shelf", async () => {
+    const io = await fresh("in");
+    const result = await cli(["design", "add", F, "--starter", "stacking-shelf", "--json"], io);
+    expect(result.code).toBe(0);
+    expect(result.json().design).toMatchObject({ id: "stacking-shelf", corners: "sides-over-top", fastener: "face-screws", mount: "cleats", hiddenWarnings: ["shelf-span"] });
+    expect(result.json().design).not.toHaveProperty("back");
+    expect(result.json().parts.map((part: { name: string; length: number; width: number; quantity: number }) => [part.name, part.length, part.width, part.quantity])).toEqual([
+      ["Top", 51, 16, 1],
+      ["Bottom", 51, 16, 1],
+      ["Side", 40, 16, 2],
+      ["Shelf", 51, 16, 3],
+      ["Foot", 16, 3.5, 2],
+      ["Top cleat", 16, 3.5, 2],
+    ]);
+  });
+
+  it("refuses --back with the stacking shelf", async () => {
+    const io = await fresh("in");
+    const before = io.files.get(F);
+    for (const back of ["birch", "none"]) {
+      const result = await cli(["design", "add", F, "--starter", "stacking-shelf", "--back", back, "--json"], io);
+      expect(result.code).toBe(2);
+      expect(errorOf(result)).toMatchObject({ code: "conflict", option: "back" });
+    }
+    expect(io.files.get(F)).toBe(before);
+  });
+
+  it.each([["--corners", "sides-over-top"], ["--fastener", "face-screws"]])("refuses %s with --starter", async (flag, value) => {
+    const result = await cli(["design", "add", F, "--starter", "stacking-shelf", flag, value, "--json"], await fresh("in"));
+    expect(result.code).toBe(2);
+    expect(errorOf(result)).toMatchObject({ code: "conflict", option: flag.slice(2) });
+  });
+
   it("replaces the finish steps of the crate with --finish", async () => {
     const result = await cli(["design", "add", F, "--starter", "crate", "--finish", "Paint it.", "--json"], await fresh("in"));
     expect(result.code).toBe(0);

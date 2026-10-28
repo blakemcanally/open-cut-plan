@@ -56,7 +56,7 @@ describe("design add --kind open-box", () => {
     expect(result.json().design.finish).toEqual(["Sand.", "Oil it."]);
   });
 
-  it.each([["--cols", "2"], ["--rows", "2"], ["--column-openings", "300"], ["--row-openings", "300"], ["--back", "ply6"], ["--mount", "legs"]])("refuses %s with --kind open-box", async (flag, value) => {
+  it.each([["--cols", "2"], ["--rows", "2"], ["--column-openings", "300"], ["--row-openings", "300"], ["--back", "ply6"], ["--mount", "legs"], ["--corners", "sides-over-top"], ["--fastener", "face-screws"]])("refuses %s with --kind open-box", async (flag, value) => {
     const io = await fresh("in");
     const before = io.files.get(F);
     const result = await cli([...BOX, flag, value, "--json"], io);
@@ -112,7 +112,7 @@ describe("design set on an open-top box", () => {
     expect(result.json().design).toMatchObject({ width: { outside: 12.5, cells: 1 }, height: { outside: 6, cells: 1 }, depth: 15 });
   });
 
-  it.each([["--cols", "2"], ["--rows", "2"], ["--column-openings", "300"], ["--row-openings", "300"], ["--back", "ply6"], ["--mount", "legs"]])("refuses %s", async (flag, value) => {
+  it.each([["--cols", "2"], ["--rows", "2"], ["--column-openings", "300"], ["--row-openings", "300"], ["--back", "ply6"], ["--mount", "legs"], ["--corners", "sides-over-top"], ["--fastener", "face-screws"], ["--corners", "top-over-sides"], ["--fastener", "pocket-screws"]])("refuses %s", async (flag, value) => {
     const io = await withBox();
     const before = io.files.get(F);
     const result = await cli(["design", "set", F, "open-top-box", flag, value, "--json"], io);

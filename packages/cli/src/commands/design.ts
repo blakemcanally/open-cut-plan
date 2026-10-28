@@ -5,6 +5,8 @@ import {
   combineCells,
   defaultDesignId,
   defaultDesignName,
+  DESIGN_CORNERS,
+  DESIGN_FASTENERS,
   DESIGN_KINDS,
   DESIGN_MOUNTS,
   DESIGN_SYSTEM_NAMES,
@@ -14,6 +16,8 @@ import {
   designElevationSvg,
   designErrors,
   designGeometry,
+  designCorners,
+  designFastener,
   designKind,
   designSheetEstimate,
   detachDesign,
@@ -21,6 +25,8 @@ import {
   fitCombined,
   generatedParts,
   IKEA_NOTICE,
+  isDesignCorners,
+  isDesignFastener,
   isDesignKind,
   isDesignSystem,
   isOpenBox,
@@ -40,6 +46,7 @@ import {
   renameDesign,
   setDesignColor,
   setFinishSteps,
+  showHiddenWarnings,
   splitCells,
   starterById,
   STARTERS,
@@ -90,6 +97,8 @@ const OPTIONS = {
   material: { name: "material", type: "string", value: "<id|name>", description: "The material of the panels. Required when the project has more than one material." },
   back: { name: "back", type: "string", value: "<id|name|none>", description: "The material of the back, or none. Default for add: none. Default with --starter: a thin back." },
   mount: { name: "mount", type: "string", value: "<floor|legs|feet|wall-rail|cleats>", description: "How the unit stands or hangs. legs, feet, and wall-rail add the EKET items to the hardware list. cleats add the feet and the top cleats to the parts. Default: floor." },
+  corners: { name: "corners", type: "string", value: `<${DESIGN_CORNERS.join("|")}>`, description: "Which boards cover the ends of the others at the corners of a box. sides-over-top puts the sides over the top and the bottom. Default: top-over-sides." },
+  fastener: { name: "fastener", type: "string", value: `<${DESIGN_FASTENERS.join("|")}>`, description: "How the joints of a box are fastened. face-screws needs a box with 1 column. Default: pocket-screws." },
   quantity: { name: "quantity", type: "string", value: "<n>", description: `The number of units to build, 1 to ${MAX_DESIGN_QUANTITY}. Default for add: 1.` },
   name: { name: "name", type: "string", value: "<text>", description: "The design name. It is also the group of its parts. Default for add: the system and the grid, such as KALLAX-style 2x4." },
   color: {
@@ -118,6 +127,8 @@ const KIND_OPTION: OptionSpec = {
 
 const CLEAR_FINISH_OPTION: OptionSpec = { name: "clear-finish", type: "boolean", description: "Remove all the finish steps. It does not work with --finish." };
 
+const SHOW_WARNINGS_OPTION: OptionSpec = { name: "show-warnings", type: "boolean", description: "Show the warnings that the design hides. It removes the hiddenWarnings field." };
+
 const FIELD_OPTIONS: OptionSpec[] = Object.values(OPTIONS);
 
 const GRID_FLAGS = ["cols", "rows", "column-openings", "row-openings"] as const;
@@ -138,8 +149,8 @@ function refuseGridFlags(options: OptionValues, subject: string): void {
   }
 }
 
-/** An open-top box has no back and no mount. The values that already mean that are allowed when `allowed` is true. */
-function refuseBackAndMount(options: OptionValues, allowed: boolean): void {
+/** An open-top box has no back, no mount, no corners, and no fastener. The values that already mean that are allowed when `allowed` is true. */
+function refuseBoxSettings(options: OptionValues, allowed: boolean): void {
   const back = str(options, "back");
   if (back !== undefined && !(allowed && back === "none")) {
     throw usageError(`--back does not work with an open-top box. An open-top box has no back.${allowed ? " Give --back none to remove the field." : ""}`, "conflict", { option: "back" });
@@ -147,6 +158,9 @@ function refuseBackAndMount(options: OptionValues, allowed: boolean): void {
   const mount = str(options, "mount");
   if (mount !== undefined && !(allowed && mount === "floor")) {
     throw usageError(`--mount does not work with an open-top box. An open-top box has no mount.${allowed ? " Give --mount floor to remove the field." : ""}`, "conflict", { option: "mount" });
+  }
+  for (const name of ["corners", "fastener"]) {
+    if (str(options, name) !== undefined) throw usageError(`--${name} does not work with an open-top box. An open-top box has no ${name}.`, "conflict", { option: name });
   }
 }
 
@@ -221,6 +235,14 @@ function assertCanGenerate(loaded: Loaded): void {
   throw new CliError(EXIT.failed, "newer-version", `The file has the format version ${loaded.project.version}. Update opencutplan to change its designs.`, { version: loaded.project.version });
 }
 
+function unknownSetting(design: Design): { name: "corners" | "fastener"; value: string } | undefined {
+  const corners = designCorners(design);
+  if (!isDesignCorners(corners)) return { name: "corners", value: corners };
+  const fastener = designFastener(design);
+  if (!isDesignFastener(fastener)) return { name: "fastener", value: fastener };
+  return undefined;
+}
+
 /** Refuses a design with an error (spec §10): exit 1 with the checks in error.issues. */
 function assertValid(project: Project, design: Design): void {
   if (!isDesignSystem(design.system)) {
@@ -232,6 +254,13 @@ function assertValid(project: Project, design: Design): void {
   if (!isDesignKind(designKind(design))) {
     throw new CliError(EXIT.failed, "invalid-value", `The design ${design.id} has the kind "${designKind(design)}", which this CLI does not know. Use design detach or design remove.`, {
       kind: designKind(design),
+      issues: [],
+    });
+  }
+  const unknown = unknownSetting(design);
+  if (unknown) {
+    throw new CliError(EXIT.failed, "invalid-value", `The design ${design.id} has the ${unknown.name} "${unknown.value}", which this CLI does not know. Use design detach or design remove.`, {
+      [unknown.name]: unknown.value,
       issues: [],
     });
   }
@@ -351,7 +380,7 @@ const get: CommandSpec = {
   name: "design get",
   summary: "Show one design, its parts, and its checks.",
   description:
-    "Show one design by id, its kind, its finish steps, the parts it makes, its outside size, an estimate of the sheets it needs, and the design checks (errors and warnings) for it. The estimate is a short optimizer run on the parts of this design alone, with no limit on the sheet quantities and no offcuts; run optimize for the plan.",
+    "Show one design by id, its kind, its corners, its fastener, and the warnings that it hides (each only when the design has the field), its finish steps, the parts it makes, its outside size, an estimate of the sheets it needs, and the design checks (errors and warnings) for it. The estimate is a short optimizer run on the parts of this design alone, with no limit on the sheet quantities and no offcuts; run optimize for the plan.",
   args: [FILE_ARG, DESIGN_ARG],
   options: [],
   examples: [{ command: `${PROGRAM} design get hall.cutplan.json kallax-2x4 --json`, description: "Show the design kallax-2x4." }],
@@ -366,6 +395,9 @@ const get: CommandSpec = {
     const issues = designIssues(project, design.id);
     const text = [
       line(project, design),
+      ...(design.corners === undefined ? [] : [`corners: ${design.corners}`]),
+      ...(design.fastener === undefined ? [] : [`fastener: ${design.fastener}`]),
+      ...(design.hiddenWarnings?.length ? [`hidden warnings: ${design.hiddenWarnings.join(", ")}`] : []),
       ...(design.finish ? ["finish:", ...design.finish.map((step, index) => `  ${index + 1}. ${step}`)] : []),
       ...parts.map((part) => `  ${part.id}: ${part.name}, ${len(project, part.length)} × ${len(project, part.width)}, ×${part.quantity}`),
       ...(estimate ?? []).map((entry) =>
@@ -383,7 +415,7 @@ const get: CommandSpec = {
 function openBox(project: Project, options: OptionValues): { project: Project; id: string } {
   const units = project.project.units;
   refuseGridFlags(options, "--kind open-box");
-  refuseBackAndMount(options, false);
+  refuseBoxSettings(options, false);
   const system = choiceValue(str(options, "system") ?? "custom", "system", DESIGN_SYSTEMS);
   refuseEket(system);
   const width = outsideAxis(options, "width", units, undefined);
@@ -434,13 +466,17 @@ function customDesign(project: Project, options: OptionValues): { project: Proje
   if (back !== undefined && back !== "none") design.back = { material: resolveMaterial(project, back).id };
   const mount = optionalChoice(options, "mount", DESIGN_MOUNTS);
   if (mount !== undefined) design.mount = mount;
+  const corners = optionalChoice(options, "corners", DESIGN_CORNERS);
+  if (corners !== undefined && corners !== "top-over-sides") design.corners = corners;
+  const fastener = optionalChoice(options, "fastener", DESIGN_FASTENERS);
+  if (fastener !== undefined && fastener !== "pocket-screws") design.fastener = fastener;
   return { project: { ...project, designs: [...(project.designs ?? []), design] }, id: design.id };
 }
 
 const STARTER_OPTION: OptionSpec = { name: "starter", type: "string", value: "<id>", description: "Make the design from a starter. Run design starters for the ids and the choices." };
 const SIZE_OPTION: OptionSpec = { name: "size", type: "string", value: "<width>x<height>", description: "With --starter bookcase: the width and the height in cm, for example 80x202." };
 
-const SHAPE_FLAGS = ["kind", "system", "width", "height", "column-openings", "row-openings"] as const;
+const SHAPE_FLAGS = ["kind", "system", "width", "height", "column-openings", "row-openings", "corners", "fastener"] as const;
 
 interface StarterFlag {
   flag: string;
@@ -500,9 +536,12 @@ function starterProject(project: Project, options: OptionValues, id: string): { 
   for (const name of SHAPE_FLAGS) {
     if (str(options, name) !== undefined) throw usageError(`--${name} does not work with --starter. Use --cols, --rows, --mount, or --size, or change the design with design set.`, "conflict", { option: name });
   }
+  const back = str(options, "back");
+  if (starter.id === "stacking-shelf" && back !== undefined) {
+    throw usageError(`The ${starter.name} has no --back choice. It has no back.`, "conflict", { option: "back", starter: starter.id });
+  }
   const values = starterValues(starter, options);
   const material = str(options, "material");
-  const back = str(options, "back");
   const requested = str(options, "id");
   const name = nonEmpty(str(options, "name"), "name");
   const added = addStarterDesign(project, starter, values, {
@@ -551,7 +590,7 @@ const add: CommandSpec = {
   name: "design add",
   summary: "Add a design and make its parts.",
   description:
-    "Add a cabinet design and make its parts: the top, the bottom, the sides, the dividers, the shelves, and the back. Give each axis as --cols with --width (or --rows with --height), or as a list of openings. For kallax and eket, --cols and --rows alone give IKEA-size cells, and the depth is the IKEA depth; the numbers are converted to the project units. A design with an error (such as stock too thin for pocket screws) is refused with exit 1, invalid-value, and the checks in error.issues. When the material or the back material has no enabled stock, the suggested sheet of it is added (as with stock add --suggested); addedStock lists it. The new parts are not placed; run optimize. With --starter, the design is a starter from design starters: the grid, the mount, and the size come from --cols, --rows, --mount, and --size, and the command picks the materials, a thin back, and the stock as the app does. --material and --back replace the pick, and --back none gives no back. --name, --id, --quantity, --depth, and --color change the design after the starter makes it. With --kind open-box, the design is an open-top box with 4 walls and a bottom: --width, --height, and --depth are required (exit 2, missing-option), and --system is kallax or custom (default custom). An open-top box does not work with --cols, --rows, --column-openings, --row-openings, --back, or --mount (exit 2, conflict). --finish adds one finish step of plain text; give it one time for each step, in order. A starter does not work with --kind, --system, --width, --height, --column-openings, or --row-openings (exit 2, conflict); use design set after design add. A flag that the starter has no choice for, or a value that it does not allow, is refused with exit 2 and invalid-value.",
+    "Add a cabinet design and make its parts: the top, the bottom, the sides, the dividers, the shelves, and the back. Give each axis as --cols with --width (or --rows with --height), or as a list of openings. For kallax and eket, --cols and --rows alone give IKEA-size cells, and the depth is the IKEA depth; the numbers are converted to the project units. A design with an error (such as stock too thin for pocket screws) is refused with exit 1, invalid-value, and the checks in error.issues. When the material or the back material has no enabled stock, the suggested sheet of it is added (as with stock add --suggested); addedStock lists it. The new parts are not placed; run optimize. With --starter, the design is a starter from design starters: the grid, the mount, and the size come from --cols, --rows, --mount, and --size, and the command picks the materials, a thin back, and the stock as the app does. --material and --back replace the pick, and --back none gives no back. --name, --id, --quantity, --depth, and --color change the design after the starter makes it. With --kind open-box, the design is an open-top box with 4 walls and a bottom: --width, --height, and --depth are required (exit 2, missing-option), and --system is kallax or custom (default custom). An open-top box does not work with --cols, --rows, --column-openings, --row-openings, --back, --mount, --corners, or --fastener (exit 2, conflict). --finish adds one finish step of plain text; give it one time for each step, in order. A starter does not work with --kind, --system, --width, --height, --column-openings, --row-openings, --corners, or --fastener (exit 2, conflict); the stacking-shelf starter does not work with --back either; use design set after design add. A flag that the starter has no choice for, or a value that it does not allow, is refused with exit 2 and invalid-value.",
   args: [FILE_ARG],
   options: [...FIELD_OPTIONS, KIND_OPTION, FINISH_OPTION, STARTER_OPTION, SIZE_OPTION, ID_OPTION, ...OUTPUT_OPTIONS],
   examples: [
@@ -559,6 +598,7 @@ const add: CommandSpec = {
     { command: `${PROGRAM} design add hall.cutplan.json --system eket --cols 2 --rows 1 --back ply6 --mount wall-rail --quantity 2`, description: "Add two EKET-style 2x1 units for the wall rail." },
     { command: `${PROGRAM} design add hall.cutplan.json --starter cube-shelf --cols 3 --rows 2`, description: "Add the cube shelf starter at 3 × 2; the id is cube-shelf-3-2." },
     { command: `${PROGRAM} design add hall.cutplan.json --starter bookcase --size 40x106`, description: "Add the bookcase starter at 40 × 106 cm." },
+    { command: `${PROGRAM} design add hall.cutplan.json --starter stacking-shelf`, description: "Add the stacking shelf starter, a shelf module that stacks on cleats." },
     { command: `${PROGRAM} design add hall.cutplan.json --starter crate`, description: "Add the crate starter, an open-top box that fits a KALLAX-style cube." },
     { command: `${PROGRAM} design add hall.cutplan.json --kind open-box --width 12.5 --height 6 --depth 13.5 --system kallax --finish "Sand lightly."`, description: "Add an open-top box with one finish step." },
     { command: `${PROGRAM} design add hall.cutplan.json --width 1200 --height 800 --cols 3 --rows 2 --depth 300 --name Sideboard`, description: "Add a custom 3x2 grid in a 1200 × 800 outside size." },
@@ -592,14 +632,15 @@ const set: CommandSpec = {
   name: "design set",
   summary: "Change a design and make its parts again.",
   description:
-    "Change the fields of a design, then make its parts again. Only the fields you give change. --id gives the design a new id; its parts get new ids, and their copies stay on the sheets. A copy stays on its sheet when its part keeps the same id, size, and material; the other copies go to the tray, and removedPlacements lists them. On an open-top box, --width, --height, and --depth set the outside sizes, and --cols, --rows, --column-openings, and --row-openings give exit 2 and conflict. --back and --mount do the same, except --back none and --mount floor, which remove the back field and the mount field. --finish replaces the finish steps with the steps that you give, one flag for each step. --clear-finish removes them; with --finish it gives exit 2 and conflict. A change that gives a design error is refused with exit 1, invalid-value, and the checks in error.issues. A --material or --back with no enabled stock gets the suggested sheet (as with stock add --suggested); addedStock lists it.",
+    "Change the fields of a design, then make its parts again. Only the fields you give change. --id gives the design a new id; its parts get new ids, and their copies stay on the sheets. A copy stays on its sheet when its part keeps the same id, size, and material; the other copies go to the tray, and removedPlacements lists them. On an open-top box, --width, --height, and --depth set the outside sizes, and --cols, --rows, --column-openings, and --row-openings give exit 2 and conflict. --back, --mount, --corners, and --fastener do the same, except --back none and --mount floor, which remove the back field and the mount field. On a box, --corners top-over-sides and --fastener pocket-screws remove the corners field and the fastener field, and --mount cleats adds the feet and the top cleats. --show-warnings removes the hiddenWarnings field, so the design shows its warnings again. --finish replaces the finish steps with the steps that you give, one flag for each step. --clear-finish removes them; with --finish it gives exit 2 and conflict. A change that gives a design error is refused with exit 1, invalid-value, and the checks in error.issues. A --material or --back with no enabled stock gets the suggested sheet (as with stock add --suggested); addedStock lists it.",
   args: [FILE_ARG, DESIGN_ARG],
-  options: [...FIELD_OPTIONS, FINISH_OPTION, CLEAR_FINISH_OPTION, { ...ID_OPTION, description: "A new id for the design. Its parts get new ids with it." }, ...OUTPUT_OPTIONS],
+  options: [...FIELD_OPTIONS, FINISH_OPTION, CLEAR_FINISH_OPTION, SHOW_WARNINGS_OPTION, { ...ID_OPTION, description: "A new id for the design. Its parts get new ids with it." }, ...OUTPUT_OPTIONS],
   examples: [
     { command: `${PROGRAM} design set hall.cutplan.json kallax-2x4 --rows 5`, description: "Add a row of cells." },
     { command: `${PROGRAM} design set hall.cutplan.json sideboard --column-openings 400,300,400 --back none --dry-run`, description: "See what new column sizes and no back change." },
     { command: `${PROGRAM} design set hall.cutplan.json eket --color 2=#ff8800`, description: "Show the second unit in orange in the layout." },
     { command: `${PROGRAM} design set hall.cutplan.json crate --finish "Sand lightly." --finish "Wipe on oil."`, description: "Replace the finish steps of a design with two steps." },
+    { command: `${PROGRAM} design set hall.cutplan.json stacking-shelf --show-warnings`, description: "Show the warnings that the design hides." },
     { command: `${PROGRAM} design set hall.cutplan.json crate --clear-finish`, description: "Remove the finish steps." },
   ],
   output:
@@ -621,11 +662,12 @@ const set: CommandSpec = {
     const clearFinish = flag(options, "clear-finish");
     if (steps !== undefined && clearFinish) throw usageError("Give --finish or --clear-finish, not both.", "conflict", { option: "clear-finish" });
     const current: Design = { ...old, id, system };
-    const fields = clearFinish ? setFinishSteps(current, []) : steps === undefined ? current : setFinishSteps(current, steps);
+    const finished = clearFinish ? setFinishSteps(current, []) : steps === undefined ? current : setFinishSteps(current, steps);
+    const fields = flag(options, "show-warnings") ? showHiddenWarnings(finished) : finished;
     const boxed = isOpenBox(old);
     if (boxed) {
       refuseGridFlags(options, "an open-top box");
-      refuseBackAndMount(options, true);
+      refuseBoxSettings(options, true);
       if (systemText !== undefined) refuseEket(known);
     }
     fields.width = boxed ? outsideAxis(options, "width", units, old.width) : axisValue(options, WIDTH, known, units, old.width)!;
@@ -645,6 +687,12 @@ const set: CommandSpec = {
     const mount = optionalChoice(options, "mount", DESIGN_MOUNTS);
     if (mount === "floor" && boxed) delete design.mount;
     else if (mount !== undefined) design.mount = mount;
+    const corners = optionalChoice(options, "corners", DESIGN_CORNERS);
+    if (corners === "top-over-sides") delete design.corners;
+    else if (corners !== undefined) design.corners = corners;
+    const fastener = optionalChoice(options, "fastener", DESIGN_FASTENERS);
+    if (fastener === "pocket-screws") delete design.fastener;
+    else if (fastener !== undefined) design.fastener = fastener;
     const changed = withColors({ ...renamed, designs: (renamed.designs ?? []).map((item) => (item.id === id ? design : item)) }, options, id);
     assertValid(changed, design);
     const stocked = stockFor(changed, [material === undefined ? undefined : design.material, back === undefined ? undefined : design.back?.material]);
@@ -838,13 +886,16 @@ const drawing: CommandSpec = {
 /** The error for a read command on a design that makes no parts. */
 export function invalidDesign(project: Project, design: Design): CliError {
   const issues = designIssues(project, design.id).filter((issue) => issue.severity === "error");
+  const unknown = unknownSetting(design);
   const reason = isNewerMinor(project.version)
     ? `the file has the newer format version ${project.version}`
     : !isDesignSystem(design.system)
       ? `the system "${design.system}" is not known`
       : !isDesignKind(designKind(design))
         ? `the kind "${designKind(design)}" is not known`
-        : issues.map((issue) => issue.message).join(" ");
+        : unknown
+          ? `the ${unknown.name} "${unknown.value}" is not known`
+          : issues.map((issue) => issue.message).join(" ");
   return new CliError(EXIT.failed, "design-invalid", `The design ${design.id} makes no parts: ${reason}`, { id: design.id, issues });
 }
 

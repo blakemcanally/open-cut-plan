@@ -174,7 +174,7 @@ the shelves between the sides and the dividers, all joined with pocket screws. A
 | `design systems` | Lists `kallax`, `eket`, and `custom`, with the IKEA numbers and their sources. It needs no file. | `opencutplan design systems --json` |
 | `design starters` | Lists the starter designs: the id, the name, the group, the note, the choices with their allowed values, and the defaults. The JSON has `starters` and `notice`, and the text ends with the IKEA notice. It needs no file. | `opencutplan design starters --json` |
 | `design list <file>` | Lists the designs with the outside size and the part counts. | `opencutplan design list hall.cutplan.json` |
-| `design get <file> <id>` | Shows one design, its finish steps, its parts, an estimate of its sheets, and its checks. | `opencutplan design get hall.cutplan.json kallax-2x4 --json` |
+| `design get <file> <id>` | Shows one design, its corners, its fastener, its hidden warnings, its finish steps, its parts, an estimate of its sheets, and its checks. | `opencutplan design get hall.cutplan.json kallax-2x4 --json` |
 | `design add <file>` | Adds a design and makes its parts. With `--starter <id>`, it adds the design of a starter. | `opencutplan design add hall.cutplan.json --system kallax --cols 2 --rows 4` |
 | `design set <file> <id>` | Changes a design and makes its parts again. | `opencutplan design set hall.cutplan.json kallax-2x4 --rows 5` |
 | `design combine <file> <id>` | Combines a rectangle of cells into one cell. | `opencutplan design combine hall.cutplan.json kallax-4x2 --cell 1,1 --to 2,1` |
@@ -192,11 +192,20 @@ The flags of `design add` and `design set`:
 - `--width <length>` and `--height <length>`: the outside size. The cells divide it equally.
 - `--column-openings <list>` and `--row-openings <list>`: each opening, for example `335,400`. They replace `--cols`
   and `--width`, or `--rows` and `--height`.
-- `--depth <length>`, `--material <id|name>`, `--back <id|name|none>`, `--mount floor|legs|feet|wall-rail`,
+- `--depth <length>`, `--material <id|name>`, `--back <id|name|none>`, `--mount floor|legs|feet|wall-rail|cleats`,
   `--quantity <n>`, `--name <text>`, and `--id <id>`.
 - `--color <unit>=<#rrggbb|auto>`: the colour of one unit in the layout, for example `--color 2=#ff8800`. The units
   count from 1, up to the quantity. `auto` gives the unit its automatic colour again. Give the flag one time for each
   unit.
+- `--corners top-over-sides|sides-over-top`: which boards cover the ends of the others at the corners of a box. The
+  default is `top-over-sides`. With `sides-over-top`, the sides run over the top and the bottom.
+- `--fastener pocket-screws|face-screws`: how the joints of a box are fastened. The default is `pocket-screws`.
+  `face-screws` needs a box with 1 column. A box with more columns gives exit 1, `invalid-value`, and the check
+  `design-one-column` in `error.issues`. On `design set`, the default value of `--corners` or `--fastener` removes the
+  field from the design. On `design add`, the default value adds no field.
+- `--mount cleats` adds the feet and the top cleats to the parts of a box, and the cleat screws to the hardware list.
+- `--show-warnings` (`design set` only): shows the warnings that the design hides. It removes the `hiddenWarnings` field
+  of the design. No flag hides a warning. A starter or a file sets `hiddenWarnings`.
 - `--finish <text>`: one finish step, in plain text. Give the flag one time for each step, in order. On `design set`,
   the steps replace the list. A step that is empty or only spaces gives exit 2 and `invalid-value`, and so do more than
   50 steps.
@@ -208,8 +217,8 @@ The flags of `design add` and `design set`:
 
 The finish steps are plain text lines that a design keeps in `finish` (see [format.md](format.md)). They do not change
 the parts. `report assembly` lists them after the assembly steps, as one step with the action `finish` and the title
-`Finish`. `design get` shows them as a numbered list, and its JSON has them in `design.finish`. When no step is left,
-the file has no `finish` field.
+`Finish`. `design get` shows them as a numbered list, and its JSON has them in `design.finish`. When no step is left, the file has no `finish` field. `design get` also shows the corners, the fastener,
+and the hidden warnings, each only when the design has the field.
 
 #### Open-top boxes
 
@@ -219,14 +228,16 @@ name is `Open-top box`.
 
 - `--width`, `--height`, and `--depth` are required (exit 2, `missing-option`). They are the outside sizes.
 - `--system` is `kallax` or `custom`. The default is `custom`. `eket` gives exit 2 and `invalid-value`.
-- `--cols`, `--rows`, `--column-openings`, `--row-openings`, `--back`, and `--mount` give exit 2 and `conflict`.
+- `--cols`, `--rows`, `--column-openings`, `--row-openings`, `--back`, `--mount`, `--corners`, and `--fastener` give
+  exit 2 and `conflict`.
 - `--material`, `--quantity`, `--name`, `--id`, and `--finish` work as for other designs.
 - With `--system kallax`, the design checks warn when the box does not fit a KALLAX-style cube.
 
 `design set` on an open-top box takes `--width`, `--height`, and `--depth` for the outside sizes. These flags give exit
 2 and `conflict` on `design set` too: `--cols`, `--rows`, `--column-openings`, and `--row-openings`. `--back` and
 `--mount` give exit 2 and `conflict` as well, with two exceptions. `--back none` removes the `back` field of the
-design, and `--mount floor` removes the `mount` field. `--system eket` gives exit 2 and `invalid-value`. In the text of
+design, and `--mount floor` removes the `mount` field. `--corners` and `--fastener` give exit 2 and `conflict` with no
+exception. `--system eket` gives exit 2 and `invalid-value`. In the text of
 `design list`, the system column of an open-top box ends with `(open-top box)`, and its mount column shows `-`. The
 JSON has `kind` for a design that has one.
 
@@ -248,8 +259,8 @@ A flag that the starter has no choice for, or a value that the starter does not 
 `--starter cube-shelf --mount legs` are refused, and so is `--starter cube-shelf --cols 7` (the columns must be from 1
 to 6). An id that is not a starter gives `invalid-value` and lists the ids.
 
-The flags that set the shape of the design (`--kind`, `--system`, `--width`, `--height`, `--column-openings`, and
-`--row-openings`) give exit 2 and `conflict` with `--starter`. To change the grid past the choices, run `design set`
+The flags that set the shape of the design (`--kind`, `--system`, `--width`, `--height`, `--column-openings`,
+`--row-openings`, `--corners`, and `--fastener`) give exit 2 and `conflict` with `--starter`. To change the grid past the choices, run `design set`
 after `design add`.
 
 These flags work with `--starter`:
@@ -265,6 +276,16 @@ These flags work with `--starter`:
 The `crate` starter is an open-top box that fits a KALLAX-style cube. It has no choices, so `--cols`, `--rows`,
 `--mount`, and `--size` are refused (exit 2, `invalid-value`). `--back` is refused too, because an open-top box has no
 back. `--back none` is refused as well. It has 3 finish steps.
+
+The `stacking-shelf` starter is a shelf module that stacks on cleats, after the shelf system of Evan Monsma. It has no
+choices, so `--cols`, `--rows`, `--mount`, and `--size` are refused (exit 2, `invalid-value`). `--back` gives exit 2
+and `conflict`, because the module has no back. The design has the corners `sides-over-top`, the fastener
+`face-screws`, and the mount `cleats`. It hides the warning `shelf-span`. `design set --show-warnings` shows it again.
+
+```sh
+opencutplan design add hall.cutplan.json --starter stacking-shelf
+opencutplan design set hall.cutplan.json stacking-shelf --show-warnings
+```
 
 `addedStock` lists the stock that the command added, also for the materials that it picked.
 
