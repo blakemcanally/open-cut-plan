@@ -1,11 +1,30 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { assemblySteps, boardLayout, columnSteps, combineCells, shelfAssemblies, convertProjectUnits, regenerateDesigns, type Board, type BoardLayout, type CombinedCell, type Design } from "../../src/index.ts";
+import { assemblySteps, boardLayout, setFinishSteps, columnSteps, combineCells, shelfAssemblies, convertProjectUnits, regenerateDesigns, type Board, type BoardLayout, type CombinedCell, type Design } from "../../src/index.ts";
 import { designProject, eketDesign, kallaxDesign } from "../helpers.ts";
 
 const project = regenerateDesigns(designProject([kallaxDesign(), eketDesign(), kallaxDesign({ id: "c", name: "Mixed", system: "custom", width: { openings: [335, 400, 335] }, height: { openings: [400, 300, 335] } })]));
 
+const withFinish = (steps: string[], id = "kx") => ({ ...project, designs: project.designs!.map((design) => (design.id === id ? setFinishSteps(design, steps) : design)) });
+
 describe("assemblySteps", () => {
+  it("ends the steps of a box with its finish steps, after the anchor step", () => {
+    const steps = assemblySteps(withFinish(["Sand lightly.", "Oil it."]), "kx")!;
+    expect(steps.slice(-3).map((step) => step.action)).toEqual(["anchor", "finish", "finish"]);
+    expect(steps.at(-1)).toEqual({ title: "Finish", body: "Oil it.", action: "finish" });
+  });
+
+  it("puts the finish steps after the mount step, and after the back step when the box has no mount", () => {
+    expect(assemblySteps(withFinish(["Oil it."], "ek"), "ek")!.slice(-2).map((step) => step.action)).toEqual(["mount", "finish"]);
+    const bare = { ...project, designs: project.designs!.map((design) => (design.id === "ek" ? { ...setFinishSteps(design, ["Oil it."]), mount: "none" as const } : design)) };
+    expect(assemblySteps(bare, "ek")!.slice(-2).map((step) => step.action)).toEqual(["join", "finish"]);
+  });
+
+  it("gives a design without finish steps the same steps as before", () => {
+    expect(assemblySteps(withFinish([]), "kx")).toEqual(assemblySteps(project, "kx"));
+    expect(assemblySteps(project, "kx")!.some((step) => step.action === "finish")).toBe(false);
+  });
+
   it("gives the KALLAX 2x4 steps in order", () => {
     const steps = assemblySteps(project, "kx")!;
     expect(steps.map((step) => step.title)).toEqual([

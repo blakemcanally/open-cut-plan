@@ -199,6 +199,8 @@ function drawingText(step: AssemblyStep, rows: number, mount: string, placed: bo
       return `Front view with the ${mount === "wall-rail" ? "wall rail" : mount} marked.`;
     case "anchor":
       return "Front view with the anti-tip fitting marked at the top.";
+    case "finish":
+      return "Front view of the finished unit.";
   }
 }
 
@@ -285,7 +287,7 @@ export function assemblyDrawings(project: Project, designId: string): AssemblyDr
   const joined = new Set<string>();
   return steps.map((step, index) => {
     const current = new Set((step.boards ?? []).map(assemblyBoardKey));
-    const stateOf = (key: string): DrawState => (current.has(key) ? "current" : joined.has(key) ? "placed" : "later");
+    const stateOf = (key: string): DrawState => (step.action === "finish" ? "placed" : current.has(key) ? "current" : joined.has(key) ? "placed" : "later");
     const mountState: DrawState = mountAt < 0 || index < mountAt ? "later" : index === mountAt ? "current" : "placed";
     const states = panels.map((p) => stateOf(keyOf(p)));
     const description = drawingText(step, rows.length, mount, states.includes("placed"), states.includes("later"));

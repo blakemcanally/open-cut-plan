@@ -1,6 +1,6 @@
 import { formatLength } from "../geometry/format.ts";
 import { convertLength } from "../geometry/units.ts";
-import type { Project } from "../format/schema.ts";
+import type { Design, Project } from "../format/schema.ts";
 import { designParts } from "./generate.ts";
 import { designGeometry, materialsById, roundLength, type DesignGeometry } from "./geometry.ts";
 import { backScrewCount, backScrewName, pocketHolesPerEnd, pocketScrew, railsFor } from "./hardware.ts";
@@ -15,9 +15,10 @@ export type AssemblyBoard = { kind: "top" | "bottom" | "back" } | { kind: "side"
 /**
  * What a step does: drill or mark its boards, cut spacers, join its boards to each other off the unit (`subassembly`),
  * add its boards to the unit (`join`), check the diagonals (`square`), fit the legs, the feet, or the wall rail
- * (`mount`), or fix the unit to the wall (`anchor`).
+ * (`mount`), fix the unit to the wall (`anchor`), or finish the surface of the unit with the finish steps of the design
+ * (`finish`).
  */
-export type AssemblyAction = "drill" | "mark" | "spacers" | "subassembly" | "join" | "square" | "mount" | "anchor";
+export type AssemblyAction = "drill" | "mark" | "spacers" | "subassembly" | "join" | "square" | "mount" | "anchor" | "finish";
 
 export interface AssemblyStep {
   title: string;
@@ -40,6 +41,10 @@ export function assemblyBoardKey(board: AssemblyBoard): string {
 
 function joinList(items: readonly string[]): string {
   return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+}
+
+export function finishSteps(design: Design): AssemblyStep[] {
+  return (design.finish ?? []).map((body) => ({ title: "Finish", body, action: "finish" }));
 }
 
 /** The steps to build one unit of a design, or null when the design does not exist or cannot make parts. */
@@ -156,7 +161,7 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
     });
   }
 
-  if (!isDesignMount(mount)) return steps;
+  if (!isDesignMount(mount)) return [...steps, ...finishSteps(design)];
   if (mount === "legs") {
     const guides = IKEA_LEGS.filter((legs) => legs.guide !== undefined).map((legs) => `${legs.guide} (${legs.name})`);
     steps.push({ title: "Fit the legs", body: `Screw the 4 EKET legs to the bottom panel, as the IKEA assembly guide of your legs shows: ${joinList(guides)}.`, action: "mount", boards: [] });
@@ -181,7 +186,7 @@ export function assemblySteps(project: Project, designId: string): AssemblyStep[
       boards: [],
     });
   }
-  return steps;
+  return [...steps, ...finishSteps(design)];
 }
 
 export interface ColumnStep {

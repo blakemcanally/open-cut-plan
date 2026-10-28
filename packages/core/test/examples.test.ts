@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { EXAMPLES } from "../../../examples/builders/index.ts";
 import {
   applyOptimizeResult,
+  assemblySteps,
   checkDesigns,
   convertLength,
   designGeometry,
@@ -40,6 +41,12 @@ describe.each(Object.keys(EXAMPLES))("example %s", (slug) => {
     expect(readFileSync(new URL(`${slug}.cutplan.json`, dir), "utf8")).toBe(serializeProject(project));
     expect(readFileSync(new URL(`csv/${slug}-parts.csv`, dir), "utf8")).toBe(exportPartsCsv(project));
     expect(readFileSync(new URL(`csv/${slug}-stock.csv`, dir), "utf8")).toBe(exportStockCsv(project));
+  });
+
+  it("has no finish step and no stale design", () => {
+    const project = build(slug);
+    for (const design of project.designs ?? []) expect(assemblySteps(project, design.id)!.some((step) => step.action === "finish")).toBe(false);
+    expect(checkDesigns(project).filter((issue) => issue.code === "design-stale")).toEqual([]);
   });
 
   it("has current design parts and no design issues", () => {

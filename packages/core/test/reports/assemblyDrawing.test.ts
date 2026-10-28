@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assemblyDrawings, assemblySteps, regenerateDesigns, type CombinedCell } from "../../src/index.ts";
+import { assemblyDrawings, assemblySteps, regenerateDesigns, setFinishSteps, type CombinedCell } from "../../src/index.ts";
 import { designProject, eketDesign, kallaxDesign } from "../helpers.ts";
 
 const project = regenerateDesigns(designProject([kallaxDesign(), eketDesign(), eketDesign({ id: "l", name: "Legs", mount: "legs", back: undefined, quantity: 1 })]));
@@ -8,6 +8,19 @@ const state = (svg: string, panel: string) => [...svg.matchAll(new RegExp(`data-
 const span = (column: number, row: number, columns: number, rows: number): CombinedCell => ({ column, row, columns, rows });
 
 describe("assemblyDrawings", () => {
+  it("gives one drawing for each finish step: the whole unit in the colour of the design, with no accent", () => {
+    const finished = { ...project, designs: project.designs!.map((design) => (design.id === "ek" ? setFinishSteps(design, ["Sand lightly.", "Oil it."]) : design)) };
+    const drawings = assemblyDrawings(finished, "ek")!;
+    expect(drawings).toHaveLength(assemblySteps(finished, "ek")!.length);
+    expect(assemblySteps(finished, "ek")!.slice(-2).map((step) => step.action)).toEqual(["finish", "finish"]);
+    for (const drawing of drawings.slice(-2)) {
+      expect(drawing.description).toBe("Front view of the finished unit.");
+      expect(drawing.svg).not.toContain('data-state="current"');
+      expect(drawing.svg).not.toContain('data-state="later"');
+      expect(drawing.svg).not.toContain("#1a5fd0");
+    }
+  });
+
   it("gives one drawing for each assembly step, with its description as the title", () => {
     const drawings = assemblyDrawings(project, "kx")!;
     expect(drawings).toHaveLength(assemblySteps(project, "kx")!.length);
