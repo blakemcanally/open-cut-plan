@@ -85,6 +85,16 @@ describe("AssemblyTab", () => {
     vi.restoreAllMocks();
   });
 
+  it("shows the finish steps of a design after its other steps", () => {
+    const project = designProject();
+    renderAssembly({ ...project, designs: [{ ...project.designs![0]!, finish: ["Sand lightly."] }] });
+    expect(steps()).toHaveLength(10);
+    const last = within(steps()[9]!);
+    expect(last.getByText("10. Finish")).toBeTruthy();
+    expect(last.getByText("Sand lightly.")).toBeTruthy();
+    expect(steps()[9]!.querySelector(".assembly-drawing svg")).toBeTruthy();
+  });
+
   it("prints the assembly steps", async () => {
     const onPrint = vi.fn();
     renderAssembly(designProject(), onPrint);

@@ -26,6 +26,7 @@ import {
   partColors,
   removeDesign,
   setDesignColor,
+  setFinishSteps,
   type CombinedCell,
   type Design,
   type DesignAxis,
@@ -38,6 +39,7 @@ import {
 import { useState, type InputHTMLAttributes } from "react";
 import { ColorChoice, LengthInput, NumberInput, TextInput } from "../components/fields.tsx";
 import { CellGrid } from "../design/CellGrid.tsx";
+import { FinishSteps } from "../design/FinishSteps.tsx";
 import { SheetEstimate } from "../design/SheetEstimate.tsx";
 import { StarterDialog } from "../design/StarterDialog.tsx";
 import { axisMode, CATALOG_VALUE, openingsText, outsideText, parseOpenings, pickMaterial, tryDesign, withCells, withMode, withSystem, type AxisMode } from "../design/form.ts";
@@ -409,6 +411,7 @@ function DesignEditor({ store, design, issues, onOptimize, optimizing }: EditorP
             ))}
           </ul>
         </fieldset>
+        <FinishSteps steps={design.finish ?? []} disabled={locked !== null} onChange={(steps) => apply("finish", (d) => setFinishSteps(d, steps))} />
         {refused && (
           <p role="alert" className="error">
             ✖ {refused.message}
