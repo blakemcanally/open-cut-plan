@@ -1,4 +1,4 @@
-# The OpenCutPlan file format (`.cutplan.json`), version 1.11
+# The OpenCutPlan file format (`.cutplan.json`), version 1.12
 
 An OpenCutPlan file describes a sheet-goods cutting project: the parts to cut, the stock to cut them from, the tools
 available, settings, and optionally a layout of parts on sheets with an ordered list of cuts.
@@ -22,7 +22,7 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | Always `"opencutplan"`. |
-| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.11"`. |
+| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.12"`. |
 | `project` | yes | `name` (text), `units` (`"in"` or `"mm"`), optional `notes`, `created`, `modified` (should be ISO 8601 date-times; readers accept any string). |
 | `materials` | yes | Materials; see below. |
 | `stock` | yes | Stock pieces available for cutting. |
@@ -99,6 +99,9 @@ stored parts as normal parts.
 | `combined` | no | Cells that are combined into one larger cell (added in 1.7): a list of spans. No field means no combined cells. |
 | `kind` | no | `"box"` or `"open-box"` (added in 1.11). No field means `"box"`: the box with a grid of cells, as in this section. `"open-box"` is a box with four walls and a bottom, no top, no back panel, and no cells. Other values can come in later minor versions; a reader keeps the stored parts of a kind it does not know. |
 | `finish` | no | The finish steps (added in 1.11): 0 to 50 lines of plain text, none empty. They do not change the parts. An app shows them after the assembly steps. A writer removes the field when it has no step. |
+| `corners` | no | `"top-over-sides"` or `"sides-over-top"` (added in 1.12). No field means `"top-over-sides"`. See [Box settings](#box-settings-added-in-112). |
+| `fastener` | no | `"pocket-screws"` or `"face-screws"` (added in 1.12). No field means `"pocket-screws"`. See [Box settings](#box-settings-added-in-112). |
+| `hiddenWarnings` | no | The codes of the warnings that the user chose to hide for this design (added in 1.12): 0 to 50 codes of plain text, none empty. A writer removes the field when it has no code. |
 
 An **axis** is one of:
 
@@ -174,6 +177,22 @@ thickness, *w* the outside width, *h* the outside height, *d* the depth, and *q*
 - With `system: "kallax"`, the design checks give the warning `kallax-fit` for each size that is over what fits a
   KALLAX-style cube. The limits are 333 mm for the width and the height, and 390 mm for the depth.
 - Every generated part has `grain: "length"` and `group` set to the design name, as in a box.
+
+## Box settings (added in 1.12)
+
+Four optional fields on a design. A file with no new field means the behaviour of 1.11.
+
+| Field | Values | No field means |
+|---|---|---|
+| `corners` | `"top-over-sides"`, `"sides-over-top"` | `"top-over-sides"` |
+| `fastener` | `"pocket-screws"`, `"face-screws"` | `"pocket-screws"` |
+| `mount` | adds `"cleats"` to the mounts of 1.11 | `"floor"` |
+| `hiddenWarnings` | a list of warning codes, for example `["shelf-span"]` | no hidden warnings |
+
+- A reader that does not know a value of `corners` or `fastener` keeps the stored parts of the design. It gives the
+  warning `design-unknown-corners` or `design-unknown-fastener`, and it makes no new parts for the design.
+- `hiddenWarnings` hides warnings only. A reader that checks a design leaves out each warning whose code is in the list
+  of that design. It never hides an error.
 
 ## Colours (added in 1.4)
 
@@ -312,7 +331,7 @@ uses gets a new id (`s1` becomes `s1-2`) with a warning, because edits find a sh
   within a major version. Adding a value requires a new major version, so a reader can refuse a value it does not know.
   There is one exception: version 1.8 adds the tool type `"miter-saw"`. A reader of 1.7 or earlier refuses a file
   with a mitre saw. It reads a 1.8 file with no mitre saw.
-- `designs[].system`, `designs[].kind`, `designs[].mount`, `parts[].factoryEdge`, and `settings.optimizer.goal` are not
+- `designs[].system`, `designs[].kind`, `designs[].corners`, `designs[].fastener`, `designs[].mount`, `parts[].factoryEdge`, and `settings.optimizer.goal` are not
   fixed: a minor version can add values.
 
 ## CSV part and stock lists

@@ -131,7 +131,7 @@ describe("FinishSteps", () => {
 
   it("locks the steps for a file from a newer version", () => {
     const project = designProject();
-    renderDesign({ ...project, version: "1.12", designs: [{ ...project.designs![0]!, finish: ["Sand lightly."] }] });
+    renderDesign({ ...project, version: "1.13", designs: [{ ...project.designs![0]!, finish: ["Sand lightly."] }] });
     expect(screen.getByLabelText("Finish step 1").matches(":disabled")).toBe(true);
     expect(screen.getByRole("button", { name: "Add a finish step" }).matches(":disabled")).toBe(true);
     expect(screen.getByRole("button", { name: "Remove finish step 1" }).matches(":disabled")).toBe(true);

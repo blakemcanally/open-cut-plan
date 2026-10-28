@@ -399,6 +399,22 @@
               "type": "string",
               "minLength": 1
             }
+          },
+          "corners": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fastener": {
+            "type": "string",
+            "minLength": 1
+          },
+          "hiddenWarnings": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         },
         "required": [

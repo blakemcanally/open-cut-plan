@@ -6,7 +6,7 @@ import { EPSILON } from "../geometry/rect.ts";
 import { designErrors } from "./errors.ts";
 import { designGeometry, materialsById } from "./geometry.ts";
 import { buildDesignParts } from "./parts.ts";
-import { designKind, isDesignKind, isDesignSystem } from "./systems.ts";
+import { designCorners, designFastener, designKind, isDesignCorners, isDesignFastener, isDesignKind, isDesignSystem } from "./systems.ts";
 
 export function generatedParts(project: Project, designId: string): Part[] {
   return project.parts.filter((part) => part.design === designId);
@@ -18,7 +18,16 @@ export function generatedParts(project: Project, designId: string): Part[] {
  * numbers, so the rounding after a unit change does not count as a change.
  */
 export function designParts(project: Project, design: Design): Part[] | null {
-  if (isNewerMinor(project.version) || !isDesignSystem(design.system) || !isDesignKind(designKind(design)) || designErrors(project, design).length > 0) return null;
+  if (
+    isNewerMinor(project.version) ||
+    !isDesignSystem(design.system) ||
+    !isDesignKind(designKind(design)) ||
+    !isDesignCorners(designCorners(design)) ||
+    !isDesignFastener(designFastener(design)) ||
+    designErrors(project, design).length > 0
+  ) {
+    return null;
+  }
   const geometry = designGeometry(design, materialsById(project));
   if (!geometry) return null;
   const stored = new Map(generatedParts(project, design.id).map((part) => [part.id, part]));

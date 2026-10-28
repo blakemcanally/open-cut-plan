@@ -348,7 +348,7 @@ export function addStarterDesign(
 export function starterFits(project: Project, designId: string): string[] {
   const design = project.designs?.find((candidate) => candidate.id === designId);
   if (!design) return [];
-  const codes = new Set(checkDesigns(project).filter((issue) => issue.refs.some((ref) => ref.kind === "design" && ref.design === designId)).map((issue) => issue.code));
+  const codes = new Set(checkDesigns(project, { keepHidden: true }).filter((issue) => issue.refs.some((ref) => ref.kind === "design" && ref.design === designId)).map((issue) => issue.code));
   const items: string[] = [];
   if (isOpenBox(design)) return design.system === "kallax" && !codes.has("kallax-fit") ? ["KALLAX cells"] : [];
   if (design.system === "kallax" && !codes.has("kallax-opening") && !codes.has("kallax-depth")) items.push("KALLAX inserts and boxes");

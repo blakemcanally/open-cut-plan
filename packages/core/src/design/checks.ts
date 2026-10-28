@@ -13,8 +13,12 @@ import { isOpenBox, kallaxFitIssues } from "./openBox.ts";
 import { shelfName } from "./parts.ts";
 import {
   EKET,
+  designCorners,
+  designFastener,
   designKind,
   EKET_TOLERANCE_MM,
+  isDesignCorners,
+  isDesignFastener,
   isDesignKind,
   isDesignMount,
   isDesignSystem,
@@ -32,7 +36,7 @@ function staleWarnings(project: Project, design: Design): PlanIssue[] {
   return [planWarning("design-stale", `The parts of design "${design.name}" do not match the design. The next change makes them again.`, designRef(design))];
 }
 
-export function checkDesigns(project: Project): PlanIssue[] {
+export function checkDesigns(project: Project, options: { keepHidden?: boolean } = {}): PlanIssue[] {
   const units = project.project.units;
   const mm = (value: number) => convertLength(value, "mm", units);
   const show = (value: number) => formatLength(value, units, project.settings.display);
@@ -48,6 +52,14 @@ export function checkDesigns(project: Project): PlanIssue[] {
     }
     if (!isDesignKind(designKind(design))) {
       issues.push(planWarning("design-unknown-kind", `${name} has the kind "${designKind(design)}", which this app does not know. Its parts stay as they are.`, ref));
+      continue;
+    }
+    if (!isDesignCorners(designCorners(design))) {
+      issues.push(planWarning("design-unknown-corners", `${name} has the corners "${designCorners(design)}", which this app does not know. Its parts stay as they are.`, ref));
+      continue;
+    }
+    if (!isDesignFastener(designFastener(design))) {
+      issues.push(planWarning("design-unknown-fastener", `${name} uses the fastener "${designFastener(design)}", which this app does not know. Its parts stay as they are.`, ref));
       continue;
     }
     if (design.mount !== undefined && !isDesignMount(design.mount)) {
@@ -143,5 +155,14 @@ export function checkDesigns(project: Project): PlanIssue[] {
     }
     issues.push(...staleWarnings(project, design));
   }
-  return issues;
+  return options.keepHidden ? issues : withoutHidden(project, issues);
+}
+
+function withoutHidden(project: Project, issues: PlanIssue[]): PlanIssue[] {
+  const hidden = new Map((project.designs ?? []).filter((design) => design.hiddenWarnings?.length).map((design) => [design.id, new Set(design.hiddenWarnings)]));
+  if (hidden.size === 0) return issues;
+  return issues.filter((issue) => {
+    if (issue.severity === "error") return true;
+    return !issue.refs.some((ref) => ref.kind === "design" && hidden.get(ref.design)?.has(issue.code));
+  });
 }

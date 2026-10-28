@@ -13,6 +13,7 @@ import {
   removeMaterial,
   renameDesign,
   setFinishSteps,
+  showHiddenWarnings,
   type Part,
   type Project,
 } from "../../src/index.ts";
@@ -140,5 +141,13 @@ describe("setFinishSteps", () => {
 
   it("removes the finish field when no step is left", () => {
     expect("finish" in setFinishSteps({ ...kallaxDesign(), finish: ["Sand."] }, ["  "])).toBe(false);
+  });
+});
+
+describe("showHiddenWarnings", () => {
+  it("removes the hiddenWarnings field", () => {
+    const shown = showHiddenWarnings(kallaxDesign({ hiddenWarnings: ["shelf-span"] }));
+    expect("hiddenWarnings" in shown).toBe(false);
+    expect(shown).toEqual(kallaxDesign());
   });
 });

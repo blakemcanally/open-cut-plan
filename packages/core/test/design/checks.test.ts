@@ -50,7 +50,7 @@ describe("checkDesigns", () => {
 
   it("gives no stale warning for a file from a newer minor version", () => {
     const once = current(kallaxDesign());
-    const newer = { ...once, version: "1.12", designs: [kallaxDesign({ width: { openings: [335, 335, 335] } })] };
+    const newer = { ...once, version: "1.13", designs: [kallaxDesign({ width: { openings: [335, 335, 335] } })] };
     expect(codes(newer)).toEqual([]);
   });
 
@@ -160,5 +160,50 @@ describe("the nominal-thickness check", () => {
     expect(nominal(inches(kallaxDesign(), { ply18: { name: "Plywood 3/4", thickness: 0.75, measured: true } }))).toEqual([]);
     expect(nominal(inches(kallaxDesign(), { ply18: { name: "Plywood 3/4", thickness: 45 / 64 } }))).toEqual([]);
     expect(nominal(current(kallaxDesign()))).toEqual([]);
+  });
+});
+
+describe("the corners, the fastener, and the hidden warnings of a design", () => {
+  const wide = (patch: Partial<Design> = {}) => kallaxDesign({ system: "custom", width: { openings: [1500] }, height: { openings: [335] }, ...patch });
+  const codesOf = (project: Project, options?: { keepHidden?: boolean }) => checkDesigns(project, options).map((issue) => issue.code);
+
+  it("gives design-unknown-corners and no parts for an unknown corners value", () => {
+    const project = designProject([kallaxDesign({ corners: "mitred", depth: 100 })]);
+    const issues = checkDesigns(project);
+    expect(issues.map((issue) => `${issue.severity}:${issue.code}`)).toEqual(["warning:design-unknown-corners"]);
+    expect(issues[0]!.message).toBe('Design "Hall KALLAX" has the corners "mitred", which this app does not know. Its parts stay as they are.');
+    expect(issues[0]!.refs).toEqual([{ kind: "design", design: "kx" }]);
+    expect(designParts(project, project.designs![0]!)).toBeNull();
+  });
+
+  it("gives design-unknown-fastener and no parts for an unknown fastener value", () => {
+    const project = designProject([kallaxDesign({ fastener: "nails", depth: 100 })]);
+    const issues = checkDesigns(project);
+    expect(issues.map((issue) => `${issue.severity}:${issue.code}`)).toEqual(["warning:design-unknown-fastener"]);
+    expect(issues[0]!.message).toBe('Design "Hall KALLAX" uses the fastener "nails", which this app does not know. Its parts stay as they are.');
+    expect(issues[0]!.refs).toEqual([{ kind: "design", design: "kx" }]);
+    expect(designParts(project, project.designs![0]!)).toBeNull();
+  });
+
+  it("reports the unknown corners before the unknown fastener", () => {
+    expect(codesOf(designProject([kallaxDesign({ corners: "mitred", fastener: "nails" })]))).toEqual(["design-unknown-corners"]);
+  });
+
+  it("drops a hidden warning and keeps it with keepHidden", () => {
+    const project = current(wide({ hiddenWarnings: ["shelf-span"] }));
+    expect(codesOf(project)).toEqual([]);
+    expect(codesOf(project, { keepHidden: true })).toEqual(["shelf-span"]);
+    expect(codesOf(current(wide()))).toEqual(["shelf-span"]);
+  });
+
+  it("never drops an error", () => {
+    const project = designProject([kallaxDesign({ material: "ply6", hiddenWarnings: ["pocket-thickness"] })]);
+    expect(codes(project)).toEqual(["error:pocket-thickness"]);
+  });
+
+  it("drops only the warnings of the design that hides them", () => {
+    const project = current(wide({ id: "a", name: "A", hiddenWarnings: ["shelf-span"] }), wide({ id: "b", name: "B" }));
+    expect(checkDesigns(project).map((issue) => issue.refs)).toEqual([[{ kind: "design", design: "b" }]]);
+    expect(checkDesigns(project, { keepHidden: true })).toHaveLength(2);
   });
 });

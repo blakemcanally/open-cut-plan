@@ -113,7 +113,7 @@ describe("regenerateDesigns", () => {
   it("leaves the stored parts of a file from a newer minor version alone", () => {
     const once = regenerateDesigns(designProject());
     const nested = { ...once.parts[1]!, id: "kx-cell-1-1-horizontal", name: "Nested shelf" };
-    const newer = { ...once, version: "1.12", parts: [...once.parts, nested] };
+    const newer = { ...once, version: "1.13", parts: [...once.parts, nested] };
     expect(regenerateDesigns(newer)).toBe(newer);
     expect(designParts(newer, newer.designs![0]!)).toBeNull();
   });
@@ -124,6 +124,12 @@ describe("regenerateDesigns", () => {
     expect(regenerateDesigns(missing)).toBe(missing);
     const unknown = withDesign(once, { system: "pax", width: { openings: [500] } });
     expect(regenerateDesigns(unknown)).toBe(unknown);
+    const mitred = withDesign(once, { corners: "mitred", width: { openings: [500] } });
+    expect(regenerateDesigns(mitred)).toBe(mitred);
+    expect(designParts(mitred, mitred.designs![0]!)).toBeNull();
+    const nails = withDesign(once, { fastener: "nails", width: { openings: [500] } });
+    expect(regenerateDesigns(nails)).toBe(nails);
+    expect(designParts(nails, nails.designs![0]!)).toBeNull();
     const manual: Part = { id: "kx-side", name: "Side", material: "ply18", length: 900, width: 300, quantity: 2, grain: "length" };
     const conflict = designProject();
     conflict.parts = [manual];

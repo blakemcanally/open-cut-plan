@@ -1,5 +1,5 @@
 export const SUPPORTED_MAJOR = 1;
-export const SUPPORTED_MINOR = 11;
+export const SUPPORTED_MINOR = 12;
 
 export interface Version {
   major: number;

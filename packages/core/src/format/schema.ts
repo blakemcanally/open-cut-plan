@@ -2,12 +2,13 @@ import { z } from "zod";
 import { INCH_PRECISIONS, MM_PRECISIONS } from "../geometry/format.ts";
 
 export const FORMAT_ID = "opencutplan";
-export const FORMAT_VERSION = "1.11";
+export const FORMAT_VERSION = "1.12";
 /** Analysis and the editor work per copy, so a larger quantity would freeze them. */
 export const MAX_PART_QUANTITY = 10_000;
 export const MAX_DESIGN_CELLS = 50;
 export const MAX_DESIGN_QUANTITY = 100;
 export const MAX_FINISH_STEPS = 50;
+export const MAX_HIDDEN_WARNINGS = 50;
 export const MAX_COMBINED_CELLS = (MAX_DESIGN_CELLS * MAX_DESIGN_CELLS) / 2;
 
 const id = z.string().min(1);
@@ -87,6 +88,9 @@ export const DesignSchema = z
     combined: z.array(CombinedCellSchema).max(MAX_COMBINED_CELLS).optional(),
     kind: z.string().min(1).optional(),
     finish: z.array(z.string().min(1)).max(MAX_FINISH_STEPS).optional(),
+    corners: z.string().min(1).optional(),
+    fastener: z.string().min(1).optional(),
+    hiddenWarnings: z.array(z.string().min(1)).max(MAX_HIDDEN_WARNINGS).optional(),
   })
   .loose();
 

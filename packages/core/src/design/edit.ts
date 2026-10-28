@@ -71,6 +71,11 @@ export function renameDesign(project: Project, from: string, to: string): Projec
   return next;
 }
 
+export function showHiddenWarnings(design: Design): Design {
+  const { hiddenWarnings: _hiddenWarnings, ...rest } = design;
+  return rest;
+}
+
 export function setFinishSteps(design: Design, steps: readonly string[]): Design {
   const { finish: _finish, ...rest } = design;
   const kept = steps.map((step) => step.trim()).filter((step) => step.length > 0);

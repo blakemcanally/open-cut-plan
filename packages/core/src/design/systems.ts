@@ -6,6 +6,10 @@ export const DESIGN_SYSTEMS = ["kallax", "eket", "custom"] as const;
 export type DesignSystem = (typeof DESIGN_SYSTEMS)[number];
 export const DESIGN_KINDS = ["box", "open-box"] as const;
 export type DesignKind = (typeof DESIGN_KINDS)[number];
+export const DESIGN_CORNERS = ["top-over-sides", "sides-over-top"] as const;
+export type DesignCorners = (typeof DESIGN_CORNERS)[number];
+export const DESIGN_FASTENERS = ["pocket-screws", "face-screws"] as const;
+export type DesignFastener = (typeof DESIGN_FASTENERS)[number];
 export const DESIGN_MOUNTS = ["floor", "legs", "feet", "wall-rail"] as const;
 export type DesignMount = (typeof DESIGN_MOUNTS)[number];
 
@@ -19,6 +23,22 @@ export function isDesignKind(value: string): value is DesignKind {
 
 export function designKind(design: Design): string {
   return design.kind ?? "box";
+}
+
+export function isDesignCorners(value: string): value is DesignCorners {
+  return (DESIGN_CORNERS as readonly string[]).includes(value);
+}
+
+export function designCorners(design: Design): string {
+  return design.corners ?? "top-over-sides";
+}
+
+export function isDesignFastener(value: string): value is DesignFastener {
+  return (DESIGN_FASTENERS as readonly string[]).includes(value);
+}
+
+export function designFastener(design: Design): string {
+  return design.fastener ?? "pocket-screws";
 }
 
 export function isDesignMount(value: string): value is DesignMount {
