@@ -1,4 +1,4 @@
-# The OpenCutPlan file format (`.cutplan.json`), version 1.10
+# The OpenCutPlan file format (`.cutplan.json`), version 1.11
 
 An OpenCutPlan file describes a sheet-goods cutting project: the parts to cut, the stock to cut them from, the tools
 available, settings, and optionally a layout of parts on sheets with an ordered list of cuts.
@@ -22,7 +22,7 @@ The machine-readable definition is [`schema/cutplan.schema.json`](../schema/cutp
 | Field | Required | Meaning |
 |---|---|---|
 | `format` | yes | Always `"opencutplan"`. |
-| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.10"`. |
+| `version` | yes | `"MAJOR.MINOR"`; this document describes `"1.11"`. |
 | `project` | yes | `name` (text), `units` (`"in"` or `"mm"`), optional `notes`, `created`, `modified` (should be ISO 8601 date-times; readers accept any string). |
 | `materials` | yes | Materials; see below. |
 | `stock` | yes | Stock pieces available for cutting. |
@@ -97,6 +97,8 @@ stored parts as normal parts.
 | `mount` | no | `"floor"`, `"legs"`, `"feet"`, or `"wall-rail"`. Default `"floor"`. Other values can come in later minor versions. |
 | `colors` | no | The chosen colour of each unit, 0 to 100 values (added in 1.4). See [Colours](#colours-added-in-14). |
 | `combined` | no | Cells that are combined into one larger cell (added in 1.7): a list of spans. No field means no combined cells. |
+| `kind` | no | `"box"` or `"open-box"` (added in 1.11). No field means `"box"`: the box with a grid of cells, as in this section. `"open-box"` is a box with four walls and a bottom, no top, no back panel, and no cells. Other values can come in later minor versions; a reader keeps the stored parts of a kind it does not know. |
+| `finish` | no | The finish steps (added in 1.11): 0 to 50 lines of plain text, none empty. They do not change the parts. An app shows them after the assembly steps. A writer removes the field when it has no step. |
 
 An **axis** is one of:
 
@@ -287,8 +289,8 @@ uses gets a new id (`s1` becomes `s1-2`) with a warning, because edits find a sh
   within a major version. Adding a value requires a new major version, so a reader can refuse a value it does not know.
   There is one exception: version 1.8 adds the tool type `"miter-saw"`. A reader of 1.7 or earlier refuses a file
   with a mitre saw. It reads a 1.8 file with no mitre saw.
-- `designs[].system`, `designs[].mount`, `parts[].factoryEdge`, and `settings.optimizer.goal` are not fixed: a minor
-  version can add values.
+- `designs[].system`, `designs[].kind`, `designs[].mount`, `parts[].factoryEdge`, and `settings.optimizer.goal` are not
+  fixed: a minor version can add values.
 
 ## CSV part and stock lists
 

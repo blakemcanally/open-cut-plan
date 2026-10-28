@@ -387,6 +387,18 @@
               ],
               "additionalProperties": {}
             }
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "finish": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         },
         "required": [

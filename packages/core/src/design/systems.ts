@@ -4,11 +4,21 @@ import { roundLength } from "./geometry.ts";
 
 export const DESIGN_SYSTEMS = ["kallax", "eket", "custom"] as const;
 export type DesignSystem = (typeof DESIGN_SYSTEMS)[number];
+export const DESIGN_KINDS = ["box", "open-box"] as const;
+export type DesignKind = (typeof DESIGN_KINDS)[number];
 export const DESIGN_MOUNTS = ["floor", "legs", "feet", "wall-rail"] as const;
 export type DesignMount = (typeof DESIGN_MOUNTS)[number];
 
 export function isDesignSystem(value: string): value is DesignSystem {
   return (DESIGN_SYSTEMS as readonly string[]).includes(value);
+}
+
+export function isDesignKind(value: string): value is DesignKind {
+  return (DESIGN_KINDS as readonly string[]).includes(value);
+}
+
+export function designKind(design: Design): string {
+  return design.kind ?? "box";
 }
 
 export function isDesignMount(value: string): value is DesignMount {

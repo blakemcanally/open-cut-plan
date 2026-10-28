@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeProject, checkDesigns, convertProjectUnits, regenerateDesigns, validatePlan, type Design, type Project } from "../../src/index.ts";
+import { analyzeProject, checkDesigns, convertProjectUnits, designParts, regenerateDesigns, validatePlan, type Design, type Project } from "../../src/index.ts";
 import { designProject, eketDesign, kallaxDesign } from "../helpers.ts";
 
 const codes = (project: Project) => checkDesigns(project).map((issue) => `${issue.severity}:${issue.code}`);
@@ -18,6 +18,15 @@ describe("checkDesigns", () => {
     const issues = checkDesigns(designProject([kallaxDesign({ system: "pax", depth: 100 })]));
     expect(issues.map((issue) => issue.code)).toEqual(["design-unknown-system"]);
     expect(issues[0]!.refs).toEqual([{ kind: "design", design: "kx" }]);
+  });
+
+  it("warns about an unknown kind and keeps the parts", () => {
+    const project = designProject([kallaxDesign({ kind: "drawer", depth: 100 })]);
+    const issues = checkDesigns(project);
+    expect(issues.map((issue) => `${issue.severity}:${issue.code}`)).toEqual(["warning:design-unknown-kind"]);
+    expect(issues[0]!.message).toBe('Design "Hall KALLAX" has the kind "drawer", which this app does not know. Its parts stay as they are.');
+    expect(issues[0]!.refs).toEqual([{ kind: "design", design: "kx" }]);
+    expect(designParts(project, project.designs![0]!)).toBeNull();
   });
 
   it("warns about an unknown mount", () => {
@@ -41,7 +50,7 @@ describe("checkDesigns", () => {
 
   it("gives no stale warning for a file from a newer minor version", () => {
     const once = current(kallaxDesign());
-    const newer = { ...once, version: "1.11", designs: [kallaxDesign({ width: { openings: [335, 335, 335] } })] };
+    const newer = { ...once, version: "1.12", designs: [kallaxDesign({ width: { openings: [335, 335, 335] } })] };
     expect(codes(newer)).toEqual([]);
   });
 

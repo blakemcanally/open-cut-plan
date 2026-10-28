@@ -12,7 +12,9 @@ import { freeSpans } from "./layout.ts";
 import { shelfName } from "./parts.ts";
 import {
   EKET,
+  designKind,
   EKET_TOLERANCE_MM,
+  isDesignKind,
   isDesignMount,
   isDesignSystem,
   KALLAX,
@@ -35,6 +37,10 @@ export function checkDesigns(project: Project): PlanIssue[] {
     const name = `Design "${design.name}"`;
     if (!isDesignSystem(design.system)) {
       issues.push(planWarning("design-unknown-system", `${name} uses the system "${design.system}", which this app does not know. Its parts stay as they are.`, ref));
+      continue;
+    }
+    if (!isDesignKind(designKind(design))) {
+      issues.push(planWarning("design-unknown-kind", `${name} has the kind "${designKind(design)}", which this app does not know. Its parts stay as they are.`, ref));
       continue;
     }
     if (design.mount !== undefined && !isDesignMount(design.mount)) {

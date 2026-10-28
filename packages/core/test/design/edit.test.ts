@@ -12,6 +12,7 @@ import {
   removeDesign,
   removeMaterial,
   renameDesign,
+  setFinishSteps,
   type Part,
   type Project,
 } from "../../src/index.ts";
@@ -129,5 +130,15 @@ describe("materials that designs use", () => {
       ["ek-back", "ply6"],
     ]);
     expect(onSheet(next)).toEqual(["ek-back"]);
+  });
+});
+
+describe("setFinishSteps", () => {
+  it("trims the finish steps and drops the empty ones", () => {
+    expect(setFinishSteps(kallaxDesign(), ["  Sand lightly. ", "", "   ", "Oil it."]).finish).toEqual(["Sand lightly.", "Oil it."]);
+  });
+
+  it("removes the finish field when no step is left", () => {
+    expect("finish" in setFinishSteps({ ...kallaxDesign(), finish: ["Sand."] }, ["  "])).toBe(false);
   });
 });

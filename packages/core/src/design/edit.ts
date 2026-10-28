@@ -70,3 +70,9 @@ export function renameDesign(project: Project, from: string, to: string): Projec
   }
   return next;
 }
+
+export function setFinishSteps(design: Design, steps: readonly string[]): Design {
+  const { finish: _finish, ...rest } = design;
+  const kept = steps.map((step) => step.trim()).filter((step) => step.length > 0);
+  return kept.length > 0 ? { ...rest, finish: kept } : rest;
+}
