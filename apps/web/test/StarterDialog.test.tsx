@@ -28,7 +28,7 @@ describe("StarterDialog", () => {
 
   it("lists the starters in groups, with the custom grid last", () => {
     renderDialog();
-    expect(within(dialog()).getAllByRole("heading", { level: 4 }).map((node) => node.textContent)).toEqual(["Cube shelves", "Low units", "Bookcases", "Wall units", "Small units"]);
+    expect(within(dialog()).getAllByRole("heading", { level: 4 }).map((node) => node.textContent)).toEqual(["Cube shelves", "Low units", "Bookcases", "Wall units", "Small units", "Accessories"]);
     const order = [...dialog().querySelectorAll(".starter-row")].map((node) => node.querySelector("b")!.textContent);
     expect(order).toEqual(STARTERS.map((starter) => starter.name));
     expect(order.at(-1)).toBe("Custom grid");

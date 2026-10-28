@@ -72,8 +72,8 @@ describe.each(["mm", "in"] as const)("every allowed value in %s", (units) => {
 });
 
 describe("the data", () => {
-  it("lists the seven starters in order, with the custom grid last and in no group", () => {
-    expect(STARTERS.map((starter) => starter.id)).toEqual(["cube-shelf", "tv-bench", "media-unit", "bookcase", "wall-cubes", "nightstand", "custom-grid"]);
+  it("lists the eight starters in order, with the custom grid last and in no group", () => {
+    expect(STARTERS.map((starter) => starter.id)).toEqual(["cube-shelf", "tv-bench", "media-unit", "bookcase", "wall-cubes", "nightstand", "crate", "custom-grid"]);
     expect(STARTERS.at(-1)!.group).toBeNull();
     expect(starterById("nothing")).toBeUndefined();
   });
@@ -159,6 +159,7 @@ describe("defaults and names", () => {
     expect(starterName(starterById("wall-cubes")!, starterById("wall-cubes")!.defaults)).toBe("Wall cubes 3 × 1");
     expect(starterName(starterById("nightstand")!, starterById("nightstand")!.defaults)).toBe("Nightstand 1 × 2");
     expect(starterName(starterById("custom-grid")!, starterById("custom-grid")!.defaults)).toBe("Custom grid 2 × 2");
+    expect(starterName(starterById("crate")!, starterById("crate")!.defaults)).toBe("Crate");
   });
 
   it("makes no name that is, or starts with, an IKEA name", () => {
@@ -343,5 +344,98 @@ describe("starterFits", () => {
     expect(starterFits(b.project, b.id)).toEqual([]);
     expect(starterFits(c.project, c.id)).toEqual([]);
     expect(starterFits(b.project, "nothing")).toEqual([]);
+  });
+});
+
+describe("the crate", () => {
+  const crate = starterById("crate")!;
+  const sheet = (units: Units, thickness: number, measured: boolean): Project => {
+    const base = createProject("Crate", units);
+    const size = units === "mm" ? { length: 2440, width: 1220 } : { length: 96, width: 48 };
+    return {
+      ...base,
+      materials: [{ id: "ply", name: "Plywood", thickness, grained: true, measured }],
+      stock: [{ id: "ply-sheet", material: "ply", ...size, quantity: null, kind: "sheet" }],
+    };
+  };
+  const made = (project: Project) => {
+    const result = addStarterDesign(project, crate, crate.defaults);
+    if (!result.ok) throw new Error("add failed");
+    return { project: regenerateDesigns(result.project), id: result.id };
+  };
+
+  it("makes the built crate in a new in project", () => {
+    const { project, id } = made(sheet("in", 23 / 32, true));
+    expect(project.parts.map((part) => [part.name, part.length, part.width, part.quantity])).toEqual([
+      ["Front", 12.5, 12.5, 1],
+      ["Back", 12.5, 12.5, 1],
+      ["Side", 12.0625, 12.5, 2],
+      ["Bottom", 11.0625, 12.0625, 1],
+    ]);
+    expect(checkDesigns(project)).toEqual([]);
+    expect(project.materials.map((material) => material.id)).toEqual(["ply"]);
+    expect(project.designs![0]).toMatchObject({ id, kind: "open-box", system: "kallax", name: "Crate", width: { outside: 12.5, cells: 1 }, height: { outside: 12.5, cells: 1 }, depth: 13.5 });
+    expect(project.designs![0]!.back).toBeUndefined();
+    expect(project.designs![0]!.mount).toBeUndefined();
+  });
+
+  it("makes a crate with no warnings in a new mm project", () => {
+    const { project, id } = made(sheet("mm", 18, true));
+    const design = project.designs![0]!;
+    expect([design.width, design.height, design.depth]).toEqual([{ outside: 318, cells: 1 }, { outside: 318, cells: 1 }, 343]);
+    expect(checkDesigns(project)).toEqual([]);
+    expect(starterFits(project, id)).toEqual(["KALLAX cells"]);
+  });
+
+  it("adds no back material and no thin stock, whatever the back option is", () => {
+    for (const back of [undefined, "ply6", null]) {
+      const result = addStarterDesign(createProject("New", "in"), crate, crate.defaults, back === undefined ? {} : { back });
+      expect(result.ok).toBe(true);
+      if (!result.ok) continue;
+      expect(result.project.materials).toHaveLength(1);
+      expect(result.project.stock).toHaveLength(1);
+      expect(result.project.designs![0]!.back).toBeUndefined();
+    }
+  });
+
+  it("gives the crate its three finish steps in the project units", () => {
+    const steps = (units: Units) => made(sheet(units, units === "mm" ? 18 : 23 / 32, true)).project.designs![0]!.finish;
+    expect(steps("in")).toEqual([
+      'Drill a 2 1/8" hole through the front and the back, centered left to right, with its top 1 1/2" below the top edge. The two holes are the handles.',
+      "Round over all the edges with a router, including the edges of the holes.",
+      "Sand lightly.",
+    ]);
+    expect(steps("mm")![0]).toBe("Drill a 54 mm hole through the front and the back, centered left to right, with its top 38 mm below the top edge. The two holes are the handles.");
+    expect(steps("mm")!.slice(1)).toEqual(steps("in")!.slice(1));
+  });
+
+  it("lists the crate in the Accessories group, before the custom grid", () => {
+    expect(crate.group).toBe("Accessories");
+    expect(crate.name).toBe("Crate");
+    expect(crate.choices).toEqual([]);
+    expect(crate.defaults).toEqual({ columns: 1, rows: 1, options: {} });
+    const ids = STARTERS.map((starter) => starter.id);
+    expect(ids.indexOf("crate")).toBe(ids.indexOf("nightstand") + 1);
+    expect(ids.indexOf("crate")).toBe(ids.indexOf("custom-grid") - 1);
+  });
+
+  it("refuses a value for the crate", () => {
+    expect(starterValueErrors(crate, { columns: 1, rows: 1, options: { width: "40" } })).toEqual(['The Crate has no choice "width".']);
+  });
+
+  it("drops KALLAX cells from Fits when the crate is made too wide", () => {
+    const { project, id } = made(sheet("mm", 18, true));
+    const wide = regenerateDesigns({ ...project, designs: project.designs!.map((design) => ({ ...design, width: { outside: 340, cells: 1 } })) });
+    expect(checkDesigns(wide).map((issue) => issue.code)).toEqual(["kallax-fit"]);
+    expect(starterFits(wide, id)).toEqual([]);
+  });
+
+  it("still adds the crate with a nominal 3/4\" material", () => {
+    const result = addStarterDesign(sheet("in", 0.75, false), crate, crate.defaults);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const project = regenerateDesigns(result.project);
+    expect(checkDesigns(project).map((issue) => issue.code)).toEqual(["nominal-thickness"]);
+    expect(starterFits(project, result.id)).toEqual(["KALLAX cells"]);
   });
 });

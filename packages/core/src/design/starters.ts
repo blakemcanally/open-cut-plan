@@ -5,11 +5,12 @@ import { convertLength, type Units } from "../geometry/units.ts";
 import { planError } from "../plan/issues.ts";
 import { addDesignWithId, pickBackMaterial, pickBoxMaterial, type DesignAdd } from "./add.ts";
 import { checkDesigns } from "./checks.ts";
+import { isOpenBox } from "./openBox.ts";
 import { roundLength } from "./geometry.ts";
 import { EKET, KALLAX, presetAxis, presetDepth, type DesignMount, type SystemValue } from "./systems.ts";
 
-export type StarterId = "cube-shelf" | "tv-bench" | "media-unit" | "bookcase" | "wall-cubes" | "nightstand" | "custom-grid";
-export type StarterGroup = "Cube shelves" | "Low units" | "Bookcases" | "Wall units" | "Small units" | null;
+export type StarterId = "cube-shelf" | "tv-bench" | "media-unit" | "bookcase" | "wall-cubes" | "nightstand" | "crate" | "custom-grid";
+export type StarterGroup = "Cube shelves" | "Low units" | "Bookcases" | "Wall units" | "Small units" | "Accessories" | null;
 
 export interface GridChoice {
   kind: "grid";
@@ -56,6 +57,20 @@ const KALLAX_DERIVED = "Derived from the KALLAX outside sizes on ikea.com/gb: 35
 const BILLY_DEPTH_MM = 280;
 const BILLY_SIZES_MM = { width: { "40": 400, "80": 800 }, height: { "106": 1060, "202": 2020 } } as const;
 const BILLY_ROWS = { "106": 3, "202": 6 } as const;
+
+const CRATE_SIZE: Readonly<Record<Units, { width: number; height: number; depth: number }>> = {
+  in: { width: 12.5, height: 12.5, depth: 13.5 },
+  mm: { width: 318, height: 318, depth: 343 },
+};
+
+const crateFinish = (units: Units): string[] => {
+  const [hole, top] = units === "in" ? ['2 1/8"', '1 1/2"'] : ["54 mm", "38 mm"];
+  return [
+    `Drill a ${hole} hole through the front and the back, centered left to right, with its top ${top} below the top edge. The two holes are the handles.`,
+    "Round over all the edges with a router, including the edges of the holes.",
+    "Sand lightly.",
+  ];
+};
 
 const MOUNT_LEGS_FLOOR: OptionChoice = {
   kind: "option",
@@ -184,6 +199,17 @@ export const STARTERS: readonly Starter[] = [
     },
   },
   {
+    id: "crate",
+    name: "Crate",
+    group: "Accessories",
+    note: "A crate that slides into a KALLAX-style cube. The holes in the front and the back are the handles.",
+    choices: [],
+    defaults: { columns: 1, rows: 1, options: {} },
+    sources: {
+      size: { mm: 317.5, derived: false, source: 'The crate that the product owner built on 2026-10-27: 12 1/2" × 12 1/2" × 13 1/2" outside' },
+    },
+  },
+  {
     id: "custom-grid",
     name: "Custom grid",
     group: null,
@@ -234,7 +260,7 @@ const size = (starter: Starter, values: StarterValues): { columns: number; rows:
   gridOf(starter) ? { columns: values.columns, rows: values.rows } : { columns: starter.defaults.columns, rows: starter.defaults.rows };
 
 export function starterName(starter: Starter, values: StarterValues): string {
-  if (starter.id === "media-unit") return starter.name;
+  if (starter.id === "media-unit" || starter.id === "crate") return starter.name;
   if (starter.id === "bookcase") return `${starter.name} ${option(starter, values, "width")} × ${option(starter, values, "height")}`;
   const { columns, rows } = size(starter, values);
   return `${starter.name} ${columns} × ${rows}`;
@@ -253,6 +279,18 @@ export function starterDesign(starter: Starter, values: StarterValues, target: S
     ...(mount === "floor" ? {} : { mount }),
   });
   switch (starter.id) {
+    case "crate": {
+      const { width, height, depth } = CRATE_SIZE[units];
+      return {
+        kind: "open-box",
+        system: "kallax",
+        ...base,
+        width: { outside: width, cells: 1 },
+        height: { outside: height, cells: 1 },
+        depth,
+        finish: crateFinish(units),
+      };
+    }
     case "cube-shelf":
     case "tv-bench":
     case "media-unit":
@@ -294,7 +332,9 @@ export function addStarterDesign(
   if (errors.length > 0) return { ok: false, issues: errors.map((message) => planError("starter-values", message)) };
   const box = options.material === undefined ? pickBoxMaterial(project) : { project: withStockFor(project, [options.material]), material: options.material };
   const back =
-    options.back === undefined
+    starter.id === "crate"
+      ? { project: box.project, material: null }
+      : options.back === undefined
       ? pickBackMaterial(box.project, box.material)
       : { project: options.back === null ? box.project : withStockFor(box.project, [options.back]), material: options.back };
   const name = options.name ?? starterName(starter, values);
@@ -310,6 +350,7 @@ export function starterFits(project: Project, designId: string): string[] {
   if (!design) return [];
   const codes = new Set(checkDesigns(project).filter((issue) => issue.refs.some((ref) => ref.kind === "design" && ref.design === designId)).map((issue) => issue.code));
   const items: string[] = [];
+  if (isOpenBox(design)) return design.system === "kallax" && !codes.has("kallax-fit") ? ["KALLAX cells"] : [];
   if (design.system === "kallax" && !codes.has("kallax-opening") && !codes.has("kallax-depth")) items.push("KALLAX inserts and boxes");
   if (design.system === "eket" && design.mount === "wall-rail" && !codes.has("eket-grid")) items.push("EKET wall rail");
   if (design.mount === "legs") items.push("EKET legs");
