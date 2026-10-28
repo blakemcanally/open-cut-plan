@@ -164,4 +164,53 @@ describe("buildDesignParts with combined cells", () => {
       { numRuns: 300 },
     );
   });
+
+  describe("corners", () => {
+    const inches = () => {
+      const project = designProject();
+      project.materials = [{ id: "ply18", name: "Plywood 3/4", thickness: 0.75, grained: true }];
+      return project;
+    };
+    const module = (patch: Partial<Design> = {}): Design => ({
+      id: "sh",
+      name: "Module",
+      system: "custom",
+      material: "ply18",
+      width: { outside: 52.5, cells: 1 },
+      height: { outside: 40, cells: 4 },
+      depth: 16,
+      ...patch,
+    });
+    const buildIn = (design: Design) => buildDesignParts(design, designGeometry(design, materialsById(inches()))!);
+
+    it("makes full-height sides with sides over top", () => {
+      expect(summary(buildIn(module({ corners: "sides-over-top" })))).toEqual([
+        ["sh-top", "Top", "ply18", 51, 16, 1],
+        ["sh-bottom", "Bottom", "ply18", 51, 16, 1],
+        ["sh-side", "Side", "ply18", 40, 16, 2],
+        ["sh-shelf", "Shelf", "ply18", 51, 16, 3],
+      ]);
+    });
+
+    it("keeps the parts of today with top over sides", () => {
+      const today = summary(buildIn(module()));
+      expect(today).toEqual([
+        ["sh-top", "Top", "ply18", 52.5, 16, 1],
+        ["sh-bottom", "Bottom", "ply18", 52.5, 16, 1],
+        ["sh-side", "Side", "ply18", 38.5, 16, 2],
+        ["sh-shelf", "Shelf", "ply18", 51, 16, 3],
+      ]);
+      expect(summary(buildIn(module({ corners: "top-over-sides" })))).toEqual(today);
+    });
+
+    it("makes the parts of a sides-over-top box with merged rows", () => {
+      const design = module({ corners: "sides-over-top", combined: [{ column: 1, row: 1, columns: 1, rows: 2 }] });
+      expect(summary(buildIn(design))).toEqual([
+        ["sh-top", "Top", "ply18", 51, 16, 1],
+        ["sh-bottom", "Bottom", "ply18", 51, 16, 1],
+        ["sh-side", "Side", "ply18", 40, 16, 2],
+        ["sh-shelf", "Shelf", "ply18", 51, 16, 2],
+      ]);
+    });
+  });
 });

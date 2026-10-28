@@ -27,8 +27,8 @@ export interface Cell {
   rows?: number;
 }
 
-/** The panels and the cells of the box: the top and the bottom across the full width, the sides and the divider boards between them, and the shelf boards between those. */
-export function designPanels(geometry: DesignGeometry): { panels: Panel[]; cells: Cell[] } {
+/** The panels and the cells of the box: the top and the bottom across the full width, the sides and the divider boards between them, and the shelf boards between those. With the corners "sides-over-top", the sides run the full height and the top and the bottom sit between them. */
+export function designPanels(geometry: DesignGeometry, corners = "top-over-sides"): { panels: Panel[]; cells: Cell[] } {
   const { thickness: t, columns, rows, outsideWidth: width, outsideHeight: height } = geometry;
   const inner = roundLength(height - 2 * t);
   const { dividers, shelves } = designLayout(geometry);
@@ -47,14 +47,19 @@ export function designPanels(geometry: DesignGeometry): { panels: Panel[]; cells
   const spanAt = (column: number, row: number) =>
     spans.find((span) => column >= span.column && column < span.column + span.columns && row >= span.row && row < span.row + span.rows);
 
+  const sidesOver = corners === "sides-over-top";
+  const sideY = sidesOver ? 0 : t;
+  const sideHeight = sidesOver ? height : inner;
+  const plateX = sidesOver ? t : 0;
+  const plateWidth = sidesOver ? roundLength(width - 2 * t) : width;
   const panels: Panel[] = [
-    { kind: "top", name: "Top", x: 0, y: 0, width, height: t },
-    { kind: "bottom", name: "Bottom", x: 0, y: roundLength(height - t), width, height: t },
+    { kind: "top", name: "Top", x: plateX, y: 0, width: plateWidth, height: t },
+    { kind: "bottom", name: "Bottom", x: plateX, y: roundLength(height - t), width: plateWidth, height: t },
   ];
   const cells: Cell[] = [];
   for (let column = 0; column <= columns.length; column++) {
     const x = lineX[column]!;
-    if (column === 0 || column === columns.length) panels.push({ kind: "side", name: "Side", x, y: t, width: t, height: inner });
+    if (column === 0 || column === columns.length) panels.push({ kind: "side", name: "Side", x, y: sideY, width: t, height: sideHeight });
     for (const board of dividers.filter((divider) => divider.line === column)) {
       const full = board.from === 0 && board.to === rows.length - 1;
       panels.push({ kind: "divider", name: dividerName(board, rows.length), x, y: cellY[board.from]!, width: t, height: full ? inner : spanLength(rows, board.from, board.to, t) });

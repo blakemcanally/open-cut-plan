@@ -61,4 +61,60 @@ describe("designErrors", () => {
     project.parts = [{ id: "kx-side", name: "Side", material: "ply18", length: 1394, width: 390, quantity: 2, grain: "length", design: "kx" }];
     expect(codes(project, kallaxDesign())).toEqual([]);
   });
+
+  describe("one column", () => {
+    const inches = () => {
+      const project = designProject();
+      project.project.units = "in";
+      project.materials = [{ id: "ply18", name: "Plywood 3/4", thickness: 0.75, grained: true }];
+      return project;
+    };
+    const module = (patch: Partial<Design> = {}): Design => ({
+      id: "sh",
+      name: "Module",
+      system: "custom",
+      material: "ply18",
+      width: { outside: 52.5, cells: 2 },
+      height: { outside: 40, cells: 4 },
+      depth: 16,
+      ...patch,
+    });
+
+    it("gives design-one-column for face screws on 2 columns", () => {
+      const issues = designErrors(inches(), module({ fastener: "face-screws" }));
+      expect(issues.map((issue) => [issue.severity, issue.code, issue.message])).toEqual([
+        ["error", "design-one-column", 'Design "Module" uses face screws, so it can have only 1 column. Use pocket screws for more columns.'],
+      ]);
+      expect(issues[0]!.refs).toEqual([{ kind: "design", design: "sh" }]);
+    });
+
+    it("gives design-one-column for sides over top on 2 columns", () => {
+      const issues = designErrors(inches(), module({ corners: "sides-over-top" }));
+      expect(issues.map((issue) => [issue.code, issue.message])).toEqual([
+        ["design-one-column", 'Design "Module" has its sides over the top, so it can have only 1 column. Use the top over the sides for more columns.'],
+      ]);
+    });
+
+    it("gives both errors for a 2-column box with both settings", () => {
+      const issues = designErrors(inches(), module({ corners: "sides-over-top", fastener: "face-screws" }));
+      expect(issues.map((issue) => issue.code)).toEqual(["design-one-column", "design-one-column"]);
+    });
+
+    it("gives no error for 1 column with his settings", () => {
+      const design = module({ width: { outside: 52.5, cells: 1 }, corners: "sides-over-top", fastener: "face-screws" });
+      expect(codes(inches(), design)).toEqual([]);
+    });
+
+    it("gives the design-too-small error before the one-column error", () => {
+      expect(codes(inches(), module({ width: { outside: 1, cells: 2 }, corners: "sides-over-top" }))).toEqual(["design-too-small"]);
+    });
+
+    it("does not give pocket-thickness for face screws", () => {
+      const project = inches();
+      project.materials = [{ id: "ply18", name: 'Plywood 1/4"', thickness: 0.25, grained: true }];
+      const design = module({ width: { outside: 20, cells: 1 }, fastener: "face-screws" });
+      expect(codes(project, design)).toEqual([]);
+      expect(codes(project, { ...design, fastener: "pocket-screws" })).toEqual(["pocket-thickness"]);
+    });
+  });
 });

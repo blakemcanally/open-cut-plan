@@ -26,6 +26,31 @@ describe("designPanels", () => {
     expect(cells[0]).toEqual({ column: 0, row: 0, x: 18, y: 18, width: 335, height: 335 });
   });
 
+  it("draws the sides over the top and the bottom", () => {
+    const project = designProject();
+    project.materials = [{ id: "ply18", name: "Plywood 3/4", thickness: 0.75, grained: true }];
+    const design: Design = {
+      id: "sh",
+      name: "Module",
+      system: "custom",
+      material: "ply18",
+      width: { outside: 52.5, cells: 1 },
+      height: { outside: 40, cells: 4 },
+      depth: 16,
+    };
+    const geometry = designGeometry(design, materialsById(project))!;
+    const { panels } = designPanels(geometry, "sides-over-top");
+    const of = (kind: Panel["kind"]) => panels.filter((panel) => panel.kind === kind);
+    expect(of("side")).toEqual([
+      { kind: "side", name: "Side", x: 0, y: 0, width: 0.75, height: 40 },
+      { kind: "side", name: "Side", x: 51.75, y: 0, width: 0.75, height: 40 },
+    ]);
+    expect(of("top")).toEqual([{ kind: "top", name: "Top", x: 0.75, y: 0, width: 51, height: 0.75 }]);
+    expect(of("bottom")).toEqual([{ kind: "bottom", name: "Bottom", x: 0.75, y: 39.25, width: 51, height: 0.75 }]);
+    expect(of("shelf")).toHaveLength(3);
+    expect(designPanels(geometry, "top-over-sides")).toEqual(designPanels(geometry));
+  });
+
   it("fills the outside with panels and cells that do not overlap, and matches the parts", () => {
     const opening = fc.integer({ min: 50, max: 600 });
     const arb = fc.record({

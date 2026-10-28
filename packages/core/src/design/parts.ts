@@ -2,7 +2,7 @@ import type { Design, Part } from "../format/schema.ts";
 import { roundLength, type DesignGeometry } from "./geometry.ts";
 import { isOpenBox, openBoxParts } from "./openBox.ts";
 import { boardLength, designLayout, type Board } from "./layout.ts";
-import { DEFAULT_DESIGN_QUANTITY } from "./systems.ts";
+import { DEFAULT_DESIGN_QUANTITY, designCorners } from "./systems.ts";
 
 function bySpan(boards: readonly Board[]): Board[][] {
   const groups = new Map<string, Board[]>();
@@ -43,10 +43,12 @@ export function buildDesignParts(design: Design, geometry: DesignGeometry): Part
 
   const { thickness, columns, rows, outsideWidth, outsideHeight, panelDepth } = geometry;
   const upright = roundLength(outsideHeight - 2 * thickness);
+  const sidesOver = designCorners(design) === "sides-over-top";
+  const across = sidesOver ? roundLength(outsideWidth - 2 * thickness) : outsideWidth;
   const parts = [
-    part("top", "Top", design.material, outsideWidth, panelDepth, 1),
-    part("bottom", "Bottom", design.material, outsideWidth, panelDepth, 1),
-    part("side", "Side", design.material, upright, panelDepth, 2),
+    part("top", "Top", design.material, across, panelDepth, 1),
+    part("bottom", "Bottom", design.material, across, panelDepth, 1),
+    part("side", "Side", design.material, sidesOver ? outsideHeight : upright, panelDepth, 2),
   ];
   const { dividers, shelves } = designLayout(geometry);
 

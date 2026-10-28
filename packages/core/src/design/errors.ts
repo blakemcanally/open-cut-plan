@@ -7,7 +7,7 @@ import { designGeometry, materialsById } from "./geometry.ts";
 import { isOpenBox, openBoxErrors } from "./openBox.ts";
 import { buildDesignParts } from "./parts.ts";
 import { designRef } from "./ref.ts";
-import { MIN_POCKET_THICKNESS_MM } from "./systems.ts";
+import { MIN_POCKET_THICKNESS_MM, designCorners, designFastener } from "./systems.ts";
 
 export { designRef };
 
@@ -24,7 +24,7 @@ export function designErrors(project: Project, design: Design): PlanIssue[] {
   const geometry = designGeometry(design, materials);
   if (!geometry) return issues;
 
-  if (geometry.thickness < convertLength(MIN_POCKET_THICKNESS_MM, "mm", project.project.units) - EPSILON) {
+  if (designFastener(design) === "pocket-screws" && geometry.thickness < convertLength(MIN_POCKET_THICKNESS_MM, "mm", project.project.units) - EPSILON) {
     issues.push(
       planError("pocket-thickness", `Design "${design.name}" uses stock that is too thin for pocket screws. Use stock that is 15/32" (11.9 mm) thick or more.`, ref),
     );
@@ -41,6 +41,16 @@ export function designErrors(project: Project, design: Design): PlanIssue[] {
     if (combined.length > 0) {
       for (const message of combined) issues.push(planError("design-combined", `Design "${design.name}" has a bad combined cell. ${message}`, ref));
       return issues;
+    }
+    if (geometry.columns.length > 1) {
+      if (designFastener(design) === "face-screws") {
+        issues.push(planError("design-one-column", `Design "${design.name}" uses face screws, so it can have only 1 column. Use pocket screws for more columns.`, ref));
+      }
+      if (designCorners(design) === "sides-over-top") {
+        issues.push(
+          planError("design-one-column", `Design "${design.name}" has its sides over the top, so it can have only 1 column. Use the top over the sides for more columns.`, ref),
+        );
+      }
     }
   }
 
