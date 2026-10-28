@@ -85,7 +85,7 @@ describe("designPanels", () => {
           drawn.set(key, (drawn.get(key) ?? 0) + 1);
         }
         const expected = new Map<string, number>();
-        for (const part of buildDesignParts(design, geometry)) {
+        for (const part of buildDesignParts(design, geometry, "mm")) {
           const kind = part.id.replace(/^kx-/, "").replace(/-\d+$/, "");
           const key = `${kind}:${roundLength(part.length)}`;
           expected.set(key, (expected.get(key) ?? 0) + part.quantity);
@@ -191,7 +191,7 @@ describe("designPanels", () => {
           drawn.set(key, (drawn.get(key) ?? 0) + 1);
         }
         const expected = new Map<string, number>();
-        for (const part of buildDesignParts(design, geometry)) {
+        for (const part of buildDesignParts(design, geometry, "mm")) {
           const kind = part.id.replace(/^kx-/, "").replace(/-(rows|cols)-.*$/, "").replace(/-\d+$/, "");
           const key = `${kind}:${roundLength(part.length)}`;
           expected.set(key, (expected.get(key) ?? 0) + part.quantity);
@@ -200,7 +200,7 @@ describe("designPanels", () => {
 
         const named = new Map<string, number>();
         for (const panel of panels) named.set(panel.name, (named.get(panel.name) ?? 0) + 1);
-        const parts = new Map(buildDesignParts(design, geometry).map((part) => [part.name, part.quantity]));
+        const parts = new Map(buildDesignParts(design, geometry, "mm").map((part) => [part.name, part.quantity]));
         expect(named).toEqual(parts);
       }),
       { numRuns: 300 },

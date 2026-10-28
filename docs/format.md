@@ -94,7 +94,7 @@ stored parts as normal parts.
 | `height` | yes | The rows, top to bottom: an axis. |
 | `depth` | yes | The outside depth, including the back. |
 | `back` | no | `{ "material": <id> }`: a back on the rear edges. No field means no back. |
-| `mount` | no | `"floor"`, `"legs"`, `"feet"`, or `"wall-rail"`. Default `"floor"`. Other values can come in later minor versions. |
+| `mount` | no | `"floor"`, `"legs"`, `"feet"`, `"wall-rail"`, or `"cleats"` (added in 1.12). Default `"floor"`. Other values can come in later minor versions. |
 | `colors` | no | The chosen colour of each unit, 0 to 100 values (added in 1.4). See [Colours](#colours-added-in-14). |
 | `combined` | no | Cells that are combined into one larger cell (added in 1.7): a list of spans. No field means no combined cells. |
 | `kind` | no | `"box"` or `"open-box"` (added in 1.11). No field means `"box"`: the box with a grid of cells, as in this section. `"open-box"` is a box with four walls and a bottom, no top, no back panel, and no cells. Other values can come in later minor versions; a reader keeps the stored parts of a kind it does not know. |
@@ -189,6 +189,9 @@ Four optional fields on a design. A file with no new field means the behaviour o
 | `mount` | adds `"cleats"` to the mounts of 1.11 | `"floor"` |
 | `hiddenWarnings` | a list of warning codes, for example `["shelf-span"]` | no hidden warnings |
 
+- With `mount: "cleats"`, the design makes the parts `<id>-foot` (Foot) and `<id>-top-cleat` (Top cleat), 2 × *q* of
+  each. Each is panel depth × 89 mm (3 1/2" in an inch project), in the material of the box. They come after the
+  shelves and before the back.
 - A reader that does not know a value of `corners` or `fastener` keeps the stored parts of the design. It gives the
   warning `design-unknown-corners` or `design-unknown-fastener`, and it makes no new parts for the design.
 - `hiddenWarnings` hides warnings only. A reader that checks a design leaves out each warning whose code is in the list

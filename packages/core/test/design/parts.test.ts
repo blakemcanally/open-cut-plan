@@ -1,11 +1,11 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { buildDesignParts, designGeometry, materialsById, type CombinedCell, type Design, type Part } from "../../src/index.ts";
+import { buildDesignParts, cleatPositions, designGeometry, materialsById, type CombinedCell, type Design, type Part } from "../../src/index.ts";
 import { designProject, eketDesign, kallaxDesign } from "../helpers.ts";
 import { legacyDesignParts } from "./legacy.ts";
 
 function build(design: Design): Part[] {
-  return buildDesignParts(design, designGeometry(design, materialsById(designProject()))!);
+  return buildDesignParts(design, designGeometry(design, materialsById(designProject()))!, "mm");
 }
 
 const summary = (parts: Part[]) => parts.map((part) => [part.id, part.name, part.material, part.length, part.width, part.quantity]);
@@ -159,7 +159,7 @@ describe("buildDesignParts with combined cells", () => {
         project.materials = project.materials.map((material) => (material.id === "ply18" ? { ...material, thickness } : material));
         const design: Design = { ...kallaxDesign({ system: "custom", width, height, quantity }), ...(back ? { back: { material: "ply6" } } : {}), ...(empty ? { combined: [] } : {}) };
         const geometry = designGeometry(design, materialsById(project))!;
-        expect(buildDesignParts(design, geometry)).toEqual(legacyDesignParts(design, geometry));
+        expect(buildDesignParts(design, geometry, "mm")).toEqual(legacyDesignParts(design, geometry));
       }),
       { numRuns: 300 },
     );
@@ -181,7 +181,7 @@ describe("buildDesignParts with combined cells", () => {
       depth: 16,
       ...patch,
     });
-    const buildIn = (design: Design) => buildDesignParts(design, designGeometry(design, materialsById(inches()))!);
+    const buildIn = (design: Design) => buildDesignParts(design, designGeometry(design, materialsById(inches()))!, "in");
 
     it("makes full-height sides with sides over top", () => {
       expect(summary(buildIn(module({ corners: "sides-over-top" })))).toEqual([
@@ -211,6 +211,73 @@ describe("buildDesignParts with combined cells", () => {
         ["sh-side", "Side", "ply18", 40, 16, 2],
         ["sh-shelf", "Shelf", "ply18", 51, 16, 2],
       ]);
+    });
+  });
+  describe("cleats", () => {
+    const inches = () => {
+      const project = designProject();
+      project.project.units = "in";
+      project.materials = [
+        { id: "ply18", name: "Plywood 3/4", thickness: 0.75, grained: true },
+        { id: "ply6", name: "Plywood 1/4", thickness: 0.25, grained: true },
+      ];
+      return project;
+    };
+    const module = (patch: Partial<Design> = {}): Design => ({
+      id: "sh",
+      name: "Module",
+      system: "custom",
+      material: "ply18",
+      width: { outside: 52.5, cells: 1 },
+      height: { outside: 40, cells: 4 },
+      depth: 16,
+      corners: "sides-over-top",
+      fastener: "face-screws",
+      mount: "cleats",
+      ...patch,
+    });
+    const buildIn = (design: Design) => buildDesignParts(design, designGeometry(design, materialsById(inches()))!, "in");
+    const strips = (parts: Part[]) => summary(parts.filter((part) => part.id === "sh-foot" || part.id === "sh-top-cleat"));
+
+    it("adds 2 feet and 2 top cleats to his module", () => {
+      const parts = buildIn(module());
+      expect(strips(parts)).toEqual([
+        ["sh-foot", "Foot", "ply18", 16, 3.5, 2],
+        ["sh-top-cleat", "Top cleat", "ply18", 16, 3.5, 2],
+      ]);
+      expect(parts.map((part) => part.id)).toEqual(["sh-top", "sh-bottom", "sh-side", "sh-shelf", "sh-foot", "sh-top-cleat"]);
+      expect(parts.find((part) => part.id === "sh-foot")).toMatchObject({ grain: "length", group: "Module", design: "sh" });
+    });
+
+    it("makes 89 mm strips in a mm project", () => {
+      const design = kallaxDesign({ system: "custom", width: { outside: 1334, cells: 1 }, height: { outside: 700, cells: 2 }, depth: 400, mount: "cleats" });
+      expect(summary(build(design).filter((part) => part.id === "kx-foot" || part.id === "kx-top-cleat"))).toEqual([
+        ["kx-foot", "Foot", "ply18", 400, 89, 2],
+        ["kx-top-cleat", "Top cleat", "ply18", 400, 89, 2],
+      ]);
+    });
+
+    it("makes strips as long as the panels when the box has a back", () => {
+      const parts = buildIn(module({ back: { material: "ply6" } }));
+      expect(strips(parts)).toEqual([
+        ["sh-foot", "Foot", "ply18", 15.75, 3.5, 2],
+        ["sh-top-cleat", "Top cleat", "ply18", 15.75, 3.5, 2],
+      ]);
+      expect(parts.map((part) => part.id).slice(-3)).toEqual(["sh-foot", "sh-top-cleat", "sh-back"]);
+    });
+
+    it("places the feet at the outer edges and the top cleats one width in", () => {
+      const design = module();
+      expect(cleatPositions(designGeometry(design, materialsById(inches()))!, "in")).toEqual({ feet: [0, 49], topCleats: [3.5, 45.5] });
+    });
+
+    it("doubles the cleat parts for a quantity of 2", () => {
+      expect(strips(buildIn(module({ quantity: 2 }))).map((row) => row[5])).toEqual([4, 4]);
+    });
+
+    it("keeps the parts of today with no cleats", () => {
+      const ids = buildIn(module({ mount: "floor" })).map((part) => part.id);
+      expect(ids).toEqual(["sh-top", "sh-bottom", "sh-side", "sh-shelf"]);
     });
   });
 });

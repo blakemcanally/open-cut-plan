@@ -131,7 +131,7 @@ interface Beam {
 export function freeSpans(geometry: DesignGeometry, options: SpanOptions = {}): FreeSpan[] {
   const { columns, rows, thickness } = geometry;
   const mount = options.mount ?? "floor";
-  const lifted = mount === "legs" || mount === "feet" || mount === "wall-rail";
+  const lifted = mount === "legs" || mount === "feet" || mount === "wall-rail" || mount === "cleats";
   const back = options.back ?? geometry.backThickness > 0;
   const limit = SHELF_SPAN_RATIO * thickness;
   const { dividers, shelves } = designLayout(geometry);

@@ -99,7 +99,7 @@ describe("freeSpans", () => {
   });
 
   it("checks the bottom between the legs or the feet, and lets a short span hold the dividers", () => {
-    for (const mount of ["legs", "feet"]) {
+    for (const mount of ["legs", "feet", "cleats"]) {
       expect(spans(geometry(3, 1, []), { mount })).toEqual([["bottom", 1041], ["top", 1041]]);
       expect(spans(geometry(3, 1, []), { mount, back: true })).toEqual([["bottom", 335], ["top", 335]]);
       expect(spans(geometry(2, 1, []), { mount })).toEqual([["bottom", 335], ["top", 335]]);

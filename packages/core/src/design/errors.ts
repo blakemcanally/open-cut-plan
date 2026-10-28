@@ -54,7 +54,7 @@ export function designErrors(project: Project, design: Design): PlanIssue[] {
     }
   }
 
-  const parts = buildDesignParts(design, geometry);
+  const parts = buildDesignParts(design, geometry, project.project.units);
   if (parts.some((part) => part.quantity > MAX_PART_QUANTITY)) {
     issues.push(
       planError("design-too-large", `Design "${design.name}" needs more than ${MAX_PART_QUANTITY} copies of one part. Use fewer cells or a lower quantity.`, ref),

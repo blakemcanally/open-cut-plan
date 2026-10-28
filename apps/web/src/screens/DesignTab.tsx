@@ -48,7 +48,7 @@ import { StarterDialog } from "../design/StarterDialog.tsx";
 import { axisMode, CATALOG_VALUE, openingsText, outsideText, parseOpenings, pickMaterial, tryDesign, withCells, withMode, withOpenBoxSize, withSystem, type AxisMode } from "../design/form.ts";
 import type { ProjectStore } from "../state/useProject.ts";
 
-const MOUNT_LABELS: Readonly<Record<DesignMount, string>> = { floor: "Floor", legs: "EKET legs", feet: "EKET feet", "wall-rail": "EKET wall rail" };
+const MOUNT_LABELS: Readonly<Record<DesignMount, string>> = { floor: "Floor", legs: "EKET legs", feet: "EKET feet", "wall-rail": "EKET wall rail", cleats: "Cleats" };
 
 interface DesignTabProps {
   store: ProjectStore;

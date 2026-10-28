@@ -2,7 +2,8 @@ import type { Design, Part } from "../format/schema.ts";
 import { roundLength, type DesignGeometry } from "./geometry.ts";
 import { isOpenBox, openBoxParts } from "./openBox.ts";
 import { boardLength, designLayout, type Board } from "./layout.ts";
-import { DEFAULT_DESIGN_QUANTITY, designCorners } from "./systems.ts";
+import type { Units } from "../geometry/units.ts";
+import { CLEAT_WIDTH, DEFAULT_DESIGN_QUANTITY, designCorners } from "./systems.ts";
 
 function bySpan(boards: readonly Board[]): Board[][] {
   const groups = new Map<string, Board[]>();
@@ -26,7 +27,14 @@ export function dividerName(board: Board, rows: number): string {
   return board.from === board.to ? `Divider, row ${board.from + 1}` : `Divider, rows ${board.from + 1}–${board.to + 1}`;
 }
 
-export function buildDesignParts(design: Design, geometry: DesignGeometry): Part[] {
+/** The left edges of the two feet and the two top cleats, from the left outer edge of the box. */
+export function cleatPositions(geometry: DesignGeometry, units: Units): { feet: number[]; topCleats: number[] } {
+  const c = CLEAT_WIDTH[units];
+  const width = geometry.outsideWidth;
+  return { feet: [0, roundLength(width - c)], topCleats: [c, roundLength(width - 2 * c)] };
+}
+
+export function buildDesignParts(design: Design, geometry: DesignGeometry, units: Units): Part[] {
   if (isOpenBox(design)) return openBoxParts(design, geometry);
   const quantity = design.quantity ?? DEFAULT_DESIGN_QUANTITY;
   const part = (id: string, name: string, material: string, length: number, width: number, count: number): Part => ({
@@ -73,6 +81,11 @@ export function buildDesignParts(design: Design, geometry: DesignGeometry): Part
   for (const group of bySpan(shelves.filter((board) => board.from !== board.to))) {
     const { from, to } = group[0]!;
     parts.push(part(`shelf-cols-${from + 1}-${to + 1}`, shelfName(group[0]!, columns), design.material, boardLength(group[0]!, geometry), panelDepth, group.length));
+  }
+
+  if (design.mount === "cleats") {
+    const width = CLEAT_WIDTH[units];
+    parts.push(part("foot", "Foot", design.material, panelDepth, width, 2), part("top-cleat", "Top cleat", design.material, panelDepth, width, 2));
   }
 
   if (design.back) parts.push(part("back", "Back", design.back.material, outsideHeight, outsideWidth, 1));

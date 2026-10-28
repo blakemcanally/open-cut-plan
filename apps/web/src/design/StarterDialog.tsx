@@ -33,7 +33,7 @@ interface StarterDialogProps {
 
 type Candidate = { ok: true; added: Project; project: Project; design: Design } | { ok: false; issues: PlanIssue[] };
 
-const MOUNT_TEXT: Readonly<Record<DesignMount, string>> = { floor: "Floor", legs: "Legs", feet: "Feet", "wall-rail": "Wall rail" };
+const MOUNT_TEXT: Readonly<Record<DesignMount, string>> = { floor: "Floor", legs: "Legs", feet: "Feet", "wall-rail": "Wall rail", cleats: "Cleats" };
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 

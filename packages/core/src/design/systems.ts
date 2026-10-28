@@ -10,7 +10,7 @@ export const DESIGN_CORNERS = ["top-over-sides", "sides-over-top"] as const;
 export type DesignCorners = (typeof DESIGN_CORNERS)[number];
 export const DESIGN_FASTENERS = ["pocket-screws", "face-screws"] as const;
 export type DesignFastener = (typeof DESIGN_FASTENERS)[number];
-export const DESIGN_MOUNTS = ["floor", "legs", "feet", "wall-rail"] as const;
+export const DESIGN_MOUNTS = ["floor", "legs", "feet", "wall-rail", "cleats"] as const;
 export type DesignMount = (typeof DESIGN_MOUNTS)[number];
 
 export function isDesignSystem(value: string): value is DesignSystem {
@@ -75,6 +75,7 @@ export const MIN_POCKET_THICKNESS_MM = 11.90625;
 export const MAX_POCKET_CHART_MM = 38.1;
 /** A rule of thumb for plywood shelves under books, not a load calculation. */
 export const SHELF_SPAN_RATIO = 45;
+export const CLEAT_WIDTH: Readonly<Record<Units, number>> = { in: 3.5, mm: 89 };
 export const DEFAULT_DESIGN_QUANTITY = 1;
 export const DEFAULT_DESIGN_MOUNT: DesignMount = "floor";
 

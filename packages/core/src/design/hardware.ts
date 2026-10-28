@@ -6,7 +6,7 @@ import { boardLength, designLayout } from "./layout.ts";
 import { isOpenBox, openBoxPocketHoles } from "./openBox.ts";
 import { CHART_TOLERANCE_MM, COUNT_EPSILON, pocketHolesPerEnd, pocketScrew, POCKET_SCREWS, type PocketScrew } from "./pocket.ts";
 import { IKEA_FEET, IKEA_LEGS, IKEA_RAIL_35, IKEA_RAIL_70 } from "./ikea.ts";
-import { faceScrew } from "./screws.ts";
+import { cleatScrew, faceScrew } from "./screws.ts";
 import { DEFAULT_DESIGN_MOUNT, DEFAULT_DESIGN_QUANTITY, designFastener, EKET, EKET_TOLERANCE_MM, isDesignMount } from "./systems.ts";
 
 export { pocketHolesPerEnd, pocketScrew, POCKET_SCREWS, type PocketScrew };
@@ -105,6 +105,11 @@ export function hardwareList(project: Project): HardwareLine[] {
 
     const mount = design.mount ?? DEFAULT_DESIGN_MOUNT;
     if (!isDesignMount(mount)) continue;
+    if (mount === "cleats") {
+      const screws = Math.ceil((4 * pocketHolesPerEnd(mm(geometry.panelDepth)) * quantity * 11) / 10);
+      add({ item: "cleat-screws", name: `Wood screws for the cleats, ${cleatScrew(mm(geometry.thickness), units)}`, quantity: screws, unit: "each" });
+      continue;
+    }
     if (mount === "legs") add({ item: "eket-legs", name: "EKET legs, 4-pack", choices: IKEA_LEGS.map(({ name, article, source }) => ({ name, article, source })), quantity, unit: "pack" });
     if (mount === "feet") add({ item: "eket-feet", name: IKEA_FEET.name, article: IKEA_FEET.article, quantity, unit: "pack", source: IKEA_FEET.source });
     if (mount === "wall-rail") {

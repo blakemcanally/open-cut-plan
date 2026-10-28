@@ -118,6 +118,15 @@ describe("checkDesigns", () => {
     expect(codes(current(wide({ mount: "legs", width: { openings: [335, 335] } })))).toEqual([]);
   });
 
+  it("treats the bottom on cleats as lifted", () => {
+    const wide = kallaxDesign({ id: "x", name: "X", system: "custom", width: { outside: 1500, cells: 1 }, height: { outside: 400, cells: 1 }, mount: "cleats" });
+    expect(checkDesigns(current(wide))[0]!.message).toMatch(/^Design "X" stands on cleats, so the floor/);
+  });
+
+  it("gives no mount-system warning for cleats on kallax", () => {
+    expect(codes(current(kallaxDesign({ mount: "cleats" })))).toEqual([]);
+  });
+
   it("warns when a design other than EKET uses the EKET wall rail", () => {
     expect(codes(current(kallaxDesign({ mount: "wall-rail" })))).toEqual(["warning:mount-system"]);
   });

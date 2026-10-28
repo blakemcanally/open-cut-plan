@@ -169,3 +169,47 @@ describe("face screws", () => {
     expect(linesOf(module(), 1.75).find((line) => line.item === "face-screws")!.name).toBe('Wood screws for the joints, #8 × 3"');
   });
 });
+
+describe("cleat screws", () => {
+  const module = (patch: Partial<Design> = {}): Design => ({
+    id: "sh",
+    name: "Module",
+    system: "custom",
+    material: "ply18",
+    width: { outside: 52.5, cells: 1 },
+    height: { outside: 40, cells: 4 },
+    depth: 16,
+    corners: "sides-over-top",
+    fastener: "face-screws",
+    mount: "cleats",
+    ...patch,
+  });
+  const linesOf = (design: Design) => {
+    const project = designProject();
+    project.project.units = "in";
+    project.materials = [{ id: "ply18", name: "Plywood", thickness: 0.75, grained: true }];
+    project.designs = [design];
+    return hardwareList(regenerateDesigns(project));
+  };
+
+  it("gives 18 cleat screws and no anti-tip fitting for his module", () => {
+    const lines = linesOf(module());
+    expect(lines.find((line) => line.item === "cleat-screws")).toEqual({
+      item: "cleat-screws",
+      name: 'Wood screws for the cleats, #8 × 1 1/4"',
+      quantity: 18,
+      unit: "each",
+      design: "sh",
+    });
+    expect(lines.find((line) => line.item === "anti-tip")).toBeUndefined();
+    expect(lines.find((line) => line.item === "wall-fixings")).toBeUndefined();
+  });
+
+  it("doubles the cleat screws for a quantity of 2", () => {
+    expect(linesOf(module({ quantity: 2 })).find((line) => line.item === "cleat-screws")!.quantity).toBe(36);
+  });
+
+  it("gives no cleat screws to another mount", () => {
+    expect(linesOf(module({ mount: "floor" })).find((line) => line.item === "cleat-screws")).toBeUndefined();
+  });
+});

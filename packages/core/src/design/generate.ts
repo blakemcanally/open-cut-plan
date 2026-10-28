@@ -33,7 +33,7 @@ export function designParts(project: Project, design: Design): Part[] | null {
   const stored = new Map(generatedParts(project, design.id).map((part) => [part.id, part]));
   const units = project.project.units;
   const snap = (part: Part): Part => ({ ...part, length: snapLength(part.length, units), width: snapLength(part.width, units) });
-  return buildDesignParts(design, geometry).map((part) => keepStoredSize(snap(part), stored.get(part.id)));
+  return buildDesignParts(design, geometry, units).map((part) => keepStoredSize(snap(part), stored.get(part.id)));
 }
 
 function keepStoredSize(part: Part, stored: Part | undefined): Part {

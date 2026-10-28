@@ -28,7 +28,7 @@ import {
   SHELF_SPAN_RATIO,
 } from "./systems.ts";
 
-const LIFTED = { legs: "stands on legs", feet: "stands on feet", "wall-rail": "hangs on the wall rail" } as const;
+const LIFTED = { legs: "stands on legs", feet: "stands on feet", cleats: "stands on cleats", "wall-rail": "hangs on the wall rail" } as const;
 
 function staleWarnings(project: Project, design: Design): PlanIssue[] {
   const parts = designParts(project, design);

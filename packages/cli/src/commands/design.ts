@@ -89,7 +89,7 @@ const OPTIONS = {
   depth: { name: "depth", type: "string", value: "<length>", description: "The outside depth, with the back. Default for kallax and eket: the IKEA depth." },
   material: { name: "material", type: "string", value: "<id|name>", description: "The material of the panels. Required when the project has more than one material." },
   back: { name: "back", type: "string", value: "<id|name|none>", description: "The material of the back, or none. Default for add: none. Default with --starter: a thin back." },
-  mount: { name: "mount", type: "string", value: "<floor|legs|feet|wall-rail>", description: "How the unit stands or hangs. legs, feet, and wall-rail add the EKET items to the hardware list. Default: floor." },
+  mount: { name: "mount", type: "string", value: "<floor|legs|feet|wall-rail|cleats>", description: "How the unit stands or hangs. legs, feet, and wall-rail add the EKET items to the hardware list. cleats add the feet and the top cleats to the parts. Default: floor." },
   quantity: { name: "quantity", type: "string", value: "<n>", description: `The number of units to build, 1 to ${MAX_DESIGN_QUANTITY}. Default for add: 1.` },
   name: { name: "name", type: "string", value: "<text>", description: "The design name. It is also the group of its parts. Default for add: the system and the grid, such as KALLAX-style 2x4." },
   color: {
